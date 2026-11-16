@@ -65,6 +65,7 @@
 #include "third_party/skia/include/utils/SkShadowUtils.h"
 #include "third_party/skia/src/gpu/ganesh/GrBackendUtils.h"
 #else
+#include "clay/common/graphics/gl_context_switch.h"
 #include "clay/gfx/skity/skity_auto_canvas_save.h"
 #include "clay/gfx/skity/skity_lazy_image_traveller.h"
 #ifdef ENABLE_SKITY_CODEC

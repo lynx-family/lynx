@@ -9,6 +9,7 @@
 #define CLAY_GFX_GPU_OBJECT_H_
 
 #include <deque>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -121,6 +122,22 @@ class UnrefQueue : public fml::RefCountedThreadSafe<UnrefQueue<T>> {
     return context_;
   }
 
+#ifdef ENABLE_SKITY
+  // These methods must run on the queue's task runner. The owner must clear
+  // the callback before destroying the platform context.
+  using MakeCurrentCallback = std::function<std::unique_ptr<GLContextResult>()>;
+
+  void SetMakeCurrentCallback(MakeCurrentCallback callback) {
+    FML_DCHECK(task_runner_->RunsTasksOnCurrentThread());
+    make_current_callback_ = std::move(callback);
+  }
+
+  std::unique_ptr<GLContextResult> MakeCurrent() {
+    FML_DCHECK(task_runner_->RunsTasksOnCurrentThread());
+    return make_current_callback_ ? make_current_callback_() : nullptr;
+  }
+#endif
+
  private:
   const fml::RefPtr<fml::TaskRunner> task_runner_;
   bool is_shared_;
@@ -131,6 +148,9 @@ class UnrefQueue : public fml::RefCountedThreadSafe<UnrefQueue<T>> {
   std::recursive_mutex mutex_;
   std::deque<GPURefObject*> objects_;
   ContextPtr context_;
+#ifdef ENABLE_SKITY
+  MakeCurrentCallback make_current_callback_;
+#endif
 #ifndef ENABLE_SKITY
   std::deque<GrBackendTexture> textures_;
 #endif  // ENABLE_SKITY

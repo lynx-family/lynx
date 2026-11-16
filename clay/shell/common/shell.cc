@@ -431,9 +431,10 @@ Shell::Shell(std::shared_ptr<clay::ServiceManager> service_manager,
 }
 
 Shell::~Shell() {
+  fml::RefPtr<GPUUnrefQueue> unref_queue;
   // If GPUUnrefQueue is not shared, we need to remove it from GraphicsIsolate.
   if (engine_ && engine_->GetPageView()) {
-    auto unref_queue = engine_->GetPageView()->GetUnrefQueue();
+    unref_queue = engine_->GetPageView()->GetUnrefQueue();
     if (unref_queue && !unref_queue->IsShared()) {
       clay::GraphicsIsolate::Instance().RemoveUnrefQueue(
           unref_queue->GetTaskRunner());
@@ -490,8 +491,13 @@ Shell::~Shell() {
       [p = std::move(raster_thread_promise),
        // OutputSurface MUST live longer than Rasterizer, since GPU surface
        // holds the raw pointer to it as a delegate
-       output_surface = platform_view_->GetOutputSurface(),
+       output_surface = platform_view_->GetOutputSurface(), unref_queue,
        service_manager = service_manager_]() mutable {
+#ifdef ENABLE_SKITY
+        if (unref_queue && !unref_queue->IsShared()) {
+          unref_queue->SetMakeCurrentCallback(nullptr);
+        }
+#endif
         clay::Puppet<clay::Owner::kRaster, RasterizerService> raster_service =
             service_manager->GetService<RasterizerService>();
         Rasterizer* rasterizer = raster_service->GetRasterizer();
@@ -655,6 +661,13 @@ bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
 #endif
             if (unref_queue) {
               unref_queue->SetContext(main_context);
+#ifdef ENABLE_SKITY
+              if (!unref_queue->IsShared()) {
+                unref_queue->SetMakeCurrentCallback([output_surface]() {
+                  return output_surface->MakeCurrent();
+                });
+              }
+#endif
             }
           }
         }

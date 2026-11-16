@@ -30,7 +30,7 @@ SkitySVGDom::~SkitySVGDom() = default;
 
 std::shared_ptr<skity::Image> SkitySVGDom::Render(
     int width, int height, fml::RefPtr<GPUUnrefQueue> unref_queue) {
-  if (!unref_queue || !unref_queue->GetContext()) {
+  if (width <= 0 || height <= 0 || !unref_queue || !unref_queue->GetContext()) {
     return nullptr;
   }
 
@@ -41,9 +41,11 @@ std::shared_ptr<skity::Image> SkitySVGDom::Render(
   auto image = skity::Image::MakeDeferredTextureImage(
       skity::TextureFormat::kRGBA, width, height,
       skity::AlphaType::kPremul_AlphaType);
+  if (!image) {
+    return nullptr;
+  }
 
-  unref_queue->GetTaskRunner()->PostTask([image, width, height,
-                                          context = unref_queue->GetContext(),
+  unref_queue->GetTaskRunner()->PostTask([image, width, height, unref_queue,
                                           weak = weak_from_this()]() {
     if (auto self = weak.lock()) {
       SkitySVGDom* dom = static_cast<SkitySVGDom*>(self.get());
@@ -63,27 +65,50 @@ std::shared_ptr<skity::Image> SkitySVGDom::Render(
       if (!dl) {
         return;
       }
+      // A raster task can run between frames, when no GL context (or another
+      // view's context) is current. Keep the binding alive through
+      // snapshotting.
+      auto context_switch = unref_queue->MakeCurrent();
+      if (!context_switch || !context_switch->GetResult()) {
+        FML_LOG(ERROR) << "Could not make the context current to render SVG.";
+        return;
+      }
+      auto context = unref_queue->GetContext();
+      if (!context) {
+        return;
+      }
       if (!delegate->CanUseSoftwareCanvas()) {
         skity::GPURenderTargetDescriptor desc;
         desc.width = width;
         desc.height = height;
         desc.sample_count = 4;
         auto render_target = context->CreateRenderTarget(desc);
+        if (!render_target || !render_target->GetCanvas()) {
+          FML_LOG(ERROR) << "Could not create the SVG render target.";
+          return;
+        }
         dl->Draw(render_target->GetCanvas());
         auto snapshot = context->MakeSnapshot(std::move(render_target));
-        if (snapshot) {
+        if (snapshot && snapshot->GetTexture() && *snapshot->GetTexture()) {
           image->SetTexture(*snapshot->GetTexture());
         }
       } else {
         auto bitmap = std::make_unique<skity::Bitmap>(
             width, height, skity::AlphaType::kPremul_AlphaType);
         auto canvas = skity::Canvas::MakeSoftwareCanvas(bitmap.get());
+        if (!canvas) {
+          return;
+        }
         dl->Draw(canvas.get());
         auto pixmap = bitmap->GetPixmap();
         if (pixmap) {
           auto texture = context->CreateTexture(
               skity::Texture::FormatFromColorType(pixmap->GetColorType()),
               pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
+          if (!texture) {
+            FML_LOG(ERROR) << "Could not create the SVG texture.";
+            return;
+          }
           texture->DeferredUploadImage(std::move(pixmap));
           image->SetTexture(texture);
         }
