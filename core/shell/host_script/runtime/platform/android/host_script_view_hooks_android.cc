@@ -220,10 +220,15 @@ static void UnregisterView(JNIEnv*, jclass, jlong view_id) {
       static_cast<lynx::base::LynxEntityId>(view_id));
 }
 
+static void ClearViewUrl(JNIEnv*, jclass, jlong view_id) {
+  Interceptor::ClearViewUrl(static_cast<lynx::base::LynxEntityId>(view_id));
+}
+
 static void UpdateUrl(JNIEnv* env, jclass, jlong view_id, jstring url) {
-  LynxViewRegistry::GetInstance().UpdateUrl(
-      static_cast<lynx::base::LynxEntityId>(view_id),
-      JNIConvertHelper::ConvertToString(env, url));
+  auto view = static_cast<lynx::base::LynxEntityId>(view_id);
+  auto value = JNIConvertHelper::ConvertToString(env, url);
+  Interceptor::UpdateViewUrl(view, value);
+  LynxViewRegistry::GetInstance().UpdateUrl(view, std::move(value));
 }
 
 static void NotifyView(JNIEnv* env, jclass, jlong view_id, jstring event,

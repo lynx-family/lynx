@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -655,6 +656,78 @@ TEST_F(HostScriptInterceptorTest, MockValidatesAllCallbacksBeforeCommit) {
   EXPECT_TRUE(result.failed);
   EXPECT_FALSE(result.mock.IsTable());
   EXPECT_FALSE(result.patch.IsTable());
+}
+
+TEST_F(HostScriptInterceptorTest, LoadTemplateUrlDoesNotUpdateStoredViewUrl) {
+  const char* committed_url = "https://example.com/current";
+  Interceptor::UpdateViewUrl(1, committed_url);
+  Install();
+  Script(R"(
+    globalThis.snapshots = [];
+    interceptor.on('view.loadTemplate', (e, c) => {
+      snapshots.push(e);
+      return c.proceed({url: 'https://example.com/redirected'});
+    });
+  )");
+  for (const char* url :
+       {"https://example.com/first", "https://example.com/next", ""}) {
+    lepus::Value request(lepus::Dictionary::Create());
+    request.SetProperty("url", lepus::Value(url));
+    lepus::Value event(lepus::Dictionary::Create());
+    event.SetProperty("viewId", lepus::Value("1"));
+    event.SetProperty("request", request);
+    auto result = provider_->Dispatch(InterceptKind::kLoadTemplate, event);
+    EXPECT_FALSE(result.failed);
+    EXPECT_EQ(EvalString("snapshots[snapshots.length - 1].viewURL"), url);
+    EXPECT_EQ(Interceptor::ViewUrl(1), committed_url);
+  }
+  EXPECT_EQ(EvalString("snapshots[0].viewURL"), "https://example.com/first");
+  Interceptor::ClearViewUrl(1);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       TracksCurrentViewUrlAcrossLoadsAndShellReplacement) {
+  const char* url = "https://example.com/card?query=a%2Fb#entry";
+  const char* next_url = "https://example.com/next";
+  for (auto [domain, kind, name] :
+       {std::tuple{Interceptor::Domain::kUI, InterceptKind::kUpdateMetaData,
+                   "view.updateMetaData"},
+        std::tuple{Interceptor::Domain::kBTS, InterceptKind::kCall,
+                   "jsb.call"}}) {
+    Install(domain);
+    Script(("globalThis.urls = [];"
+            "globalThis.snapshots = [];"
+            "interceptor.on('" +
+            std::string(name) + R"(', (e, c) => {
+              const d = Object.getOwnPropertyDescriptor(e, 'viewURL');
+              urls.push(d.enumerable && !d.writable && !d.configurable
+                            ? e.viewURL : 'mutable');
+              snapshots.push(e);
+              return c.proceed();
+            });)")
+               .c_str());
+    EXPECT_FALSE(Dispatch(kind).failed);
+    EXPECT_EQ(EvalString("urls.pop()"), "");
+    Interceptor::UpdateViewUrl(1, url);
+    EXPECT_FALSE(Dispatch(kind).failed);
+    EXPECT_EQ(EvalString("urls.pop()"), url);
+    Interceptor::UpdateViewUrl(1, next_url);
+    // Shell replacement preserves the latest URL associated with the View.
+    Interceptor::RegisterView(1);
+    Interceptor::DestroyView(1);
+    EXPECT_FALSE(Dispatch(kind).failed);
+    EXPECT_EQ(EvalString("urls.pop()"), next_url);
+    EXPECT_EQ(EvalString("snapshots[1].viewURL"), url);
+    Interceptor::UpdateViewUrl(1, "");
+    EXPECT_FALSE(Dispatch(kind).failed);
+    EXPECT_EQ(EvalString("urls.pop()"), "");
+    Interceptor::UpdateViewUrl(1, next_url);
+    Interceptor::ClearViewUrl(1);
+    EXPECT_FALSE(Dispatch(kind).failed);
+    EXPECT_EQ(EvalString("urls.pop()"), "");
+    provider_->Uninstall();
+    provider_.reset();
+  }
 }
 
 TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {
