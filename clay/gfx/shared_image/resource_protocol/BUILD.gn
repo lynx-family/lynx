@@ -1,0 +1,19 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# Backend-independent GPU resource ownership and deferred input release.
+source_set("resource_protocol") {
+  sources = [
+    "../../../common/graphics/staged_image_read_scope.cc",
+    "../../../common/graphics/staged_image_read_scope.h",
+    "../../../flow/compositor/raster_buffer_pool.h",
+    "../output_texture.cc",
+    "../output_texture.h",
+    "../resource_retirement_queue.h",
+    "../resource_types.h",
+    "../texture_budget.h",
+  ]
+  include_dirs = [ "../../../.." ]
+  public_deps = [ "../../../../base/src:base_static" ]
+}

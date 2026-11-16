@@ -6,13 +6,46 @@
 
 #include "base/include/closure.h"
 #include "clay/common/graphics/gl/gl_shader_program.h"
+#if defined(OS_ANDROID)
+#include <EGL/egl.h>
+
+#include <map>
+#include <memory>
+#endif
 
 namespace clay {
+
+#if defined(OS_ANDROID)
+namespace {
+auto& ContextPipelines() {
+  static thread_local std::map<EGLContext, std::unique_ptr<GlPipelineHelper>>
+      pipelines;
+  return pipelines;
+}
+}  // namespace
+#endif
 
 GlPipelineHelper* GlPipelineHelper::GetInstance() {
   static thread_local GlPipelineHelper* instance = new GlPipelineHelper();
   return instance;
 }
+
+#if defined(OS_ANDROID)
+GlPipelineHelper* GlPipelineHelper::GetForCurrentContext() {
+  // VAOs are context-local even when contexts share textures and programs.
+  auto& pipeline = ContextPipelines()[eglGetCurrentContext()];
+  if (!pipeline) pipeline = std::make_unique<GlPipelineHelper>();
+  return pipeline.get();
+}
+
+void GlPipelineHelper::DestroyCurrentContext() {
+  auto& pipelines = ContextPipelines();
+  auto it = pipelines.find(eglGetCurrentContext());
+  if (it == pipelines.end()) return;
+  it->second->Destroy();
+  pipelines.erase(it);
+}
+#endif
 
 bool GlPipelineHelper::Initialize() {
   if (initialized_) {

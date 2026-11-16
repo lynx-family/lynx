@@ -9,6 +9,7 @@
 #include <EGL/eglext.h>
 
 #include <memory>
+#include <optional>
 
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_representation.h"
@@ -28,6 +29,7 @@ class AndroidEGLFenceSync final : public FenceSync {
   int32_t GetSyncFD() { return GetCurrentFD(); }
 
   bool ClientWait() override;
+  std::optional<bool> IsSignaled();
 
   Type GetType() const override { return Type::kEGL; }
 
