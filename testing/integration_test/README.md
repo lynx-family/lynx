@@ -16,7 +16,7 @@ The integration tests are run based on the Explorer. You can use a real device o
 Enter the `explorer/android` directory from the project root directory and execute the following command
 
 ```
-./gradlew :LynxExplorer:assembleNoAsanDebug -PIntegrationTest
+./gradlew :LynxExplorer:assembleWithoutSparklingNoasanDebug -PIntegrationTest
 ```
 
 #### For iOS
