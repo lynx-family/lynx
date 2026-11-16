@@ -232,9 +232,7 @@ public class KeyboardEvent {
   }
 
   public synchronized void stop() {
-    if (!isStartedInUIThread) {
-      return;
-    }
+    // Input layout can register insets animation tracking before keyboard monitoring starts.
     /*
      ** Need to post to UI thread to avoid multi-thread issue
      * since Template Renderer may run in async mode and setSoftInputMode
