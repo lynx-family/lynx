@@ -22,6 +22,8 @@
 namespace lynx {
 namespace embedder {
 
+class TestBenchFixture;
+
 typedef struct ReplayAction {
   int function_id;
   std::string params;
@@ -85,6 +87,7 @@ class TestBenchActionManager
   std::shared_ptr<TestBenchReplayDataModule> data_module_;
   std::atomic<uint64_t> replay_generation_{0};
 
+  std::shared_ptr<TestBenchFixture> fixture_;
   std::string preloaded_source_;
   std::string component_list_;
   std::string template_bundle_param_;
