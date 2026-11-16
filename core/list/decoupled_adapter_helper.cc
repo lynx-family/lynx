@@ -17,20 +17,24 @@
 namespace lynx {
 namespace list {
 
-std::string AdapterHelper::DiffResult::ToString() const {
+std::string AdapterHelper::DiffResult::ToString(
+    bool include_item_keys /* = true*/) const {
   std::ostringstream oss;
+  int index = 0;
   oss << "DiffResult: item_keys:[";
-  for (const auto& item_key : item_keys_) {
-    oss << item_key << ",";
+  if (include_item_keys) {
+    for (const auto& item_key : item_keys_) {
+      oss << "{" << index++ << ", " << item_key << "}, ";
+    }
   }
-  oss << "],";
+  oss << "], diff_result:";
   auto diff_action_to_string = [&oss](const std::string& key,
                                       const std::vector<int32_t>& array) {
     oss << key << ":[";
     for (int32_t index : array) {
-      oss << index << ",";
+      oss << index << ", ";
     }
-    oss << "],";
+    oss << "], ";
   };
   diff_action_to_string(kRadonDataInsertions, insertions_);
   diff_action_to_string(kRadonDataRemovals, removals_);
