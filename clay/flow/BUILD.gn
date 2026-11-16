@@ -127,6 +127,8 @@ source_set("flow") {
       "rtree.h",
     ]
     sources += [
+      "compositor/segment_recorder.cc",
+      "compositor/segment_recorder.h",
       "layers/picture_complexity_calculator_skity.cc",
       "layers/picture_complexity_calculator_skity.h",
       "layers/picture_complexity_helper_skity.h",

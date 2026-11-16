@@ -1,0 +1,15 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+source_set("raster_runtime") {
+  sources = [
+    "../raster_binding.cc",
+    "../raster_binding.h",
+    "../raster_binding_key.h",
+    "../raster_thread_group.cc",
+    "../raster_thread_group.h",
+  ]
+  public_deps = [ "../../../base/src:base_static" ]
+  include_dirs = [ "../../.." ]
+}
