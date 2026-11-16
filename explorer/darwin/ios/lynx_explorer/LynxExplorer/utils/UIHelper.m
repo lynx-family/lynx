@@ -6,19 +6,6 @@
 
 @implementation UIHelper
 
-+ (UIViewController *)getTopViewController {
-  //  getting rootViewController
-  UIViewController *topController = [UIApplication sharedApplication].keyWindow.rootViewController;
-  //  getting topMost ViewController
-  while (topController != nil) {
-    if ([topController isKindOfClass:[UINavigationController class]]) {
-      return topController;
-    }
-    topController = [topController presentedViewController];
-  }
-  return nil;
-}
-
 + (UIColor *)colorWithHexString:(NSString *)hexString {
   if ([hexString hasPrefix:@"#"]) {
     hexString = [hexString substringFromIndex:1];

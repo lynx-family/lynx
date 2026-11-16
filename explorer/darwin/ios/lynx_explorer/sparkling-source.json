@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/tiktok/sparkling.git",
+  "commit": "f7f7a6a0d3f3a1056e461661e6ff70dc16303df9",
+  "removal_condition": "Advance from this exact source override after an official Sparkling release includes tiktok/sparkling#113 and tiktok/sparkling#115, has no version constraints on source-owned Lynx pods, resolves against Explorer's local Lynx checkout without mutation, and passes the dependency, Debug/Release build, and runtime ownership matrix.",
+  "pods": {
+    "Sparkling": "packages/sparkling-sdk/ios/Sparkling",
+    "SparklingMacro": "packages/sparkling-sdk/ios/SparklingMacro",
+    "SparklingMethod": "packages/sparkling-method/ios",
+    "Sparkling-Router": "packages/methods/sparkling-navigation/ios"
+  }
+}
