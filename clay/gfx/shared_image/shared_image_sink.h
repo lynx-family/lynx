@@ -14,6 +14,7 @@
 #include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/time/time_delta.h"
+#include "skity/geometry/rect.hpp"
 #include "skity/geometry/vector.hpp"
 
 namespace clay {
@@ -115,8 +116,11 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
                     std::optional<GraphicsMemoryHandle> gfx_handle = {},
                     AcquireBackStatus* status = nullptr) = 0;
 
-  /// Swap the current back buffer to pending front
-  virtual bool SwapBack(std::unique_ptr<FenceSync> fence_sync) = 0;
+  /// Swap the current back buffer to pending front. Managed sinks accumulate
+  /// frame damage across skipped frames. A null value means unknown damage.
+  virtual bool SwapBack(
+      std::unique_ptr<FenceSync> fence_sync,
+      std::optional<skity::Rect> frame_damage = std::nullopt) = 0;
 
   virtual uint32_t Capacity() const = 0;
   virtual bool IsManaged() const { return false; }
@@ -167,7 +171,9 @@ class SharedImageSinkManaged final : public SharedImageSink {
                     std::optional<GraphicsMemoryHandle> gfx_handle = {},
                     AcquireBackStatus* status = nullptr) override;
 
-  bool SwapBack(std::unique_ptr<FenceSync> fence_sync) override;
+  bool SwapBack(
+      std::unique_ptr<FenceSync> fence_sync,
+      std::optional<skity::Rect> frame_damage = std::nullopt) override;
 
   uint32_t Capacity() const override { return capacity_; }
   bool IsManaged() const override { return true; }
@@ -183,6 +189,10 @@ class SharedImageSinkManaged final : public SharedImageSink {
     std::optional<uint64_t> swap_id;
     fml::RefPtr<SharedImageBacking> shared_image;
     bool is_current = false;  // is current front or current back
+    // Distinguishes a reusable back buffer with no pending frame from a pending
+    // frame whose damage is unknown (represented by a null frame_damage).
+    bool has_pending_frame = false;
+    std::optional<skity::Rect> frame_damage;
   };
 
   uint32_t used_ = 0;
@@ -236,7 +246,9 @@ class SharedImageSinkUnmanaged final : public SharedImageSink {
                     std::optional<GraphicsMemoryHandle> gfx_handle = {},
                     AcquireBackStatus* status = nullptr) override;
 
-  bool SwapBack(std::unique_ptr<FenceSync> fence_sync) override;
+  bool SwapBack(
+      std::unique_ptr<FenceSync> fence_sync,
+      std::optional<skity::Rect> frame_damage = std::nullopt) override;
 
   uint32_t Capacity() const override;
 

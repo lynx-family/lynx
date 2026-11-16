@@ -47,7 +47,7 @@ class SharedImageSinkAccessor {
   AcquireBackForced(const skity::Vec2& size,
                     SharedImageSink::AcquireBackStatus* status = nullptr);
 
-  bool SwapBack();
+  bool SwapBack(std::optional<skity::Rect> frame_damage = std::nullopt);
 
   BASE_DISALLOW_COPY_AND_ASSIGN(SharedImageSinkAccessor);
 
