@@ -22,6 +22,7 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.image.model.AnimationListener;
+import com.lynx.tasm.image.model.ImageAnimationInfo;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
 import java.util.Map;
@@ -84,6 +85,11 @@ public interface ILynxImageService extends IServiceProvider {
    * @return True if the animation stops successfully, false otherwise.
    */
   boolean stopAnimation(@NonNull Drawable animatable);
+
+  @Nullable
+  default ImageAnimationInfo getAnimationInfo(@NonNull Drawable animatable) {
+    return null;
+  }
 
   /**
    * Prefetches an image from a URI for faster subsequent loading.

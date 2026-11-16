@@ -901,6 +901,16 @@ public abstract class LynxBaseUI
     }
   }
   @LynxUIMethod
+  public void getComponentState(Callback callback) {
+    if (!LynxEnv.inst().isDevtoolEnabled() || !(this instanceof UIComponentInspectorProvider)) {
+      callback.invoke(LynxUIMethodConstants.METHOD_NOT_FOUND);
+      return;
+    }
+    callback.invoke(
+        LynxUIMethodConstants.SUCCESS, ((UIComponentInspectorProvider) this).getSnapshot());
+  }
+
+  @LynxUIMethod
   public void boundingClientRect(ReadableMap params, Callback callback) {
     // If ui owner is null, exec boundingClientRectInner directly.
     LynxUIOwner owner = mContext.getLynxUIOwner();

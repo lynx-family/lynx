@@ -17,4 +17,6 @@ public interface AnimationListener {
   void onAnimationFinalLoop(Drawable drawable);
 
   void onAnimationCurrentLoop(Drawable drawable);
+
+  default void onAnimationFrame(Drawable drawable, int frameNumber) {}
 }

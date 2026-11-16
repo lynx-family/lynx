@@ -158,6 +158,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   PlatformLength ToVPFromUnitValue(const std::string& value);
   virtual void SetEvents(const std::vector<lepus::Value>& events);
   void SendPositionChangeEvent();
+  bool IsDevToolEnabled() const;
   virtual void InvokeMethod(
       const std::string& method, const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
