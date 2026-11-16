@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Setup Node.js 18.20.0
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
       with:
         node-version: '18.20.0'
     - name: Get npm customcache directory

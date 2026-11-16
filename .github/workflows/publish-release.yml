@@ -45,7 +45,7 @@ jobs:
     needs: get-version
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
@@ -55,7 +55,7 @@ jobs:
         with:
           abi-list: armeabi-v7a,x86,x86_64,arm64-v8a
       - name: push to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -72,7 +72,7 @@ jobs:
         arch: [arm64, x86_64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
@@ -82,7 +82,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -104,7 +104,7 @@ jobs:
         shell: bash
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
@@ -112,7 +112,7 @@ jobs:
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -126,7 +126,7 @@ jobs:
     timeout-minutes: 240
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
@@ -134,7 +134,7 @@ jobs:
       - name: Free up disk space
         uses: ./lynx/.github/actions/free-android-disk
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
       - name: Setup Android environment
@@ -176,17 +176,17 @@ jobs:
     needs: get-version
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
           path: lynx
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
       - name: Set up Ruby + specify Bundler version
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1
         with:
           ruby-version: '2.6.10'
       - name: Install Common Dependencies
@@ -225,13 +225,13 @@ jobs:
       contents: read
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
           path: lynx
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1
         with:
           ruby-version: '3.1'
       - name: Resolve gem version
@@ -275,7 +275,7 @@ jobs:
           echo "gem_file=$gem_file" >> "$GITHUB_OUTPUT"
           ruby -rrubygems/package -e 'spec = Gem::Package.new(ARGV.fetch(0)).spec; puts "#{spec.name} #{spec.version}"; puts spec.summary' "$gem_file"
       - name: Upload gem artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cocoapods-lynx-library-${{ steps.gem_version.outputs.version }}
           path: lynx/tools/ios_tools/cocoapods-lynx-library/${{ steps.build_gem.outputs.gem_file }}
@@ -316,7 +316,7 @@ jobs:
             label: 'dev'
     steps:
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions-rs/toolchain@16499b5e05bf2e26879000db0c1d13f7e13fa3af # v1
         with:
           toolchain: stable
           profile: minimal
@@ -326,7 +326,7 @@ jobs:
           cargo install git-cliff --locked
           git-cliff --version
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           fetch-depth: 0
@@ -376,7 +376,7 @@ jobs:
         arch: [arm64, x64]
     steps:
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
@@ -386,7 +386,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -410,13 +410,13 @@ jobs:
           git config --global http.sslBackend "schannel"
         working-directory: ./
       - name: Download Source
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: lynx
           ref: ${{ github.event.inputs.commitId || github.ref }}
           fetch-depth: 0
       - name: Python Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
@@ -428,7 +428,7 @@ jobs:
         with:
           build-arch: ${{ matrix.arch }}
       - name: push explorer to release
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1
         with:
           tag: ${{ needs.get-version.outputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
