@@ -16,20 +16,26 @@ fml::RefPtr<ElementTemplateInstance> ListElementTemplateReusePool::GetInstance(
   return owner_it->second;
 }
 
-void ListElementTemplateReusePool::Enqueue(int32_t sign) {
+fml::RefPtr<ElementTemplateInstance> ListElementTemplateReusePool::Enqueue(
+    int32_t sign) {
   auto list_item_instance = GetInstance(sign);
   if (!list_item_instance) {
-    return;
+    return nullptr;
   }
   auto list_item_root = list_item_instance->PeekMaterializedRoot();
   if (!list_item_root || list_item_root->impl_id() != sign) {
-    return;
+    return nullptr;
   }
   // Append only when sign is absent from this type's queue. Existing entries
   // retain their position and true/false flag; in particular, repeated enqueue
   // must not change a reserved entry from false back to true.
-  recycled_pool_[list_item_instance->GetTemplateType()].insert_if_absent(sign,
-                                                                         true);
+  const auto enqueue_result =
+      recycled_pool_[list_item_instance->GetTemplateType()].insert_if_absent(
+          sign, true);
+  if (!enqueue_result.first->second) {
+    return nullptr;
+  }
+  return list_item_instance;
 }
 
 // This function manages registrations and candidate eligibility. new_instance

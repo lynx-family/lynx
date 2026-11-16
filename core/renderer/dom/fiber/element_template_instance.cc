@@ -720,9 +720,14 @@ void ElementTemplateInstance::SetAttributes(const lepus::Value& attributes) {
     return;
   }
   auto next_slots = lepus::CArray::Create();
-  next_slots->emplace_back(IsTemplateMapValue(attributes)
-                               ? ConvertTemplateMapForStorage(attributes)
-                               : lepus::Value());
+  // Typed template root attributes act as a single spread-like map in slot 0
+  // and are applied via ApplyTemplateSpreadValue. Preserve live MTS event and
+  // gesture descriptors per key while cloning ordinary attributes.
+  next_slots->emplace_back(
+      IsTemplateMapValue(attributes)
+          ? ConvertTemplateMapForStorageInternal(
+                attributes, /*preserve_spread_callbacks=*/true)
+          : lepus::Value());
   auto previous_slots = std::move(attribute_slots_);
   attribute_slots_ = lepus::Value(std::move(next_slots));
   if (IsMaterialized()) {
