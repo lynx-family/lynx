@@ -1415,7 +1415,7 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       }
     }
 
-    if (mKeyboardEvent != null && mKeyboardEvent.isStart()) {
+    if (mKeyboardEvent != null) {
       mKeyboardEvent.stop();
     }
 
