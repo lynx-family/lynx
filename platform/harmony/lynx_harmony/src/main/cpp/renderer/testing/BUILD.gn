@@ -1,0 +1,26 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../../../../testing/test.gni")
+
+unittest_set("harmony_path_testset") {
+  sources = [
+    "../../../../../../../../core/renderer/ui_wrapper/painting/harmony/path_harmony.cc",
+    "../../../../../../../../core/renderer/ui_wrapper/painting/harmony/path_harmony_node.cc",
+    "native_drawing_test_stub.cc",
+    "path_harmony_node_unittest.cc",
+    "path_harmony_unittest.cc",
+  ]
+  include_dirs = [ "stubs" ]
+  configs = [ "../../../../../../../../core:lynx_public_config" ]
+  deps = [
+    "../../../../../../../../gfx:gfx_sources",
+    "../../../../../../../../gfx:path_test_utils",
+  ]
+}
+
+unittest_exec("harmony_path_unittests_exec") {
+  sources = []
+  deps = [ ":harmony_path_testset" ]
+}

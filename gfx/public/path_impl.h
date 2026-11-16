@@ -12,8 +12,12 @@ namespace lynx::gfx {
 // construction.
 class GFX_EXPORT PathImpl {
  public:
+  enum class BackendKind { kSourceOnly, kHarmony };
   explicit PathImpl(PathSource source);
   virtual ~PathImpl() = 0;
+  virtual BackendKind GetBackendKind() const {
+    return BackendKind::kSourceOnly;
+  }
   PathImpl(const PathImpl&) = delete;
   PathImpl& operator=(const PathImpl&) = delete;
   uint64_t GetKey() const { return key_; }

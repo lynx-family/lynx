@@ -471,7 +471,7 @@ void JSUIBase::AddChild(UIBase* child, int index) {
     children_.insert(children_.begin() + index, child);
   }
   child->SetParent(this);
-  auto sibling = index > 0 ? Children().at(index - 1)->Node() : nullptr;
+  auto sibling = index > 0 ? Children().at(index - 1)->DrawNode() : nullptr;
   if (!HasCustomizedLayout()) {
     NodeManager::Instance().InsertNodeAfter(node_, child->DrawNode(), sibling);
   } else {

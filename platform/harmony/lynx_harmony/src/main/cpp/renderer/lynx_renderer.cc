@@ -134,12 +134,14 @@ void LynxRenderer::UpdateDrawingBounds() {
 }
 
 void LynxRenderer::UpdateRenderNodeOrder() {
+  if (updating_node_order_) return;
   auto host = host_.lock();
   auto* owner = context_->GetUIOwner();
   if (!host || !owner || segments_.empty()) {
     render_nodes_.clear();
     return;
   }
+  updating_node_order_ = true;
   const auto* items = reinterpret_cast<const DisplayListItem*>(
       display_list_->GetContentItemsData());
   auto& manager = NodeManager::Instance();
@@ -157,14 +159,16 @@ void LynxRenderer::UpdateRenderNodeOrder() {
       const auto& draw_view =
           items[segment.start_item_index - 1].payload.draw_view;
       child->UpdateFragmentLayerOffset(draw_view.offset_x, draw_view.offset_y);
-      auto attached_parent = manager.GetParent(child->DrawNode());
+      auto attachment = child->DrawNode();
+      auto attached_parent = manager.GetParent(attachment);
       if (attached_parent != nullptr) {
-        child_node = child->DrawNode();
+        child_node = attachment;
         parent_node = attached_parent;
         auto previous = previous_nodes[parent_node];
         if (previous && manager.GetNextSibling(previous) != child_node) {
-          manager.RemoveNode(parent_node, child_node);
-          manager.InsertNodeAfter(parent_node, child_node, previous);
+          if (manager.RemoveNode(parent_node, child_node)) {
+            manager.InsertNodeAfter(parent_node, child_node, previous);
+          }
         }
         previous_nodes[parent_node] = child_node;
       }
@@ -188,6 +192,7 @@ void LynxRenderer::UpdateRenderNodeOrder() {
     node->Invalidate();
   }
   render_nodes_.resize(node_index);
+  updating_node_order_ = false;
 }
 
 }  // namespace harmony

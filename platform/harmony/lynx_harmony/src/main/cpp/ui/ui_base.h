@@ -24,6 +24,8 @@
 #include "core/base/lynx_export.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/ui_wrapper/common/harmony/platform_extra_bundle_harmony.h"
+#include "core/renderer/ui_wrapper/painting/harmony/path_harmony_node.h"
+#include "gfx/public/path.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_animator.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/keyframe_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
@@ -131,6 +133,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void UpdateFragmentLayerSubtreeProperties(const DisplayList& display_list);
   void OnAttachedToFragmentLayerTree();
   void UpdateFragmentLayerOffset(float left, float top);
+  void ApplyFragmentLayerOwnerClip();
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
@@ -418,6 +421,14 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
   std::unique_ptr<LynxRenderer> renderer_;
+  fml::RefPtr<const gfx::Path> fragment_owner_path_;
+  gfx::PathFillRule fragment_owner_fill_{gfx::PathFillRule::kNonzero};
+  float fragment_owner_x_{0}, fragment_owner_y_{0};
+  ArkUI_NodeHandle fragment_owner_clip_node_{nullptr};
+  using FragmentOwnerClipRequest =
+      std::pair<std::shared_ptr<const HarmonyNodePathDescriptor>,
+                std::array<float, 4>>;
+  std::optional<FragmentOwnerClipRequest> fragment_owner_request_;
   std::optional<bool> fragment_clip_bounds_;
   // Clip native descendants separately from the host background and border.
   std::string fragment_content_clip_path_;
@@ -568,6 +579,8 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   ArkUI_NodeType GetAccessibilityType(const std::string& traits);
   void ApplyOverflowClipPath(float width, float height,
                              const std::string& path);
+  void ApplyClipPath(ArkUI_NodeHandle node, float width, float height,
+                     const std::string& path);
   void ApplyOverflowClipRectangle(float width, float height, float left,
                                   float top);
   void ParseRegionArray(const lepus::Value& value,
