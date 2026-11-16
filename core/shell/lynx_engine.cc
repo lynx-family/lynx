@@ -351,6 +351,11 @@ void LynxEngine::SendEvent(int32_t target_id, fml::RefPtr<event::Event> event) {
   }
 }
 
+void LynxEngine::SendGlobalEvent(const std::string& name,
+                                 const lepus::Value& params) {
+  tasm_->SendGlobalEvent(name, params);
+}
+
 void LynxEngine::SendAirPageEvent(const std::string& name,
                                   const lepus_value& params) {}
 

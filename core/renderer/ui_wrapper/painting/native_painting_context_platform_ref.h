@@ -120,6 +120,8 @@ class NativePaintingCtxPlatformRef
   bool CanRespondPlatformFocus();
   // Send event to the target element.
   void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
+  // Send a global event payload; the runtime wraps it as one listener argument.
+  void SendGlobalEvent(const std::string &name, const lepus::Value &params);
   // Update pseudo statuses for a batch of target elements.
   void UpdatePseudoStatuses(std::vector<event::PseudoStatusChange> changes);
   // Get PlatformEventEmitter instance.

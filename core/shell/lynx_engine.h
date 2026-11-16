@@ -143,6 +143,8 @@ class LynxEngine {
 
   void SendEvent(int32_t target_id, fml::RefPtr<event::Event> event);
 
+  void SendGlobalEvent(const std::string& name, const lepus::Value& params);
+
   void SendAirPageEvent(const std::string& name, const lepus_value& params);
 
   void SendCustomEvent(const std::string& name, int32_t tag,
