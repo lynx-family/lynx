@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
@@ -385,6 +386,9 @@ void PlatformEventTargetExposure::ScheduleNextExposureCheck() {
             self->ScheduleNextExposureCheck();
           } else {
             self->exposure_check_enabled_ = false;
+            std::set<ExposureTargetDetail> disappeared_targets;
+            disappeared_targets.swap(self->visible_target_before_);
+            self->SendEvent(disappeared_targets, "disexposure");
           }
           return;
         }
@@ -473,12 +477,13 @@ void PlatformEventTargetExposure::SendEvent(
     return;
   }
 
+  auto global_params = lepus::CArray::Create();
   for (const auto& detail : details) {
+    const auto& target = detail.Target();
+    if (!target) {
+      continue;
+    }
     if (detail.IsCustomEvent()) {
-      const auto& target = detail.Target();
-      if (!target) {
-        continue;
-      }
       const char* event_type = nullptr;
       PlatformEventName required_event = PlatformEventName::kUnknown;
       if (event_name == "exposure") {
@@ -507,6 +512,27 @@ void PlatformEventTargetExposure::SendEvent(
         platform_ref_->SendEvent(target->Sign(), event);
       }
     }
+
+    if (detail.IsGlobalEvent() && !detail.InterceptGlobalEvent() &&
+        !target->ExposureId().empty()) {
+      BASE_STATIC_STRING_DECL(kExposureID, "exposureID");
+      BASE_STATIC_STRING_DECL(kExposureScene, "exposureScene");
+      BASE_STATIC_STRING_DECL(kDataSet, "dataSet");
+      BASE_STATIC_STRING_DECL(kDataset, "dataset");
+      BASE_STATIC_STRING_DECL(kUniqueId, "unique-id");
+      auto params = detail.ExposedParams();
+      auto dict = params.Table();
+      dict->SetValue(kExposureID, target->ExposureId());
+      dict->SetValue(kExposureScene, target->ExposureScene());
+      dict->SetValue(kDataSet, params.GetProperty(kDataset));
+      dict->SetValue(kUniqueId, detail.UniqueId());
+      global_params->emplace_back(std::move(params));
+    }
+  }
+
+  if (global_params->size() > 0) {
+    platform_ref_->SendGlobalEvent(event_name,
+                                   lepus::Value(std::move(global_params)));
   }
 }
 
