@@ -44,13 +44,16 @@ class ListElementTemplateInstance : public ElementTemplateInstance {
   void FlushListUpdates();
 
   // Synchronously materialize and mount the requested item for initial
-  // rendering, submit the operation, and return the materialized Element ID.
+  // rendering, notify the framework before submitting the operation, and
+  // return the materialized Element ID.
   int32_t ComponentAtIndex(TemplateAssembler* tasm, ListElement* list_element,
                            uint32_t index, int64_t operation_id,
                            bool enable_reuse_notification);
 
-  // When native code no longer uses this sign, only mark it as reusable.
-  void EnqueueComponent(int32_t sign);
+  // When native code no longer uses this sign, mark it as reusable. On success,
+  // notify the framework with the List ET UID and the item ET UID.
+  void EnqueueComponent(TemplateAssembler* tasm, ListElement* list_element,
+                        int32_t sign);
 
   // Expose pending state while keeping recorder ownership in the List instance.
   bool HasPendingListUpdates() const {

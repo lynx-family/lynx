@@ -248,6 +248,7 @@ class ListElementTemplateInstanceTest : public ElementTemplateInstanceTest {
     // List. Assign decreasing numeric native ET UIDs.
     data.runtime = CreatePAPIRuntime();
     auto& runtime = data.runtime;
+    entry->SetVm(runtime);
     auto* ctx = runtime::MTSRuntime::ToQuickContext(runtime.get());
     ASSERT_NE(ctx, nullptr);
     static const runtime::RenderBindingFunction functions[] = {
@@ -294,6 +295,15 @@ class ListElementTemplateInstanceTest : public ElementTemplateInstanceTest {
           });
           let onScroll = e => e;
           let onLayoutComplete = () => 'layout complete';
+          let componentAtIndexCalls = [];
+          let enqueueComponentCalls = [];
+          let onComponentAtIndex = (...args) => {
+            componentAtIndexCalls.push(args);
+            return -1;
+          };
+          let onEnqueueComponent = (...args) => {
+            enqueueComponentCalls.push(args);
+          };
           let listAttributes = {
             class: 'List',
             'scroll-orientation': 'vertical',
@@ -302,6 +312,8 @@ class ListElementTemplateInstanceTest : public ElementTemplateInstanceTest {
             'custom-list-name': 'list-container',
             bindscroll: onScroll,
             bindlayoutcomplete: onLayoutComplete,
+            'component-at-index': onComponentAtIndex,
+            'enqueue-component': onEnqueueComponent,
             style: { listMainAxisGap: '10px', background: 'lightgrey' },
           };
           let listInstance = __CreateTypedElementTemplate(
@@ -980,11 +992,18 @@ TEST_P(ListElementTemplateInstanceTest,
     const auto item_key = "list-item-" + std::to_string(index);
     auto item_instance = list_instance->GetChildInstanceAt(0, index);
     const int64_t operation_id = static_cast<int64_t>(index) + 1;
-    const auto sign =
-        list_element->ComponentAtIndex(index, operation_id, false);
+    const bool enable_reuse_notification = index % 2 != 0;
+    const auto sign = list_element->ComponentAtIndex(index, operation_id,
+                                                     enable_reuse_notification);
     auto item_root = item_instance->PeekMaterializedRoot();
     ASSERT_NE(item_root, nullptr);
     EXPECT_EQ(sign, item_root->impl_id());
+    auto calls = initial_list.runtime->GetGlobalData("componentAtIndexCalls");
+    ASSERT_EQ(calls.GetLength(), index + 1u);
+    auto call = calls.GetProperty(index);
+    ASSERT_EQ(call.GetLength(), 2);
+    EXPECT_EQ(call.GetProperty(0).Number(), list_instance->GetUid().Number());
+    EXPECT_EQ(call.GetProperty(1).Number(), item_instance->GetUid().Number());
     EXPECT_EQ(list_instance_ptr->reuse_pool_.GetInstance(sign), item_instance);
     EXPECT_EQ(item_root->GetTag(), base::String("list-item"));
     EXPECT_TRUE(item_root->is_list_item());
@@ -1077,6 +1096,8 @@ TEST_P(ListElementTemplateInstanceTest, PAPIEnqueueComponentMakesItemReusable) {
    * 3. The next request reuses the same root and sign for the item at index 1;
    *    the item at index 0 releases its binding and the reuse queue becomes
    * empty.
+   * 4. Callbacks receive the List UID and current item UID. Invalid callback
+   * contexts, unknown signs, and reserved candidates do not enqueue or notify.
    */
   InitialListTestData initial_list;
   ASSERT_NO_FATAL_FAILURE(PrepareInitialList(initial_list));
@@ -1116,6 +1137,23 @@ TEST_P(ListElementTemplateInstanceTest, PAPIEnqueueComponentMakesItemReusable) {
   ASSERT_EQ(sign, item_root->impl_id());
   ASSERT_TRUE(reuse_pool.recycled_pool_.empty());
 
+  // Invalid callback contexts must leave the item unavailable for reuse.
+  list_instance_ptr->EnqueueComponent(nullptr, list_element, sign);
+  list_instance_ptr->EnqueueComponent(tasm.get(), nullptr, sign);
+  auto other_list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
+                                             lepus::Value(), lepus::Value());
+  list_instance_ptr->EnqueueComponent(tasm.get(), other_list.get(), sign);
+  EXPECT_TRUE(reuse_pool.recycled_pool_.empty());
+  EXPECT_EQ(
+      initial_list.runtime->GetGlobalData("enqueueComponentCalls").GetLength(),
+      0);
+
+  list_element->EnqueueComponent(-1);
+  EXPECT_TRUE(reuse_pool.recycled_pool_.empty());
+  EXPECT_EQ(
+      initial_list.runtime->GetGlobalData("enqueueComponentCalls").GetLength(),
+      0);
+
   // 3. Recycle through ListElement; check the template group, sign, and
   // availability.
   list_element->EnqueueComponent(sign);
@@ -1132,16 +1170,57 @@ TEST_P(ListElementTemplateInstanceTest, PAPIEnqueueComponentMakesItemReusable) {
   ASSERT_EQ(pool_it->second.size(), 1u);
   EXPECT_EQ(pool_it->second.begin()->first, sign);
   EXPECT_TRUE(pool_it->second.begin()->second);
+  auto enqueue_calls =
+      initial_list.runtime->GetGlobalData("enqueueComponentCalls");
+  ASSERT_EQ(enqueue_calls.GetLength(), 2);
+  for (uint32_t index = 0; index < 2; ++index) {
+    auto call = enqueue_calls.GetProperty(index);
+    ASSERT_EQ(call.GetLength(), 2);
+    EXPECT_EQ(call.GetProperty(0).Number(), list_instance->GetUid().Number());
+    EXPECT_EQ(call.GetProperty(1).Number(), item_instance->GetUid().Number());
+  }
+
+  // A reserved source stays unavailable and does not notify the framework.
+  const auto reservation = reuse_pool.Dequeue(next_item_instance);
+  ASSERT_EQ(reservation.type_,
+            ListElementTemplateReusePool::Action::Type::kReuse);
+  EXPECT_FALSE(pool_it->second.begin()->second);
+  list_element->EnqueueComponent(sign);
+  EXPECT_FALSE(pool_it->second.begin()->second);
+  EXPECT_EQ(
+      initial_list.runtime->GetGlobalData("enqueueComponentCalls").GetLength(),
+      2);
+  reuse_pool.CancelDequeue(reservation);
+  EXPECT_TRUE(pool_it->second.begin()->second);
 
   // 4. Request the next item of the same template and check the binding
   // transfer.
   EXPECT_EQ(list_element->ComponentAtIndex(1, 2, false), sign);
+  auto component_calls =
+      initial_list.runtime->GetGlobalData("componentAtIndexCalls");
+  ASSERT_EQ(component_calls.GetLength(), 2);
+  auto reuse_call = component_calls.GetProperty(1);
+  ASSERT_EQ(reuse_call.GetLength(), 2);
+  EXPECT_EQ(reuse_call.GetProperty(0).Number(),
+            list_instance->GetUid().Number());
+  EXPECT_EQ(reuse_call.GetProperty(1).Number(),
+            next_item_instance->GetUid().Number());
   EXPECT_EQ(next_item_instance->PeekMaterializedRoot(), item_root);
   EXPECT_EQ(item_instance->PeekMaterializedRoot(), nullptr);
   EXPECT_EQ(reuse_pool.GetInstance(sign), next_item_instance);
   EXPECT_TRUE(reuse_pool.recycled_pool_.empty());
   ASSERT_EQ(list_root->children().size(), 1u);
   EXPECT_EQ(list_root->children()[0], item_root);
+
+  list_element->EnqueueComponent(sign);
+  enqueue_calls = initial_list.runtime->GetGlobalData("enqueueComponentCalls");
+  ASSERT_EQ(enqueue_calls.GetLength(), 3);
+  auto transferred_owner_call = enqueue_calls.GetProperty(2);
+  ASSERT_EQ(transferred_owner_call.GetLength(), 2);
+  EXPECT_EQ(transferred_owner_call.GetProperty(0).Number(),
+            list_instance->GetUid().Number());
+  EXPECT_EQ(transferred_owner_call.GetProperty(1).Number(),
+            next_item_instance->GetUid().Number());
   platform_impl_->Flush();
 }
 

@@ -52,8 +52,10 @@ class ListElementTemplateReusePool {
   fml::RefPtr<ElementTemplateInstance> GetInstance(int32_t sign) const;
 
   // Adds sign to its current type's candidate queue if its registered instance
-  // still owns the corresponding root.
-  void Enqueue(int32_t sign);
+  // still owns the corresponding root. Returns the instance when the candidate
+  // is available, including repeated enqueues, or null if validation fails or
+  // the candidate is reserved.
+  fml::RefPtr<ElementTemplateInstance> Enqueue(int32_t sign);
 
   // Registers sign to new_instance, which must already own its physical root.
   // Returns false if validation fails. On success, removes the old owner's
