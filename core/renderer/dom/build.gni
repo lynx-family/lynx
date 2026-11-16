@@ -47,6 +47,7 @@ lynx_dom_core_sources_path = get_path_info(lynx_dom_core_sources, "abspath")
 
 lynx_element_shared_sources = [
   "element.cc",
+  "element_geometry.cc",
   "element_imperative_animation.cc",
   "element_layout_coordinates.cc",
   "element_layout_coordinates.h",
