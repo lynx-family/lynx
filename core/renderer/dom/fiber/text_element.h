@@ -7,11 +7,14 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
+#include "base/include/geometry/rect.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/fiber/text_props.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 
 namespace lynx {
 namespace tasm {
@@ -29,6 +32,17 @@ struct TextLineInfo {
 using TextLineInfoArray = std::unique_ptr<TextLineInfo[]>;
 class TextElement : public Element {
  public:
+  struct InlineTextGeometry {
+    // The fragment vector owns a heap buffer, with no pointers into this
+    // object.
+    using TriviallyRelocatable = bool;
+    int32_t sign;
+    // Union for getGeometry's bounding-box response; may include gaps.
+    base::geometry::FloatRect bounds;
+    // Actual fragments, kept separate across lines and disjoint runs.
+    base::Vector<base::geometry::FloatRect> rects;
+  };
+
   TextElement(ElementManager* manager, const base::String& tag);
   ~TextElement() override;
 
@@ -95,6 +109,26 @@ class TextElement : public Element {
 
   void SetTextBundle(intptr_t text_bundle);
 
+  // The outer paragraph TextElement stores the ranges tracked by text layout:
+  // sign identifies a target element, [start, end) its range in the
+  // paragraph text. Preparation records these ranges before positions exist.
+  // Measurement later reads them and calls UpdateInlineTextGeometry with the
+  // resulting rectangles. Keeping ranges on the paragraph allows preparation
+  // and measurement of different paragraphs to interleave.
+  void SetInlineTextRanges(
+      const std::vector<PlatformTextEventTargetRange>& ranges);
+  const base::Vector<PlatformTextEventTargetRange>& GetInlineTextRanges()
+      const {
+    return inline_text_ranges_;
+  }
+
+  // Replace the paragraph's measured inline fragments, grouped by inline id,
+  // in paragraph-content coordinates. The paragraph's own target is excluded;
+  // empty regions clear the previous result.
+  // Native text hit testing continues to use its existing layout result.
+  void UpdateInlineTextGeometry(const PlatformTextEventTargetRegions& regions);
+  const InlineTextGeometry* GetInlineTextGeometry(int32_t sign) const;
+
   void SetTextLineLayoutInfo(TextLineInfoArray line_infos, int line_count) {
     line_layout_info_ = std::move(line_infos);
     line_layout_count_ = line_count;
@@ -137,6 +171,8 @@ class TextElement : public Element {
   void ReplayElementSpecificStyleSideEffect(CSSPropertyID id) override;
 
  private:
+  base::Vector<PlatformTextEventTargetRange> inline_text_ranges_;
+  base::Vector<InlineTextGeometry> inline_text_geometry_;
   bool has_layout_event_{false};
   bool has_pending_layout_event_{false};
   FloatSize text_layout_event_size_;

@@ -31,7 +31,6 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
-#include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_node_info.h"
@@ -3064,74 +3063,6 @@ lepus::Value Element::ResolveTouchTargetPath(int32_t leaf_sign) {
     targets->emplace_back(*node);
   }
   return lepus::Value(std::move(targets));
-}
-
-lepus::Value Element::QueryGeometry(const lepus::Value& request) {
-  BASE_STATIC_STRING_DECL(kInputValid, "valid");
-  BASE_STATIC_STRING_DECL(kInputPoints, "points");
-  BASE_STATIC_STRING_DECL(kInputXPx, "xPx");
-  BASE_STATIC_STRING_DECL(kInputYPx, "yPx");
-  BASE_STATIC_STRING_DECL(kInputLeftPx, "leftPx");
-  BASE_STATIC_STRING_DECL(kInputTopPx, "topPx");
-  BASE_STATIC_STRING_DECL(kInputRightPx, "rightPx");
-  BASE_STATIC_STRING_DECL(kInputBottomPx, "bottomPx");
-  BASE_STATIC_STRING_DECL(kInputTreePath, "treePath");
-  BASE_STATIC_STRING_DECL(kInputWidthPx, "widthPx");
-  BASE_STATIC_STRING_DECL(kInputHeightPx, "heightPx");
-  auto result = lepus::Value(lepus::Dictionary::Create());
-  result.SetProperty(kInputValid, lepus::Value(false));
-  auto* page = element_manager_->root();
-  const float scale =
-      element_manager_->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
-  const auto points = request.GetProperty(kInputPoints);
-  auto projected = lepus::CArray::Create();
-  if (points.IsArray()) {
-    base::InlineVector<base::geometry::FloatPoint, 8> converted;
-    for (size_t index = 0; index < points.Array()->size(); ++index) {
-      const auto& point = points.Array()->get(index);
-      const auto x = point.GetProperty(kInputXPx);
-      const auto y = point.GetProperty(kInputYPx);
-      if (!x.IsNumber() || !y.IsNumber()) {
-        return result;
-      }
-      converted.emplace_back(static_cast<float>(x.Number()) / scale,
-                             static_cast<float>(y.Number()) / scale);
-    }
-    if (!ConvertPointsBetweenElements(converted.data(), converted.size(), page,
-                                      this)) {
-      return result;
-    }
-    for (const auto& point : converted) {
-      auto value = lepus::Value(lepus::Dictionary::Create());
-      value.SetProperty(kInputXPx, lepus::Value(point.X() * scale));
-      value.SetProperty(kInputYPx, lepus::Value(point.Y() * scale));
-      projected->emplace_back(std::move(value));
-    }
-  } else {
-    auto rect = ConvertRectBetweenElements({{0, 0}, {width(), height()}}, this,
-                                           page, true);
-    if (!rect) {
-      return result;
-    }
-    result.SetProperty(kInputLeftPx, lepus::Value(rect->X() * scale));
-    result.SetProperty(kInputTopPx, lepus::Value(rect->Y() * scale));
-    result.SetProperty(kInputRightPx, lepus::Value(rect->MaxX() * scale));
-    result.SetProperty(kInputBottomPx, lepus::Value(rect->MaxY() * scale));
-    auto tree_path = lepus::CArray::Create();
-    std::vector<int32_t> indices;
-    for (auto* node = this; node->parent(); node = node->parent()) {
-      indices.push_back(node->parent()->IndexOf(node));
-    }
-    for (auto index = indices.rbegin(); index != indices.rend(); ++index) {
-      tree_path->emplace_back(*index);
-    }
-    result.SetProperty(kInputTreePath, lepus::Value(std::move(tree_path)));
-  }
-  result.SetProperty(kInputValid, lepus::Value(true));
-  result.SetProperty(kInputWidthPx, lepus::Value(width() * scale));
-  result.SetProperty(kInputHeightPx, lepus::Value(height() * scale));
-  result.SetProperty(kInputPoints, lepus::Value(std::move(projected)));
-  return result;
 }
 
 lepus::Value Element::InvokeMethod(const base::String& method,
