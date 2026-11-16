@@ -47,6 +47,9 @@ class AngleD3DImageRepresentation : public GLImageRepresentation {
   std::unique_ptr<FenceSync> ProduceFence() override;
 
  private:
+  friend class WindowsImageRepresentationTest;
+  explicit AngleD3DImageRepresentation(fml::RefPtr<SharedImageBacking> backing);
+
   EGLAttrib SetupEGL(PFNEGLGETPROCADDRESSPROC egl_get_proc_address_proc,
                      bool is_d3d11);
 
