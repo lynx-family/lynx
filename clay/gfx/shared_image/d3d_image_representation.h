@@ -40,6 +40,9 @@ class D3DImageRepresentation final : public SharedImageRepresentation {
   std::unique_ptr<FenceSync> ProduceFence() override;
 
  private:
+  friend class WindowsImageRepresentationTest;
+  explicit D3DImageRepresentation(fml::RefPtr<SharedImageBacking> backing);
+
   bool LockKeyedMutex();
   bool UnlockKeyedMutex();
   bool FailAccess(std::unique_ptr<FenceSync> dependency = nullptr);
