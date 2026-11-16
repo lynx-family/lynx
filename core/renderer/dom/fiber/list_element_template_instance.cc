@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/fiber/list_element_template_instance.h"
 
+#include <vector>
+
 #include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
@@ -376,6 +378,15 @@ int32_t ListElementTemplateInstance::ComponentAtIndex(
     return list::kInvalidIndex;
   }
 
+  if (component_at_index_.IsCallable()) {
+    std::vector<lepus::Value> args = {
+        lepus::Value(this->GetUid()),
+        lepus::Value(list_item_instance->GetUid())};
+    // Notify the framework before submitting the item so ref updates can join
+    // this flush. Native materialization determines the returned sign.
+    tasm->CallLepusMethod(component_at_index_, args);
+  }
+
   if (reused_from_another_item && enable_reuse_notification) {
     // Register the new owner before notifications or Flush can re-enter native
     // list callbacks. Taking back an existing root and creating one do not
@@ -391,14 +402,29 @@ int32_t ListElementTemplateInstance::ComponentAtIndex(
   LOGI("[ListET] ComponentAtIndex submitted, list.id="
        << list_root->impl_id() << " index=" << index
        << " operation_id=" << operation_id << " item.id=" << list_item_sign);
+
   // Submit even previously materialized and mounted items so this operation
   // receives a completion notification.
   FlushElementTree(tasm, list_element, list_item_root.get(), operation_id);
   return list_item_sign;
 }
 
-void ListElementTemplateInstance::EnqueueComponent(int32_t sign) {
-  reuse_pool_.Enqueue(sign);
+void ListElementTemplateInstance::EnqueueComponent(TemplateAssembler* tasm,
+                                                   ListElement* list_element,
+                                                   int32_t sign) {
+  auto list_root = PeekMaterializedRoot();
+  if (!tasm || !list_root || list_root.get() != list_element) {
+    return;
+  }
+  auto list_item_instance = reuse_pool_.Enqueue(sign);
+  if (!list_item_instance || !enqueue_component_.IsCallable()) {
+    return;
+  }
+  std::vector<lepus::Value> args = {lepus::Value(this->GetUid()),
+                                    lepus::Value(list_item_instance->GetUid())};
+  // Enqueue before notifying: a reentrant index request may take this sign out
+  // of the pool again and must keep it unavailable for reuse.
+  tasm->CallLepusMethod(enqueue_component_, args);
 }
 
 void ListElementTemplateInstance::FlushElementTree(TemplateAssembler* tasm,
