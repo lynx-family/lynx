@@ -1,0 +1,5 @@
+com.lynx.processor.ksp.LynxPropsSymbolProcessor$Provider
+com.lynx.processor.ksp.LynxUIMethodsSymbolProcessor$Provider
+com.lynx.processor.ksp.LynxLibrarySymbolProcessor$Provider
+com.lynx.processor.ksp.LynxBehaviorSymbolProcessor$Provider
+com.lynx.processor.ksp.LynxJSPropertySymbolProcessor$Provider
