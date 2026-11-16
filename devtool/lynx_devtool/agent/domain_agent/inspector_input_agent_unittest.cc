@@ -74,6 +74,14 @@ class InputAgentTestMessageSender : public MessageSender {
 class InputAgentPlatformFacadeMock
     : public lynx::testing::DevToolPlatformFacadeMock {
  public:
+  struct KeyEventRecord {
+    std::string type;
+    std::string key;
+    std::string text;
+    int modifiers;
+    bool auto_repeat;
+  };
+
   void EmulateMouse(std::shared_ptr<MouseEvent> input) override {
     std::lock_guard<std::mutex> lock(mutex_);
     mouse_events_.push_back(*input);
@@ -84,9 +92,23 @@ class InputAgentPlatformFacadeMock
     return mouse_events_;
   }
 
+  bool DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat) override {
+    std::lock_guard<std::mutex> lock(mutex_);
+    key_events_.push_back({type, key, text, modifiers, auto_repeat});
+    return true;
+  }
+
+  std::vector<KeyEventRecord> KeyEvents() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return key_events_;
+  }
+
  private:
   mutable std::mutex mutex_;
   std::vector<MouseEvent> mouse_events_;
+  std::vector<KeyEventRecord> key_events_;
 };
 
 class InspectorInputAgentTest : public ::testing::Test {
@@ -136,6 +158,15 @@ class InspectorInputAgentTest : public ::testing::Test {
     message["params"]["x"] = x;
     message["params"]["y"] = y;
     message["params"]["duration"] = 0;
+    return message;
+  }
+
+  Json::Value BuildKeyMessage(int64_t id, const std::string& type = "keyDown") {
+    Json::Value message(Json::objectValue);
+    message["id"] = id;
+    message["method"] = "Input.dispatchKeyEvent";
+    message["params"]["type"] = type;
+    message["params"]["key"] = "A";
     return message;
   }
 
@@ -200,6 +231,169 @@ TEST_F(InspectorInputAgentTest, InsertTextReturnsSuccess) {
   const Json::Value response = LastResponse();
   EXPECT_EQ(response["id"].asInt64(), 7);
   EXPECT_TRUE(response["result"].isObject());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventUsesOptionalDefaults) {
+  Dispatch(BuildKeyMessage(100));
+
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  const auto events = platform_facade_->KeyEvents();
+  ASSERT_EQ(events.size(), 1u);
+  EXPECT_EQ(events[0].type, "keyDown");
+  EXPECT_EQ(events[0].key, "A");
+  EXPECT_TRUE(events[0].text.empty());
+  EXPECT_EQ(events[0].modifiers, 0);
+  EXPECT_FALSE(events[0].auto_repeat);
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 100);
+  EXPECT_TRUE(LastResponse()["result"].isObject());
+  EXPECT_TRUE(LastResponse()["result"].empty());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventForwardsTypesAndRepeat) {
+  const std::vector<std::string> types = {"keyDown", "rawKeyDown", "keyUp"};
+  for (size_t index = 0; index < types.size(); ++index) {
+    auto message = BuildKeyMessage(101 + index, types[index]);
+    message["params"]["text"] = "ignored text";
+    message["params"]["modifiers"] = 0;
+    message["params"]["autoRepeat"] = true;
+    message["params"]["commands"] = Json::Value(Json::arrayValue);
+    Dispatch(message);
+    ASSERT_TRUE(message_sender_->WaitForMessageCount(index + 1));
+    EXPECT_EQ(LastResponse()["id"].asInt64(), 101 + index);
+    EXPECT_TRUE(LastResponse()["result"].isObject());
+  }
+  const auto events = platform_facade_->KeyEvents();
+  ASSERT_EQ(events.size(), types.size());
+  for (size_t index = 0; index < types.size(); ++index) {
+    EXPECT_EQ(events[index].type, types[index]);
+    EXPECT_EQ(events[index].text, "ignored text");
+    EXPECT_TRUE(events[index].auto_repeat);
+  }
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventRejectsInvalidParams) {
+  std::vector<Json::Value> invalid_params;
+  const auto valid_params = BuildKeyMessage(110)["params"];
+  auto add_invalid = [&](const char* field, const Json::Value& value) {
+    auto params = valid_params;
+    params[field] = value;
+    invalid_params.push_back(std::move(params));
+  };
+  invalid_params.emplace_back(Json::nullValue);
+  invalid_params.emplace_back(Json::arrayValue);
+  add_invalid("type", Json::Value());
+  add_invalid("type", 42);
+  add_invalid("type", "keyPress");
+  add_invalid("key", Json::Value());
+  add_invalid("key", 42);
+  add_invalid("key", "");
+  add_invalid("key", std::string("A\0B", 3));
+  add_invalid("text", Json::Value());
+  add_invalid("text", 42);
+  add_invalid("modifiers", Json::Value());
+  add_invalid("modifiers", true);
+  add_invalid("modifiers", "0");
+  add_invalid("modifiers", 0.5);
+  add_invalid("modifiers", -1);
+  add_invalid("modifiers", 16);
+  add_invalid("modifiers", Json::Value(Json::UInt64{1} << 40));
+  add_invalid("autoRepeat", Json::Value());
+  add_invalid("autoRepeat", 1);
+  add_invalid("autoRepeat", "true");
+  add_invalid("commands", Json::Value());
+  add_invalid("commands", "selectAll");
+  Json::Value commands(Json::arrayValue);
+  commands.append(42);
+  add_invalid("commands", commands);
+  auto missing_type = valid_params;
+  missing_type.removeMember("type");
+  invalid_params.push_back(std::move(missing_type));
+  auto missing_key = valid_params;
+  missing_key.removeMember("key");
+  invalid_params.push_back(std::move(missing_key));
+
+  for (size_t index = 0; index < invalid_params.size(); ++index) {
+    SCOPED_TRACE(index);
+    auto message = BuildKeyMessage(110 + index);
+    message["params"] = invalid_params[index];
+    Dispatch(message);
+    ASSERT_TRUE(message_sender_->WaitForMessageCount(index + 1));
+    EXPECT_EQ(LastResponse()["id"].asInt64(), 110 + index);
+    EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+              static_cast<int>(CDPErrorCode::InvalidParams));
+  }
+  EXPECT_TRUE(platform_facade_->KeyEvents().empty());
+  EXPECT_EQ(message_sender_->Messages().size(), invalid_params.size());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventRejectsUnsupportedFeatures) {
+  std::vector<Json::Value> messages;
+  auto character = BuildKeyMessage(150, "char");
+  character["params"].removeMember("key");
+  character["params"]["text"] = "A";
+  messages.push_back(std::move(character));
+  auto modified = BuildKeyMessage(151);
+  modified["params"]["modifiers"] = 8;
+  messages.push_back(std::move(modified));
+  auto commands = BuildKeyMessage(152);
+  commands["params"]["commands"] = Json::Value(Json::arrayValue);
+  commands["params"]["commands"].append("selectAll");
+  messages.push_back(std::move(commands));
+
+  for (size_t index = 0; index < messages.size(); ++index) {
+    Dispatch(messages[index]);
+    ASSERT_TRUE(message_sender_->WaitForMessageCount(index + 1));
+    EXPECT_EQ(LastResponse()["id"], messages[index]["id"]);
+    EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+              static_cast<int>(CDPErrorCode::ServerError));
+  }
+  EXPECT_TRUE(platform_facade_->KeyEvents().empty());
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventWithoutFacadeReturnsError) {
+  SetDevToolPlatformFacade(nullptr);
+  Dispatch(BuildKeyMessage(160));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Input target is unavailable");
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventUnsupportedFacadeReturnsError) {
+  SetDevToolPlatformFacade(
+      std::make_shared<lynx::testing::DevToolPlatformFacadeMock>());
+  Dispatch(BuildKeyMessage(161));
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_EQ(LastResponse()["error"]["message"].asString(),
+            "Not implemented: Input.dispatchKeyEvent");
+}
+
+TEST_F(InspectorInputAgentTest,
+       DispatchKeyEventWithoutUITaskRunnerRepliesOnce) {
+  devtool_mediator_->ui_task_runner_ = nullptr;
+  Dispatch(BuildKeyMessage(162));
+  devtool_mediator_->ui_task_runner_ = GetUIThread().GetTaskRunner();
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 162);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_TRUE(platform_facade_->KeyEvents().empty());
+  EXPECT_EQ(message_sender_->Messages().size(), 1u);
+}
+
+TEST_F(InspectorInputAgentTest, DispatchKeyEventWithoutUIExecutorRepliesOnce) {
+  devtool_mediator_->ui_executor_ = nullptr;
+  Dispatch(BuildKeyMessage(163));
+  devtool_mediator_->ui_executor_ = ui_executor_;
+  ASSERT_TRUE(message_sender_->WaitForMessageCount(1));
+  EXPECT_EQ(LastResponse()["id"].asInt64(), 163);
+  EXPECT_EQ(LastResponse()["error"]["code"].asInt(),
+            static_cast<int>(CDPErrorCode::ServerError));
+  EXPECT_TRUE(platform_facade_->KeyEvents().empty());
+  EXPECT_EQ(message_sender_->Messages().size(), 1u);
 }
 
 TEST_F(InspectorInputAgentTest, DispatchMouseEventForwardsPointerInput) {

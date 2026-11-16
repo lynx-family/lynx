@@ -62,6 +62,48 @@ class LynxViewTest : public ::testing::Test {
   bool logbox_enabled_ = false;
 };
 
+TEST_F(LynxViewTest, DispatchKeyEventRequiresSupportedSimulationProxy) {
+  class RecordingKeyProxy : public lynx::pub::LynxEventSimulationProxy {
+   public:
+    void EmulateTouch(const std::string&, int, int, const std::string&, float,
+                      float, int, int) override {}
+    bool SupportsKeyEvents() const override { return supports_keys; }
+    void DispatchKeyEvent(const std::string& type, const std::string& key,
+                          const std::string&, int, bool) override {
+      events.push_back(type + "|" + key);
+    }
+    bool supports_keys = false;
+    std::vector<std::string> events;
+  };
+
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  lynx::embedder::LynxTemplateRenderer::Settings settings;
+  settings.screen_size = {320, 480};
+  settings.viewport_size = {320, 480};
+  settings.enable_js = false;
+  lynx::embedder::LynxTemplateRenderer renderer(
+      settings, ui_renderer.GetUIDelegate(), nullptr, nullptr);
+  EXPECT_FALSE(renderer.DispatchKeyEvent("keyDown", "A", "", 0, false));
+
+  auto proxy = std::make_unique<RecordingKeyProxy>();
+  auto* recording = proxy.get();
+  renderer.SetTemplateRendererEventSimulationProxy(std::move(proxy));
+  EXPECT_FALSE(renderer.DispatchKeyEvent("keyDown", "A", "", 0, false));
+  EXPECT_TRUE(recording->events.empty());
+  recording->supports_keys = true;
+  EXPECT_TRUE(renderer.DispatchKeyEvent("keyDown", "A", "", 0, false));
+  EXPECT_EQ(recording->events, std::vector<std::string>({"keyDown|A"}));
+
+  // Legacy callbacks replace the default proxy and have no keyboard callback.
+  renderer.SetEventSimulationCallbacks(
+      nullptr, [](void*, int) {}, nullptr, nullptr);
+  EXPECT_FALSE(renderer.DispatchKeyEvent("keyDown", "A", "", 0, false));
+  renderer.SetTemplateRendererEventSimulationProxy(
+      static_cast<lynx::pub::LynxEventSimulationProxy*>(nullptr));
+  EXPECT_FALSE(renderer.DispatchKeyEvent("keyDown", "A", "", 0, false));
+}
+
 TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
   class RecordingRuntimeProxy : public lynx::shell::LynxBTSRuntimeProxyImpl {
    public:
