@@ -267,6 +267,15 @@ void NativePaintingCtxPlatformRef::SendEvent(int32_t target_id,
   });
 }
 
+void NativePaintingCtxPlatformRef::SendGlobalEvent(const std::string &name,
+                                                   const lepus::Value &params) {
+  if (engine_actor_ == nullptr || destroyed_.load(std::memory_order_acquire)) {
+    return;
+  }
+  engine_actor_->Act(
+      [name, params](auto &engine) { engine->SendGlobalEvent(name, params); });
+}
+
 void NativePaintingCtxPlatformRef::UpdatePseudoStatusStatus(
     int32_t target_id, uint32_t pre_status, uint32_t current_status) {
   if (engine_actor_ == nullptr) {
