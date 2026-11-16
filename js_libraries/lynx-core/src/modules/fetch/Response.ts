@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 import { BodyMixin } from './BodyMixin';
-import { Headers } from './Headers';
 
 type ResponseLynxExtension = Record<string, any>;
 
