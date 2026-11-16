@@ -267,6 +267,31 @@ std::string MakeInvalidBytecodeIndexMessage(const char* kind, size_t index,
 
 using UnsafeOp = RestrictedValue::Unsafe;
 
+namespace {
+
+// Writes |value| to the element of |array| named by the numeric |key|. A key
+// that cannot name an element (negative, NaN or not below CArray::kMaxSize) is
+// ignored, just as reading such a key yields no value. It has to be filtered
+// here because converting it to size_t would give an unrelated index or be
+// undefined behavior.
+BASE_INLINE void SetArrayElement(CArray* array, const RestrictedValue& key,
+                                 const RestrictedValue& value) {
+  if (likely(key.IsInt64())) {
+    const int64_t index = UnsafeOp::TypeSure::GetInt64(key);
+    if (likely(index >= 0 && static_cast<uint64_t>(index) < CArray::kMaxSize)) {
+      array->set(static_cast<size_t>(index), value);
+    }
+  } else if (key.IsNumber()) {
+    // Both comparisons are false for NaN. Keys in (-1, 0) truncate to 0.
+    const double index = UnsafeOp::TypeSure::GetNumberDoubleFast(key);
+    if (index > -1.0 && index < static_cast<double>(CArray::kMaxSize)) {
+      array->set(static_cast<size_t>(index), value);
+    }
+  }
+}
+
+}  // namespace
+
 void VMContext::Initialize() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, VM_CONTEXT_INIT);
   RegisterBuiltin(this);
@@ -1932,15 +1957,7 @@ void VMContext::RunFrame() {
       CASE(TypeOp_SetTableNumber) : {
         GET_REGISTER_ABC(i);
         if (a->IsArray()) {
-          if (likely(b->IsInt64())) {
-            UnsafeOp::TypeSure::GetArray(*a)->set(
-                UnsafeOp::TypeSure::GetInt64(*b), *c);
-          } else if (b->IsNumber()) {
-            UnsafeOp::TypeSure::GetArray(*a)->set(
-                static_cast<size_t>(
-                    UnsafeOp::TypeSure::GetNumberDoubleFast(*b)),
-                *c);
-          }
+          SetArrayElement(UnsafeOp::TypeSure::GetArray(*a).get(), *b, *c);
         } else if (a->IsTable() && b->IsNumber()) {
           std::ostringstream s;
           s << b->Number();
@@ -1954,15 +1971,7 @@ void VMContext::RunFrame() {
           UnsafeOp::TypeSure::GetTable(*a)->SetValue(
               UnsafeOp::TypeSure::GetString(*b), *c);
         } else if (a->IsArray()) {
-          if (likely(b->IsInt64())) {
-            UnsafeOp::TypeSure::GetArray(*a)->set(
-                UnsafeOp::TypeSure::GetInt64(*b), *c);
-          } else if (b->IsNumber()) {
-            UnsafeOp::TypeSure::GetArray(*a)->set(
-                static_cast<size_t>(
-                    UnsafeOp::TypeSure::GetNumberDoubleFast(*b)),
-                *c);
-          }
+          SetArrayElement(UnsafeOp::TypeSure::GetArray(*a).get(), *b, *c);
         } else if (a->IsTable() && b->IsNumber()) {
           std::ostringstream s;
           s << b->Number();
