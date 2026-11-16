@@ -183,9 +183,9 @@ class LynxDevToolMediator
   // Lynx domain
   bool LynxSetLogLevel(const std::shared_ptr<CDPResponder>& responder,
                        int level);
-  DECLARE_DEVTOOL_METHOD(LynxGetProperties)
-  DECLARE_DEVTOOL_METHOD(LynxGetData)
-  DECLARE_DEVTOOL_METHOD(LynxGetComponentId)
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetProperties);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetData);
+  DECLARE_DEVTOOL_CDP_METHOD(LynxGetComponentId);
   DECLARE_DEVTOOL_METHOD(LynxSetTraceMode)
   DECLARE_DEVTOOL_METHOD(LynxGetRectToWindow)
   DECLARE_DEVTOOL_METHOD(LynxGetVersion)
