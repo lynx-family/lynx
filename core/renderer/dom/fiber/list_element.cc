@@ -330,8 +330,7 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
       tasm_->GetPageOptions(), tasm::timing::kListNodeTask,
       tasm::timing::kTaskNameListElementComponentAtIndex);
 
-  // Route ET calls directly to native logic to avoid accessing tasm_ required
-  // by the legacy JS path.
+  // Let the ET instance manage native materialization and framework callbacks.
   if (is_element_template_list_) {
     if (element_manager_ && element_manager_->DisableListCallbackIfDetached() &&
         IsDetached()) {
@@ -427,7 +426,7 @@ void ListElement::EnqueueComponent(int32_t sign) {
         fml::RefPtr<ElementTemplateInstance>(element_template_instance_.get());
     if (instance) {
       static_cast<ListElementTemplateInstance*>(instance.get())
-          ->EnqueueComponent(sign);
+          ->EnqueueComponent(tasm_, this, sign);
     }
     return;
   }

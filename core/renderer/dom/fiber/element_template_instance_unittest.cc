@@ -4203,6 +4203,306 @@ TEST_P(ElementTemplateInstanceTest,
   EXPECT_EQ(target->data_model_->attributes().count("has-react-gesture"), 0u);
 }
 
+TEST_P(ElementTemplateInstanceTest,
+       TypedTemplateLiveEventAndGesturePreservesIdentityAcrossUpdates) {
+  for (bool refactored : {false, true}) {
+    SCOPED_TRACE(refactored);
+    manager->config_->SetEnableEventHandleRefactor(refactored);
+    auto runtime = CreatePAPIRuntime();
+    auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+    ASSERT_NE(context, nullptr);
+    tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(runtime);
+
+    lepus::Value harness;
+    constexpr char source[] = R"JS((() => {
+      globalThis.tapCtxV1 = {kind: 'tap-v1', count: 0, _jsFn: {cb: {_jsFnId: 1}}};
+      globalThis.tapCtxV2 = {kind: 'tap-v2', count: 0, _jsFn: {cb: {_jsFnId: 2}}};
+      globalThis.gestureCtxV1 = {kind: 'gesture-v1', state: 0};
+      globalThis.gestureCtxV2 = {kind: 'gesture-v2', state: 10};
+      globalThis.registry = new FinalizationRegistry(function() {});
+      globalThis.runWorklet = function(ctx) {
+        if (ctx.kind === 'tap-v1') {
+          globalThis.sameTapCtxV1 = ctx === globalThis.tapCtxV1;
+        } else if (ctx.kind === 'tap-v2') {
+          globalThis.sameTapCtxV2 = ctx === globalThis.tapCtxV2;
+        }
+        globalThis.registry.register(ctx._jsFn.cb, 1);
+        ctx.count++;
+      };
+      const label = ['initial'];
+      const makeGesture = (id, cb) => ({
+        type: 'gesture',
+        value: [{
+          id,
+          type: 0,
+          config: {enabled: true},
+          callbacks: [{name: 'onUpdate', callback: cb}],
+          relationMap: {waitFor: [], simultaneous: [], continueWith: []},
+        }],
+      });
+      const initialAttrs = {
+        class: 'typed-page',
+        'data-label': label,
+        'main-thread:catchtap': {type: 'worklet', value: globalThis.tapCtxV1},
+        'main-thread:gesture': makeGesture(1, globalThis.gestureCtxV1),
+      };
+      const updatedAttrsSameGesture = {
+        class: 'typed-page-updated',
+        'data-label': ['updated'],
+        'main-thread:catchtap': {type: 'worklet', value: globalThis.tapCtxV2},
+        'main-thread:gesture': makeGesture(1, globalThis.gestureCtxV2),
+      };
+      const clearedAttrs = {
+        class: 'typed-page-cleared',
+        'main-thread:gesture': null,
+      };
+      return {
+        initialAttrs,
+        updatedAttrsSameGesture,
+        clearedAttrs,
+        mutateOrdinary() {
+          label[0] = 'mutated';
+        },
+      };
+    })())JS";
+    ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, harness,
+                                 "typed_mts_storage.js"));
+
+    lepus::Value page_args[] = {lepus::Value("page"),
+                                harness.GetProperty("initialAttrs"),
+                                lepus::Value(), lepus::Value(0)};
+    auto page_handle = RendererFunctions::FiberCreateTypedElementTemplate(
+        context, page_args, 4);
+    ASSERT_TRUE(page_handle.IsRefCounted());
+    auto page_instance = fml::static_ref_ptr_cast<ElementTemplateInstance>(
+        page_handle.RefCounted());
+    EXPECT_TRUE(runtime->CallClosure(harness.GetProperty("mutateOrdinary"))
+                    .IsUndefined());
+
+    auto stored_attrs = page_instance->attribute_slots_.GetProperty(0);
+    ASSERT_TRUE(stored_attrs.IsTable());
+    EXPECT_TRUE(stored_attrs.GetProperty("main-thread:catchtap")
+                    .GetProperty("value")
+                    .IsJSValue());
+    EXPECT_TRUE(stored_attrs.GetProperty("main-thread:catchtap")
+                    .GetProperty("value")
+                    .IsEqual(runtime->GetGlobalData("tapCtxV1")));
+    EXPECT_TRUE(stored_attrs.GetProperty("main-thread:gesture")
+                    .GetProperty("value")
+                    .GetProperty(0)
+                    .GetProperty("callbacks")
+                    .GetProperty(0)
+                    .GetProperty("callback")
+                    .IsEqual(runtime->GetGlobalData("gestureCtxV1")));
+    EXPECT_EQ(stored_attrs.GetProperty("data-label").GetProperty(0).StdString(),
+              "initial");
+
+    // Cross-thread serialization + ShallowCopy must sanitize JSValues without
+    // modifying live stored slot 0 descriptors.
+    lepus::Value serialize_args[] = {page_handle};
+    auto serialized = RendererFunctions::FiberSerializeElementTemplate(
+        context, serialize_args, 1);
+    auto message = fml::MakeRefCounted<runtime::MessageEvent>(
+        runtime::ContextProxy::Type::kCoreContext,
+        runtime::ContextProxy::Type::kJSContext,
+        std::make_unique<pub::ValueImplLepus>(serialized));
+    auto copied_message = runtime::MessageEvent::ShallowCopy(*message);
+    auto copied_attrs =
+        pub::ValueUtils::ConvertValueToLepusValue(*copied_message->message())
+            .GetProperty("attributes");
+    EXPECT_FALSE(copied_attrs.GetProperty("main-thread:catchtap")
+                     .GetProperty("value")
+                     .IsJSValue());
+    EXPECT_TRUE(page_instance->attribute_slots_.GetProperty(0)
+                    .GetProperty("main-thread:catchtap")
+                    .GetProperty("value")
+                    .IsJSValue());
+
+    auto* page_root = manager->root();
+    ASSERT_NE(page_root, nullptr);
+    EXPECT_TRUE(page_root->is_page());
+    const auto* dataset_label = DatasetValue(page_root, base::String("label"));
+    ASSERT_NE(dataset_label, nullptr);
+    EXPECT_EQ(dataset_label->GetProperty(0).StdString(), "initial");
+    EXPECT_EQ(page_root->data_model_->attributes().count("main-thread:gesture"),
+              0u);
+
+    ASSERT_EQ(page_root->gesture_map().count(1), 1u);
+    auto detector1 = page_root->gesture_map().find(1)->second;
+    auto live_gesture_cb = detector1->gesture_callbacks()[0].lepus_object_;
+    ASSERT_TRUE(live_gesture_cb.IsJSValue());
+    live_gesture_cb.SetProperty("state", lepus::Value(19));
+    EXPECT_EQ(
+        runtime->GetGlobalData("gestureCtxV1").GetProperty("state").Number(),
+        19);
+
+    ASSERT_NE(page_root->lepus_event_map().find("tap"),
+              page_root->lepus_event_map().end());
+    EXPECT_TRUE(page_root->lepus_event_map()
+                    .find("tap")
+                    ->second->lepus_object()
+                    .IsEqual(runtime->GetGlobalData("tapCtxV1")));
+    if (refactored) {
+      page_root->MarkAttached();
+      event::EventDispatcher::DispatchEvent(
+          *page_root, fml::MakeRefCounted<event::TouchEvent>("tap"));
+      EXPECT_TRUE(runtime->GetGlobalData("sameTapCtxV1").Bool());
+      EXPECT_EQ(
+          runtime->GetGlobalData("tapCtxV1").GetProperty("count").Number(), 1);
+    }
+
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+
+    // Slot 0 replacement updates MTS event context and gesture callback in
+    // place without recreating the gesture detector for unchanged id 1.
+    lepus::Value update_args[] = {
+        page_handle, lepus::Value(0),
+        harness.GetProperty("updatedAttrsSameGesture")};
+    RendererFunctions::FiberSetAttributeOfElementTemplate(context, update_args,
+                                                          3);
+    EXPECT_FALSE(page_root->dirty_ & Element::kDirtyGesture);
+    ASSERT_EQ(page_root->gesture_map().count(1), 1u);
+    EXPECT_EQ(page_root->gesture_map().find(1)->second.get(), detector1.get());
+    EXPECT_TRUE(detector1->gesture_callbacks()[0].lepus_object_.IsEqual(
+        runtime->GetGlobalData("gestureCtxV2")));
+    EXPECT_TRUE(page_root->lepus_event_map()
+                    .find("tap")
+                    ->second->lepus_object()
+                    .IsEqual(runtime->GetGlobalData("tapCtxV2")));
+    if (refactored) {
+      event::EventDispatcher::DispatchEvent(
+          *page_root, fml::MakeRefCounted<event::TouchEvent>("tap"));
+      EXPECT_TRUE(runtime->GetGlobalData("sameTapCtxV2").Bool());
+      EXPECT_EQ(
+          runtime->GetGlobalData("tapCtxV2").GetProperty("count").Number(), 1);
+    }
+
+    // Explicit null clears gesture detector and omitting catchtap clears tap
+    // worklet binding.
+    update_args[2] = harness.GetProperty("clearedAttrs");
+    RendererFunctions::FiberSetAttributeOfElementTemplate(context, update_args,
+                                                          3);
+    EXPECT_TRUE(page_root->gesture_map().empty());
+    EXPECT_TRUE(page_root->dirty_ & Element::kDirtyGesture);
+    const auto cleared_tap = page_root->lepus_event_map().find("tap");
+    ASSERT_NE(cleared_tap, page_root->lepus_event_map().end());
+    EXPECT_TRUE(cleared_tap->second->lepus_object().IsEmpty());
+  }
+}
+
+TEST_P(ElementTemplateInstanceTest,
+       TypedListTemplatePreservesLiveMtsCallbacksAndExcludesListInternalProps) {
+  for (bool refactored : {false, true}) {
+    SCOPED_TRACE(refactored);
+    manager->config_->SetEnableEventHandleRefactor(refactored);
+    auto runtime = CreatePAPIRuntime();
+    auto* context = runtime::MTSRuntime::ToQuickContext(runtime.get());
+    ASSERT_NE(context, nullptr);
+    tasm->template_entries_[DEFAULT_ENTRY_NAME]->SetVm(runtime);
+
+    lepus::Value harness;
+    constexpr char source[] = R"JS((() => {
+      globalThis.scrollCtx = {kind: 'scroll', count: 0, _jsFn: {cb: {_jsFnId: 3}}};
+      globalThis.listGestureCtx = {kind: 'list-gesture', state: 5};
+      globalThis.registry = new FinalizationRegistry(function() {});
+      globalThis.runWorklet = function(ctx) {
+        if (ctx.kind === 'scroll') {
+          globalThis.sameScrollCtx = ctx === globalThis.scrollCtx;
+        }
+        globalThis.registry.register(ctx._jsFn.cb, 1);
+        ctx.count++;
+      };
+      const label = ['list-initial'];
+      return {
+        attrs: {
+          class: 'typed-list',
+          'data-label': label,
+          'component-at-index': function() {},
+          'enqueue-component': function() {},
+          'component-at-indexes': function() {},
+          'main-thread:bindscroll': {type: 'worklet', value: globalThis.scrollCtx},
+          'main-thread:gesture': {
+            type: 'gesture',
+            value: [{
+              id: 7,
+              type: 0,
+              config: {enabled: true},
+              callbacks: [{name: 'onUpdate', callback: globalThis.listGestureCtx}],
+              relationMap: {waitFor: [], simultaneous: [], continueWith: []},
+            }],
+          },
+        },
+        mutateOrdinary() {
+          label[0] = 'mutated';
+        },
+      };
+    })())JS";
+    ASSERT_TRUE(context->EvalBuf(source, sizeof(source) - 1, harness,
+                                 "typed_list_mts_storage.js"));
+
+    lepus::Value list_args[] = {lepus::Value("list"),
+                                harness.GetProperty("attrs"), lepus::Value(),
+                                lepus::Value(1)};
+    auto list_handle = RendererFunctions::FiberCreateTypedElementTemplate(
+        context, list_args, 4);
+    ASSERT_TRUE(list_handle.IsRefCounted());
+    auto list_instance = fml::static_ref_ptr_cast<ElementTemplateInstance>(
+        list_handle.RefCounted());
+    EXPECT_TRUE(runtime->CallClosure(harness.GetProperty("mutateOrdinary"))
+                    .IsUndefined());
+
+    auto stored_attrs = list_instance->attribute_slots_.GetProperty(0);
+    ASSERT_TRUE(stored_attrs.IsTable());
+    EXPECT_TRUE(stored_attrs.GetProperty("component-at-index").IsEmpty());
+    EXPECT_TRUE(stored_attrs.GetProperty("enqueue-component").IsEmpty());
+    EXPECT_TRUE(stored_attrs.GetProperty("component-at-indexes").IsEmpty());
+    EXPECT_TRUE(stored_attrs.GetProperty("main-thread:bindscroll")
+                    .GetProperty("value")
+                    .IsJSValue());
+    EXPECT_TRUE(stored_attrs.GetProperty("main-thread:bindscroll")
+                    .GetProperty("value")
+                    .IsEqual(runtime->GetGlobalData("scrollCtx")));
+    EXPECT_EQ(stored_attrs.GetProperty("data-label").GetProperty(0).StdString(),
+              "list-initial");
+
+    auto list_root = list_instance->GetRoot();
+    ASSERT_NE(list_root, nullptr);
+    EXPECT_TRUE(list_root->is_list());
+    EXPECT_EQ(list_root->data_model_->attributes().count("main-thread:gesture"),
+              0u);
+    EXPECT_EQ(list_root->event_map().count("component-at-index"), 0u);
+    ASSERT_EQ(list_root->gesture_map().count(7), 1u);
+    EXPECT_TRUE(
+        list_root->gesture_map()
+            .find(7)
+            ->second->gesture_callbacks()[0]
+            .lepus_object_.IsEqual(runtime->GetGlobalData("listGestureCtx")));
+    ASSERT_NE(list_root->lepus_event_map().find("scroll"),
+              list_root->lepus_event_map().end());
+    EXPECT_TRUE(list_root->lepus_event_map()
+                    .find("scroll")
+                    ->second->lepus_object()
+                    .IsEqual(runtime->GetGlobalData("scrollCtx")));
+
+    if (refactored) {
+      list_root->MarkAttached();
+      event::EventDispatcher::DispatchEvent(
+          *list_root, fml::MakeRefCounted<event::TouchEvent>("scroll"));
+      EXPECT_TRUE(runtime->GetGlobalData("sameScrollCtx").Bool());
+      EXPECT_EQ(
+          runtime->GetGlobalData("scrollCtx").GetProperty("count").Number(), 1);
+    }
+
+    // Plain ConvertTemplateMapForStorage still deep-clones non-spread maps.
+    auto plain_copy = ElementTemplateInstance::ConvertTemplateMapForStorage(
+        harness.GetProperty("attrs"));
+    EXPECT_FALSE(plain_copy.GetProperty("main-thread:bindscroll")
+                     .GetProperty("value")
+                     .IsJSValue());
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
                          ElementTemplateInstanceTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
