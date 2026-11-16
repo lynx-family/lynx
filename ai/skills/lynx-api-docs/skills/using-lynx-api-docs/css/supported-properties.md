@@ -244,7 +244,6 @@ Lynx supports most commonly used CSS properties, along with several Lynx-specifi
 - `-x-handle-color`
 - `-x-handle-size`
 - `-x-app-region`
-- `-x-overlay` (iOS only)
 
 ## Unsupported properties
 
