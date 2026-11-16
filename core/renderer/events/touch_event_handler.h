@@ -45,14 +45,30 @@ struct EventOperation {
         target_(target),
         current_target_(current_target),
         global_event_(global_event) {}
+  EventOperation(event::EventListener *listener, Element *target,
+                 Element *current_target)
+      : handler_(nullptr),
+        listener_(listener),
+        target_(target),
+        current_target_(current_target),
+        global_event_(false) {}
   EventHandler *handler_;
+  event::EventListener *listener_{nullptr};
   Element *target_;
   Element *current_target_;
   bool global_event_;
 
+  EventPhase GetEventPhase() const {
+    if (!listener_) {
+      return handler_ ? handler_->GetEventPhase() : EventPhase::kNONE;
+    }
+    return listener_->GetOptions().IsCapture() ? EventPhase::kCAPTURING_PHASE
+                                               : EventPhase::kBUBBLING_PHASE;
+  }
+
   bool IsSameTargetAndEventPhase(const EventOperation &that) const {
     return this->current_target_ == that.current_target_ &&
-           this->handler_->GetEventPhase() == that.handler_->GetEventPhase();
+           this->GetEventPhase() == that.GetEventPhase();
   }
 };
 
@@ -185,6 +201,8 @@ class TouchEventHandler {
     int64_t event_id;
     std::unordered_map<int64_t, ResponseChainVector> event_chain_map;
     std::unordered_map<int64_t, EventOpsVector> event_ops_map;
+    // EventOperation must remain trivially copyable for InlineVector::append.
+    std::vector<std::shared_ptr<event::EventListener>> event_listeners;
   };
 
   ResponseChainVector GenerateResponseChain(PageProxy *proxy, int tag,
