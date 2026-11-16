@@ -2,9 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#define private public
-#define protected public
-
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_agent.h"
 
 #include <memory>
@@ -69,10 +66,15 @@ TEST_F(InspectorAgentTest, EnableReturnsSuccess) {
   EXPECT_FALSE(messages[0].isMember("error"));
 }
 
-TEST_F(InspectorAgentTest, DetachedMethodIsRegistered) {
-  auto iter = agent_->functions_map_.find("Inspector.detached");
-  ASSERT_NE(iter, agent_->functions_map_.end());
-  EXPECT_TRUE(iter->second == &InspectorAgent::Detached);
+TEST_F(InspectorAgentTest, DisableReturnsSuccess) {
+  Dispatch(2, "Inspector.disable");
+
+  const auto messages = sender_->Messages();
+  ASSERT_EQ(messages.size(), 1u);
+  EXPECT_EQ(messages[0]["id"].asInt64(), 2);
+  EXPECT_EQ(messages[0]["result"], Json::Value(Json::objectValue));
+  EXPECT_FALSE(messages[0].isMember("error"));
+  EXPECT_FALSE(messages[0].isMember("method"));
 }
 
 TEST_F(InspectorAgentTest, UnknownMethodReturnsMethodNotFound) {

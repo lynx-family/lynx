@@ -418,9 +418,9 @@ domains:
     origin: standard
     scope: instance
     methods:
-      - name: detached
-        origin: lynx-extension
-        since: '4.1'
+      - name: disable
+        origin: standard
+        since: '4.5'
         source: devtool/lynx_devtool/agent/domain_agent/inspector_agent.cc
       - name: enable
         origin: standard
