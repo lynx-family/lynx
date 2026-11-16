@@ -50,6 +50,11 @@ class LynxDevToolProxy {
                             float delta_y, int modifiers, int click_count) {}
   virtual void Focus(int node_id) {}
   virtual void InsertText(const std::string& text) {}
+  virtual bool DispatchKeyEvent(const std::string& type, const std::string& key,
+                                const std::string& text, int modifiers,
+                                bool auto_repeat) {
+    return false;
+  }
   virtual void DispatchMessageEvent(const VMEvent& message) = 0;
   virtual bool SetScreenshotMode(const std::string&) { return false; }
   virtual std::string GetActualScreenshotMode() { return "lynxview"; }
