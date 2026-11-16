@@ -5,12 +5,14 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <string_view>
 #include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/vector.h"
 #include "core/base/thread/once_task.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
@@ -102,6 +104,16 @@ bool ParseTemplateDataAttribute(std::string_view key, base::String* name) {
   auto data_name = key.substr(kDataAttributePrefix.size());
   *name = base::String(data_name.data(), data_name.size());
   return true;
+}
+
+bool IsOrdinaryTemplateAttribute(const base::String& key) {
+  base::String data_name;
+  return key != kElementClass && key != kElementStyle && key != kElementId &&
+         key != kElementAttrCSSID &&
+         !TreeResolver::IsTemplateGestureAttribute(key) &&
+         !TreeResolver::IsTemplateEventAttribute(key) &&
+         !ListElement::IsTemplateCallbackAttribute(key) &&
+         !ParseTemplateDataAttribute(key.string_view(), &data_name);
 }
 
 void RegisterSlotTarget(base::Vector<fml::RefPtr<Element>>* targets,
@@ -441,18 +453,6 @@ void ApplyTemplateGestureAttribute(Element* element, const lepus::Value& value,
   }
 }
 
-void ApplyTemplateSpreadAttributes(Element* element, const lepus::Value& value,
-                                   TemplateAttributeApplyMode mode) {
-  if (element == nullptr || !value.IsObject()) {
-    return;
-  }
-
-  tasm::ForEachLepusValue(
-      value, [element, mode](const auto& key, const auto& item) {
-        ApplyTemplateAttributeValue(element, key.String(), item, mode);
-      });
-}
-
 lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
                                        uint32_t slot_index) {
   if (!attribute_slots.IsArrayOrJSArray() ||
@@ -460,6 +460,82 @@ lepus::Value ResolveAttributeSlotValue(const lepus::Value& attribute_slots,
     return lepus::Value();
   }
   return attribute_slots.GetProperty(slot_index);
+}
+
+using WinningOrdinaryAttributeMap =
+    base::InlineLinearFlatMap<base::String, size_t, 8>;
+
+WinningOrdinaryAttributeMap CollectWinningOrdinaryTemplateAttributes(
+    const TemplateAttributes& template_attributes,
+    const lepus::Value& attribute_slots, bool rebuild_static_attributes,
+    TemplateAttributeApplyMode mode) {
+  WinningOrdinaryAttributeMap winning;
+  if (mode == TemplateAttributeApplyMode::kEventOnly) {
+    return winning;
+  }
+
+  bool has_seen_spread = false;
+  for (size_t index = 0; index < template_attributes.size(); ++index) {
+    const auto& attr = template_attributes[index];
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
+      has_seen_spread = true;
+      auto spread =
+          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_);
+      if (!spread.IsObject()) {
+        continue;
+      }
+      tasm::ForEachLepusValue(spread,
+                              [&winning, index](const auto& key, const auto&) {
+                                if (IsOrdinaryTemplateAttribute(key.String())) {
+                                  winning[key.String()] = index;
+                                }
+                              });
+      continue;
+    }
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
+      if ((has_seen_spread || rebuild_static_attributes) &&
+          IsOrdinaryTemplateAttribute(attr.key_)) {
+        winning[attr.key_] = index;
+      }
+      continue;
+    }
+    if (attr.type_ == ATTRIBUTE_BINDING_TYPE_DYNAMIC &&
+        IsOrdinaryTemplateAttribute(attr.key_)) {
+      winning[attr.key_] = index;
+    }
+  }
+  return winning;
+}
+
+bool ShouldApplyTemplateAttributeAt(
+    const WinningOrdinaryAttributeMap& winning_ordinary_attributes,
+    TemplateAttributeApplyMode mode, size_t descriptor_index,
+    const base::String& key) {
+  if (mode == TemplateAttributeApplyMode::kEventOnly ||
+      !IsOrdinaryTemplateAttribute(key)) {
+    return true;
+  }
+  const auto it = winning_ordinary_attributes.find(key);
+  return it != winning_ordinary_attributes.end() &&
+         it->second == descriptor_index;
+}
+
+void ApplyTemplateSpreadAttributes(
+    Element* element, const lepus::Value& value,
+    const WinningOrdinaryAttributeMap& winning_ordinary_attributes,
+    size_t descriptor_index, TemplateAttributeApplyMode mode) {
+  if (element == nullptr || !value.IsObject()) {
+    return;
+  }
+
+  tasm::ForEachLepusValue(
+      value, [element, &winning_ordinary_attributes, descriptor_index, mode](
+                 const auto& key, const auto& item) {
+        if (ShouldApplyTemplateAttributeAt(winning_ordinary_attributes, mode,
+                                           descriptor_index, key.String())) {
+          ApplyTemplateAttributeValue(element, key.String(), item, mode);
+        }
+      });
 }
 
 struct ResolvedTemplateGesture {
@@ -498,6 +574,7 @@ ResolvedTemplateGesture ResolveEffectiveTemplateGesture(
 void ClearPreviousTemplateSpreadAttributes(
     Element* element, const TemplateAttributes& template_attributes,
     const lepus::Value& previous_attribute_slots,
+    const WinningOrdinaryAttributeMap& winning_ordinary_attributes,
     TemplateAttributeApplyMode mode) {
   if (!previous_attribute_slots.IsArrayOrJSArray()) {
     return;
@@ -512,8 +589,16 @@ void ClearPreviousTemplateSpreadAttributes(
     if (!previous_value.IsObject()) {
       continue;
     }
-    tasm::ForEachLepusValue(previous_value, [element, mode](const auto& key,
-                                                            const auto&) {
+    tasm::ForEachLepusValue(previous_value, [element, mode,
+                                             &winning_ordinary_attributes](
+                                                const auto& key, const auto&) {
+      // Clearing a retained ordinary key can change synchronous state
+      // before its winning source applies.
+      if (IsOrdinaryTemplateAttribute(key.String()) &&
+          winning_ordinary_attributes.find(key.String()) !=
+              winning_ordinary_attributes.end()) {
+        return;
+      }
       if (mode != TemplateAttributeApplyMode::kEventOnly &&
           RemoveTemplateDataAttribute(element, key.String())) {
         return;
@@ -538,21 +623,32 @@ void ApplyTemplateAttributesToElementInternal(
   const bool rebuild_static_attributes = previous_attribute_slots != nullptr;
   DCHECK(!rebuild_static_attributes ||
          mode != TemplateAttributeApplyMode::kEventOnly);
+  // Apply each ordinary attribute only at its final winning descriptor so
+  // overridden earlier sources cannot transiently flip synchronous flags or
+  // stage non-empty updates before an explicit null reset.
+  const auto winning_ordinary_attributes =
+      CollectWinningOrdinaryTemplateAttributes(*template_attributes,
+                                               attribute_slots,
+                                               rebuild_static_attributes, mode);
   if (rebuild_static_attributes) {
     ClearPreviousTemplateSpreadAttributes(element, *template_attributes,
-                                          *previous_attribute_slots, mode);
+                                          *previous_attribute_slots,
+                                          winning_ordinary_attributes, mode);
   }
   bool has_applied_spread = false;
-  for (const auto& attr : *template_attributes) {
+  for (size_t index = 0; index < template_attributes->size(); ++index) {
+    const auto& attr = (*template_attributes)[index];
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_SPREAD) {
       ApplyTemplateSpreadAttributes(
           element, ResolveAttributeSlotValue(attribute_slots, attr.slot_index_),
-          mode);
+          winning_ordinary_attributes, index, mode);
       has_applied_spread = true;
       continue;
     }
     if (attr.type_ == ATTRIBUTE_BINDING_TYPE_STATIC) {
-      if (has_applied_spread || rebuild_static_attributes) {
+      if ((has_applied_spread || rebuild_static_attributes) &&
+          ShouldApplyTemplateAttributeAt(winning_ordinary_attributes, mode,
+                                         index, attr.key_)) {
         ApplyTemplateAttributeValue(element, attr.key_, attr.value_, mode);
       }
       continue;
@@ -561,9 +657,12 @@ void ApplyTemplateAttributesToElementInternal(
       if (TreeResolver::IsTemplateGestureAttribute(attr.key_)) {
         continue;
       }
-      ApplyTemplateAttributeValue(
-          element, attr.key_,
-          ResolveAttributeSlotValue(attribute_slots, attr.slot_index_), mode);
+      if (ShouldApplyTemplateAttributeAt(winning_ordinary_attributes, mode,
+                                         index, attr.key_)) {
+        ApplyTemplateAttributeValue(
+            element, attr.key_,
+            ResolveAttributeSlotValue(attribute_slots, attr.slot_index_), mode);
+      }
       continue;
     }
   }
