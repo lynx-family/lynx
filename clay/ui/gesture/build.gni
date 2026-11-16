@@ -31,6 +31,7 @@ ui_gesture_sources = [
   "pointer_router.cc",
   "pointer_router.h",
   "scrollable_direction.h",
+  "slide_direction.h",
   "tap_gesture_recognizer.cc",
   "tap_gesture_recognizer.h",
   "velocity_tracker.cc",
