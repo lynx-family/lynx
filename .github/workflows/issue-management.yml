@@ -27,7 +27,7 @@ jobs:
     steps:
       # We won't check if the label exists. We are counting on the robustness of the actions.
       - name: Remove 'status:need triage' label
-        uses: actions-ecosystem/action-remove-labels@v1
+        uses: actions-ecosystem/action-remove-labels@2ce5d41b4b6aa8503e285553f75ed56e0a40bae0 # v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           labels: status:need triage

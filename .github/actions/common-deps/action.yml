@@ -47,7 +47,7 @@ runs:
 
     - name: Setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: ~/.habitat_cache
         key: hab-${{ runner.os }}-${{ steps.hab.outputs.HABITAT_TARGETS }}-${{ steps.hab.outputs.HABITAT_DEPS_FILE_DIGEST }}
@@ -80,7 +80,7 @@ runs:
           pnpm-${{ runner.os }}-
 
     - name: Install Python dependencies
-      uses: nick-fields/retry@v3
+      uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 # v3
       with:
         max_attempts: 3
         retry_wait_seconds: 3
