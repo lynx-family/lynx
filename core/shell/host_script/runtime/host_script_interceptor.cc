@@ -33,6 +33,7 @@ BASE_STATIC_STRING_DECL(kAction, "action");
 BASE_STATIC_STRING_DECL(kPayload, "payload");
 BASE_STATIC_STRING_DECL(kRequest, "request");
 BASE_STATIC_STRING_DECL(kViewId, "viewId");
+BASE_STATIC_STRING_DECL(kUrl, "url");
 
 enum class Action { kInvalid, kProceed, kMock };
 
@@ -516,13 +517,6 @@ void HostScriptInterceptor::ReportError(const std::string& message) {
   if (reporter_) reporter_(message);
 }
 
-Napi::Value HostScriptInterceptor::ViewOf(const Value& event) {
-  Napi::Env env(env_);
-  auto view = event.GetProperty(kViewId);
-  if (!views_ || !view.IsString()) return env.Null();
-  return views_->Get(std::strtoll(view.StdString().c_str(), nullptr, 10));
-}
-
 void HostScriptInterceptor::NotifyCreated(base::LynxEntityId view,
                                           uint64_t id) {
   if (!active_ || !IsAttached() || !views_) return;
@@ -609,8 +603,23 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   auto entry = entries_[static_cast<size_t>(kind)];
   const bool view_event = kind <= Kind::kUpdateMetaData;
   const Value& original = view_event ? event.GetProperty(kRequest) : event;
+  const auto view_id = event.GetProperty(kViewId);
+  const auto view = view_id.IsString()
+                        ? static_cast<base::LynxEntityId>(std::strtoll(
+                              view_id.StdString().c_str(), nullptr, 10))
+                        : base::kUnavailableLynxEntityId;
+  std::string view_url;
+  if (kind == Kind::kLoadTemplate) {
+    const auto url = original.GetProperty(kUrl);
+    if (url.IsString()) view_url = url.StdString();
+  } else {
+    view_url = ViewUrl(view);
+  }
+  auto snapshot = ToJS(env, event).As<Napi::Object>();
+  snapshot.DefineProperty(Napi::PropertyDescriptor::Value(
+      "viewURL", Napi::String::New(env, view_url), napi_enumerable));
   auto returned = entry->function.Value().Call(
-      {ToJS(env, event), CreateChain(env), ViewOf(event)});
+      {snapshot, CreateChain(env), views_ ? views_->Get(view) : env.Null()});
   result.pending = ReadCallbacks(returned, kind, event, entry->id);
   bool failed = returned.IsEmpty() || env.IsExceptionPending() ||
                 (returned.IsPromise() && !result.pending);
