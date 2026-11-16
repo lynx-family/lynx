@@ -28,16 +28,26 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
   }
   TextParagraphBuilder* builder =
       static_cast<LayoutContextText*>(context)->builder();
-  builder->PushStyle(text_style_.value());
+  auto placeholder_style = text_style_.value();
+#ifdef CLAY_ENABLE_TTTEXT
+  if (baseline_offset_.has_value()) {
+    // Preprocessing already encoded middle in the placeholder baseline.
+    // Keep the node style intact for subsequent property updates.
+    placeholder_style.align_type = kVerticalAlignBaseline;
+    placeholder_style.baseline_shift = 0.f;
+  }
+#endif
+  builder->PushStyle(placeholder_style);
   const auto vertical_align = GetVerticalAlign();
   const bool use_measured_baseline =
       vertical_align.has_value() &&
       vertical_align->type == kVerticalAlignBaseline &&
       measured_baseline_ > 0.f;
   const auto baseline = use_measured_baseline ? measured_baseline_ : Height();
-  txt::PlaceholderRun placeholder(
-      Width(), Height(), txt::PlaceholderAlignment::kBaseline,
-      txt::TextBaseline::kAlphabetic, baseline + baseline_offset_);
+  txt::PlaceholderRun placeholder(Width(), Height(),
+                                  txt::PlaceholderAlignment::kBaseline,
+                                  txt::TextBaseline::kAlphabetic,
+                                  baseline + baseline_offset_.value_or(0.0));
   auto* text_context = static_cast<LayoutContextText*>(context);
   start_glyph_ = text_context->TextSizeIncludingPlaceholders();
   end_glyph_ = start_glyph_ + 1;
