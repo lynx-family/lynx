@@ -206,7 +206,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
     {% endif %}
 {#                                                                            #}
     {% elif argument.is_sequence_type %}
-    {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> #}
+    {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> or sequence<double> #}
     uint32View[$end + {{ns.count}}] = {{argument.name}}.length;
     {% set ns.count = ns.count + 1 %}
 {#                                                                            #}
@@ -284,12 +284,17 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View.set({{argument.name}}, $end);
     $end += {{argument.name}}.length;
     {% elif argument.is_sequence_type %}
-    {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> #}
+    {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> or sequence<double> #}
     {% if argument.sequence_element_type == 'String' %}
     for (let s of {{argument.name}}) {
       uint32View[$end] = s.length;
       str2view(s, dataView, $end + 1);
       $end += Math.ceil(s.length / 2) + 1;
+    }
+    {% elif argument.idl_type_name == 'IDLSequence<IDLDouble>' or argument.idl_type_name == 'IDLSequence<IDLUnrestrictedDouble>' %}
+    for (let i = 0; i < {{argument.name}}.length; ++i) {
+      dataView.setFloat64($end * 4, {{argument.name}}[i], isLittleEndian);
+      $end += 2;
     }
     {% else %}
     uint32View.set({{argument.name}}, $end);
