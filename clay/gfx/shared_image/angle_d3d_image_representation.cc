@@ -48,9 +48,13 @@ bool CheckGLErrors(FunctionsAngle* functions_angle, const char* operation) {
 }  // namespace
 
 AngleD3DImageRepresentation::AngleD3DImageRepresentation(
+    fml::RefPtr<SharedImageBacking> backing)
+    : GLImageRepresentation(std::move(backing)) {}
+
+AngleD3DImageRepresentation::AngleD3DImageRepresentation(
     fml::RefPtr<D3DTextureImageBacking> backing,
     PFNEGLGETPROCADDRESSPROC egl_get_proc_address_proc)
-    : GLImageRepresentation(backing) {
+    : AngleD3DImageRepresentation(fml::RefPtr<SharedImageBacking>(backing)) {
   EGLAttrib device_result = SetupEGL(egl_get_proc_address_proc, true);
 
   ID3D11Device* d3d11_device = reinterpret_cast<ID3D11Device*>(device_result);
@@ -68,7 +72,7 @@ AngleD3DImageRepresentation::AngleD3DImageRepresentation(
 AngleD3DImageRepresentation::AngleD3DImageRepresentation(
     fml::RefPtr<D3D9TextureImageBacking> backing,
     PFNEGLGETPROCADDRESSPROC egl_get_proc_address_proc)
-    : GLImageRepresentation(backing) {
+    : AngleD3DImageRepresentation(fml::RefPtr<SharedImageBacking>(backing)) {
   EGLAttrib device_result = SetupEGL(egl_get_proc_address_proc, false);
   Microsoft::WRL::ComPtr<IDirect3DDevice9> d3d9_device(
       reinterpret_cast<IDirect3DDevice9*>(device_result));

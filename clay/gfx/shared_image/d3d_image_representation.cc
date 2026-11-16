@@ -18,8 +18,12 @@
 namespace clay {
 
 D3DImageRepresentation::D3DImageRepresentation(
+    fml::RefPtr<SharedImageBacking> backing)
+    : SharedImageRepresentation(std::move(backing)) {}
+
+D3DImageRepresentation::D3DImageRepresentation(
     ID3D11Device* d3d11_device, fml::RefPtr<D3DTextureImageBacking> backing)
-    : SharedImageRepresentation(backing) {
+    : D3DImageRepresentation(fml::RefPtr<SharedImageBacking>(backing)) {
   if (!d3d11_device) {
     FML_LOG(ERROR) << "Has no d3d11 device.";
     return;
@@ -40,7 +44,7 @@ D3DImageRepresentation::D3DImageRepresentation(
 
 D3DImageRepresentation::D3DImageRepresentation(
     IDirect3DDevice9* d3d9_device, fml::RefPtr<D3D9TextureImageBacking> backing)
-    : SharedImageRepresentation(backing) {
+    : D3DImageRepresentation(fml::RefPtr<SharedImageBacking>(backing)) {
   if (!d3d9_device) {
     FML_LOG(ERROR) << "Has no d3d9 device.";
     return;

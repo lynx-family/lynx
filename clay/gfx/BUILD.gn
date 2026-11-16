@@ -143,6 +143,14 @@ if (enable_unittests) {
       "../testing:skia",
       "../testing:testing_lib",
     ]
+
+    if (is_win) {
+      sources += [ "shared_image/windows_image_representation_unittests.cc" ]
+      deps += [
+        "shared_image",
+        "//third_party/angle:includes",
+      ]
+    }
   }
 
   if (enable_skity) {
