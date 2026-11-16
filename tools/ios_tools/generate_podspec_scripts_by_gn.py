@@ -23,6 +23,25 @@ tools_shared_path = os.path.join(root_path, "buildtools", "tools_shared")
 sys.path.append(tools_shared_path)
 from tools_shared.ios_tools.generate_podspec_scripts_from_gn import generate_compile_products
 
+def configure_lynx_unit_test_host(root_path, target=None):
+    if target is not None and target.lstrip('/') != 'platform/darwin/ios/lynx:lynx_podspec':
+        return
+    podspec_path = os.path.join(root_path, 'Lynx.podspec')
+    with open(podspec_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Renderer pixel tests require Core Animation's app-hosted compositor.
+    pattern = (r'(^([ \t]*)\w+\.test_spec "UnitTests" do \|(\w+)\|\n)'
+               r'(?:[ \t]*\3\.requires_app_host = (?:true|false)\n)?')
+    updated, count = re.subn(
+        pattern,
+        lambda match: match[1] + match[2] + '  ' + match[3] + '.requires_app_host = true\n',
+        content, flags=re.MULTILINE)
+    if count != 1:
+        raise RuntimeError('Expected one Lynx UnitTests specification for the application host')
+    if updated != content:
+        with open(podspec_path, 'w', encoding='utf-8') as f:
+            f.write(updated)
+
 def get_max_lynx_version(config_h_path):
     max_major, max_minor = -1, -1
     pattern = re.compile(r'#define\s+LYNX_VERSION_(\d+)_(\d+)\s+tasm::V_\1_\2')
@@ -71,7 +90,10 @@ def main():
               f.write(new_gni_content)
 
   try:
-      return generate_compile_products(root_path, args)
+      result = generate_compile_products(root_path, args)
+      if result == 0:
+          configure_lynx_unit_test_host(root_path, args.target)
+      return result
   finally:
       if original_gni_content is not None:
           with open(darwin_gni_path, 'w') as f:

@@ -316,7 +316,7 @@ void PlatformRendererDarwin::OnUpdateSubtreeProperties(const DisplayList& subtre
     return;
   }
 
-  [renderer applySubtreeProperties:props count:count];
+  [renderer applySubtreePropertiesFromList:&subtree_properties];
 }
 
 void PlatformRendererDarwin::OnUpdateLayoutMetrics() {
