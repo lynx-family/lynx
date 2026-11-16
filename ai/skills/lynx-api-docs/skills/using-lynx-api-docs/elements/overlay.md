@@ -72,7 +72,7 @@ Harmony native overlay handling covers `visible`, `events-pass-through`, and `mo
 | `overlaytouch` | Android, iOS | `x`, `y`, `vx`, `vy`, `state` |
 | `overlaymoved` | Android, iOS | `x`, `y`, `vx`, `vy`, `state` |
 
-`showoverlay` on Android reports whether the dialog context was valid. Use that payload when debugging failed Android overlay display.
+`showoverlay` on Android reports whether the dialog context was valid. With `android-lazy-init-context="true"`, the dialog is rebound to the current Activity before presentation. This adaptation is disabled when the property is omitted or `false`.
 
 ## Usage Notes
 

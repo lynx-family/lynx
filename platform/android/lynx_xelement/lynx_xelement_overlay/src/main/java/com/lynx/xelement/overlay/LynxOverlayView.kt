@@ -81,6 +81,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mStatusBarTranslucentStyle: String = LynxUIOverlay.PROP_STATUS_BAR_TRANSLUCENT_STYLE_DARK
     private var mLazyInitContext = false
     private var mNavigationBarStyle = NAVIGATION_BAR_STYLE_AUTO
+    private var mAdaptEdgeToEdge = false
 
     private var mId: String? = null
     private var mNestScrollId: String? = null
@@ -98,7 +99,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mLastY = 0.0f
     private var mIntercept : Boolean? = null
 
-    private val mDialog = LynxOverlayDialog(context, this)
+    // A mutable context can acquire an Activity after Dialog caches its WindowManager.
+    private var mDialogActivity = ContextUtils.getActivity(context)
+    private var mDialog = LynxOverlayDialog(context, this)
+    private var mDialogTouchListener: LynxOverlayDialog.TouchEventListener? = null
     private val mFragmentScope = FragmentOverlayScope(
         proxy.view,
         object : FragmentOverlayScope.Listener {
@@ -143,19 +147,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     private var mDrawListener : ViewTreeObserver.OnDrawListener? = null
 
     init {
-        // do not dim the window behind
-        mDialog?.window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        mDialog?.window?.setDimAmount(0f)
         mOverlayContainer.addView(mView, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-        mDialog?.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-        mDialog?.setOnKeyListener { _, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
-                requestDialogClose()
-                true
-            } else {
-                false
-            }
-        }
+        initializeDialog(mDialog)
         // By default, it remains consistent with not enabling edge to edge.
         setAdaptEdgeToEdge(false)
         mOverlayContainer.isClickable = true
@@ -163,6 +156,54 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mOverlayContainer.isFocusableInTouchMode = true
         mEventDispatcher = TouchEventDispatcher(context.lynxUIOwner)
         translucentStatusBar(isStatusBarTranslucent())
+    }
+
+    private fun initializeDialog(dialog: LynxOverlayDialog) {
+        // do not dim the window behind
+        dialog.window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        dialog.window?.setDimAmount(0f)
+        dialog.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        dialog.setTouchListener(mDialogTouchListener)
+        dialog.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
+                requestDialogClose()
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun ensureActivityDialog(activity: Activity) {
+        if (mDialogActivity === activity) {
+            return
+        }
+        val previousDialog = mDialog
+        cleanupDialogSession()
+        // Suspended dialogs can still own a window even when isShowing is false.
+        previousDialog.dismiss()
+        val dialog = LynxOverlayDialog(activity, this)
+        dialog.level = previousDialog.level
+        dialog.containerPopupTag = previousDialog.containerPopupTag
+        (mOverlayContainer.parent as? ViewGroup)?.removeView(mOverlayContainer)
+        initializeDialog(dialog)
+        previousDialog.window?.let { previousWindow ->
+            dialog.window?.let { dialogWindow ->
+                val attributes = WindowManager.LayoutParams()
+                attributes.copyFrom(previousWindow.attributes)
+                attributes.token = null
+                attributes.softInputMode = attributes.softInputMode and
+                    WindowManager.LayoutParams.SOFT_INPUT_IS_FORWARD_NAVIGATION.inv()
+                dialogWindow.attributes = attributes
+                dialogWindow.decorView.systemUiVisibility = previousWindow.decorView.systemUiVisibility
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    dialogWindow.statusBarColor = previousWindow.statusBarColor
+                }
+            }
+        }
+        mDialog = dialog
+        mDialogActivity = activity
+        setAdaptEdgeToEdge(mAdaptEdgeToEdge)
     }
 
     private fun px2dip(pxValue: Float): Float {
@@ -179,7 +220,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         mEnableOverlayTouch = events.containsKey(EVENT_OVERLAY_TOUCH)
         if (mEnableOverlayMoved || mEnableOverlayTouch) {
             mVelocityTracker = VelocityTracker.obtain()
-            mDialog?.setTouchListener(object : LynxOverlayDialog.TouchEventListener {
+            mDialogTouchListener = object : LynxOverlayDialog.TouchEventListener {
                 override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
                     //track velocity if bindOverLayMoved, when vx is positive, it means move right, when vy is positive, it means move down
                     mVelocityTracker?.addMovement(ev)
@@ -229,7 +270,8 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
 
                     return mIntercept ?: false
                 }
-            })
+            }
+            mDialog.setTouchListener(mDialogTouchListener)
         }
     }
 
@@ -549,6 +591,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
      **/
     @LynxProp(name = LynxUIOverlay.PROP_ADAPT_EDGE_TO_EDGE)
     fun setAdaptEdgeToEdge(adapt: Boolean) {
+      mAdaptEdgeToEdge = adapt
       window?.let {
         //Build.VERSION_CODES.VANILLA_ICE_CREAM
         if (Build.VERSION.SDK_INT >= 35)
@@ -823,9 +866,6 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             return
         }
         val activity = getHostActivity()
-        if (mLazyInitContext) {
-            changeCurrentContextToDialog(mDialog, activity)
-        }
         if (activity == null) {
             if (mAppliedOverlayScope == OverlayScope.GLOBAL) {
                 sendShowOverlayEvent(
@@ -846,6 +886,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
             return
         }
         try {
+            if (mLazyInitContext) {
+                ensureActivityDialog(activity)
+                changeCurrentContextToDialog(mDialog, activity)
+            }
             if (!LynxOverlayManager.containsGlobalId(mId)) {
                 mId = LynxOverlayManager.addGlobalId(mDialog)
                 mDialogDismissCleaned = false
