@@ -22,6 +22,10 @@ class InlineTextShadowNode : public BaseTextShadowNode {
   InlineTextShadowNode(ShadowNodeOwner* owner, std::string tag, int id);
   ~InlineTextShadowNode() override;
 
+  using BaseTextShadowNode::SetAttribute;
+  void SetAttribute(const char* attr_c, const clay::Value& value) override;
+  bool ShouldTrimText() const { return tag_ == "x-inline-text" && !no_trim_; }
+
   void TextLayout(LayoutContext* context) override;
 
   // Add ranges [start, end) in UTF-16 paragraph positions.
@@ -37,6 +41,7 @@ class InlineTextShadowNode : public BaseTextShadowNode {
 
  private:
   SendTextBoxesToUiThreadCallback text_boxex_callback_;
+  bool no_trim_ = false;
 };
 
 }  // namespace clay

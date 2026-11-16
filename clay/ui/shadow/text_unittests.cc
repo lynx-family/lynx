@@ -843,6 +843,42 @@ TEST_F_UI(TextTest, RawTextMappingsKeepUnicodeCodePointsIntact) {
             3u);
 }
 
+TEST_F_UI(TextTest, XInlineTextNoTrimUpdatesLayoutAndRawOffsets) {
+  InlineTextShadowNode inline_text(owner_, "x-inline-text", 6);
+  RawTextShadowNode raw_text(owner_, "raw-text", 7);
+  const std::u16string text = u" \tA\U0001F600  B \n";
+  raw_text.SetText(text);
+  inline_text.AddChild(&raw_text);
+  text_shadow_node_->AddChild(&inline_text, 0);
+  MeasureConstraint constraint{1000.f, MeasureMode::kDefinite, std::nullopt,
+                               MeasureMode::kIndefinite};
+
+  text_shadow_node_->Measure(constraint);
+  EXPECT_EQ(raw_text.GetLayoutTextUtf16Length(), 6u);
+  EXPECT_EQ(raw_text.GetRawEndIndexForLayoutTextUtf16Length(2), 5u);
+  EXPECT_EQ(raw_text.GetRawEndIndexForLayoutTextUtf16Length(6), 8u);
+
+  inline_text.SetAttribute("no-trim", clay::Value("true"));
+  text_shadow_node_->Measure(constraint);
+  EXPECT_EQ(raw_text.GetLayoutTextUtf16Length(), text.size());
+
+  inline_text.SetAttribute("no-trim", clay::Value(false));
+  text_shadow_node_->SetWhiteSpaceType(WhiteSpace::kNormal);
+  text_shadow_node_->Measure(constraint);
+  EXPECT_EQ(raw_text.GetLayoutTextUtf16Length(), 5u);
+  EXPECT_EQ(raw_text.GetRawEndIndexForLayoutTextUtf16Length(5), 8u);
+
+  raw_text.SetText(u" \t\n");
+  raw_text_shadow_node_->SetText("following");
+  text_shadow_node_->SetTextIndent(20.f);
+  text_shadow_node_->Measure(constraint);
+
+  text_shadow_node_->RemoveChild(&inline_text);
+  EXPECT_EQ(raw_text.GetLayoutTextUtf16Length(), 0u);
+  ASSERT_EQ(inline_text.range_in_paragraph_.size(), 1u);
+  EXPECT_EQ(inline_text.range_in_paragraph_.front().end(), 0u);
+}
+
 TEST_F_UI(TextTest, InlinePlaceholderGlyphRangesAreContiguous) {
   raw_text_shadow_node_->SetText(u"A\U0001F600");
   auto inline_image =
