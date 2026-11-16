@@ -154,29 +154,22 @@ int LayoutContextClay::CreateLayoutNode(int id, const std::string& tag,
   TRACE_EVENT("clay", CLAY_LAYOUT_CONTEXT_CREATE_LAYOUT_NODE, "id", id, "tag",
               resolved_tag.c_str());
   auto node = view_context_->CreateShadowNode(id, resolved_tag, allow_inline);
-  int rule = 0;
-  if (node) {
-    bool measurable = node->GetMeasurable() || node->GetCustomMeasurable();
-    rule = 0x2 | (measurable ? 0x1 : 0x0);
+  if (node || allow_inline) {
+    SetAttribute(id, painting_data);
   }
 
-  if (rule & 0x2) {    // is_shadow_node
-    if (rule & 0x1) {  // is_measurable
+  if (node) {
+    // A shadow node can use its initial properties to opt into measurement.
+    if (node->GetMeasurable() || node->GetCustomMeasurable()) {
       layout_node_manager_->SetMeasureFunc(
           id, std::make_unique<MeasureFuncImpl>(this, id));
-    }
-    // update props
-    SetAttribute(id, painting_data);
-    if (rule & 0x1) {
       return LayoutNodeType::CUSTOM;
     }
-    if (node && node->IsVirtual()) {
+    if (node->IsVirtual()) {
       return LayoutNodeType::VIRTUAL | LayoutNodeType::CUSTOM;
     }
     return LayoutNodeType::CUSTOM;
   } else if (allow_inline) {
-    // update props
-    SetAttribute(id, painting_data);
     return LayoutNodeType::INLINE;
   }
   // Set type in LayoutContext::CreateLayoutNodeSync
