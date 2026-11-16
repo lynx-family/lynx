@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/fiber/text_element.h"
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -335,6 +337,7 @@ void TextElement::DispatchLayoutAfter() {
 }
 
 void TextElement::OnEventHandlersChanged(const base::String& name) {
+  // TODO: Refresh inline geometry when tap bindings change without text layout.
   if (name.empty() || name.IsEquals("layout")) {
     UpdateLayoutEventState();
   }
@@ -416,6 +419,61 @@ void TextElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
 
 void TextElement::SetupFragmentBehavior(Fragment* fragment) {
   fragment->SetBehavior(std::make_unique<TextFragmentBehavior>(fragment));
+}
+
+void TextElement::SetInlineTextRanges(
+    const std::vector<PlatformTextEventTargetRange>& ranges) {
+  // Every entry is copied below; avoid zero-filling the range buffer first.
+  inline_text_ranges_.resize<false>(ranges.size());
+  std::copy(ranges.begin(), ranges.end(), inline_text_ranges_.begin());
+  // Assigning character ranges does not replace the separate geometry cache.
+  // If no ranges remain, discard the old rectangles now; otherwise measurement
+  // will replace them after the new layout is available.
+  if (inline_text_ranges_.empty()) {
+    UpdateInlineTextGeometry({});
+  }
+}
+
+void TextElement::UpdateInlineTextGeometry(
+    const PlatformTextEventTargetRegions& regions) {
+  // Each measurement replaces the whole result, including removed inline ids.
+  inline_text_geometry_.clear();
+  for (const auto& region : regions) {
+    if (region.sign == impl_id() || region.width <= 0 || region.height <= 0 ||
+        !std::isfinite(region.left) || !std::isfinite(region.top) ||
+        !std::isfinite(region.width) || !std::isfinite(region.height)) {
+      continue;
+    }
+    base::geometry::FloatRect rect({region.left, region.top},
+                                   {region.width, region.height});
+    auto target = std::find_if(
+        inline_text_geometry_.begin(), inline_text_geometry_.end(),
+        [&](const auto& item) { return item.sign == region.sign; });
+    if (target == inline_text_geometry_.end()) {
+      auto& geometry = inline_text_geometry_.emplace_back();
+      geometry.sign = region.sign;
+      geometry.bounds = rect;
+      geometry.rects.push_back(rect);
+    } else {
+      auto& bounds = target->bounds;
+      const float left = std::min(bounds.X(), rect.X());
+      const float top = std::min(bounds.Y(), rect.Y());
+      const float right = std::max(bounds.MaxX(), rect.MaxX());
+      const float bottom = std::max(bounds.MaxY(), rect.MaxY());
+      bounds = {{left, top}, {right - left, bottom - top}};
+      target->rects.push_back(rect);
+    }
+  }
+}
+
+const TextElement::InlineTextGeometry* TextElement::GetInlineTextGeometry(
+    int32_t sign) const {
+  for (const auto& geometry : inline_text_geometry_) {
+    if (geometry.sign == sign) {
+      return &geometry;
+    }
+  }
+  return nullptr;
 }
 
 void TextElement::SetTextBundle(intptr_t text_bundle) {

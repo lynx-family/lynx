@@ -24,6 +24,7 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
+#include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_text_layout.h"
@@ -101,6 +102,168 @@ class DetachedTextLayoutProbe : public TextLayoutMock {
 };
 
 }  // namespace
+
+class InlineTextGeometryTest : public FiberElementTest {
+ public:
+  void SetUp() override {
+    FiberElementTest::SetUp();
+    manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+    tasm->page_config_->SetEnableEventHandleRefactor(true);
+    manager->lynx_env_config_.physical_pixels_per_layout_unit_ = 2.f;
+    page_ = manager->CreateFiberPage("page", 11);
+    scroll_ = manager->CreateFiberScrollView("scroll-view");
+    scroll_->SetAttribute("scroll-y", lepus::Value(true));
+    text_ = manager->CreateFiberText("text");
+    auto nested = manager->CreateFiberText("text");
+    inline_ = manager->CreateFiberText("text");
+    inline_->FiberAddEvent("bindEvent", "tap", lepus::Value("emptyTap"),
+                           DEFAULT_ENTRY_NAME);
+    page_->InsertNode(scroll_);
+    scroll_->InsertNode(text_);
+    text_->InsertNode(nested);
+    nested->InsertNode(inline_);
+    page_->FlushActionsAsRoot();
+    page_->UpdateLayout(0, 0, 1080, 1920, {0.f}, {0.f}, {0.f}, nullptr, 0);
+    scroll_->UpdateLayout(10, 20, 300, 400, {0.f}, {0.f}, {0.f}, nullptr, 0);
+    text_->UpdateLayout(30, 40, 180, 100, {3, 0, 5, 0}, {0.f}, {2, 0, 4, 0},
+                        nullptr, 0);
+    SetGeometry({{inline_->impl_id(), 7, 11, 80, 36}});
+  }
+
+  lepus::Value Query(const lepus::Value& request = lepus::Value()) {
+    std::string error;
+    return inline_->InvokeMethod("getGeometry", request, &error);
+  }
+
+  void SetGeometry(PlatformTextEventTargetRegions regions) {
+    static_cast<TextElement*>(text_.get())->UpdateInlineTextGeometry(regions);
+  }
+  fml::RefPtr<Element> page_, scroll_, text_, inline_;
+};
+
+INSTANTIATE_TEST_SUITE_P(Fiber, InlineTextGeometryTest,
+                         ::testing::ValuesIn(fiber_element_generation_params));
+
+TEST_P(InlineTextGeometryTest, BoundsUseParagraphContentOriginAndLogicalPath) {
+  ASSERT_TRUE(inline_->is_inline_element());
+  const auto result = Query();
+  ASSERT_TRUE(result.GetProperty("valid").Bool());
+  EXPECT_FLOAT_EQ(result.GetProperty("leftPx").Number(), 104);
+  EXPECT_FLOAT_EQ(result.GetProperty("topPx").Number(), 160);
+  EXPECT_FLOAT_EQ(result.GetProperty("widthPx").Number(), 160);
+  EXPECT_FLOAT_EQ(result.GetProperty("heightPx").Number(), 72);
+  EXPECT_EQ(result.GetProperty("treePath").Array()->size(), 4u);
+}
+
+TEST_P(InlineTextGeometryTest, PointsFollowScrollAndRemeasuredBounds) {
+  scroll_->UpdateScrollOffset(0, 10);
+  auto point = lepus::Value(lepus::Dictionary::Create());
+  point.SetProperty("xPx", lepus::Value(108));
+  point.SetProperty("yPx", lepus::Value(146));
+  auto points = lepus::CArray::Create();
+  points->push_back(point);
+  auto request = lepus::Value(lepus::Dictionary::Create());
+  request.SetProperty("points", lepus::Value(points));
+  auto result = Query(request);
+  ASSERT_TRUE(result.GetProperty("valid").Bool());
+  EXPECT_FLOAT_EQ(
+      result.GetProperty("points").Array()->get(0).GetProperty("xPx").Number(),
+      4);
+  EXPECT_FLOAT_EQ(
+      result.GetProperty("points").Array()->get(0).GetProperty("yPx").Number(),
+      6);
+  EXPECT_TRUE(result.GetProperty("treePath").IsEmpty());
+  SetGeometry({{inline_->impl_id(), 9, 14, 40, 72}});
+  result = Query(request);
+  ASSERT_TRUE(result.GetProperty("valid").Bool());
+  EXPECT_FLOAT_EQ(result.GetProperty("widthPx").Number(), 80);
+  EXPECT_FLOAT_EQ(result.GetProperty("heightPx").Number(), 144);
+  EXPECT_FLOAT_EQ(
+      result.GetProperty("points").Array()->get(0).GetProperty("xPx").Number(),
+      0);
+  EXPECT_FLOAT_EQ(
+      result.GetProperty("points").Array()->get(0).GetProperty("yPx").Number(),
+      0);
+}
+
+TEST_P(InlineTextGeometryTest,
+       MissingLayoutRemovedBindingAndDetachedAreInvalid) {
+  SetGeometry({});
+  EXPECT_FALSE(Query().GetProperty("valid").Bool());
+  SetGeometry({{inline_->impl_id(), 7, 11, 80, 36}});
+  inline_->FiberAddEvent("bindEvent", "tap", lepus::Value(),
+                         DEFAULT_ENTRY_NAME);
+  EXPECT_FALSE(Query().GetProperty("valid").Bool());
+  inline_->FiberAddEvent("bindEvent", "tap", lepus::Value("emptyTap"),
+                         DEFAULT_ENTRY_NAME);
+  scroll_->RemoveNode(text_);
+  page_->FlushActionsAsRoot();
+  EXPECT_FALSE(Query().GetProperty("valid").Bool());
+}
+
+TEST_P(InlineTextGeometryTest, KeepsFragmentsSeparateAcrossLinesAndTargets) {
+  const int32_t other_sign = inline_->impl_id() + 1000;
+  SetGeometry({{inline_->impl_id(), 50, 0, 30, 20},
+               {other_sign, 20, 20, 20, 20},
+               {inline_->impl_id(), 0, 20, 20, 20},
+               {inline_->impl_id(), 40, 20, 10, 20}});
+  auto* text = static_cast<TextElement*>(text_.get());
+  const auto* geometry = text->GetInlineTextGeometry(inline_->impl_id());
+  ASSERT_NE(geometry, nullptr);
+  EXPECT_FLOAT_EQ(geometry->bounds.Width(), 80);
+  EXPECT_FLOAT_EQ(geometry->bounds.Height(), 40);
+  ASSERT_EQ(geometry->rects.size(), 3u);
+  EXPECT_EQ(geometry->rects[0], (base::geometry::FloatRect{{50, 0}, {30, 20}}));
+  EXPECT_EQ(geometry->rects[1], (base::geometry::FloatRect{{0, 20}, {20, 20}}));
+  EXPECT_EQ(geometry->rects[2],
+            (base::geometry::FloatRect{{40, 20}, {10, 20}}));
+  // The union includes this gap, but none of the inline's fragments do.
+  auto summary = geometry->bounds;
+  EXPECT_TRUE(summary.Contains(30, 25));
+  EXPECT_TRUE(std::none_of(geometry->rects.begin(), geometry->rects.end(),
+                           [](auto rect) { return rect.Contains(30, 25); }));
+  const auto* other = text->GetInlineTextGeometry(other_sign);
+  ASSERT_NE(other, nullptr);
+  ASSERT_EQ(other->rects.size(), 1u);
+  EXPECT_EQ(other->rects[0], (base::geometry::FloatRect{{20, 20}, {20, 20}}));
+  EXPECT_TRUE(Query().GetProperty("valid").Bool());
+  SetGeometry({{inline_->impl_id(), 10, 5, 20, 10}});
+  geometry = text->GetInlineTextGeometry(inline_->impl_id());
+  ASSERT_NE(geometry, nullptr);
+  EXPECT_FLOAT_EQ(geometry->bounds.Width(), 20);
+  EXPECT_FLOAT_EQ(geometry->bounds.Height(), 10);
+  ASSERT_EQ(geometry->rects.size(), 1u);
+  EXPECT_EQ(geometry->rects[0], (base::geometry::FloatRect{{10, 5}, {20, 10}}));
+  EXPECT_EQ(text->GetInlineTextGeometry(other_sign), nullptr);
+  text->SetInlineTextRanges({});
+  EXPECT_EQ(text->GetInlineTextGeometry(inline_->impl_id()), nullptr);
+  EXPECT_FALSE(Query().GetProperty("valid").Bool());
+}
+
+TEST_P(InlineTextGeometryTest, CacheGrowthPreservesFragmentBuffers) {
+  PlatformTextEventTargetRegions regions;
+  for (int32_t i = 1; i <= 32; ++i) {
+    const int32_t sign = inline_->impl_id() + i * 1000;
+    regions.push_back(PlatformTextEventTargetRegion{sign, 10, 0, 20, 10});
+    regions.push_back(PlatformTextEventTargetRegion{sign, 0, 10, 10, 10});
+  }
+  SetGeometry(regions);
+  auto* paragraph = static_cast<TextElement*>(text_.get());
+  for (int32_t i = 1; i <= 32; ++i) {
+    const auto* geometry =
+        paragraph->GetInlineTextGeometry(inline_->impl_id() + i * 1000);
+    ASSERT_NE(geometry, nullptr);
+    ASSERT_EQ(geometry->rects.size(), 2u);
+    EXPECT_EQ(geometry->rects[0],
+              (base::geometry::FloatRect{{10, 0}, {20, 10}}));
+    EXPECT_EQ(geometry->rects[1],
+              (base::geometry::FloatRect{{0, 10}, {10, 10}}));
+    EXPECT_EQ(geometry->bounds, (base::geometry::FloatRect{{0, 0}, {30, 20}}));
+  }
+  SetGeometry({});
+  EXPECT_EQ(paragraph->GetInlineTextGeometry(inline_->impl_id() + 1000),
+            nullptr);
+}
 
 class DetachedTextMeasurementTest : public FiberElementTest {
  public:
