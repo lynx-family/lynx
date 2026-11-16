@@ -1009,10 +1009,13 @@ TEST_P(ClipPathPipelineTest, ClipPathCreatesOwnerLayerWithZIndexDisabled) {
   manager->SetConfig(config);
   auto page = manager->CreateFiberPage("0", 0);
   auto view = manager->CreateFiberView();
+  view->SetAttribute("flatten", lepus::Value(true));
+  view->SetStyle(kPropertyIDClipPath, lepus::Value("none"));
   page->InsertNode(view);
   page->FlushActionsAsRoot();
   EXPECT_TRUE(page->IsStackingContextNode());
   EXPECT_FALSE(view->IsStackingContextNode());
+  EXPECT_FALSE(view->fragment_impl()->has_platform_renderer_);
 
   view->SetStyle(kPropertyIDClipPath, lepus::Value("circle(10px)"));
   page->FlushActionsAsRoot();
@@ -1025,6 +1028,10 @@ TEST_P(ClipPathPipelineTest, ClipPathCreatesOwnerLayerWithZIndexDisabled) {
   auto* renderer = static_cast<TestPlatformRenderer*>(
       platform->renderers_.at(owner->id()).get());
   ASSERT_NE(renderer->GetClipPath(), nullptr);
+  const auto items = CollectDisplayListItems(renderer->GetDisplayList());
+  EXPECT_TRUE(std::none_of(items.begin(), items.end(), [](const auto& item) {
+    return item.type == DisplayListOpType::kClipPath;
+  }));
   const auto* content = renderer->GetDisplayList().GetContentItemsData();
 
   view->SetStyle(kPropertyIDClipPath, lepus::Value());
@@ -3936,6 +3943,21 @@ TEST_F(FragmentTest, UpdatePaintingNodeUsesCurrentFlattenStateForLayer) {
   ASSERT_TRUE(behavior_ptr->attributes_);
   EXPECT_TRUE(behavior_ptr->attributes_->Contains(
       CSSProperty::GetPropertyNameCStr(CSSPropertyID::kPropertyIDTransform)));
+}
+
+TEST_F(FragmentTest, ComputedClipPathPreventsViewFlattening) {
+  auto element = manager->CreateFiberView();
+  Fragment fragment(element.get());
+  fragment.SetBehavior(std::make_unique<RecordingFragmentBehavior>(&fragment));
+  ASSERT_TRUE(element->TendToFlatten());
+  EXPECT_FALSE(fragment.CreateLayerIfNeeded(nullptr));
+
+  auto styles = UnitHandler::Process(
+      kPropertyIDClipPath, lepus::Value("circle(0px)"), CSSParserConfigs());
+  ASSERT_TRUE(element->computed_css_style()->SetValue(
+      kPropertyIDClipPath, styles.at(kPropertyIDClipPath)));
+  ASSERT_TRUE(element->TendToFlatten());
+  EXPECT_TRUE(fragment.CreateLayerIfNeeded(nullptr));
 }
 
 TEST_F(FragmentTest, DrawFullSyncsOverflowToBeginOperation) {

@@ -29,6 +29,7 @@
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
+#include "core/renderer/ui_wrapper/painting/harmony/path_harmony.h"
 #include "core/runtime/lepus/lepus_date.h"
 #include "gfx/public/display_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/animation_info.h"
@@ -283,6 +284,7 @@ void UIBase::ConsumeGesture(int gesture_id, const lepus::Value& params) {
 
 UIBase::~UIBase() {
   renderer_.reset();
+  DetachFromNodeContent();
   // Reset animations before ArkUI node teardown. Animator cancellation may
   // synchronously invoke callbacks that update the node.
   keyframe_manager_.reset();
@@ -497,7 +499,9 @@ void UIBase::InsertNode(UIBase* child, int index) {
 }
 
 void UIBase::RemoveNode(UIBase* child) {
-  NodeManager::Instance().RemoveNode(Node(), child->DrawNode());
+  auto node = child->DrawNode();
+  auto parent = NodeManager::Instance().GetParent(node);
+  if (parent) NodeManager::Instance().RemoveNode(parent, node);
 }
 
 void UIBase::FrameDidChanged() {
@@ -510,6 +514,8 @@ void UIBase::FrameDidChanged() {
                                                         left_, top_);
   }
   UpdateDrawNodeFrame();
+  ApplyFragmentLayerOwnerClip();
+  if (renderer_) renderer_->UpdateRenderNodeOrder();
 }
 
 void UIBase::Destroy() {
@@ -983,7 +989,7 @@ void UIBase::OnNodeReady() {
     }
     Invalidate();
   }
-  if (basic_shape_ &&
+  if (basic_shape_ && !renderer_ &&
       (dirty_flags_ & (kFlagFrameChanged | kFlagFrameSizeChanged |
                        kFlagClipPathChanged)) != 0) {
     basic_shape_->ParsePathWithParentSize(width_, height_);
@@ -1316,22 +1322,17 @@ void UIBase::SetOverflowY(const lepus::Value& value) {
   dirty_flags_ |= kFlagOverflowChanged;
 }
 
+void UIBase::ApplyClipPath(ArkUI_NodeHandle node, float width, float height,
+                           const std::string& path) {
+  ArkUI_NumberValue values[] = {
+      {.i32 = ARKUI_CLIP_TYPE_PATH}, {.f32 = width}, {.f32 = height}};
+  ArkUI_AttributeItem item{.value = values, .size = 3, .string = path.c_str()};
+  NodeManager::Instance().SetAttribute(node, NODE_CLIP_SHAPE, &item);
+}
+
 void UIBase::ApplyOverflowClipPath(float width, float height,
                                    const std::string& path) {
-  if (path.empty()) {
-    return;
-  }
-  ArkUI_NumberValue value[] = {
-      {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_PATH)},
-      {.f32 = width},
-      {.f32 = height},
-  };
-  ArkUI_AttributeItem item = {
-      .value = value,
-      .size = sizeof(value) / sizeof(ArkUI_NumberValue),
-      .string = path.c_str(),
-  };
-  NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
+  if (!path.empty()) ApplyClipPath(Node(), width, height, path);
 }
 
 void UIBase::ApplyOverflowClipRectangle(float left, float top, float width,
@@ -1468,6 +1469,8 @@ void UIBase::AttachFragmentLayerRenderer(
 }
 
 void UIBase::DetachFragmentLayerRenderer() {
+  fragment_owner_path_ = nullptr;
+  ApplyFragmentLayerOwnerClip();
   renderer_.reset();
   if (!fragment_content_clip_path_.empty()) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
@@ -1632,10 +1635,55 @@ void UIBase::UpdateFragmentLayerSubtreeProperties(
         break;
       }
       case DisplayListSubtreePropertyOpType::kClipPath:
-        // Native path clipping is applied by the renderer when supported.
+        fragment_owner_path_ = fml::RefPtr<const gfx::Path>(
+            property.data.clip_path.path_index == UINT32_MAX
+                ? nullptr
+                : display_list.GetPath(property.data.clip_path.path_index));
+        fragment_owner_fill_ = property.data.clip_path.fill_rule;
+        fragment_owner_x_ = property.data.clip_path.x;
+        fragment_owner_y_ = property.data.clip_path.y;
+        ApplyFragmentLayerOwnerClip();
         break;
     }
   }
+}
+
+void UIBase::ApplyFragmentLayerOwnerClip() {
+  if (!fragment_owner_path_) {
+    if (fragment_owner_clip_node_) {
+      NodeManager::Instance().ResetAttribute(fragment_owner_clip_node_,
+                                             NODE_CLIP_SHAPE);
+    }
+    fragment_owner_clip_node_ = nullptr;
+    fragment_owner_request_.reset();
+    return;
+  }
+  InitDrawNode();
+  if (!draw_node_ || !fragment_owner_path_) return;
+  const float density = context_->ScaledDensity();
+  const auto outset = GetOverlayShadowOutset();
+  FragmentOwnerClipRequest request{
+      PathHarmony::GetNodeClip(*fragment_owner_path_, fragment_owner_fill_,
+                               density)
+          .descriptor,
+      {(fragment_owner_x_ + outset[0]) * density,
+       (fragment_owner_y_ + outset[1]) * density,
+       (width_ + outset[0] + outset[2]) * density,
+       (height_ + outset[1] + outset[3]) * density}};
+  if (!request.first || (fragment_owner_clip_node_ == draw_node_ &&
+                         request == fragment_owner_request_))
+    return;
+  const auto& rect = request.second;
+  auto payload = request.first->MakePayload(rect[0], rect[1], rect[2], rect[3]);
+  if (payload.status == HarmonyNodePathStatus::kEmpty) {
+    // Keep empty clips on the node with a zero-area path.
+    payload.commands = "M0 0Z";
+  } else if (payload.status != HarmonyNodePathStatus::kReady) {
+    return;
+  }
+  ApplyClipPath(draw_node_, payload.width, payload.height, payload.commands);
+  fragment_owner_clip_node_ = draw_node_;
+  fragment_owner_request_ = std::move(request);
 }
 
 void UIBase::UpdateFragmentLayerOffset(float left, float top) {
@@ -1652,6 +1700,7 @@ void UIBase::OnAttachedToFragmentLayerTree() {
   if (renderer_ && !CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
     InitDrawNode();
   }
+  ApplyFragmentLayerOwnerClip();
   if (parent_ && parent_->renderer_) {
     parent_->renderer_->UpdateRenderNodeOrder();
   }
@@ -2451,14 +2500,17 @@ std::array<float, 4> UIBase::GetOverlayShadowOutset() const {
 
 void UIBase::AttachToNodeContent(NativeNodeContent* content) {
   node_content_ = std::unique_ptr<NativeNodeContent>(content);
-  // FIXME(chengjunnan): adpat to draw node.
-  OH_ArkUI_NodeContent_AddNode(content->NodeContentHandle(), Node());
+  OH_ArkUI_NodeContent_AddNode(content->NodeContentHandle(), DrawNode());
   node_content_->SetUI(this);
+  ApplyFragmentLayerOwnerClip();
 }
 
 void UIBase::DetachFromNodeContent() {
   if (node_content_) {
-    OH_ArkUI_NodeContent_RemoveNode(node_content_->NodeContentHandle(), Node());
+    if (node_content_->UI() == this) {
+      OH_ArkUI_NodeContent_RemoveNode(node_content_->NodeContentHandle(),
+                                      DrawNode());
+    }
     node_content_ = nullptr;
   }
 }
@@ -2469,8 +2521,10 @@ void UIBase::InitDrawNode() {
     return;
   }
   auto parent = NodeManager::Instance().GetParent(Node());
-  if (parent) {
+  if (parent || (node_content_ && node_content_->UI() == this) ||
+      fragment_owner_path_) {
     draw_node_ = NodeManager::Instance().CreateNode(ARKUI_NODE_CUSTOM);
+    if (!draw_node_) return;
     // register draw event
     NodeManager::Instance().AddNodeCustomEventReceiver(
         draw_node_, UIBase::CustomEventReceiver);
@@ -2478,10 +2532,17 @@ void UIBase::InitDrawNode() {
         draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW, this);
     NodeManager::Instance().RegisterNodeCustomEvent(
         draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_OVERLAY_DRAW, this);
-    // update view tree
-    NodeManager::Instance().InsertNodeAfter(parent, draw_node_, Node());
-    NodeManager::Instance().RemoveNode(parent, Node());
-    NodeManager::Instance().InsertNode(draw_node_, Node(), 0);
+    auto& manager = NodeManager::Instance();
+    if (parent) {
+      manager.InsertNodeAfter(parent, draw_node_, Node());
+      manager.RemoveNode(parent, Node());
+    } else if (node_content_ && node_content_->UI() == this) {
+      OH_ArkUI_NodeContent_RemoveNode(node_content_->NodeContentHandle(),
+                                      Node());
+      OH_ArkUI_NodeContent_AddNode(node_content_->NodeContentHandle(),
+                                   draw_node_);
+    }
+    manager.InsertNode(draw_node_, Node(), 0);
     if (renderer_) {
       auto& manager = NodeManager::Instance();
       auto move_attribute = [&](ArkUI_NodeAttributeType type) {
@@ -2538,6 +2599,7 @@ void UIBase::InitDrawNode() {
         draw_node_, NODE_Z_INDEX, translation_z_);
   }
   UpdateDrawNodeFrame();
+  ApplyFragmentLayerOwnerClip();
   if (parent_ && parent_->renderer_) {
     parent_->renderer_->UpdateRenderNodeOrder();
   }
@@ -2545,6 +2607,8 @@ void UIBase::InitDrawNode() {
 
 void UIBase::DestroyDrawNode() {
   if (draw_node_) {
+    fragment_owner_clip_node_ = nullptr;
+    fragment_owner_request_.reset();
     NodeManager::Instance().UnregisterNodeCustomEvent(
         draw_node_, ARKUI_NODE_CUSTOM_EVENT_ON_DRAW);
     NodeManager::Instance().UnregisterNodeCustomEvent(
@@ -3037,7 +3101,9 @@ bool UIBase::IsVisibleForExposure(
 
 void UIBase::WillRemoveFromUIParent() {
   if (draw_node_) {
-    NodeManager::Instance().RemoveNode(parent_->Node(), draw_node_);
+    auto attachment = DrawNode();
+    auto parent = NodeManager::Instance().GetParent(attachment);
+    if (parent) NodeManager::Instance().RemoveNode(parent, attachment);
   }
 }
 

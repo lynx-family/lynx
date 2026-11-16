@@ -55,6 +55,7 @@ if (!enable_unittests) {
     ]
   } else if (is_harmony) {
     ui_wrapper_painting_shared_sources += [
+      "harmony/drawing_error_scope.h",
       "harmony/native_painting_context_harmony.cc",
       "harmony/native_painting_context_harmony.h",
       "harmony/native_painting_context_platform_harmony_ref.cc",
@@ -64,6 +65,8 @@ if (!enable_unittests) {
       "harmony/painting_context_harmony.h",
       "harmony/path_harmony.cc",
       "harmony/path_harmony.h",
+      "harmony/path_harmony_node.cc",
+      "harmony/path_harmony_node.h",
       "harmony/platform_renderer_harmony.cc",
       "harmony/platform_renderer_harmony.h",
       "harmony/ui_delegate_harmony.cc",

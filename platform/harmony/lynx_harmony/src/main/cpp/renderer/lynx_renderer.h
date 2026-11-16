@@ -49,6 +49,7 @@ class LynxRenderer {
   float drawing_height_{0.f};
   float overflow_left_{0.f};
   float overflow_top_{0.f};
+  bool updating_node_order_{false};
 };
 
 }  // namespace harmony
