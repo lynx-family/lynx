@@ -12,6 +12,8 @@
 #import <Lynx/LynxUI.h>
 #import "LynxTraceEventDef.h"
 
+#include <atomic>
+
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 
@@ -130,10 +132,21 @@ BOOL LynxImageFetchherSupportsProcessor(id<LynxImageFetcher> fetcher) {
 
 + (id<LynxServiceImageProtocol>)imageService {
   static id<LynxServiceImageProtocol> _imageService;
-  if (!_imageService) {
-    _imageService = LynxService(LynxServiceImageProtocol);
+  static std::atomic<bool> ready{false};
+  if (ready.load(std::memory_order_acquire)) {
+    return _imageService;
   }
-  return _imageService;
+  // Share the lock across subclasses and allow retries until the service is registered.
+  @synchronized([LynxImageLoader class]) {
+    if (!_imageService) {
+      _imageService = LynxService(LynxServiceImageProtocol);
+      if (_imageService) {
+        // Once published, the cached service must remain unchanged.
+        ready.store(true, std::memory_order_release);
+      }
+    }
+    return _imageService;
+  }
 }
 
 - (dispatch_block_t)loadImageWithOptions:(LynxImageLoadOptions*)options {
