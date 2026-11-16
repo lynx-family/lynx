@@ -35,9 +35,16 @@ void DecodeBundle(LazyBundleLoader::CallBackInfo& callback_info, bool is_card) {
   }
   if (callback_info.Success()) {
     lynx::tasm::LynxTemplateBundle bundle;
-    std::string error =
-        bundle.FromBinaryGreedy(std::move(callback_info.data),
-                                callback_info.component_url, false, is_card);
+    std::string error;
+    if (is_card && !LynxTemplateBundle::HasBinaryHeader(callback_info.data)) {
+      error = bundle.FromLynxML(
+          std::string(callback_info.data.begin(), callback_info.data.end()),
+          callback_info.component_url);
+    } else {
+      error =
+          bundle.FromBinaryGreedy(std::move(callback_info.data),
+                                  callback_info.component_url, false, is_card);
+    }
     if (error.empty()) {
       callback_info.bundle = std::move(bundle);
     } else {
