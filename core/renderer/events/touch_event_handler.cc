@@ -18,6 +18,7 @@
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
+#include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/pipeline/pipeline_scope.h"
 #include "core/renderer/tasm/config.h"
@@ -84,6 +85,43 @@ static event::TouchEventTargetPoints ParseCurrentTargetPoints(
         static_cast<float>(entry.GetProperty(2).Number())});
   }
   return points;
+}
+
+static bool AppendFiberEventListeners(
+    Element *target, Element *current_target, const std::string &event_name,
+    bool capture, EventOpsVector &event_ops,
+    std::vector<std::shared_ptr<event::EventListener>> &event_listeners) {
+  auto *listeners = current_target->GetEventListenerMap()->Find(event_name);
+  if (!listeners) {
+    return false;
+  }
+
+  bool is_catch = false;
+  for (const auto &listener : *listeners) {
+    if (listener->removed()) {
+      continue;
+    }
+    // FiberAddEvent also installs bridge listeners for legacy handlers. Only
+    // collect the listener types registered by FiberAddEventListener here.
+    if (listener->type() == event::EventListener::Type::kClosureEventListener) {
+      if (static_cast<event::ClosureEventListener *>(listener.get())
+              ->closure_type() !=
+          event::ClosureEventListener::ClosureType::kClient) {
+        continue;
+      }
+    } else if (listener->type() !=
+               event::EventListener::Type::kLepusClosureEventListener) {
+      continue;
+    }
+    const auto &options = listener->GetOptions();
+    if (options.IsGlobal() || options.IsCapture() != capture) {
+      continue;
+    }
+    event_listeners.push_back(listener);
+    event_ops.emplace_back(listener.get(), target, current_target);
+    is_catch |= options.IsCatch();
+  }
+  return is_catch;
 }
 
 TouchEventHandler::TouchEventHandler(
@@ -1820,7 +1858,10 @@ void TouchEventHandler::StartEventCapture(TemplateAssembler *tasm,
 
         auto handlers =
             TouchEventHandler::get_handlers_f_(cur_target, event_name, false);
-        bool need_break = false;
+        bool need_break =
+            AppendFiberEventListeners(target, cur_target, event_name, true,
+                                      event_ops, event_context.event_listeners);
+        capture |= need_break;
         for (auto handler : handlers) {
           // Need to copy rather than ref because the handler may be a null
           // pointer
@@ -1890,7 +1931,10 @@ void TouchEventHandler::StartEventBubble(TemplateAssembler *tasm,
 
         auto handlers =
             TouchEventHandler::get_handlers_f_(cur_target, event_name, false);
-        bool need_break = false;
+        bool need_break =
+            AppendFiberEventListeners(target, cur_target, event_name, false,
+                                      event_ops, event_context.event_listeners);
+        bubble |= need_break;
         for (auto handler : handlers) {
           // Need to copy rather than ref because the handler may be a null
           // pointer
@@ -1949,6 +1993,7 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
       const EventOpsVector &event_ops = pair.second;
       bool stop_immediate_propagation = false;
       const EventOperation *stop_propagation_op = nullptr;
+      fml::RefPtr<event::TouchEvent> listener_event;
       LOGI("TouchEventHandler::StartEventFire "
            << tasm << " " << event_id << " " << event_name << " " << target_sign
            << " " << event_ops.size())
@@ -1956,7 +2001,10 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
       if (event_name == EVENT_TOUCH_START) {
         long_press_consumed_ = false;
       }
-      if (event_name == EVENT_LONG_PRESS && !event_ops.empty()) {
+      if (event_name == EVENT_LONG_PRESS &&
+          std::any_of(event_ops.begin(), event_ops.end(), [](const auto &op) {
+            return !op.listener_ || !op.listener_->removed();
+          })) {
         long_press_consumed_ = true;
       }
       if (event_name == EVENT_TAP && long_press_consumed_) {
@@ -1964,6 +2012,9 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
       }
 
       for (const auto &op : event_ops) {
+        if (op.listener_ && op.listener_->removed()) {
+          continue;
+        }
         bool is_js_event = true;
         // js global event handler is nullptr
         if (op.handler_) {
@@ -1976,7 +2027,7 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
                           event_context.event_name, params);
         } else {
           // trigger jsb event
-          if (op.handler_->is_piper_event()) {
+          if (op.handler_ && op.handler_->is_piper_event()) {
             TriggerLepusBridgesAsync(event_context.event_type, tasm,
                                      event_context.event_name,
                                      *(op.handler_->piper_event_vec()));
@@ -1987,6 +2038,30 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
               (stop_propagation_op &&
                !stop_propagation_op->IsSameTargetAndEventPhase(op))) {
             is_stop = true;
+            continue;
+          }
+
+          if (op.listener_) {
+            if (!listener_event) {
+              listener_event = fml::MakeRefCounted<event::TouchEvent>(
+                  event_name, 0, 0, 0, 0, 0, 0, event_context.event_timestamp);
+              listener_event->set_target(op.target_->GetWeakTarget());
+            }
+            listener_event->set_current_target(
+                op.current_target_->GetWeakTarget());
+            listener_event->set_event_phase(
+                op.GetEventPhase() == EventPhase::kCAPTURING_PHASE
+                    ? event::Event::PhaseType::kCapturingPhase
+                    : event::Event::PhaseType::kBubblingPhase);
+            listener_event->set_detail(params);
+            op.listener_->Invoke(listener_event);
+            if (listener_event->is_stop_immediate_propagation()) {
+              stop_immediate_propagation = true;
+              is_stop = true;
+            } else if (listener_event->is_stop_propagation()) {
+              stop_propagation_op = &op;
+              is_stop = true;
+            }
             continue;
           }
 
