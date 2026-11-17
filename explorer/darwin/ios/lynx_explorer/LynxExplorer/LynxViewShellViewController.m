@@ -396,6 +396,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
                                                         entryName:standaloneEntryName
                                                             group:nil]
           : nil;
+  NSObject *nodeAPIToken = [[NSObject alloc] init];
   BOOL enableNapiAddon = IsTruthyParam([self.params valueForKey:@"enable_napi_addon"]);
   if (enableNapiAddon) {
     // RuntimeLifecycleListener can only be registered through background runtime for now.
@@ -407,8 +408,8 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
       options.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
       self.backgroundRuntime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
     }
-    [self.backgroundRuntime
-        addRuntimeLifecycleListener:[[LynxNodeAPILifecycleListener alloc] initWithToken:self]];
+    [self.backgroundRuntime addRuntimeLifecycleListener:[[LynxNodeAPILifecycleListener alloc]
+                                                            initWithToken:nodeAPIToken]];
   }
 
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
@@ -421,7 +422,7 @@ static NSString *LegacyGlobalPropKey(NSString *key) {
     builder.lynxBackgroundRuntime = self.backgroundRuntime;
     // for homepage only
     [builder.config registerUI:LynxExplorerInput.class withName:@"explorer-input"];
-    [builder.config registerModule:LynxNodeAPIModule.class param:self];
+    [builder.config registerModule:LynxNodeAPIModule.class param:nodeAPIToken];
     [builder.config registerModule:ExplorerLynxTestModule.class];
     // Add fetchers
     builder.enableGenericResourceFetcher = true;
