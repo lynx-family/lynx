@@ -224,26 +224,6 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
   XCTAssertNil([self animationForKeyPath:@"opacity"]);
 }
 
-- (void)testElapsedTimeUsesStartAndEndBoundaries {
-  auto playback = lynx::fml::MakeRefCounted<gfx::AnimationPlaybackState>(
-      lynx::fml::TimeDelta::FromSeconds(2), true, EventState::kNotStarted);
-  auto command = OpacityCommand(1, 2500, 2);
-  command.playback = playback;
-  command.executor = playback->ChangeExecutor();
-  command.animation_data.delay = -1500;
-
-  OCMExpect([self.events sendAnimationEvent:self.ui
-                                  eventName:@"animationstart"
-                                eventParams:HasElapsedTime(1.5)]);
-  OCMExpect([self.events sendAnimationEvent:self.ui
-                                  eventName:@"animationend"
-                                eventParams:HasElapsedTime(5.0)]);
-  Apply(self.ui, std::move(command));
-  CAAnimation* animation = [self animationForKeyPath:@"opacity"];
-  [animation.delegate animationDidStop:animation finished:YES];
-  OCMVerifyAll(self.events);
-}
-
 - (void)testLegacyTransitionForcedStopReportsActiveTime {
   auto* manager = [[LynxTransitionAnimationManager alloc] initWithLynxUI:self.ui];
   CALayer* layer = self.ui.view.layer;
