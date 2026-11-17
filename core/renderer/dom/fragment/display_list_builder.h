@@ -6,6 +6,7 @@
 #define CORE_RENDERER_DOM_FRAGMENT_DISPLAY_LIST_BUILDER_H_
 
 #include <cstdint>
+#include <limits>
 
 #include "core/public/platform_renderer_type.h"
 #include "gfx/public/display_list.h"
@@ -88,6 +89,19 @@ class DisplayListBuilder {
   DisplayListBuilder& RecordBoxModel(const RoundedRectangle& rect,
                                      int32_t& index);
 
+  bool CanRecordBoxModels(size_t count) const {
+    return count <= static_cast<size_t>(std::numeric_limits<int32_t>::max() -
+                                        current_index_of_box_model);
+  }
+
+  // Read-only accounting for checked batch preparation.
+  const DisplayList& CurrentDisplayList() const { return display_list_; }
+  size_t BoxModelCount() const {
+    return static_cast<size_t>(current_index_of_box_model);
+  }
+
+  bool AppendDrawingContent(const DisplayList& source);
+
   // Draw linear gradient
   // tiling_index: the box index for gradient tiling (size determined by
   // background-origin and background-size)
@@ -98,7 +112,8 @@ class DisplayListBuilder {
                                      const base::Vector<uint32_t>& colors,
                                      const base::Vector<float>& stops,
                                      int32_t tiling_index, int32_t clip_index,
-                                     int32_t repeat_x, int32_t repeat_y);
+                                     int32_t repeat_x, int32_t repeat_y,
+                                     int32_t inner_clip_index = -1);
 
   DisplayListBuilder& RadialGradient(float center_x, float center_y,
                                      float radius_x, float radius_y,

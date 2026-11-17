@@ -7,7 +7,9 @@
 
 #include "core/renderer/dom/fragment/display_list_builder.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/starlight/style/borders_data.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
@@ -656,6 +658,27 @@ TEST_F(DisplayListBuilderTest, LinearGradientOperationEmpty) {
   EXPECT_FALSE(reader.HasNext());
 }
 
+TEST_F(DisplayListBuilderTest, LinearGradientRecordsOptionalInnerBox) {
+  RoundedRectangle box;
+  box.SetWidth(20);
+  box.SetHeight(10);
+  int32_t index;
+  builder_->RecordBoxModel(box, index);
+  ASSERT_EQ(index, 0);
+  builder_->LinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, index, index,
+                           1, 1, index);
+  builder_->LinearGradient(90, {0xffff0000, 0xff0000ff}, {0, 1}, index, index,
+                           1, 1);
+  builder_->Fill(0xff00ff00, index);
+  auto list = builder_->Build();
+  DisplayListReader reader(list);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+  EXPECT_EQ(reader.Next().payload.linear_gradient.inner_clip_index_plus_one, 1);
+  EXPECT_EQ(reader.Next().payload.linear_gradient.inner_clip_index_plus_one, 0);
+  EXPECT_EQ(reader.Next().payload.fill.color, 0xff00ff00);
+  EXPECT_FALSE(reader.HasNext());
+}
+
 TEST_F(DisplayListBuilderTest, RadialGradientOperation) {
   base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
   base::Vector<float> stops{0.0f, 1.0f};
@@ -856,6 +879,179 @@ TEST_F(DisplayListBuilderTest, SubtreePropertyABI) {
                 "SubtreeProperty must be trivially copyable");
 
   SUCCEED();
+}
+
+static std::string BuilderDrawingState(const DisplayListBuilder& builder) {
+  const auto& list = builder.CurrentDisplayList();
+  const auto hex = [](const uint8_t* bytes, size_t size) {
+    constexpr char digits[] = "0123456789abcdef";
+    std::string result;
+    for (size_t i = 0; i < size; ++i) {
+      result += digits[bytes[i] >> 4];
+      result += digits[bytes[i] & 15];
+    }
+    return result;
+  };
+  return "{\"boxes\":" + std::to_string(builder.BoxModelCount()) +
+         ",\"items\":\"" +
+         hex(list.GetContentItemsData(), list.GetContentItemsByteSize()) +
+         "\",\"data\":\"" +
+         hex(list.GetContentData(), list.GetContentDataSize()) +
+         "\",\"properties\":\"" +
+         hex(reinterpret_cast<const uint8_t*>(list.GetSubtreePropertiesData()),
+             list.GetSubtreePropertiesSize() * sizeof(SubtreeProperty)) +
+         "\",\"root_clip\":" + (list.RootNeedClipBounds() ? "true" : "false") +
+         ",\"dx\":" + std::to_string(list.GetRenderOffset()[0]) +
+         ",\"dy\":" + std::to_string(list.GetRenderOffset()[1]) + "}";
+}
+
+TEST(DisplayListBuilderDrawingAppendTest, TwoAppendsThenNextBox) {
+  RoundedRectangle box;
+  box.SetX(5);
+  box.SetWidth(30);
+  box.SetHeight(20);
+  int32_t index;
+  DisplayListBuilder source_builder;
+  source_builder.RecordBoxModel(box, index);
+  source_builder.LinearGradient(90, {0xff112233, 0xff445566}, {0, 1}, 0, 0, 1,
+                                1, 0);
+  auto source = source_builder.Build();
+  const std::vector<uint8_t> source_items(
+      source.GetContentItemsData(),
+      source.GetContentItemsData() + source.GetContentItemsByteSize());
+  const std::vector<uint8_t> source_data(
+      source.GetContentData(),
+      source.GetContentData() + source.GetContentDataSize());
+  DisplayListBuilder builder(3, 4);
+  builder.RecordBoxModel(box, index);
+  builder.LinearGradient(180, {0xffaabbcc, 0xffddeeff}, {0, 1}, 0, 0, 1, 1);
+  ASSERT_TRUE(builder.AppendDrawingContent(source));
+  ASSERT_TRUE(builder.AppendDrawingContent(source));
+  EXPECT_EQ(builder.BoxModelCount(), 3u);
+  ::testing::Test::RecordProperty("appended", BuilderDrawingState(builder));
+  builder.RecordBoxModel(box, index);
+  EXPECT_EQ(index, 3);
+  auto list = builder.Build();
+  ASSERT_EQ(list.GetContentItemsSize(), 7u);
+  EXPECT_EQ(list.GetContentDataSize(), 48u);
+  DisplayListReader reader(list);
+  for (int32_t base = 0; base < 3; ++base) {
+    EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+    const auto& gradient = reader.Next();
+    EXPECT_EQ(gradient.payload.linear_gradient.tiling_index, base);
+    EXPECT_EQ(gradient.payload.linear_gradient.clip_index, base);
+    EXPECT_EQ(gradient.payload.linear_gradient.inner_clip_index_plus_one,
+              base == 0 ? 0 : base + 1);
+    EXPECT_EQ(gradient.payload.linear_gradient.color_count_offset,
+              static_cast<uint32_t>(base * 16));
+    EXPECT_EQ(gradient.payload.linear_gradient.stop_count_offset,
+              static_cast<uint32_t>(base * 16 + 8));
+    ASSERT_NE(reader.Colors(gradient), nullptr);
+    EXPECT_EQ(reader.Colors(gradient)[0],
+              base == 0 ? 4289379276u : 0xff112233u);
+    EXPECT_EQ(reader.Stops(gradient)[1], 1);
+  }
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kRecordBox);
+  EXPECT_FALSE(reader.HasNext());
+  EXPECT_EQ(source_items,
+            std::vector<uint8_t>(source.GetContentItemsData(),
+                                 source.GetContentItemsData() +
+                                     source.GetContentItemsByteSize()));
+  EXPECT_EQ(source_data, std::vector<uint8_t>(source.GetContentData(),
+                                              source.GetContentData() +
+                                                  source.GetContentDataSize()));
+}
+
+TEST(DisplayListBuilderDrawingAppendTest, EmptyDoesNotAdvanceBoxCount) {
+  DisplayListBuilder builder;
+  DisplayList source;
+  EXPECT_TRUE(builder.AppendDrawingContent(source));
+  EXPECT_EQ(builder.BoxModelCount(), 0u);
+  EXPECT_EQ(builder.CurrentDisplayList().GetContentItemsData(), nullptr);
+  RoundedRectangle box;
+  int32_t index;
+  builder.RecordBoxModel(box, index);
+  EXPECT_EQ(index, 0);
+  EXPECT_TRUE(builder.AppendDrawingContent(source));
+  EXPECT_EQ(builder.BoxModelCount(), 1u);
+}
+
+TEST(DisplayListBuilderDrawingAppendTest,
+     InvalidSourcePreservesNextBoxAndOwner) {
+  for (int invalid = 0; invalid < 4; ++invalid) {
+    SCOPED_TRACE(invalid);
+    DisplayListBuilder builder(3, 4);
+    RoundedRectangle box;
+    int32_t index;
+    builder.RecordBoxModel(box, index);
+    builder.LinearGradient(90, {1, 2}, {0, 1}, 0, 0, 1, 1);
+    builder.Opacity(0.5f).MarkRootNeedClipBounds();
+    const auto before_state = BuilderDrawingState(builder);
+    const auto& before = builder.CurrentDisplayList();
+    const std::vector<uint8_t> items(
+        before.GetContentItemsData(),
+        before.GetContentItemsData() + before.GetContentItemsByteSize());
+    const std::vector<uint8_t> data(
+        before.GetContentData(),
+        before.GetContentData() + before.GetContentDataSize());
+    DisplayList source;
+    DisplayListItem item{};
+    item.type = DisplayListOpType::kRecordBox;
+    source.AppendItem(item);
+    if (invalid == 0) source.MarkRootNeedClipBounds();
+    if (invalid == 1) {
+      item.type = DisplayListOpType::kFill;
+      item.payload.fill.clip_index = 1;
+      source.AppendItem(item);
+    }
+    if (invalid == 2) {
+      item.type = static_cast<DisplayListOpType>(12345);
+      source.AppendItem(item);
+    }
+    const auto& input = invalid == 3 ? builder.CurrentDisplayList() : source;
+    EXPECT_FALSE(builder.AppendDrawingContent(input));
+    const auto& after = builder.CurrentDisplayList();
+    EXPECT_EQ(items, std::vector<uint8_t>(after.GetContentItemsData(),
+                                          after.GetContentItemsData() +
+                                              after.GetContentItemsByteSize()));
+    EXPECT_EQ(data, std::vector<uint8_t>(
+                        after.GetContentData(),
+                        after.GetContentData() + after.GetContentDataSize()));
+    EXPECT_EQ(after.GetSubtreePropertiesSize(), 1u);
+    EXPECT_EQ(after.GetSubtreePropertiesData()[0].data.opacity, 0.5f);
+    EXPECT_TRUE(after.RootNeedClipBounds());
+    EXPECT_EQ(after.GetRenderOffset()[0], 3);
+    EXPECT_EQ(after.GetRenderOffset()[1], 4);
+    EXPECT_EQ(builder.BoxModelCount(), 1u);
+    ::testing::Test::RecordProperty(
+        "rejection_" + std::to_string(invalid),
+        "{\"before\":" + before_state +
+            ",\"after\":" + BuilderDrawingState(builder) + "}");
+    builder.RecordBoxModel(box, index);
+    EXPECT_EQ(index, 1);
+  }
+}
+
+TEST(DisplayListBuilderDrawingAppendTest, OverflowPreservesCounterAndBuffers) {
+  DisplayListBuilder builder;
+  builder.current_index_of_box_model = std::numeric_limits<int32_t>::max();
+  const auto before = BuilderDrawingState(builder);
+  DisplayList source;
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kRecordBox;
+  source.AppendItem(item);
+  EXPECT_FALSE(builder.AppendDrawingContent(source));
+  EXPECT_EQ(builder.BoxModelCount(),
+            static_cast<size_t>(std::numeric_limits<int32_t>::max()));
+  EXPECT_EQ(builder.CurrentDisplayList().GetContentItemsData(), nullptr);
+  EXPECT_EQ(builder.CurrentDisplayList().GetContentData(), nullptr);
+  ::testing::Test::RecordProperty(
+      "rejection", "{\"before\":" + before +
+                       ",\"after\":" + BuilderDrawingState(builder) + "}");
+  DisplayList empty;
+  EXPECT_TRUE(builder.AppendDrawingContent(empty));
+  EXPECT_EQ(builder.BoxModelCount(),
+            static_cast<size_t>(std::numeric_limits<int32_t>::max()));
 }
 
 }  // namespace tasm

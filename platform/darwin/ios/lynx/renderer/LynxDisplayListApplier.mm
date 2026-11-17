@@ -140,6 +140,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   CALayer *_refLayer;
   CALayer *_hostDecorationRefLayer;
   CALayer *_hostBackgroundLayer;
+  BOOL _hasDrawnContent;
 
   NSMutableArray<UIImageView *> *_contentImageViews;
   NSMutableSet<UIView *> *_previousImageViews;
@@ -250,6 +251,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         if (static_cast<NSUInteger>(view_index) < hostSubviewsSnapshot.count) {
           refView = hostSubviewsSnapshot[view_index++];
           _refLayer = refView.layer;
+          _hasDrawnContent = YES;
         } else {
           refView = nil;
           _refLayer = nil;
@@ -368,6 +370,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
         // Image layers are owned and removed through their views.
         [self positionImageLayer:imageLayer reused:reused];
+        _hasDrawnContent = YES;
         if (reused) [_previousImageViews removeObject:imageView];
 
         refView = imageView;
@@ -610,6 +613,9 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kClipRect: {
+        // Following decorations belong inside the clipped host, not in below-host siblings.
+        // Leave decorations emitted before this clip (such as outset shadows) outside it.
+        _hasDrawnContent = YES;
         // Clear previous clip state to avoid state leakage when multiple kClipRect in same frame
         _view.layer.mask = nil;
         _view.layer.cornerRadius = 0;
@@ -682,6 +688,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kLinearGradient: {
+        const int32_t innerPlusOne = item.payload.linear_gradient.inner_clip_index_plus_one;
+        if (innerPlusOne < 0 || static_cast<size_t>(innerPlusOne) > box_array_.size()) {
+          break;
+        }
         int32_t color_count = item.payload.linear_gradient.color_count;
         int32_t stop_count = item.payload.linear_gradient.stop_count;
 
@@ -719,6 +729,30 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
                                                                   clipBox:box_array_[clip_index]
                                                                   repeatX:repeat_x
                                                                   repeatY:repeat_y];
+        if (gradientLayer != nil && innerPlusOne > 0) {
+          const auto &outer = box_array_[clip_index];
+          const auto &inner = box_array_[innerPlusOne - 1];
+          CGRect outerRect = CGRectMake(0, 0, outer.GetWidth(), outer.GetHeight());
+          CGRect innerRect = CGRectMake(inner.GetX() - outer.GetX(), inner.GetY() - outer.GetY(),
+                                        inner.GetWidth(), inner.GetHeight());
+          CGPathRef outerPath = [LynxBackgroundUtils
+              createBezierPathWithRoundedRect:outerRect
+                                  borderRadii:[self borderRadiiWithRoundedRectangle:outer]];
+          CGPathRef innerPath = [LynxBackgroundUtils
+              createBezierPathWithRoundedRect:innerRect
+                                  borderRadii:[self borderRadiiWithRoundedRectangle:inner]];
+          CGMutablePathRef path = CGPathCreateMutable();
+          CGPathAddPath(path, nullptr, outerPath);
+          CGPathAddPath(path, nullptr, innerPath);
+          CAShapeLayer *mask = [CAShapeLayer layer];
+          mask.frame = outerRect;
+          mask.fillRule = kCAFillRuleEvenOdd;
+          mask.path = path;
+          gradientLayer.mask = mask;
+          CGPathRelease(path);
+          CGPathRelease(innerPath);
+          CGPathRelease(outerPath);
+        }
         if (gradientLayer != nil) {
           [self insertLayer:gradientLayer forOp:op];
         }
@@ -834,6 +868,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   _refLayer = nil;
   _hostDecorationRefLayer = nil;
   _hostBackgroundLayer = nil;
+  _hasDrawnContent = NO;
   sign_stack_ = std::stack<int32_t>();
   x_stack_ = std::stack<float>();
   y_stack_ = std::stack<float>();
@@ -1176,6 +1211,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)insertLayer:(CALayer *)layer {
+  _hasDrawnContent = YES;
   if (_refLayer == nil) {
     [_view.layer insertSublayer:layer atIndex:0];
   } else {
@@ -1231,6 +1267,9 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (BOOL)shouldInsertAsHostDecorationForOp:(DisplayListOpType)op {
+  // Decorations before a clip or content retain their below-host placement. Foreground
+  // commands must instead follow the text/image/native child in display order.
+  if (_hasDrawnContent) return NO;
   if (sign_stack_.empty() || sign_stack_.top() != _view.renderer.sign) {
     return NO;
   }

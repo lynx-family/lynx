@@ -1668,7 +1668,13 @@ class Element : public lepus::RefCounted,
   virtual void MarkAttached() { state_ = State::kAttached; }
   virtual bool IsAttached() const { return state_ == State::kAttached; }
 
-  virtual void MarkDetached() { state_ = State::kDetached; }
+  virtual void MarkDetached() {
+    state_ = State::kDetached;
+    if (custom_draw_functions_) ++custom_draw_detach_generation_;
+  }
+  uint64_t CustomDrawDetachGeneration() const {
+    return custom_draw_detach_generation_;
+  }
   virtual bool IsDetached() const { return state_ == State::kDetached; }
   virtual void SetupFragmentBehavior(Fragment* fragment);
 
@@ -2364,6 +2370,7 @@ class Element : public lepus::RefCounted,
 
   std::unique_ptr<BaseElementContainer> element_container_;
   std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
+  uint64_t custom_draw_detach_generation_{0};
   std::unique_ptr<gfx::Matrix44> custom_layer_transform_;
 
   fml::RefPtr<AttributeHolder> data_model_;

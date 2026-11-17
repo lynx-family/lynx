@@ -62,11 +62,151 @@ void DisplayList::AppendItem(const DisplayListItem& item) {
   content_items_->push_back(item);
 }
 
+bool DisplayList::CanAppendDrawingContentSizes(
+    size_t item_count, size_t data_size, size_t source_item_count,
+    size_t source_data_size, size_t box_index_base, size_t source_box_count) {
+  constexpr size_t kMax = std::numeric_limits<int32_t>::max();
+  constexpr size_t kMaxItems = kMax / sizeof(DisplayListItem);
+  return item_count <= kMaxItems &&
+         source_item_count <= kMaxItems - item_count && data_size <= kMax &&
+         source_data_size <= kMax - data_size && box_index_base <= kMax &&
+         source_box_count <= kMax - box_index_base;
+}
+
+bool DisplayList::AppendDrawingContent(const DisplayList& source,
+                                       int32_t box_index_base,
+                                       size_t& appended_box_count) {
+  const size_t item_count = GetContentItemsSize();
+  const size_t data_size = GetContentDataSize();
+  const size_t source_item_count = source.GetContentItemsSize();
+  const size_t source_data_size = source.GetContentDataSize();
+  if (this == &source || box_index_base < 0 || source.render_offset_[0] != 0 ||
+      source.render_offset_[1] != 0 || source.GetSubtreePropertiesSize() != 0 ||
+      !source.sub_layers_.empty() || source.GetPathCount() != 0 ||
+      !source.images_.empty() || source.root_need_clip_bounds_ ||
+      !CanAppendDrawingContentSizes(item_count, data_size, source_item_count,
+                                    source_data_size, box_index_base, 0)) {
+    return false;
+  }
+
+  size_t box_count = 0;
+  const auto prior_box = [&box_count](int32_t index) {
+    return index >= 0 && static_cast<size_t>(index) < box_count;
+  };
+  const auto valid_range = [source_data_size, data_size](uint32_t offset,
+                                                         uint32_t count) {
+    if (count == 0) return offset == 0;
+    return offset % sizeof(uint32_t) == 0 &&
+           data_size % sizeof(uint32_t) == 0 && offset <= source_data_size &&
+           count <= (source_data_size - offset) / sizeof(uint32_t);
+  };
+  const auto* source_items =
+      reinterpret_cast<const DisplayListItem*>(source.GetContentItemsData());
+  for (size_t i = 0; i < source_item_count; ++i) {
+    const auto& item = source_items[i];
+    switch (item.type) {
+      case DisplayListOpType::kRecordBox:
+        ++box_count;
+        break;
+      case DisplayListOpType::kFill:
+        if (item.payload.fill.clip_index != -1 &&
+            !prior_box(item.payload.fill.clip_index)) {
+          return false;
+        }
+        break;
+      case DisplayListOpType::kBorder:
+        if (!prior_box(item.payload.border.out_index) ||
+            !prior_box(item.payload.border.inner_index)) {
+          return false;
+        }
+        break;
+      case DisplayListOpType::kLinearGradient: {
+        const auto& gradient = item.payload.linear_gradient;
+        if (!prior_box(gradient.tiling_index) ||
+            !prior_box(gradient.clip_index) ||
+            gradient.inner_clip_index_plus_one < 0 ||
+            static_cast<size_t>(gradient.inner_clip_index_plus_one) >
+                box_count ||
+            !valid_range(gradient.color_count_offset, gradient.color_count) ||
+            !valid_range(gradient.stop_count_offset, gradient.stop_count)) {
+          return false;
+        }
+        break;
+      }
+      case DisplayListOpType::kBoxShadow: {
+        const auto& shadow = item.payload.box_shadow;
+        if (!prior_box(shadow.shadow_box_index) ||
+            !prior_box(shadow.clip_box_index) ||
+            (shadow.clip_mode != 0 && shadow.clip_mode != 1)) {
+          return false;
+        }
+        break;
+      }
+      case DisplayListOpType::kClipRect:
+        break;
+      default:
+        return false;
+    }
+  }
+  if (!CanAppendDrawingContentSizes(item_count, data_size, source_item_count,
+                                    source_data_size, box_index_base,
+                                    box_count)) {
+    return false;
+  }
+
+  if (source_data_size != 0) {
+    content_data_->append(source.GetContentData(), source_data_size);
+  }
+  if (source_item_count != 0) {
+    content_items_->append(source_items,
+                           source_item_count * sizeof(DisplayListItem));
+    for (size_t i = item_count; i < content_items_->size(); ++i) {
+      auto& item = (*content_items_)[i];
+      switch (item.type) {
+        case DisplayListOpType::kFill:
+          if (item.payload.fill.clip_index != -1)
+            item.payload.fill.clip_index += box_index_base;
+          break;
+        case DisplayListOpType::kBorder:
+          item.payload.border.out_index += box_index_base;
+          item.payload.border.inner_index += box_index_base;
+          break;
+        case DisplayListOpType::kLinearGradient: {
+          auto& gradient = item.payload.linear_gradient;
+          gradient.tiling_index += box_index_base;
+          gradient.clip_index += box_index_base;
+          if (gradient.inner_clip_index_plus_one != 0)
+            gradient.inner_clip_index_plus_one += box_index_base;
+          if (gradient.color_count != 0)
+            gradient.color_count_offset += static_cast<uint32_t>(data_size);
+          if (gradient.stop_count != 0)
+            gradient.stop_count_offset += static_cast<uint32_t>(data_size);
+          break;
+        }
+        case DisplayListOpType::kBoxShadow:
+          item.payload.box_shadow.shadow_box_index += box_index_base;
+          item.payload.box_shadow.clip_box_index += box_index_base;
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  appended_box_count = box_count;
+  return true;
+}
+
 void DisplayList::AddLinearGradient(float angle,
                                     const base::Vector<uint32_t>& colors,
                                     const base::Vector<float>& stops,
                                     int32_t tiling_index, int32_t clip_index,
-                                    int32_t repeat_x, int32_t repeat_y) {
+                                    int32_t repeat_x, int32_t repeat_y,
+                                    int32_t inner_clip_index) {
+  // Reject before appending either items or trailing data, without overflow.
+  if (inner_clip_index < -1 ||
+      inner_clip_index == std::numeric_limits<int32_t>::max()) {
+    return;
+  }
   DisplayListItem item{};
   item.type = DisplayListOpType::kLinearGradient;
 
@@ -98,6 +238,7 @@ void DisplayList::AddLinearGradient(float angle,
   item.payload.linear_gradient.repeat_x = repeat_x;
   item.payload.linear_gradient.repeat_y = repeat_y;
   item.payload.linear_gradient.angle = angle;
+  item.payload.linear_gradient.inner_clip_index_plus_one = inner_clip_index + 1;
 
   AppendItem(item);
 }

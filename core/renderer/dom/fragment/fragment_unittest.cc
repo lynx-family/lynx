@@ -9,8 +9,10 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <limits>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -25,6 +27,7 @@
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/testing/compose_draw_recording_contract_test_helpers.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -1816,10 +1819,19 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
 
 class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
  public:
+  static std::string V1(
+      const std::string& commands = "[[1,0,0]]",
+      const std::string& paths = "[[1,10,20,width-10,height-20]]",
+      const std::string& paints = "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+      const std::string& features =
+          "['paint.blend.SrcOver','paint.solid','paint.srgb','path.rect']") {
+    return "['lynx.draw.recording',1,0," + commands + "," + paths + "," +
+           paints + ",[]," + features + ",[]]";
+  }
   lepus::Value Behind(const std::string& expression,
-                      const lepus::Value& previous = {}) {
+                      const lepus::Value& previous = {}, int op = 12) {
     auto node = lepus::Dictionary::Create();
-    node->SetValue("op", lepus::Value(12));
+    node->SetValue("op", lepus::Value(op));
     node->SetValue("previous", previous);
     node->SetValue(
         "resolve",
@@ -1851,14 +1863,1638 @@ class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
   }
 };
 
+class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
+ public:
+  static std::vector<uint32_t> Fills(const DisplayList& list) {
+    std::vector<uint32_t> fills;
+    DisplayListReader reader(list);
+    while (reader.HasNext()) {
+      const auto& item = reader.Next();
+      if (item.type == DisplayListOpType::kFill)
+        fills.push_back(item.payload.fill.color);
+    }
+    return fills;
+  }
+  void Rebind(const lepus::Value& node) {
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(handle_.get(), node, runtime_.get())
+            .success);
+    page_->FlushActionsAsRoot();
+  }
+};
+
+class ComposeDrawReuseIntegrationTest
+    : public ComposeDrawRecordingIntegrationTest {
+ public:
+  void SetUp() override {
+    ComposeDrawRecordingIntegrationTest::SetUp();
+    active_ = this;
+    runtime::MTSRuntime::ToQuickContext(runtime_.get())
+        ->RegisterGlobalFunction(
+            "nativeDrawAction",
+            [](LEPUSContext*, LEPUSValue, int, LEPUSValue*) {
+              if (active_->during_resolve_) active_->during_resolve_();
+              return LEPUS_UNDEFINED;
+            });
+    Eval("globalThis.reuseFlags=[]; globalThis.legacyCalls=0;");
+  }
+
+  void TearDown() override {
+    during_resolve_ = nullptr;
+    active_ = nullptr;
+    ComposeDrawRecordingIntegrationTest::TearDown();
+  }
+
+  lepus::Value Cached(const std::string& body,
+                      const lepus::Value& previous = {}, int op = 12) {
+    auto node = Behind("(globalThis.legacyCalls++," + V1() + ")", previous, op);
+    node.SetProperty("resolveWithCache",
+                     Eval("(function(element,width,height,canReuse) {"
+                          "globalThis.reuseFlags.push(canReuse);"
+                          "globalThis.reuseArgCount=arguments.length;" +
+                          body + "})"));
+    return node;
+  }
+
+  DisplayList Resolve(Element* element, int op = 12) {
+    DisplayListBuilder builder;
+    if (op == 17)
+      element->fragment_impl()->DrawForeground(builder);
+    else
+      element->fragment_impl()->DrawBehind(builder);
+    return builder.Build();
+  }
+
+  void ExpectFlags(const char* expected) {
+    EXPECT_EQ(Eval("JSON.stringify(globalThis.reuseFlags)").StringView(),
+              expected);
+    RecordProperty("reuse_flags",
+                   Eval("JSON.stringify(globalThis.reuseFlags)").StdString());
+    RecordProperty("aware_arity", Eval("globalThis.reuseArgCount||0").Number());
+  }
+
+  void Capture(const std::string& name, const DisplayList& list) {
+    std::ostringstream out;
+    out << "{\"shadow\":"
+        << handle_->content_element()
+               ->fragment_impl()
+               ->custom_outset_shadow_drawn_
+        << ",\"root_clip\":" << list.RootNeedClipBounds() << ",\"items\":[";
+    DisplayListReader reader(list);
+    bool first = true;
+    while (reader.HasNext()) {
+      const auto& item = reader.Next();
+      if (!first) out << ',';
+      first = false;
+      out << '[' << static_cast<int>(item.type);
+      if (item.type == DisplayListOpType::kRecordBox) {
+        const auto& box = item.payload.record_box;
+        out << ',' << box.x << ',' << box.y << ',' << box.w << ',' << box.h;
+        for (float radius : box.radii) out << ',' << radius;
+      } else if (item.type == DisplayListOpType::kFill) {
+        out << ',' << item.payload.fill.color << ','
+            << item.payload.fill.clip_index;
+      } else if (item.type == DisplayListOpType::kLinearGradient) {
+        const auto& gradient = item.payload.linear_gradient;
+        out << ',' << gradient.angle << ',' << gradient.tiling_index << ','
+            << gradient.clip_index << ',' << gradient.inner_clip_index_plus_one
+            << ',' << gradient.color_count_offset << ','
+            << gradient.stop_count_offset;
+        for (size_t i = 0; i < gradient.color_count; ++i)
+          out << ',' << reader.Colors(item)[i] << ',' << reader.Stops(item)[i];
+      } else if (item.type == DisplayListOpType::kBoxShadow) {
+        const auto& shadow = item.payload.box_shadow;
+        out << ',' << shadow.shadow_box_index << ',' << shadow.clip_box_index
+            << ',' << shadow.color << ',' << shadow.blur_radius << ','
+            << shadow.clip_mode;
+      }
+      out << ']';
+    }
+    out << "]}";
+    RecordProperty(name, out.str());
+  }
+
+  inline static ComposeDrawReuseIntegrationTest* active_ = nullptr;
+  std::function<void()> during_resolve_;
+};
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListCopiesDuringResolveStartColdThenWarmIndependently) {
+  for (bool primed : {false, true}) {
+    SCOPED_TRACE(primed);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Eval("globalThis.reuseFlags=[];");
+    Install(Cached(
+        "nativeDrawAction();return canReuse?'lynx.draw.reuse-last':" + V1() +
+        ";"));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    auto* fragment = content->fragment_impl();
+    if (primed)
+      ASSERT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    std::function<void(Fragment&, DisplayListBuilder&)> copied;
+    during_resolve_ = [&] {
+      copied = fragment->GetCustomDrawFunctions()->draw_behind;
+    };
+    const auto original = Resolve(content);
+    EXPECT_THAT(Fills(original), ::testing::ElementsAre(0x40123456u));
+    Capture(primed ? "warm_original" : "cold_original", original);
+    during_resolve_ = nullptr;
+    ASSERT_TRUE(copied);
+    for (int prefix = 1; prefix <= 2; ++prefix) {
+      DisplayListBuilder builder;
+      for (int i = 0; i < prefix; ++i)
+        testing::contract_fixture::Prefix(&builder);
+      const auto& before = builder.CurrentDisplayList();
+      const std::vector<uint8_t> bytes(
+          before.GetContentItemsData(),
+          before.GetContentItemsData() + before.GetContentItemsByteSize());
+      const std::vector<uint8_t> data(
+          before.GetContentData(),
+          before.GetContentData() + before.GetContentDataSize());
+      copied(*fragment, builder);
+      EXPECT_EQ(builder.BoxModelCount(), static_cast<size_t>(prefix + 1));
+      const auto list = builder.Build();
+      Capture(std::string(primed ? "warm_copy_" : "cold_copy_") +
+                  std::to_string(prefix),
+              list);
+      EXPECT_EQ(std::vector<uint8_t>(list.GetContentItemsData(),
+                                     list.GetContentItemsData() + bytes.size()),
+                bytes);
+      EXPECT_EQ(std::vector<uint8_t>(list.GetContentData(),
+                                     list.GetContentData() + data.size()),
+                data);
+      EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+      const auto items = CollectDisplayListItems(list);
+      ASSERT_EQ(items.size(), static_cast<size_t>(prefix * 3 + 2));
+      const auto& box = items[items.size() - 2];
+      EXPECT_EQ(box.type, DisplayListOpType::kRecordBox);
+      EXPECT_FLOAT_EQ(box.payload.record_box.x, 10);
+      EXPECT_FLOAT_EQ(box.payload.record_box.y, 20);
+      EXPECT_FLOAT_EQ(box.payload.record_box.w, 90);
+      EXPECT_FLOAT_EQ(box.payload.record_box.h, 40);
+      EXPECT_EQ(items.back().type, DisplayListOpType::kFill);
+      EXPECT_EQ(items.back().payload.fill.color, 0x40123456u);
+      EXPECT_EQ(items.back().payload.fill.clip_index, prefix);
+      EXPECT_FALSE(fragment->custom_outset_shadow_drawn_);
+      EXPECT_EQ(Eval("globalThis.reuseArgCount").Number(), 4);
+    }
+    const auto after = Resolve(content);
+    EXPECT_THAT(Fills(after), ::testing::ElementsAre(0x40123456u));
+    Capture(primed ? "warm_original_after" : "cold_original_after", after);
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+    RecordProperty(primed ? "warm_copy_flags" : "cold_copy_flags",
+                   Eval("JSON.stringify(globalThis.reuseFlags)").StdString());
+    ExpectFlags(primed ? "[false,true,false,true,true]"
+                       : "[false,false,true,true]");
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListTwoPrefixesRelocateImmutableBorderAndShadow) {
+  const auto wire = V1(
+      "[[1,2,0],[9,0,0,-2,3,4,1,0,1]]",
+      "[[2,0,0,40,20,4,4,4,4,4,4,4,4],[2,2,2,36,16,2,2,2,2,2,2,2,2],[3,0,1]]",
+      "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+      "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
+      "'path.border-clip','path.roundrect']");
+  Install(
+      Cached("if(canReuse)return 'lynx.draw.reuse-last';"
+             "globalThis.sourceWire=" +
+             wire + ";return globalThis.sourceWire;"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  for (int prefix : {1, 3, 1}) {
+    fragment->custom_outset_shadow_drawn_ = false;
+    DisplayListBuilder builder;
+    for (int i = 0; i < prefix; ++i) {
+      testing::contract_fixture::Prefix(&builder);
+    }
+    const auto bytes = builder.CurrentDisplayList().GetContentItemsByteSize();
+    const auto data = builder.CurrentDisplayList().GetContentDataSize();
+    const auto& before = builder.CurrentDisplayList();
+    const std::vector<uint8_t> prefix_items(
+        before.GetContentItemsData(), before.GetContentItemsData() + bytes);
+    const std::vector<uint8_t> prefix_data(before.GetContentData(),
+                                           before.GetContentData() + data);
+    fragment->DrawBehind(builder);
+    EXPECT_EQ(builder.BoxModelCount(), static_cast<size_t>(prefix + 4));
+    EXPECT_TRUE(fragment->custom_outset_shadow_drawn_);
+    const auto list = builder.Build();
+    EXPECT_EQ(std::vector<uint8_t>(list.GetContentItemsData(),
+                                   list.GetContentItemsData() + bytes),
+              prefix_items);
+    EXPECT_EQ(std::vector<uint8_t>(list.GetContentData(),
+                                   list.GetContentData() + data),
+              prefix_data);
+    Capture("prefix_" + std::to_string(prefix), list);
+    DisplayListReader reader(list);
+    size_t offset = 0;
+    int borders = 0;
+    int shadows = 0;
+    while (reader.HasNext()) {
+      const auto& item = reader.Next();
+      if (offset++ * sizeof(DisplayListItem) < bytes) continue;
+      if (item.type == DisplayListOpType::kBorder) {
+        ++borders;
+        EXPECT_EQ(item.payload.border.out_index, prefix);
+        EXPECT_EQ(item.payload.border.inner_index, prefix + 1);
+        for (unsigned i = 0; i < 4; ++i) {
+          EXPECT_EQ(item.payload.border.colors[i], 0x40123456u);
+          EXPECT_EQ(item.payload.border.styles[i],
+                    static_cast<int32_t>(starlight::BorderStyleType::kSolid));
+        }
+      } else if (item.type == DisplayListOpType::kBoxShadow) {
+        ++shadows;
+        EXPECT_EQ(item.payload.box_shadow.clip_box_index, prefix + 2);
+        EXPECT_EQ(item.payload.box_shadow.shadow_box_index, prefix + 3);
+        EXPECT_EQ(item.payload.box_shadow.color, 0x40123456u);
+        EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
+      }
+    }
+    EXPECT_EQ(borders, 1);
+    EXPECT_EQ(shadows, 1);
+    Eval("globalThis.sourceWire[5][0][0][1]=0;");
+  }
+  ExpectFlags("[false,true,true]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListFullWarmEmptyWarmReplacesPriorOutput) {
+  Install(Cached("if(globalThis.empty)return " + V1("[]", "[]", "[]", "[]") +
+                 ";return canReuse?'lynx.draw.reuse-last':" + V1() + ";"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (int stage = 0; stage < 4; ++stage) {
+    Eval(std::string("globalThis.empty=") + (stage == 2 ? "true" : "false"));
+    auto list = Resolve(content);
+    Capture("stage_" + std::to_string(stage), list);
+    if (stage < 2) {
+      EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+    } else {
+      EXPECT_EQ(list.GetContentItemsSize(), 0u);
+    }
+  }
+  ExpectFlags("[false,true,true,true]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListWidthHeightAndScaleKeyChangesRequestFreshWire) {
+  Install(Cached("return canReuse?'lynx.draw.reuse-last':" +
+                 V1("[[1,0,0]]", "[[1,0,0,width,height]]") + ";"));
+  auto* content = handle_->content_element().get();
+  int stage = 0;
+  for (float scale : {1.f, 2.f, 3.f}) {
+    manager->lynx_env_config_.UpdateDevicePixelRatio(scale);
+    for (auto size : {std::pair<float, float>{100, 60}, {120, 60}, {120, 80}}) {
+      Size(content, size.first, size.second);
+      for (int warm = 0; warm < 2; ++warm) {
+        const auto list = Resolve(content);
+        Capture("key_" + std::to_string(stage++), list);
+        const auto items = CollectDisplayListItems(list);
+        ASSERT_EQ(items.size(), 2u);
+        EXPECT_EQ(items[0].type, DisplayListOpType::kRecordBox);
+        EXPECT_FLOAT_EQ(items[0].payload.record_box.w, size.first);
+        EXPECT_FLOAT_EQ(items[0].payload.record_box.h, size.second);
+        EXPECT_EQ(items[1].payload.fill.color, 0x40123456u);
+      }
+    }
+  }
+  ExpectFlags(
+      "[false,true,false,true,false,true,false,true,false,true,false,"
+      "true,false,true,false,true,false,true]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListWarmAppendCapacityRejectsAtomicallyAndClearsEligibility) {
+  Install(Cached(
+      "return globalThis.forceReuse||canReuse?'lynx.draw.reuse-last':" + V1() +
+      ";"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  auto* fragment = content->fragment_impl();
+  for (bool flag : {false, true}) {
+    DisplayListBuilder builder;
+    testing::contract_fixture::Prefix(&builder);
+    const auto& before = builder.CurrentDisplayList();
+    const std::vector<uint8_t> bytes(
+        before.GetContentItemsData(),
+        before.GetContentItemsData() + before.GetContentItemsByteSize());
+    const std::vector<uint8_t> data(
+        before.GetContentData(),
+        before.GetContentData() + before.GetContentDataSize());
+    builder.current_index_of_box_model = INT32_MAX;
+    fragment->custom_outset_shadow_drawn_ = flag;
+    fragment->DrawBehind(builder);
+    const auto& after = builder.CurrentDisplayList();
+    EXPECT_EQ(std::vector<uint8_t>(after.GetContentItemsData(),
+                                   after.GetContentItemsData() +
+                                       after.GetContentItemsByteSize()),
+              bytes);
+    EXPECT_EQ(std::vector<uint8_t>(
+                  after.GetContentData(),
+                  after.GetContentData() + after.GetContentDataSize()),
+              data);
+    EXPECT_EQ(builder.BoxModelCount(), static_cast<size_t>(INT32_MAX));
+    EXPECT_EQ(fragment->custom_outset_shadow_drawn_, flag);
+    Capture(flag ? "capacity_flag_true" : "capacity_flag_false", after);
+    Eval("globalThis.forceReuse=true;");
+    EXPECT_TRUE(Fills(Resolve(content)).empty());
+    Eval("globalThis.forceReuse=false;");
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  }
+  ExpectFlags("[false,true,false,false,true,false,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListInvalidAppendAlignmentRejectsAndNextCallIsCold) {
+  const auto wire =
+      V1("[[1,2,0]]", "[[1,0,0,40,20],[1,2,2,36,16],[3,0,1]]",
+         "[[[2,0,0,40,0,[0xff000000,0xffffffff],[0,1],0,[1,0,0,1,0,0]],"
+         "[1,0,true,null],[1],[]]]");
+  Install(Cached(
+      "return globalThis.forceReuse||canReuse?'lynx.draw.reuse-last':" + wire +
+      ";"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  EXPECT_EQ(Resolve(content).GetContentItemsSize(), 4u);
+  DisplayListBuilder builder;
+  testing::contract_fixture::Prefix(&builder);
+  builder.display_list_.content_data_->push_back(0xab);
+  const auto& before = builder.CurrentDisplayList();
+  const std::vector<uint8_t> bytes(
+      before.GetContentItemsData(),
+      before.GetContentItemsData() + before.GetContentItemsByteSize());
+  const std::vector<uint8_t> data(
+      before.GetContentData(),
+      before.GetContentData() + before.GetContentDataSize());
+  fragment->custom_outset_shadow_drawn_ = false;
+  fragment->DrawBehind(builder);
+  const auto& after = builder.CurrentDisplayList();
+  EXPECT_EQ(std::vector<uint8_t>(
+                after.GetContentItemsData(),
+                after.GetContentItemsData() + after.GetContentItemsByteSize()),
+            bytes);
+  EXPECT_EQ(
+      std::vector<uint8_t>(after.GetContentData(),
+                           after.GetContentData() + after.GetContentDataSize()),
+      data);
+  EXPECT_EQ(builder.BoxModelCount(), 1u);
+  EXPECT_FALSE(fragment->custom_outset_shadow_drawn_);
+  Capture("invalid_append", after);
+  Eval("globalThis.forceReuse=true;");
+  EXPECT_EQ(Resolve(content).GetContentItemsSize(), 0u);
+  Eval("globalThis.forceReuse=false;");
+  EXPECT_EQ(Resolve(content).GetContentItemsSize(), 4u);
+  ExpectFlags("[false,true,false,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListCopiedCallbackTargetMismatchAndRemovalGoCold) {
+  const auto node =
+      Cached("return canReuse?'lynx.draw.reuse-last':" + V1() + ";");
+  Install(node);
+  auto original = handle_->content_element();
+  Size(original.get(), 100, 60);
+  EXPECT_THAT(Fills(Resolve(original.get())),
+              ::testing::ElementsAre(0x40123456u));
+  auto copied =
+      original->fragment_impl()->GetCustomDrawFunctions()->draw_behind;
+  Rebind({});
+  EXPECT_EQ(Resolve(original.get()).GetContentItemsSize(), 0u);
+  Rebind(node);
+  DisplayListBuilder first;
+  copied(*original->fragment_impl(), first);
+  EXPECT_THAT(Fills(first.Build()), ::testing::ElementsAre(0x40123456u));
+  auto other = manager->CreateFiberView();
+  other->SetCustomDrawFunctions(
+      *original->fragment_impl()->GetCustomDrawFunctions());
+  page_->InsertNode(other);
+  page_->FlushActionsAsRoot();
+  Size(other.get(), 100, 60);
+  DisplayListBuilder second;
+  copied(*other->fragment_impl(), second);
+  EXPECT_THAT(Fills(second.Build()), ::testing::ElementsAre(0x40123456u));
+  EXPECT_THAT(Fills(Resolve(original.get())),
+              ::testing::ElementsAre(0x40123456u));
+  DisplayListBuilder third;
+  copied(*original->fragment_impl(), third);
+  EXPECT_THAT(Fills(third.Build()), ::testing::ElementsAre(0x40123456u));
+  const auto weak = original->GetWeakTarget();
+  page_->RemoveNode(handle_->mount_root());
+  page_->FlushActionsAsRoot();
+  original = nullptr;
+  handle_ = nullptr;
+  EXPECT_FALSE(weak);
+  DisplayListBuilder after_destruction;
+  copied(*other->fragment_impl(), after_destruction);
+  EXPECT_THAT(Fills(after_destruction.Build()),
+              ::testing::ElementsAre(0x40123456u));
+  RecordProperty("old_target_destroyed", !weak);
+  ExpectFlags("[false,false,false,false,false,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListGetterLifecycleAndScaleDriftRejectBeforeAppend) {
+  for (const auto* action :
+       {"height", "scale", "detach", "rebind", "reenter"}) {
+    SCOPED_TRACE(action);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Eval("globalThis.reuseFlags=[];");
+    const auto node = Cached("const a=" + V1() +
+                             ";const tag=a[0];Object.defineProperty(a,0,{get(){"
+                             "nativeDrawAction();return tag;}});return a;");
+    Install(node);
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    during_resolve_ = [&] {
+      if (std::string(action) == "height") {
+        Size(content, 100, 80);
+      } else if (std::string(action) == "scale") {
+        manager->lynx_env_config_.UpdateDevicePixelRatio(3);
+      } else if (std::string(action) == "detach") {
+        content->MarkDetached();
+        content->MarkAttached();
+      } else if (std::string(action) == "rebind") {
+        Rebind(node);
+      } else {
+        EXPECT_TRUE(Fills(Resolve(content)).empty());
+      }
+    };
+    DisplayListBuilder builder;
+    testing::contract_fixture::Prefix(&builder);
+    const auto bytes = builder.CurrentDisplayList().GetContentItemsByteSize();
+    auto* fragment = content->fragment_impl();
+    fragment->custom_outset_shadow_drawn_ = false;
+    fragment->DrawBehind(builder);
+    EXPECT_EQ(builder.CurrentDisplayList().GetContentItemsByteSize(), bytes);
+    EXPECT_EQ(builder.BoxModelCount(), 1u);
+    EXPECT_FALSE(fragment->custom_outset_shadow_drawn_);
+    Capture(std::string("getter_") + action, builder.CurrentDisplayList());
+    during_resolve_ = nullptr;
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    ExpectFlags("[false,true,false]");
+    manager->lynx_env_config_.UpdateDevicePixelRatio(1);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListShadowMissHitAndFailurePreserveRootVisibility) {
+  const auto wire = V1("[[9,0,0,-2,3,4,1,0,1]]", "[[1,0,0,40,20]]",
+                       "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+                       "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                       "'paint.srgb','path.rect']");
+  Install(Style(kPropertyIDOverflow, "hidden",
+                Cached("if(globalThis.fail)return ['lynx.draw.recording',2];"
+                       "return canReuse?'lynx.draw.reuse-last':" +
+                       wire + ";")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  for (int stage = 0; stage < 4; ++stage) {
+    Eval(std::string("globalThis.fail=") + (stage >= 2 ? "true" : "false"));
+    fragment->InvalidateForRedraw();
+    fragment->Draw();
+    const auto* list =
+        context->GetNativePlatformRef()->GetDisplayListForRenderer(
+            fragment->id());
+    ASSERT_NE(list, nullptr);
+    Capture("shadow_" + std::to_string(stage), *list);
+    EXPECT_EQ(fragment->custom_outset_shadow_drawn_, stage < 2);
+    EXPECT_EQ(list->RootNeedClipBounds(), stage >= 2);
+    int shadows = 0;
+    for (const auto& item : CollectDisplayListItems(*list)) {
+      if (item.type != DisplayListOpType::kBoxShadow) continue;
+      ++shadows;
+      EXPECT_EQ(item.payload.box_shadow.color, 0x40123456u);
+      EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
+      EXPECT_EQ(item.payload.box_shadow.clip_mode, 0);
+    }
+    EXPECT_EQ(shadows, stage < 2 ? 1 : 0);
+  }
+  ExpectFlags("[false,true,true,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListKeyDriftDuringGetterRejectsAndNextCallIsCold) {
+  Install(Cached("const a=" + V1() +
+                 ";const tag=a[0];Object.defineProperty(a,0,{get(){"
+                 "nativeDrawAction();return tag;}});return a;"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  ASSERT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  during_resolve_ = [&] { Size(content, 120, 60); };
+  DisplayListBuilder builder;
+  testing::contract_fixture::Prefix(&builder);
+  const auto bytes = builder.CurrentDisplayList().GetContentItemsByteSize();
+  content->fragment_impl()->DrawBehind(builder);
+  EXPECT_EQ(builder.CurrentDisplayList().GetContentItemsByteSize(), bytes);
+  EXPECT_EQ(builder.BoxModelCount(), 1u);
+  during_resolve_ = nullptr;
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  ExpectFlags("[false,true,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FinalListDetachReattachWithoutDrawMustGoCold) {
+  Install(Cached("return canReuse?'lynx.draw.reuse-last':" + V1() + ";"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  content->MarkDetached();
+  content->MarkAttached();
+  page_->FlushActionsAsRoot();
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  ExpectFlags("[false,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       TenRebuildsOwnFinalListAndRefreshChangedScaleAndPrefix) {
+  Eval("globalThis.rootGets=0;globalThis.commandGets=0;");
+  Install(Cached(
+      "globalThis.lastSize=[width,height];"
+      "if(canReuse) return 'lynx.draw.reuse-last';const a=" +
+      V1("[[1,0,0]]", "[[1,10,20,90,40]]") +
+      ";const tag=a[0],command=a[3][0];"
+      "Object.defineProperty(a,0,{get(){globalThis.rootGets++;return tag;}});"
+      "Object.defineProperty(a[3],0,{get(){globalThis.commandGets++;return "
+      "command;}});"
+      "globalThis.sourceWire=a;return a;"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (int iteration = 0; iteration <= 10; ++iteration) {
+    SCOPED_TRACE(iteration);
+    const float pixels = 1 + iteration % 3;
+    manager->lynx_env_config_.UpdateDevicePixelRatio(pixels);
+    DisplayListBuilder builder;
+    for (int prefix = 0; prefix < iteration; ++prefix) {
+      RoundedRectangle box;
+      box.SetX(-100 - prefix);
+      int32_t index;
+      builder.RecordBoxModel(box, index);
+      ASSERT_EQ(index, prefix);
+    }
+    content->fragment_impl()->DrawBehind(builder);
+    const auto list = builder.Build();
+    EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+    int boxes = 0;
+    for (const auto& item : CollectDisplayListItems(list)) {
+      if (item.type == DisplayListOpType::kRecordBox) {
+        if (boxes++ != iteration) continue;
+        EXPECT_FLOAT_EQ(item.payload.record_box.x, 10 / pixels);
+        EXPECT_FLOAT_EQ(item.payload.record_box.y, 20 / pixels);
+        EXPECT_FLOAT_EQ(item.payload.record_box.w, 90 / pixels);
+        EXPECT_FLOAT_EQ(item.payload.record_box.h, 40 / pixels);
+      } else if (item.type == DisplayListOpType::kFill) {
+        EXPECT_EQ(item.payload.fill.clip_index, iteration);
+      }
+    }
+    EXPECT_EQ(boxes, iteration + 1);
+    EXPECT_EQ(Eval("globalThis.lastSize[0]").Number(), 100 * pixels);
+    EXPECT_EQ(Eval("globalThis.lastSize[1]").Number(), 60 * pixels);
+    EXPECT_EQ(Eval("globalThis.rootGets").Number(), iteration + 1);
+    EXPECT_EQ(Eval("globalThis.commandGets").Number(), iteration + 1);
+    Capture("scale_" + std::to_string(iteration), list);
+    Eval(
+        "globalThis.sourceWire[4][0][1]=999;"
+        "globalThis.sourceWire[5][0][0][1]=0;globalThis.sourceWire=null;");
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    EXPECT_EQ(Eval("globalThis.rootGets").Number(), iteration + 1);
+  }
+  EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+  EXPECT_EQ(Eval("globalThis.reuseArgCount").Number(), 4);
+  ExpectFlags(
+      "[false,true,false,true,false,true,false,true,false,true,false,"
+      "true,false,true,false,true,false,true,false,true,false,true]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       CopiedCallbacksShareOnlyImmutableFinalList) {
+  Install(
+      Cached("if(globalThis.fail)return null;"
+             "if(canReuse)return 'lynx.draw.reuse-last';"
+             "globalThis.sourceWire=" +
+             V1() + ";return globalThis.sourceWire;"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  ASSERT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  auto* fragment = content->fragment_impl();
+  auto copied = fragment->GetCustomDrawFunctions()->draw_behind;
+  Eval(
+      "globalThis.sourceWire[5][0][0][1]=0;"
+      "globalThis.sourceWire=null;globalThis.fail=true;");
+  EXPECT_TRUE(Fills(Resolve(content)).empty());
+  Eval("globalThis.fail=false;");
+  for (int iteration = 0; iteration < 2; ++iteration) {
+    DisplayListBuilder builder;
+    copied(*fragment, builder);
+    EXPECT_THAT(Fills(builder.Build()), ::testing::ElementsAre(0x40123456u));
+    if (iteration == 0)
+      EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  }
+  ExpectFlags("[false,true,true,false,true]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       EmptyRecordingCachesButNullMalformedAndExceptionsClearEligibility) {
+  Install(
+      Cached("switch(globalThis.mode){"
+             "case 'empty':return " +
+             V1("[]", "[]", "[]", "[]") + ";case 'full':return " + V1() +
+             ";case 'null':return null;case 'invalid':return "
+             "['lynx.draw.recording',2];"
+             "case 'throw':throw new Error('reuse resolver failure');"
+             "default:return 'lynx.draw.reuse-last';}"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (const auto* mode :
+       {"reuse", "empty", "reuse", "null", "reuse", "full", "invalid", "reuse",
+        "full", "throw", "reuse", "full", "reuse"}) {
+    SCOPED_TRACE(mode);
+    Eval("globalThis.mode='" + std::string(mode) + "'");
+    const auto list = Resolve(content);
+    const auto call = Eval("globalThis.reuseFlags.length").Number();
+    if (std::string(mode) == "full" || call == 13)
+      EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+    else
+      EXPECT_TRUE(Fills(list).empty());
+  }
+  ExpectFlags(
+      "[false,false,true,true,false,false,true,false,false,true,false,false,"
+      "true]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       PreparationFailureClearsCacheAndPreservesPrefixAndShadowFlag) {
+  const auto unsupported =
+      V1("[[2],[4,1,0,0,1,1,0],[1,0,0],[3]]", "[[1,0,0,40,20]]",
+         "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+         "['drawing.state','paint.blend.SrcOver','paint.solid','paint.srgb','"
+         "path.rect']");
+  Install(Cached(
+      "if(globalThis.unsupported)return " + unsupported +
+      ";return globalThis.forceReuse?'lynx.draw.reuse-last':" + V1() + ";"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  Eval("globalThis.unsupported=true;");
+  auto* fragment = content->fragment_impl();
+  fragment->custom_outset_shadow_drawn_ = true;
+  DisplayListBuilder builder;
+  testing::contract_fixture::Prefix(&builder);
+  const auto& prefix = builder.CurrentDisplayList();
+  const std::vector<uint8_t> bytes(
+      prefix.GetContentItemsData(),
+      prefix.GetContentItemsData() + prefix.GetContentItemsByteSize());
+  const std::vector<uint8_t> data(
+      prefix.GetContentData(),
+      prefix.GetContentData() + prefix.GetContentDataSize());
+  fragment->DrawBehind(builder);
+  const auto& after = builder.CurrentDisplayList();
+  EXPECT_EQ(std::vector<uint8_t>(
+                after.GetContentItemsData(),
+                after.GetContentItemsData() + after.GetContentItemsByteSize()),
+            bytes);
+  EXPECT_EQ(
+      std::vector<uint8_t>(after.GetContentData(),
+                           after.GetContentData() + after.GetContentDataSize()),
+      data);
+  EXPECT_EQ(builder.BoxModelCount(), 1u);
+  EXPECT_TRUE(fragment->custom_outset_shadow_drawn_);
+  Eval("globalThis.unsupported=false;globalThis.forceReuse=true;");
+  EXPECT_TRUE(Fills(Resolve(content)).empty());
+  Eval("globalThis.forceReuse=false;");
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  ExpectFlags("[false,true,false,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       FullFragmentSubmissionReusesIRAndProducerRebuildsForChangedSize) {
+  Install(
+      Cached("if(canReuse&&globalThis.savedWidth===width)return "
+             "'lynx.draw.reuse-last';"
+             "globalThis.savedWidth=width;globalThis.wireBuilds=(globalThis."
+             "wireBuilds||0)+1;"
+             "return " +
+             V1("[[1,0,0]]", "[[1,0,0,width,height]]") + ";"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  ASSERT_TRUE(fragment->has_platform_renderer_);
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* ref = context->GetNativePlatformRef();
+  for (int iteration = 0; iteration <= 10; ++iteration) {
+    SCOPED_TRACE(iteration);
+    fragment->InvalidateForRedraw();
+    fragment->Draw();
+    const auto* list = ref->GetDisplayListForRenderer(fragment->id());
+    ASSERT_NE(list, nullptr);
+    EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0x40123456u));
+    EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 1);
+  }
+  fragment->InvalidateForSubtreeProperty();
+  fragment->Draw();
+  EXPECT_EQ(Eval("globalThis.reuseFlags.length").Number(), 11);
+  const auto* retained = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(retained, nullptr);
+  EXPECT_THAT(Fills(*retained), ::testing::ElementsAre(0x40123456u));
+  Size(content, 120, 60);
+  fragment->Draw();
+  EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 2);
+  const auto* resized = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(resized, nullptr);
+  bool found = false;
+  for (const auto& item : CollectDisplayListItems(*resized)) {
+    if (item.type != DisplayListOpType::kRecordBox) continue;
+    found = true;
+    EXPECT_FLOAT_EQ(item.payload.record_box.w, 120);
+    EXPECT_FLOAT_EQ(item.payload.record_box.h, 60);
+  }
+  EXPECT_TRUE(found);
+  ExpectFlags(
+      "[false,true,true,true,true,true,true,true,true,true,true,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       LegacyResolverKeepsThreeArgumentsAndRejectsReuseControl) {
+  Install(
+      Behind("(globalThis.legacyArgCount=arguments.length,"
+             "globalThis.returnReuse?'lynx.draw.reuse-last':" +
+             V1() + ")"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  EXPECT_EQ(Eval("globalThis.legacyArgCount").Number(), 3);
+  Eval("globalThis.returnReuse=true;");
+  EXPECT_TRUE(Fills(Resolve(content)).empty());
+  EXPECT_EQ(Eval("globalThis.legacyArgCount").Number(), 3);
+  Eval("globalThis.returnReuse=false;");
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  ExpectFlags("[]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       JavaScriptModifierObjectsPreserveOptionalResolverCompatibility) {
+  const auto literal = [&](const std::string& optional) {
+    return Eval(
+        "({op:12,previous:null,"
+        "resolve:function(element,width,height){"
+        "globalThis.legacyCalls++;"
+        "globalThis.legacyArgCount=arguments.length;return " +
+        V1() + ";}" + optional + "})");
+  };
+  for (const auto* optional :
+       {"", ",resolveWithCache:null", ",resolveWithCache:undefined"}) {
+    SCOPED_TRACE(optional);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Eval("globalThis.legacyCalls=0;");
+    Install(literal(optional));
+    auto* content = handle_->content_element().get();
+    ASSERT_TRUE(content->IsAttached());
+    Size(content, 100, 60);
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 1);
+    EXPECT_EQ(Eval("globalThis.legacyArgCount").Number(), 3);
+  }
+  Eval("globalThis.legacyCalls=0;globalThis.reuseFlags=[];");
+  Rebind(
+      literal(",resolveWithCache:function(element,width,height,canReuse){"
+              "globalThis.reuseFlags.push(canReuse);"
+              "globalThis.reuseArgCount=arguments.length;"
+              "return canReuse?'lynx.draw.reuse-last':" +
+              V1() + ";}"));
+  auto* content = handle_->content_element().get();
+  for (int iteration = 0; iteration < 2; ++iteration)
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+  EXPECT_EQ(Eval("globalThis.reuseArgCount").Number(), 4);
+  ExpectFlags("[false,true]");
+  const auto invalid = literal(",resolveWithCache:42");
+  EXPECT_FALSE(
+      ComposeModifierApplicator::Apply(handle_.get(), invalid, runtime_.get())
+          .success);
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+  ExpectFlags("[false,true,true]");
+  EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       RebindDetachAndCloneCannotInheritAnotherBindingCache) {
+  const auto node =
+      Cached("return canReuse?'lynx.draw.reuse-last':" + V1() + ";");
+  Install(node);
+  auto content = handle_->content_element();
+  Size(content.get(), 100, 60);
+  EXPECT_THAT(Fills(Resolve(content.get())),
+              ::testing::ElementsAre(0x40123456u));
+  EXPECT_THAT(Fills(Resolve(content.get())),
+              ::testing::ElementsAre(0x40123456u));
+  Rebind(node);
+  EXPECT_THAT(Fills(Resolve(content.get())),
+              ::testing::ElementsAre(0x40123456u));
+  content->MarkDetached();
+  EXPECT_TRUE(Fills(Resolve(content.get())).empty());
+  content->MarkAttached();
+  EXPECT_THAT(Fills(Resolve(content.get())),
+              ::testing::ElementsAre(0x40123456u));
+  auto clone = content->CloneElement(false);
+  EXPECT_FALSE(clone->HasCustomDrawFunctions());
+  ExpectFlags("[false,true,false,false]");
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       CallbackDetachDirtyRebindAndReentryRejectInFlightCache) {
+  for (const auto* action : {"detach", "dirty", "rebind", "reenter"}) {
+    SCOPED_TRACE(action);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Eval("globalThis.reuseFlags=[];");
+    const auto node = Cached(
+        "nativeDrawAction();return canReuse?"
+        "'lynx.draw.reuse-last':" +
+        V1() + ";");
+    Install(node);
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    ASSERT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    int actions = 0;
+    during_resolve_ = [&]() {
+      ++actions;
+      if (std::string(action) == "detach") {
+        content->MarkDetached();
+      } else if (std::string(action) == "dirty") {
+        ASSERT_TRUE(ComposeModifierApplicator::Apply(handle_.get(), node,
+                                                     runtime_.get())
+                        .success);
+      } else if (std::string(action) == "rebind") {
+        Rebind(node);
+      } else {
+        EXPECT_TRUE(Fills(Resolve(content)).empty());
+      }
+    };
+    DisplayListBuilder builder;
+    testing::contract_fixture::Prefix(&builder);
+    const auto old_bytes =
+        builder.CurrentDisplayList().GetContentItemsByteSize();
+    const auto old_data = builder.CurrentDisplayList().GetContentDataSize();
+    content->fragment_impl()->DrawBehind(builder);
+    EXPECT_EQ(actions, 1);
+    EXPECT_EQ(builder.CurrentDisplayList().GetContentItemsByteSize(),
+              old_bytes);
+    EXPECT_EQ(builder.CurrentDisplayList().GetContentDataSize(), old_data);
+    EXPECT_EQ(builder.BoxModelCount(), 1u);
+    during_resolve_ = nullptr;
+    content->MarkAttached();
+    page_->FlushActionsAsRoot();
+    EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456u));
+    ExpectFlags("[false,true,false]");
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       ModifierBoundariesAndDrawPhasesHaveIndependentCaches) {
+  const auto behind = Cached(
+      "globalThis.behindFlags.push(canReuse);return canReuse?"
+      "'lynx.draw.reuse-last':" +
+      V1() + ";");
+  const auto foreground = Cached(
+      "globalThis.foregroundFlags.push(canReuse);return canReuse?"
+      "'lynx.draw.reuse-last':" +
+          V1("[[1,0,0]]", "[[1,0,0,20,10]]",
+             "[[[1,0xff00ff00],[1,0,true,null],[1],[]]]") +
+          ";",
+      behind, 17);
+  Eval("globalThis.behindFlags=[];globalThis.foregroundFlags=[];");
+  Install(foreground);
+  std::vector<Element*> boundaries;
+  for (auto* target = handle_->mount_root().get(); target;
+       target = target->GetChildAt(0)) {
+    if (target->HasCustomDrawFunctions()) boundaries.push_back(target);
+    Size(target, 100, 60);
+    if (target->GetChildCount() == 0) break;
+  }
+  ASSERT_EQ(boundaries.size(), 2u);
+  for (int iteration = 0; iteration < 3; ++iteration) {
+    DisplayListBuilder builder;
+    for (auto* target : boundaries) {
+      target->fragment_impl()->DrawBehind(builder);
+      target->fragment_impl()->DrawForeground(builder);
+    }
+    EXPECT_THAT(Fills(builder.Build()),
+                ::testing::UnorderedElementsAre(0x40123456u, 0xff00ff00u));
+  }
+  EXPECT_EQ(Eval("JSON.stringify(globalThis.behindFlags)").StringView(),
+            "[false,true,true]");
+  EXPECT_EQ(Eval("JSON.stringify(globalThis.foregroundFlags)").StringView(),
+            "[false,true,true]");
+}
+
+class ComposeDrawRecordingExactRejectionIntegrationTest
+    : public ComposeDrawRecordingIntegrationTest,
+      public ::testing::WithParamInterface<
+          testing::contract_fixture::UnsupportedScene> {};
+
+TEST_P(ComposeDrawRecordingExactRejectionIntegrationTest,
+       AttachedAuthoredWireRejectsWithoutChangingPrefixOrOldState) {
+  const auto& scene = GetParam();
+  manager->lynx_env_config_.UpdateDevicePixelRatio(3.5);
+  Eval("globalThis.rejectScene = false; globalThis.drawCalls = 0");
+  Install(
+      Behind("(globalThis.rejectionSize = [width,height],"
+             "globalThis.rejectScene ? " +
+             std::string(scene.wire) + " : " + V1() + ")"));
+  auto* content = handle_->content_element().get();
+  Size(content, 64, 40);
+  ASSERT_TRUE(content->IsAttached());
+  auto* fragment = content->fragment_impl();
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      content->impl_id(), PlatformRendererType::kView);
+  renderer->UpdateDisplayList(Draw(content));
+  EXPECT_THAT(Fills(renderer->GetDisplayList()),
+              ::testing::ElementsAre(0x40123456u));
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  const auto dirty = content->dirty();
+  Eval("globalThis.rejectScene = true");
+  int calls = 1;
+  for (bool flag : {false, true}) {
+    SCOPED_TRACE(flag);
+    fragment->custom_outset_shadow_drawn_ = flag;
+    DisplayListBuilder builder;
+    testing::contract_fixture::Prefix(&builder);
+    const auto& prefix = builder.CurrentDisplayList();
+    const std::vector<uint8_t> bytes(
+        prefix.GetContentItemsData(),
+        prefix.GetContentItemsData() + prefix.GetContentItemsByteSize());
+    const std::vector<uint8_t> data(
+        prefix.GetContentData(),
+        prefix.GetContentData() + prefix.GetContentDataSize());
+    fragment->DrawBehind(builder);  // real bound closure and coordinator
+    EXPECT_EQ(Eval("globalThis.drawCalls").Number(), ++calls);
+    const auto size = Eval("globalThis.rejectionSize");
+    ASSERT_EQ(size.GetLength(), 2);
+    EXPECT_DOUBLE_EQ(size.GetProperty(0u).Number(), 224);
+    EXPECT_DOUBLE_EQ(size.GetProperty(1u).Number(), 140);
+    const auto& after = builder.CurrentDisplayList();
+    EXPECT_EQ(std::vector<uint8_t>(after.GetContentItemsData(),
+                                   after.GetContentItemsData() +
+                                       after.GetContentItemsByteSize()),
+              bytes);
+    EXPECT_EQ(std::vector<uint8_t>(
+                  after.GetContentData(),
+                  after.GetContentData() + after.GetContentDataSize()),
+              data);
+    EXPECT_EQ(builder.BoxModelCount(), 1u);
+    EXPECT_TRUE(after.RootNeedClipBounds());
+    EXPECT_EQ(fragment->custom_outset_shadow_drawn_, flag);
+    EXPECT_TRUE(content->IsAttached());
+    EXPECT_TRUE(content->HasCustomDrawFunctions());
+    EXPECT_EQ(content->dirty(), dirty);
+    EXPECT_THAT(Fills(renderer->GetDisplayList()),
+                ::testing::ElementsAre(0x40123456u));
+    RoundedRectangle next_box;
+    int32_t next;
+    builder.RecordBoxModel(next_box, next);
+    EXPECT_EQ(next, 1);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AuthoredScenes, ComposeDrawRecordingExactRejectionIntegrationTest,
+    ::testing::ValuesIn(testing::contract_fixture::kUnsupportedScenes),
+    [](const ::testing::TestParamInfo<
+        testing::contract_fixture::UnsupportedScene>& info) {
+      return info.param.name;
+    });
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       V1PhysicalArgsAlphaAndPhaseOrderingReachCompiledReader) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2);
+  for (int op : {12, 17}) {
+    SCOPED_TRACE(op);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(
+        Style(kPropertyIDBackgroundColor, "blue",
+              Behind("(globalThis.recordingSize=[width,height]," + V1() + ")",
+                     {}, op)));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    ASSERT_TRUE(content->IsAttached());
+    auto list = Draw(content);
+    EXPECT_THAT(Fills(list),
+                op == 12 ? ::testing::ElementsAre(0x40123456u, 0xff0000ffu)
+                         : ::testing::ElementsAre(0xff0000ffu, 0x40123456u));
+    const auto size = Eval("globalThis.recordingSize");
+    ASSERT_EQ(size.GetLength(), 2);
+    EXPECT_DOUBLE_EQ(size.GetProperty(0u).Number(), 200);
+    EXPECT_DOUBLE_EQ(size.GetProperty(1u).Number(), 120);
+    int boxes = 0;
+    for (const auto& item : CollectDisplayListItems(list)) {
+      if (item.type != DisplayListOpType::kRecordBox ||
+          item.payload.record_box.x != 5)
+        continue;
+      ++boxes;
+      EXPECT_FLOAT_EQ(item.payload.record_box.y, 10);
+      EXPECT_FLOAT_EQ(item.payload.record_box.w, 95);
+      EXPECT_FLOAT_EQ(item.payload.record_box.h, 50);
+    }
+    EXPECT_EQ(boxes, 1);
+  }
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       V1UniformHoleAndShadowPreserveAuthoredOrderWithoutErasingContent) {
+  const auto wire = V1(
+      "[[1,2,0],[9,0,0,-2,3,4,1,0,1]]",
+      "[[2,0,0,40,20,4,4,4,4,4,4,4,4],[2,2,2,36,16,2,2,2,2,2,2,2,2],[3,0,1]]",
+      "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+      "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb','"
+      "path.border-clip','path.roundrect']");
+  Install(Style(kPropertyIDBackgroundColor, "blue", Behind(wire)));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  std::vector<DisplayListOpType> draws;
+  std::vector<DisplayListItem> boxes;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+    if (item.type == DisplayListOpType::kBorder) {
+      draws.push_back(item.type);
+      EXPECT_EQ(item.payload.border.out_index, 0);
+      EXPECT_EQ(item.payload.border.inner_index, 1);
+      for (unsigned i = 0; i < 4; ++i)
+        EXPECT_EQ(item.payload.border.colors[i], 0x40123456u);
+    } else if (item.type == DisplayListOpType::kBoxShadow) {
+      draws.push_back(item.type);
+      EXPECT_EQ(item.payload.box_shadow.color, 0x40123456u);
+      EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
+      EXPECT_EQ(item.payload.box_shadow.clip_mode, 0);
+      ASSERT_LT(static_cast<size_t>(item.payload.box_shadow.shadow_box_index),
+                boxes.size());
+      const auto& shadow =
+          boxes[item.payload.box_shadow.shadow_box_index].payload.record_box;
+      EXPECT_FLOAT_EQ(shadow.x, -3);
+      EXPECT_FLOAT_EQ(shadow.y, 2);
+      EXPECT_FLOAT_EQ(shadow.w, 42);
+      EXPECT_FLOAT_EQ(shadow.h, 22);
+    } else if (item.type == DisplayListOpType::kFill) {
+      draws.push_back(item.type);
+      EXPECT_EQ(item.payload.fill.color, 0xff0000ffu);
+    }
+  }
+  EXPECT_THAT(draws, ::testing::ElementsAre(DisplayListOpType::kBorder,
+                                            DisplayListOpType::kBoxShadow,
+                                            DisplayListOpType::kFill));
+  EXPECT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       WholeEnvelopeIsDecodedBeforeOp18AndLocalClipNeverBecomesModifierClip) {
+  const auto clip = V1("[[5,0,0,true]]", "[[1,0,0,0,0]]", "[]",
+                       "['drawing.clip','path.rect']");
+  const auto local = V1("[[2],[5,0,0,true],[1,0,0],[3]]", "[[1,0,0,40,20]]",
+                        "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+                        "['drawing.clip','drawing.state','paint.blend.SrcOver',"
+                        "'paint.solid','paint.srgb','path.rect']");
+  for (const auto& scenario : std::vector<std::pair<int, std::string>>{
+           {18, clip},
+           {12, clip},
+           {17, clip},
+           {18, V1()},
+           {12, local},
+           {17, local},
+           {18, "(function(){const a=" + clip +
+                    ";a[8]=[['duplicate',0],['duplicate',1]];return a;})()"},
+           {18, "(function(){const a=" + clip +
+                    ";a[6]=[['unknown.resource',1,[]]];return a;})()"},
+           {18, V1("[[5,0,1,true]]", "[[1,0,0,10,10]]", "[]",
+                   "['drawing.clip','path.rect']")}}) {
+    SCOPED_TRACE(scenario.first);
+    SCOPED_TRACE(scenario.second);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind(scenario.second, {}, scenario.first));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    // Inspect this callback phase itself. The op17 carrier's ordinary DrawClip
+    // can independently add a content-bounds CSS clip during a full OnDraw.
+    DisplayListBuilder builder;
+    if (scenario.first == 17)
+      content->fragment_impl()->DrawForeground(builder);
+    else
+      content->fragment_impl()->DrawBehind(builder);
+    int clips = 0;
+    for (const auto& item : CollectDisplayListItems(builder.Build())) {
+      if (item.type == DisplayListOpType::kClipRect) {
+        ++clips;
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.w, 0);
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.h, 0);
+      }
+      EXPECT_NE(item.type, DisplayListOpType::kFill);
+    }
+    EXPECT_EQ(clips, scenario.first == 18 && scenario.second == clip ? 1 : 0);
+  }
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       UnversionedMalformedUnsupportedAndOverflowKeepActualPrefixAndFlags) {
+  const auto paths = "[[1,0,0,40,20]]";
+  const auto paint = "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]";
+  for (const auto& expression : std::vector<std::string>{
+           "[[1,0,0,0,10]]", "[[1,0,0,10,10,0xffffffff],[99]]",
+           "[[1,0,0,10,10,0xffffffff],[],[],[],[],[],[],[],[]]",
+           V1("[[1,0,0],[99]]", paths, paint),
+           V1("[[1,0,0],[1,0,999]]", paths, paint),
+           V1("[[1,0,0],[4,1,0,0,1,1,0]]", paths, paint,
+              "['drawing.state','paint.blend.SrcOver','paint.solid','paint."
+              "srgb','path.rect']"),
+           V1("[[1,0,0],[9,0,0,3e38,0,2,3e38,0,1]]", paths, paint,
+              "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint."
+              "srgb','path.rect']"),
+           "['lynx.draw.recording',2,0,[],[],[],[],[],[]]",
+           "['unknown.envelope',1,0,[],[],[],[],[],[]]"}) {
+    SCOPED_TRACE(expression);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind(expression));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    auto* fragment = content->fragment_impl();
+    for (bool shadow_flag : {false, true}) {
+      fragment->custom_outset_shadow_drawn_ = shadow_flag;
+      DisplayListBuilder builder;
+      RoundedRectangle box;
+      box.SetX(7);
+      box.SetY(11);
+      box.SetWidth(13);
+      box.SetHeight(17);
+      int32_t index;
+      builder.RecordBoxModel(box, index);
+      builder.LinearGradient(180, {0xff010203, 0xff040506}, {0, 1}, index,
+                             index, 1, 1);
+      builder.MarkRootNeedClipBounds();
+      const auto& prefix = builder.CurrentDisplayList();
+      const std::vector<uint8_t> bytes(
+          prefix.GetContentItemsData(),
+          prefix.GetContentItemsData() + prefix.GetContentItemsByteSize());
+      const std::vector<uint8_t> data(
+          prefix.GetContentData(),
+          prefix.GetContentData() + prefix.GetContentDataSize());
+      fragment->DrawBehind(
+          builder);  // real closure, attached Fragment, coordinator and decoder
+      const auto& after = builder.CurrentDisplayList();
+      EXPECT_EQ(std::vector<uint8_t>(after.GetContentItemsData(),
+                                     after.GetContentItemsData() +
+                                         after.GetContentItemsByteSize()),
+                bytes);
+      EXPECT_EQ(std::vector<uint8_t>(
+                    after.GetContentData(),
+                    after.GetContentData() + after.GetContentDataSize()),
+                data);
+      EXPECT_EQ(builder.BoxModelCount(), 1u);
+      EXPECT_TRUE(after.RootNeedClipBounds());
+      EXPECT_EQ(fragment->custom_outset_shadow_drawn_, shadow_flag);
+      int32_t next;
+      builder.RecordBoxModel(box, next);
+      EXPECT_EQ(next, 1);
+    }
+  }
+}
+
+TEST_F(
+    ComposeDrawRecordingIntegrationTest,
+    StateChangesReenterOnlyOnFullRedrawAndPropertyReuseKeepsRecordedContent) {
+  Eval("globalThis.recordingColor=0x80123456");
+  Install(
+      Behind(V1("[[2],[4,1,0,0,1,0,0],[1,0,0],[3]]", "[[1,0,0,width,height]]",
+                "[[[1,globalThis.recordingColor],[0.5,0,true,null],[1],[]]]",
+                "['drawing.state','paint.blend.SrcOver','paint.solid','paint."
+                "srgb','path.rect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      content->impl_id(), PlatformRendererType::kView);
+  renderer->UpdateDisplayList(Draw(content));
+  EXPECT_THAT(Fills(renderer->GetDisplayList()),
+              ::testing::ElementsAre(0x40123456u));
+  Eval("globalThis.recordingColor=0xffabcdef");
+  content->fragment_impl()->InvalidateForSubtreeProperty();
+  const auto properties = Draw(content);
+  EXPECT_EQ(properties.GetContentItemsSize(), 0u);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  EXPECT_THAT(Fills(renderer->GetDisplayList()),
+              ::testing::ElementsAre(0x40123456u));
+  Invalidate(lepus::Value(handle_));
+  renderer->UpdateDisplayList(Draw(content));
+  EXPECT_THAT(Fills(renderer->GetDisplayList()),
+              ::testing::ElementsAre(0x80abcdefu));
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       RemovalExceptionDetachRebindAndCloneDoNotLeakShadowOrRuntimeBinding) {
+  const auto shadow = V1("[[9,0,0,0,0,4,0,0,1]]", "[[1,0,0,40,20]]",
+                         "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+                         "['drawing.shadow','paint.blend.SrcOver','paint.solid'"
+                         ",'paint.srgb','path.rect']");
+  Install(Behind(shadow));
+  auto content = handle_->content_element();
+  Size(content.get(), 100, 60);
+  Draw(content.get());
+  ASSERT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
+          .success);
+  content->fragment_impl()->InvalidateForRedraw();
+  EXPECT_TRUE(Fills(Draw(content.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  page_->FlushActionsAsRoot();
+  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  Rebind(Behind("(function(){throw new Error('recording failure');})()"));
+  EXPECT_TRUE(Fills(Draw(content.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  Rebind(Behind(V1()));
+  content->MarkDetached();
+  content->fragment_impl()->InvalidateForRedraw();
+  EXPECT_TRUE(Fills(Draw(content.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+  content->MarkAttached();
+  content->fragment_impl()->InvalidateForRedraw();
+  EXPECT_THAT(Fills(Draw(content.get())), ::testing::ElementsAre(0x40123456u));
+  auto clone = content->CloneElement(false);
+  EXPECT_FALSE(clone->HasCustomDrawFunctions());
+  clone->AttachToElementManager(manager.get(), nullptr, false);
+  page_->InsertNode(clone);
+  page_->FlushActionsAsRoot();
+  Size(clone.get(), 100, 60);
+  EXPECT_TRUE(Fills(Draw(clone.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 3);
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       MutableJsArraysAndEnvelopeGettersAreOwnedAndReadOncePerResolution) {
+  Eval(
+      "globalThis.rootGets=0;globalThis.commandGets=0;globalThis."
+      "recordingColor=0x80123456");
+  const auto expression = "(function(){const a=" + V1() +
+                          ";const "
+                          "command=a[3][0];Object.defineProperty(a[3],0,{get(){"
+                          "globalThis.commandGets++;return command;}});"
+                          "const "
+                          "tag=a[0];Object.defineProperty(a,0,{get(){"
+                          "globalThis.rootGets++;return tag;}});"
+                          "globalThis.lastRecording=a;return a;})()";
+  Install(Behind(expression));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+  EXPECT_EQ(Eval("globalThis.rootGets").Number(), 1);
+  EXPECT_EQ(Eval("globalThis.commandGets").Number(), 1);
+  Eval(
+      "globalThis.lastRecording[5][0][0][1]=0;globalThis.lastRecording[4][0][1]"
+      "=999;globalThis.lastRecording=null");
+  EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+  content->fragment_impl()->InvalidateForRedraw();
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0x40123456u));
+  EXPECT_EQ(Eval("globalThis.rootGets").Number(), 2);
+  EXPECT_EQ(Eval("globalThis.commandGets").Number(), 2);
+  Rebind({});
+  runtime_.reset();  // destroy the actual JS context and all source arrays
+  EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456u));
+  int boxes = 0;
+  for (const auto& item : CollectDisplayListItems(list)) {
+    if (item.type != DisplayListOpType::kRecordBox) continue;
+    ++boxes;
+    EXPECT_FLOAT_EQ(item.payload.record_box.x, 10);
+    EXPECT_FLOAT_EQ(item.payload.record_box.y, 20);
+    EXPECT_FLOAT_EQ(item.payload.record_box.w, 90);
+    EXPECT_FLOAT_EQ(item.payload.record_box.h, 40);
+  }
+  EXPECT_EQ(boxes, 1);
+}
+TEST_F(ComposeDrawBehindTest,
+       PaintProjectionMatchesAuthoredEndpointsAtSamplePoints) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  Install(Behind(V1(
+      "[[1,2,0]]",
+      "[[2,10,12,160,120,8,8,16,16,24,24,32,32],"
+      "[2,14,16,152,112,4,4,12,12,20,20,28,28],[3,0,1]]",
+      "[[[2,16,8,144,72,[0x80ff0000,0x800000ff],[0,1],0,[1,0,0,1,0,0]],"
+      "[1,0,true,null],[1],[]]]",
+      "['paint.blend.SrcOver','paint.linear','paint.srgb','paint.tile.Clamp',"
+      "'path.border-clip','path.roundrect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 80);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  std::vector<DisplayListItem> boxes;
+  int gradients = 0;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+    if (item.type != DisplayListOpType::kLinearGradient) continue;
+    ++gradients;
+    const auto& gradient = item.payload.linear_gradient;
+    ASSERT_EQ(gradient.inner_clip_index_plus_one, 3);
+    ASSERT_EQ(boxes.size(), 3u);
+    const auto& inner = boxes[2].payload.record_box;
+    EXPECT_FLOAT_EQ(inner.x, 7);
+    EXPECT_FLOAT_EQ(inner.y, 8);
+    EXPECT_FLOAT_EQ(inner.w, 76);
+    EXPECT_FLOAT_EQ(inner.h, 56);
+    EXPECT_FLOAT_EQ(inner.radii[0], 2);
+    EXPECT_FLOAT_EQ(inner.radii[6], 14);
+    const auto& tile = boxes[gradient.tiling_index].payload.record_box;
+    const auto* stops = reader.Stops(item);
+    ASSERT_NE(stops, nullptr);
+    ASSERT_EQ(gradient.stop_count, 4u);
+    const double angle = gradient.angle * std::acos(-1.0) / 180;
+    const double dx = std::sin(angle), dy = -std::cos(angle);
+    const double span = std::abs(tile.w * dx) + std::abs(tile.h * dy);
+    for (const auto& point :
+         {std::pair<double, double>{5, 6}, {85, 66}, {40, 25}}) {
+      const double projected = ((point.first - tile.x - tile.w / 2) * dx +
+                                (point.second - tile.y - tile.h / 2) * dy) /
+                                   span +
+                               .5;
+      const double actual = (projected - stops[1]) / (stops[2] - stops[1]);
+      // Original endpoints in layout units: (8,4) -> (72,36).
+      const double expected =
+          ((point.first - 8) * 64 + (point.second - 4) * 32) /
+          (64 * 64 + 32 * 32);
+      EXPECT_NEAR(actual, expected, 0.00001);
+    }
+    EXPECT_EQ(reader.Colors(item)[0], 0x80ff0000);
+    EXPECT_EQ(reader.Colors(item)[3], 0x800000ff);
+  }
+  EXPECT_EQ(gradients, 1);
+}
+
+TEST_F(ComposeDrawBehindTest,
+       PhysicalHairlineInsetSurvivesScaleThreeConversion) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(3.f);
+  Install(Behind(V1("[[1,2,0]]",
+                    "[[2,0,0,288,192,36,36,24,24,12,12,6,6],"
+                    "[2,1,1,286,190,35,35,23,23,11,11,5,5],[3,0,1]]",
+                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                    "['paint.blend.SrcOver','paint.solid','paint.srgb',"
+                    "'path.border-clip','path.roundrect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 96, 64);
+  int borders = 0;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kBorder) {
+      ++borders;
+      EXPECT_EQ(item.payload.border.out_index, 0);
+      EXPECT_EQ(item.payload.border.inner_index, 1);
+    }
+  }
+  EXPECT_EQ(borders, 1);
+}
+
+TEST_F(ComposeDrawBehindTest, InnerCornersAcceptNormalizedStartAndEndPairs) {
+  Install(Behind(V1("[[1,2,0]]",
+                    "[[2,0,0,100,60,60,60,0,0,20,20,0,0],"
+                    "[2,10,10,80,40,40,40,0,0,10,10,0,0],[3,0,1]]",
+                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                    "['paint.blend.SrcOver','paint.solid','paint.srgb',"
+                    "'path.border-clip','path.roundrect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  int borders = 0;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kBorder) ++borders;
+  }
+  EXPECT_EQ(borders, 1);
+}
+
+TEST_F(ComposeDrawBehindTest, MixedPaintAndShadowBatchPreservesOrder) {
+  Install(Behind(
+      V1("[[1,0,0],[1,0,1],[1,0,2],[1,2,3],[9,0,4,0,0,0,0,0,1]]",
+         "[[1,0,0,10,10],[1,2,2,6,6],[3,0,1]]",
+         "[[[1,0xffff0000],[1,0,true,null],[1],[]],"
+         "[[1,0xff00ff00],[1,0,true,null],[1],[]],"
+         "[[2,0,0,0,10,[0xffff0000,0xff0000ff],[0,1],0,[1,0,0,1,0,0]],"
+         "[1,0,true,null],[1],[]],"
+         "[[1,0x800000ff],[1,0,true,null],[1],[]],"
+         "[[1,0xff000000],[1,0,true,null],[1],[]]]",
+         "['drawing.shadow','paint.blend.SrcOver','paint.linear','paint.solid',"
+         "'paint.srgb','paint.tile.Clamp','path.border-clip','path.rect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  std::vector<DisplayListOpType> draws;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type == DisplayListOpType::kBorder) {
+      for (unsigned i = 0; i < 4; ++i)
+        EXPECT_EQ(item.payload.border.colors[i], 0x800000ff);
+    } else if (item.type != DisplayListOpType::kFill &&
+               item.type != DisplayListOpType::kLinearGradient &&
+               item.type != DisplayListOpType::kBoxShadow) {
+      continue;
+    }
+    draws.push_back(item.type);
+  }
+  EXPECT_THAT(draws, ::testing::ElementsAre(DisplayListOpType::kFill,
+                                            DisplayListOpType::kFill,
+                                            DisplayListOpType::kLinearGradient,
+                                            DisplayListOpType::kBorder,
+                                            DisplayListOpType::kBoxShadow));
+}
+
+TEST_F(ComposeDrawBehindTest, InvalidPaintTailRejectsWholeBatchInBothPhases) {
+  const auto batch = [](const std::string& paths, const std::string& paint,
+                        const std::string& commands = "[[1,0,0],[1,1,1]]",
+                        bool repeated = false) {
+    return V1(
+        commands, paths,
+        "[[[1,0xffffffff],[1,0,true,null],[1],[]]," + paint + "]",
+        "['paint.blend.SrcOver','paint.linear','paint.solid','paint.srgb',"
+        "'paint.tile.Clamp'," +
+            std::string(repeated ? "'paint.tile.Repeated'," : "") +
+            "'path.border-clip','path.rect','path.roundrect']");
+  };
+  const std::string solid = "[[1,0xff000000],[1,0,true,null],[1],[]]";
+  const std::string rects = "[[1,0,0,10,10],[1,0,0,10,10]]";
+  for (int op : {12, 17}) {
+    for (const auto& wire :
+         {batch(rects, "[[1,0.5],[1,0,true,null],[1],[]]"),
+          batch("[[1,0,0,10,10],[1,0,0,1e40,10]]", solid),
+          batch("[[1,0,0,10,10],[2,0,0,10,10,0,0,-1,-1,0,0,0,0]]", solid),
+          batch("[[1,0,0,10,10],null]", solid),
+          batch("[[1,0,0,10,10],[1,1,2,8,6],[3,0,1]]", solid,
+                "[[1,0,0],[1,2,1]]"),
+          batch("[[2,0,0,10,10,4,4,4,4,4,4,4,4],"
+                "[2,1,1,8,8,0,0,0,0,0,0,0,0],[3,0,1]]",
+                solid, "[[1,0,0],[1,2,1]]"),
+          batch("[[1,0,0,10,10],[1,5,5,0,0],[3,0,1]]", solid,
+                "[[1,0,0],[1,2,1]]"),
+          batch(rects,
+                "[[2,0,0,0,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects,
+                "[[2,1e20,0,1e20+1,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects,
+                "[[2,0,0,10,0,[0,1],[0,1],1,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]",
+                "[[1,0,0],[1,1,1]]", true),
+          batch(rects,
+                "[[2,0,0,10,0,[0,1],[1,0],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects,
+                "[[2,0,0,Infinity,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects, solid, "[[1,0,0],[99]]")}) {
+      SCOPED_TRACE(wire);
+      handle_ = nullptr;
+      page_ = nullptr;
+      Install(Behind(wire, {}, op));
+      auto* content = handle_->content_element().get();
+      Size(content, 100, 60);
+      for (const auto& item : CollectDisplayListItems(Draw(content))) {
+        EXPECT_NE(item.type, DisplayListOpType::kRecordBox);
+        EXPECT_NE(item.type, DisplayListOpType::kFill);
+        EXPECT_NE(item.type, DisplayListOpType::kLinearGradient);
+      }
+    }
+  }
+}
+
+TEST_F(ComposeDrawBehindTest, ForegroundFollowsContentAndClearsOnReplacement) {
+  Install(Style(kPropertyIDBackgroundColor, "blue",
+                Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                          "[[[1,0x80ff0000],[1,0,true,null],[1],[]]]"),
+                       {}, 17)));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  std::vector<uint32_t> colors;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kFill)
+      colors.push_back(item.payload.fill.color);
+  }
+  EXPECT_THAT(colors, ::testing::ElementsAre(0xff0000ff, 0x80ff0000));
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(
+          handle_.get(), Behind(V1("[]", "[]", "[]", "[]")), runtime_.get())
+          .success);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
+  EXPECT_FALSE(
+      content->fragment_impl()->custom_draw_functions_->draw_foreground);
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
+          .success);
+  page_->FlushActionsAsRoot();
+  EXPECT_FALSE(content->HasCustomDrawFunctions());
+}
+
+TEST_F(ComposeDrawBehindTest,
+       ScopedClipKeepsShadowOrderAndOwnRendererOnTextAndImage) {
+  const auto shadow =
+      V1("[[9,0,0,0,4,8,0,0,1]]", "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
+         "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+         "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
+         "'path.roundrect']");
+  const auto clip =
+      V1("[[5,0,0,true]]", "[[2,0,0,width,height,4,4,8,8,12,12,16,16]]", "[]",
+         "['drawing.clip','path.roundrect']");
+  for (auto kind : {ComposeElementKind::kView, ComposeElementKind::kText,
+                    ComposeElementKind::kImage}) {
+    for (bool clip_first : {false, true}) {
+      handle_ = nullptr;
+      page_ = nullptr;
+      Install(clip_first ? Behind(shadow, Behind(clip, {}, 18))
+                         : Behind(clip, Behind(shadow), 18),
+              kind);
+      auto* first = handle_->mount_root()->GetChildAt(0);
+      auto* content = handle_->content_element().get();
+      ASSERT_EQ(first->GetChildAt(0), content);
+      auto* clip_target = clip_first ? first : content;
+      auto* shadow_target = clip_first ? content : first;
+      EXPECT_TRUE(clip_target->fragment_impl()->has_platform_renderer_);
+      EXPECT_TRUE(shadow_target->fragment_impl()->has_platform_renderer_);
+      EXPECT_TRUE(clip_target->computed_css_style()->IsOverflowXY());
+      Size(first, 100, 60);
+      Size(content, 100, 60);
+      // Child first so the parent's DrawView cannot consume its dirty state.
+      auto child_list = Draw(content);
+      auto parent_list = Draw(first);
+      const auto& clip_list = clip_first ? parent_list : child_list;
+      const auto& shadow_list = clip_first ? child_list : parent_list;
+      int clips = 0, shadows = 0;
+      for (const auto& item : CollectDisplayListItems(clip_list)) {
+        if (item.type == DisplayListOpType::kClipRect) {
+          ++clips;
+          EXPECT_FLOAT_EQ(item.payload.clip_rect.radii[0], 4);
+          EXPECT_FLOAT_EQ(item.payload.clip_rect.radii[6], 16);
+        }
+        EXPECT_NE(item.type, DisplayListOpType::kBoxShadow);
+      }
+      for (const auto& item : CollectDisplayListItems(shadow_list)) {
+        if (item.type == DisplayListOpType::kBoxShadow) ++shadows;
+      }
+      EXPECT_EQ(clips, 1);
+      EXPECT_EQ(shadows, 1);
+    }
+  }
+}
+
+TEST_F(ComposeDrawBehindTest,
+       ScopedClipEmptyGeometryStillClipsAndInvalidBatchDoesNot) {
+  const auto empty_clip = V1("[[5,0,0,true]]", "[[1,0,0,0,0]]", "[]",
+                             "['drawing.clip','path.rect']");
+  for (const auto& expression :
+       {empty_clip, V1("[]", "[]", "[]", "[]"),
+        V1("[[5,0,0,true],[5,1,0,true]]", "[[1,0,0,10,10],[1,0,0,2,2]]", "[]",
+           "['drawing.clip','path.rect']"),
+        V1()}) {
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind(expression, {}, 18));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    int clips = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(content))) {
+      if (item.type == DisplayListOpType::kClipRect) {
+        ++clips;
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.w, 0);
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.h, 0);
+      }
+    }
+    EXPECT_EQ(clips, expression == empty_clip ? 1 : 0);
+  }
+}
+
 TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
   Install(Style(
       kPropertyIDBackgroundColor, "red",
-      Behind(
-          "[[3, 0, 0, width, height, 24, 24, 8, 8, 0, 6, 16, 2, 0x40000000],"
-          " [1, 0, 0, width, height, 0xffffffff],"
-          " [3, 0, 0, width, height, 24, 24, 8, 8, 0, 0, 8, 0, 0x20000000]]")));
+      Behind(V1(
+          "[[9,0,0,0,6,16,2,0,1],[1,1,1],[9,0,2,0,0,8,0,0,1]]",
+          "[[2,0,0,width,height,24,24,24,24,8,8,8,8],[1,0,0,width,height]]",
+          "[[[1,0x40000000],[1,0,true,null],[1],[]],"
+          "[[1,0xffffffff],[1,0,true,null],[1],[]],"
+          "[[1,0x20000000],[1,0,true,null],[1],[]]]",
+          "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
+          "'path.rect','path.roundrect']"))));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   std::vector<DisplayListItem> boxes;
@@ -1903,18 +3539,25 @@ TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
 }
 
 TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
-  const std::string fill = "[1, 0, 0, width, height, 0xffffffff], ";
-  for (const char* shadow : {
-           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, -1, 0, 0xff000000]",
-           "[3, 0, 0, width, height, 0, -1, 0, 0, 0, 0, 4, 0, 0xff000000]",
-           "[3, 0, 0, width, height, 0, 0, 0, 0, NaN, 0, 4, 0, 0xff000000]",
-           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0, 0.5]",
-           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0]",
-       }) {
-    SCOPED_TRACE(shadow);
+  const auto batch = [](const std::string& shadow,
+                        const std::string& path = "[1,0,0,width,height]",
+                        const std::string& color = "0xff000000") {
+    return V1("[[1,0,0]," + shadow + "]", "[[1,0,0,width,height]," + path + "]",
+              "[[[1,0xffffffff],[1,0,true,null],[1],[]],[[1," + color +
+                  "],[1,0,true,null],[1],[]]]",
+              "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+              "'paint.srgb','path.rect','path.roundrect']");
+  };
+  for (const auto& wire :
+       {batch("[9,1,1,0,0,-1,0,0,1]"),
+        batch("[9,1,1,0,0,4,0,0,1]", "[2,0,0,width,height,0,0,-1,-1,0,0,0,0]"),
+        batch("[9,1,1,NaN,0,4,0,0,1]"),
+        batch("[9,1,1,0,0,4,0,0,1]", "[1,0,0,width,height]", "0.5"),
+        batch("[9,1,1,0,0,4,0,0]")}) {
+    SCOPED_TRACE(wire);
     handle_ = nullptr;
     page_ = nullptr;
-    Install(Behind("[" + fill + shadow + "]"));
+    Install(Behind(wire));
     auto* content = handle_->content_element().get();
     Size(content, 100, 60);
     EXPECT_FALSE(RecordsShadowOrFill(Draw(content)));
@@ -1924,9 +3567,15 @@ TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
 TEST_F(ComposeDrawBehindTest,
        OutsetShadowKeepsPlatformLayerUnclippedUnderOverflowHidden) {
   Eval("globalThis.castShadow = true;");
-  Install(Style(kPropertyIDOverflow, "hidden",
-                Behind("globalThis.castShadow ? [[3, 0, 0, width, height, 8, "
-                       "8, 8, 8, 0, 4, 8, 0, 0xff000000]] : []")));
+  Install(
+      Style(kPropertyIDOverflow, "hidden",
+            Behind("globalThis.castShadow ? " +
+                   V1("[[9,0,0,0,4,8,0,0,1]]",
+                      "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
+                      "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                      "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                      "'paint.srgb','path.roundrect']") +
+                   " : " + V1("[]", "[]", "[]", "[]"))));
   auto* content = handle_->content_element().get();
   ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
   Size(content, 100, 60);
@@ -1957,10 +3606,11 @@ TEST_F(ComposeDrawBehindTest,
 }
 
 TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsInsideItsTransform) {
-  Install(
-      Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
-             "0xff000000]]",
-             Layer()));
+  Install(Behind(V1("[[9,0,0,0,4,8,0,0,1]]", "[[1,0,0,width,height]]",
+                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                    "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                    "'paint.srgb','path.rect']"),
+                 Layer()));
   auto* layer = handle_->mount_root()->GetChildAt(0);
   auto* content = layer->GetChildAt(0);
   ASSERT_EQ(content, handle_->content_element().get());
@@ -1986,8 +3636,10 @@ TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsOnImageAndTextContent) {
     SCOPED_TRACE(static_cast<int>(kind));
     handle_ = nullptr;
     page_ = nullptr;
-    Install(Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
-                   "0xff000000]]",
+    Install(Behind(V1("[[9,0,0,0,4,8,0,0,1]]", "[[1,0,0,width,height]]",
+                      "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                      "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                      "'paint.srgb','path.rect']"),
                    Layer()),
             kind);
     auto* content = handle_->content_element().get();
@@ -2005,8 +3657,11 @@ TEST_F(ComposeDrawBehindTest, ClippedShadowStaysOutsideTheContentClip) {
   // Modifier.shadow(clip = true): layer, shadow, then the ordinary clip.
   Install(Style(kPropertyIDOverflow, "hidden",
                 Style(kPropertyIDBorderRadius, "8px",
-                      Behind("[[3, 0, 0, width, height, 8, 8, 8, 8, 0, 4, 8, "
-                             "0, 0xff000000]]",
+                      Behind(V1("[[9,0,0,0,4,8,0,0,1]]",
+                                "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
+                                "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                                "['drawing.shadow','paint.blend.SrcOver',"
+                                "'paint.solid','paint.srgb','path.roundrect']"),
                              Layer()))),
           ComposeElementKind::kText);
   auto* content = handle_->content_element().get();
@@ -2043,7 +3698,8 @@ TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
   background->SetValue("propertyId", lepus::Value(kPropertyIDBackgroundColor));
   background->SetValue("value", lepus::Value("blue"));
   background->SetValue("previous",
-                       Behind("[[1, 0, 0, width, height, 0xffff0000]]"));
+                       Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                                 "[[[1,0xffff0000],[1,0,true,null],[1],[]]]")));
   Install(lepus::Value(background));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
@@ -2063,8 +3719,11 @@ TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
 }
 
 TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
-  Install(Behind("[[1, 0, 0, width, height, 0xff0000ff]]",
-                 Layer(Behind("[[1, 0, 0, width, height, 0xffff0000]]"))));
+  Install(
+      Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                "[[[1,0xff0000ff],[1,0,true,null],[1],[]]]"),
+             Layer(Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                             "[[[1,0xffff0000],[1,0,true,null],[1],[]]]")))));
   auto* first = handle_->mount_root()->GetChildAt(0);
   auto* layer = first->GetChildAt(0);
   auto* last = layer->GetChildAt(0);
@@ -2089,7 +3748,8 @@ TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
 
 TEST_F(ComposeDrawBehindTest, ConvertsPhysicalRectCoordinatesOnce) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
-  Install(Behind("[[1, 10, 20, width - 10, height - 20, 0x80ffffff]]"));
+  Install(Behind(V1("[[1,0,0]]", "[[1,10,20,width-10,height-20]]",
+                    "[[[1,0x80ffffff],[1,0,true,null],[1],[]]]")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   bool found = false;
@@ -2118,7 +3778,8 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
     for (const auto* side : {"start", "top", "end", "bottom"}) {
       padding->SetValue(side, lepus::Value(8.0));
     }
-    const std::string commands = "[[1, 0, 0, width, height, 0xffffffff]]";
+    const auto commands = V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                             "[[[1,0xffffffff],[1,0,true,null],[1],[]]]");
     padding->SetValue("previous", padding_before
                                       ? lepus::Value(size)
                                       : Behind(commands, lepus::Value(size)));
@@ -2142,7 +3803,11 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
 
 TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
   Install(
-      Behind("[[2, 5, -10, 40, 50, 0, 16, [0x80ffffff, 0x80000000], [0, 1]]]"));
+      Behind(V1("[[1,0,0]]", "[[1,5,-10,40,50]]",
+                "[[[2,0,0,0,16,[0x80ffffff,0x80000000],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]]",
+                "['paint.blend.SrcOver','paint.linear','paint.srgb',"
+                "'paint.tile.Clamp','path.rect']")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   auto list = Draw(content);
@@ -2166,8 +3831,9 @@ TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
 }
 
 TEST_F(ComposeDrawBehindTest, MalformedTailDoesNotRecordPartialBackground) {
-  Install(Behind(
-      "[[1, 0, 0, 10, 10, 0xffff0000], [1, 0, 0, NaN, 10, 0xff000000]]"));
+  Install(Behind(V1("[[1,0,0],[1,1,1]]", "[[1,0,0,10,10],[1,0,0,NaN,10]]",
+                    "[[[1,0xffff0000],[1,0,true,null],[1],[]],"
+                    "[[1,0xff000000],[1,0,true,null],[1],[]]]")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   for (const auto& item : CollectDisplayListItems(Draw(content))) {

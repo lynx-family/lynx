@@ -364,6 +364,11 @@ void DrawLinearGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
                         const std::vector<RoundedRectangle>& boxes,
                         float density) {
   const auto& gradient = item.payload.linear_gradient;
+  const int32_t inner_plus_one = gradient.inner_clip_index_plus_one;
+  if (inner_plus_one < 0 ||
+      static_cast<size_t>(inner_plus_one) > boxes.size()) {
+    return;
+  }
   if (gradient.tiling_index < 0 || gradient.clip_index < 0 ||
       static_cast<size_t>(gradient.tiling_index) >= boxes.size() ||
       static_cast<size_t>(gradient.clip_index) >= boxes.size()) {
@@ -395,9 +400,18 @@ void DrawLinearGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
   auto shader = ShaderEffect::CreateLinearGradientEffect(
       center_x - offset_x, center_y - offset_y, center_x + offset_x,
       center_y + offset_y, colors, stops, gradient.color_count, CLAMP);
+  if (inner_plus_one > 0) {
+    auto* inner_path = CreateBoxPath(boxes[inner_plus_one - 1], density);
+    OH_Drawing_CanvasSave(canvas);
+    OH_Drawing_CanvasClipPath(canvas, inner_path, DIFFERENCE, true);
+    OH_Drawing_PathDestroy(inner_path);
+  }
   DrawGradient(canvas, shader->HarmonyShaderEffect(), tiling_box,
                boxes[gradient.clip_index], gradient.repeat_x, gradient.repeat_y,
                density);
+  if (inner_plus_one > 0) {
+    OH_Drawing_CanvasRestore(canvas);
+  }
 }
 
 void DrawRadialGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
