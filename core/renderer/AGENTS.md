@@ -40,6 +40,7 @@ This directory contains the renderer stack of Lynx: CSS parsing and style applic
 - Keep DOM ownership and element-tree behavior in `dom/`; do not move renderer-wide utilities into node classes.
 - Renderer code depends on the runtime, shared-data, and shell layers in several paths. Local renderer edits can still be cross-module changes.
 - Prefer pure helpers in `utils/` and keep platform glue out of shared renderer code.
+- Element-tree usage counters must cover both `DumpElementTree` export and cached-tree consumption in `RenderTemplateForFiber`. The script-facing clone API counter does not cover these paths. Count with the owning template instance ID outside per-node recursion.
 - **Adopted Stylesheet Pattern**: The renderer uses `CSSFragmentDecorator` (in `css/`) as the bridge between `ElementManager`'s runtime-adopted stylesheets (`dom/`) and CSS resolution (`style_resolver.cc`). This is a cross-module pattern: `ElementManager` owns the storage + lock, `CSSFragmentDecorator` owns the iteration logic, and `StyleResolver` + DOM elements consume the unified `CSSFragment*` interface. When changing any piece of this triangle, verify the other two still compile and behave correctly.
 
 ## Common Regression Symptoms
