@@ -575,8 +575,7 @@ bool PlatformRendererContext::RequestRootFocus(int32_t root_sign,
 void PlatformRendererContext::ApplyListScrollState(int32_t sign, float scroll_x,
                                                    float scroll_y,
                                                    float content_width,
-                                                   float content_height,
-                                                   bool cmp_managed) {
+                                                   float content_height) {
   if (destroyed_) {
     return;
   }
@@ -590,7 +589,21 @@ void PlatformRendererContext::ApplyListScrollState(int32_t sign, float scroll_x,
   }
   Java_PlatformRendererContext_applyListScrollState(
       base::android::AttachCurrentThread(), ref.Get(), sign, scroll_x, scroll_y,
-      content_width, content_height, cmp_managed);
+      content_width, content_height);
+}
+
+void PlatformRendererContext::ApplyScrollViewState(int32_t sign, float scroll_x,
+                                                   float scroll_y,
+                                                   float content_width,
+                                                   float content_height) {
+  if (destroyed_) return;
+  base::android::ScopedLocalJavaRef<jobject> ref(java_ref_);
+  if (ref.IsNull()) return;
+  EnsureAndroidViewCreated(sign);
+  if (destroyed_) return;
+  Java_PlatformRendererContext_applyScrollViewState(
+      base::android::AttachCurrentThread(), ref.Get(), sign, scroll_x, scroll_y,
+      content_width, content_height);
 }
 
 std::vector<float> PlatformRendererContext::GetRootViewLocationOnScreen() {
