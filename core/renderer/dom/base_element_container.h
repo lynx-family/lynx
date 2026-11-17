@@ -94,6 +94,7 @@ class BaseElementContainer {
 
   virtual void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle) = 0;
   virtual void StyleChanged() = 0;
+  void UpdatePlacementZIndex();
   virtual void UpdateZIndexList() = 0;
 
   virtual void CreatePaintingNode(
@@ -182,6 +183,9 @@ class BaseElementContainer {
 
   BaseElementContainer* EnclosingScrollContainerNode();
 
+  bool IsStackingPositionFlushed() const;
+  virtual void ApplyPlacementZIndex() = 0;
+
   static Element const* FindCommonAncestor(Element const** left_mark,
                                            Element const** right_mark);
   static int CompareElementOrder(Element* left, Element* right);
@@ -190,6 +194,7 @@ class BaseElementContainer {
   bool was_stacking_context_{false};
   bool was_position_fixed_{false};
   bool was_sticky_{false};
+  bool placement_z_index_pending_{false};
   bool is_root_{false};
 
   bool has_z_child_{false};
