@@ -116,8 +116,14 @@ void MessageLoopImpl::FlushTasks(FlushType type) {
 void MessageLoopImpl::FlushVSyncAlignedTasks(FlushType type) {
   BASE_TRACE_EVENT(LYNX_BASE_TRACE_CATEGORY,
                    MESSAGE_LOOP_FLUSH_VASYNC_ALIGNED_TASKS);
-  FlushTasksWithRestrictionDuration(type, vsync_aligned_task_queue_ids_,
-                                    max_execute_time_ms_);
+  if (FlushTasksWithRestrictionDuration(type, vsync_aligned_task_queue_ids_,
+                                        max_execute_time_ms_) &&
+      task_queue_->HasTaskToRun(vsync_aligned_task_queue_ids_,
+                                fml::TimePoint::Now())) {
+    // Continue ready tasks in the next frame without rearming the platform
+    // timer shared with non-aligned queues.
+    WakeUpByVSync(fml::TimePoint());
+  }
 }
 
 bool MessageLoopImpl::FlushTasksWithRestrictionDuration(

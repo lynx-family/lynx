@@ -96,6 +96,10 @@ class BASE_EXPORT MessageLoopTaskQueues {
 
   bool HasPendingTasks(TaskQueueId queue_id) const;
 
+  // Returns whether the next task across the queues is ready at from_time.
+  bool HasTaskToRun(const std::vector<TaskQueueId>& queue_ids,
+                    fml::TimePoint from_time) const;
+
   base::closure GetNextTaskToRun(
       const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time,
       std::vector<const base::closure*>* observers = nullptr);

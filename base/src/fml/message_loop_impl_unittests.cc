@@ -7,7 +7,9 @@
 
 #define FML_USED_ON_EMBEDDER
 
+#include <chrono>
 #include <thread>
+#include <vector>
 
 #include "base/include/fml/message_loop_impl.h"
 #include "base/include/fml/synchronization/waitable_event.h"
@@ -20,23 +22,37 @@
 namespace lynx {
 class MockVSyncMonitor {
  public:
-  MockVSyncMonitor() = default;
+  explicit MockVSyncMonitor(int64_t frame_duration_ns = 16000000)
+      : frame_duration_ns_(frame_duration_ns) {}
   ~MockVSyncMonitor() = default;
 
   void RequestVSync(fml::VSyncCallback callback) {
+    request_count_++;
     callback_ = std::move(callback);
   }
 
   void TriggerVSync() {
     if (callback_) {
-      callback_(current_, current_ + kFrameDuration);
+      auto callback = std::move(callback_);
+      const auto frame_start = current_;
+      current_ += frame_duration_ns_;
+      callback(frame_start, current_);
     }
   }
 
+  void SetFrameDuration(int64_t frame_duration_ns) {
+    frame_duration_ns_ = frame_duration_ns;
+  }
+
+  bool HasPendingRequest() const { return callback_ != nullptr; }
+
+  int request_count() const { return request_count_; }
+
  private:
-  int64_t current_ = kFrameDuration;
-  constexpr static int64_t kFrameDuration = 16;  // ms
+  int64_t current_ = 0;
+  int64_t frame_duration_ns_;
   fml::VSyncCallback callback_;
+  int request_count_ = 0;
 };
 
 TEST(MessageLoopImpl, TIMESENSITIVE(WakeUpTimersAreSingletons)) {
@@ -121,6 +137,215 @@ TEST(MessageLoopImpl, WakeUpByVSync) {
   // Terminate thread safely
   loop_impl->PostTask([&]() { loop_impl->Terminate(); }, fml::TimePoint::Now());
   thread->join();
+}
+
+class RecordingMessageLoop : public fml::MessageLoopImpl {
+ public:
+  RecordingMessageLoop() = default;
+  ~RecordingMessageLoop() override = default;
+
+  void Run() override {}
+  void Terminate() override {}
+  void WakeUp(fml::TimePoint time_point) override {
+    wake_times.push_back(time_point);
+  }
+
+  std::vector<fml::TimePoint> wake_times;
+};
+
+class MessageLoopImplVSyncTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    loop_impl_ = fml::MakeRefCounted<RecordingMessageLoop>();
+    task_queues_ = fml::MessageLoopTaskQueues::GetInstance();
+    loop_impl_->SetVSyncRequest([this](fml::VSyncCallback callback) {
+      vsync_monitor_.RequestVSync(std::move(callback));
+    });
+    vsync_queue_id_ = CreateAlignedQueue();
+  }
+
+  void TearDown() override {
+    for (auto queue_id : aligned_queues_) {
+      loop_impl_->UnBind(queue_id);
+      task_queues_->DisposeTasks(queue_id);
+      task_queues_->Dispose(queue_id);
+    }
+    loop_impl_ = nullptr;
+  }
+
+  fml::TaskQueueId CreateAlignedQueue() {
+    auto queue_id = task_queues_->CreateTaskQueue(true);
+    aligned_queues_.push_back(queue_id);
+    loop_impl_->Bind(queue_id);
+    return queue_id;
+  }
+
+  fml::RefPtr<RecordingMessageLoop> loop_impl_;
+  fml::MessageLoopTaskQueues* task_queues_ = nullptr;
+  fml::TaskQueueId vsync_queue_id_{0};
+  std::vector<fml::TaskQueueId> aligned_queues_;
+  // A sub-millisecond interval gives a zero budget, deterministically yielding
+  // after one task. NonzeroFrameBudgetContinuesOnNextVSync uses a real
+  // interval.
+  MockVSyncMonitor vsync_monitor_{1};
+};
+
+TEST_F(MessageLoopImplVSyncTest, ReadyTasksContinueOnNextVSync) {
+  int executed_task_count = 0;
+  const auto now = fml::TimePoint::Now();
+  task_queues_->RegisterTask(
+      vsync_queue_id_, [&]() { executed_task_count++; }, now);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, [&]() { executed_task_count++; }, now);
+
+  EXPECT_EQ(vsync_monitor_.request_count(), 1);
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 1);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  EXPECT_EQ(task_queues_->GetNumPendingTasks(vsync_queue_id_), 1u);
+  vsync_monitor_.TriggerVSync();
+  ASSERT_EQ(executed_task_count, 2);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+  EXPECT_TRUE(loop_impl_->wake_times.empty());
+}
+
+TEST_F(MessageLoopImplVSyncTest, EmptyQueuePreservesOrdinaryWakeUp) {
+  const auto target = fml::TimePoint::Now() + fml::TimeDelta::FromSeconds(10);
+  loop_impl_->PostTask([]() {}, target);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, []() {}, fml::TimePoint::Now());
+
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(task_queues_->GetNumPendingTasks(vsync_queue_id_), 0u);
+  EXPECT_EQ(vsync_monitor_.request_count(), 1);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+  ASSERT_EQ(loop_impl_->wake_times.size(), 1u);
+  EXPECT_EQ(loop_impl_->wake_times.back(), target);
+}
+
+TEST_F(MessageLoopImplVSyncTest, FutureTasksPreserveOrdinaryWakeUp) {
+  const auto now = fml::TimePoint::Now();
+  const auto ordinary_target = now + fml::TimeDelta::FromSeconds(10);
+  loop_impl_->PostTask([]() {}, ordinary_target);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, []() {}, now);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, []() {}, now + fml::TimeDelta::FromSeconds(20));
+
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(task_queues_->GetNumPendingTasks(vsync_queue_id_), 1u);
+  EXPECT_EQ(vsync_monitor_.request_count(), 1);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+  ASSERT_EQ(loop_impl_->wake_times.size(), 1u);
+  EXPECT_EQ(loop_impl_->wake_times.back(), ordinary_target);
+}
+
+TEST_F(MessageLoopImplVSyncTest, PostingDuringFlushDoesNotDuplicateVSync) {
+  int executed_task_count = 0;
+  task_queues_->RegisterTask(
+      vsync_queue_id_,
+      [&]() {
+        executed_task_count++;
+        task_queues_->RegisterTask(
+            vsync_queue_id_, [&]() { executed_task_count++; },
+            fml::TimePoint::Now());
+      },
+      fml::TimePoint::Now());
+
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 1);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 2);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+}
+
+TEST_F(MessageLoopImplVSyncTest, MultipleQueuesContinueOnNextVSync) {
+  const auto second_queue_id = CreateAlignedQueue();
+  const auto now = fml::TimePoint::Now();
+  int executed_task_count = 0;
+  task_queues_->RegisterTask(
+      vsync_queue_id_, [&]() { executed_task_count++; }, now);
+  task_queues_->RegisterTask(
+      second_queue_id, [&]() { executed_task_count++; }, now);
+
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 1);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 2);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+}
+
+TEST_F(MessageLoopImplVSyncTest, MergedQueueContinuesOnNextVSync) {
+  const auto subsumed_queue_id = task_queues_->CreateTaskQueue();
+  const auto now = fml::TimePoint::Now();
+  int executed_task_count = 0;
+  task_queues_->RegisterTask(
+      vsync_queue_id_, [&]() { executed_task_count++; }, now);
+  task_queues_->RegisterTask(
+      subsumed_queue_id, [&]() { executed_task_count++; }, now);
+  ASSERT_TRUE(task_queues_->Merge(vsync_queue_id_, subsumed_queue_id));
+
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 1);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 2);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+}
+
+TEST_F(MessageLoopImplVSyncTest, NonzeroFrameBudgetContinuesOnNextVSync) {
+  vsync_monitor_.SetFrameDuration(16000000);
+  const auto now = fml::TimePoint::Now();
+  int executed_task_count = 0;
+  task_queues_->RegisterTask(
+      vsync_queue_id_,
+      [&]() {
+        executed_task_count++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(13));
+      },
+      now);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, [&]() { executed_task_count++; }, now);
+
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 1);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(executed_task_count, 2);
+  EXPECT_EQ(vsync_monitor_.request_count(), 2);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+}
+
+TEST_F(MessageLoopImplVSyncTest, DrainedFrameDoesNotRequestAnotherVSync) {
+  vsync_monitor_.SetFrameDuration(16000000);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, []() {}, fml::TimePoint::Now());
+  vsync_monitor_.TriggerVSync();
+  EXPECT_EQ(vsync_monitor_.request_count(), 1);
+  EXPECT_FALSE(vsync_monitor_.HasPendingRequest());
+  EXPECT_TRUE(loop_impl_->wake_times.empty());
+}
+
+TEST_F(MessageLoopImplVSyncTest, ReadinessCheckDoesNotConsumeOrWakeTasks) {
+  EXPECT_FALSE(task_queues_->HasTaskToRun({}, fml::TimePoint::Now()));
+  EXPECT_FALSE(
+      task_queues_->HasTaskToRun({vsync_queue_id_}, fml::TimePoint::Now()));
+  const auto now = fml::TimePoint::Now();
+  const auto target = now + fml::TimeDelta::FromSeconds(10);
+  task_queues_->RegisterTask(
+      vsync_queue_id_, []() {}, target);
+  EXPECT_FALSE(task_queues_->HasTaskToRun({vsync_queue_id_}, now));
+  EXPECT_TRUE(task_queues_->HasTaskToRun({vsync_queue_id_}, target));
+  EXPECT_EQ(task_queues_->GetNumPendingTasks(vsync_queue_id_), 1u);
+  EXPECT_EQ(vsync_monitor_.request_count(), 0);
+  ASSERT_EQ(loop_impl_->wake_times.size(), 1u);
+  EXPECT_EQ(loop_impl_->wake_times.back(), target);
 }
 
 }  // namespace lynx
