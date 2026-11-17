@@ -76,6 +76,18 @@ void NativePaintingCtxPlatformHarmonyRef::GetRootViewLocationOnScreen(
   }
 }
 
+bool NativePaintingCtxPlatformHarmonyRef::GetRootViewLocationInWindow(
+    float location[2]) {
+  auto renderer_context = renderer_context_.lock();
+  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
+  if (ui_owner == nullptr || ui_owner->Destroyed()) {
+    return false;
+  }
+  auto* root = ui_owner->Root();
+  return root != nullptr && root->IsAttachedToViewTree() &&
+         root->GetOffsetToWindow(location);
+}
+
 void NativePaintingCtxPlatformHarmonyRef::GetScreenSize(float size[2]) {
   if (size == nullptr) {
     return;

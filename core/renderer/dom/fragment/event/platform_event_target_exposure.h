@@ -76,6 +76,7 @@ class PlatformEventTargetExposure
       : platform_ref_(platform_ref), task_runner_(std::move(task_runner)) {}
 
   void SetIntervalMs(int interval_ms);
+  int IntervalMs() const { return interval_ms_; }
   void AddExposureTarget(const fml::RefPtr<PlatformEventTarget>& target,
                          const lepus::Value& option);
   void RemoveExposureTarget(const fml::RefPtr<PlatformEventTarget>& target,

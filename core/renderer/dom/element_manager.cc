@@ -1441,6 +1441,8 @@ void ElementManager::SetConfig(const std::shared_ptr<PageConfig> &config) {
   if (config_) {
     if (IsFragmentLayerRenderModeOn()) {
       painting_context()->SetTapSlop(config_->GetTapSlop());
+      painting_context()->SetPositionEventConfig(
+          config_->GetObserverFrameRate());
     }
     layout_configs_ = config_->GetLayoutConfigs();
     painting_context()->SetEnableVsyncAlignedFlush(
