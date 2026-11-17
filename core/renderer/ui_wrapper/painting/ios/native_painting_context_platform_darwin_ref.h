@@ -37,12 +37,14 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   bool RequestRootFocus(int32_t root_id, bool focused) override;
   void NotifyInputRootsStateChanged(UIWindow* window = nil);
   void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y, float content_width,
-                            float content_height, bool managed) override;
+                            float content_height) override;
   LynxRendererContext* GetRendererContext();
   PlatformTextEventTargetRegions GetTextEventTargetRegions(int32_t text_id) override;
 
   void InsertListItemPaintingNode(int32_t list_id, int32_t child_id) override;
   void RemoveListItemPaintingNode(int32_t list_id, int32_t child_id) override;
+  void ApplyScrollViewState(int32_t sign, float scroll_x, float scroll_y, float content_width,
+                            float content_height) override;
   void UpdateContentOffsetForListContainer(int32_t container_id, float content_size, float delta_x,
                                            float delta_y, bool is_init_scroll_offset,
                                            bool from_layout) override;
@@ -54,6 +56,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   }
 
   void UpdatePlatformRendererExtraBundle(int32_t sign, id platform_extra_bundle);
+  UIView* GetPlatformRendererView(int32_t sign);
   void InvokePlatformViewUIMethod(
       int32_t sign, const std::string& method, const lepus::Value& params,
       base::MoveOnlyClosure<void, int32_t, const pub::Value&> callback) override;
@@ -63,7 +66,6 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
 
  private:
   LynxUIOwner* GetUIOwner();
-  UIView* GetPlatformRendererView(int32_t sign);
   __weak LynxPerformanceController* perf_controller_;
 };
 

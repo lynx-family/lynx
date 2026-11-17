@@ -21,6 +21,8 @@
 
 @property(nonatomic, assign) UIEdgeInsets padding;
 @property(nonatomic, assign) BOOL pasting;
+@property(nonatomic, assign) BOOL textEditEnabled;
+@property(nonatomic, assign) CGFloat textEditContentWidth;
 
 @end
 
@@ -49,6 +51,9 @@
     CGFloat width = bounds.size.width - self.padding.left - self.padding.right;
     CGFloat height = bounds.size.height - self.padding.top - self.padding.bottom;
     
+    if (self.textEditEnabled) {
+      width = MAX(width, self.textEditContentWidth);
+    }
     return CGRectMake(x, y, width, height);
 }
 
@@ -125,6 +130,70 @@ LYNX_PROP_SETTER("show-soft-input-on-focus", setShowSoftInputOnFocus, BOOL) {
   }
 }
 
+- (CGFloat)textEditMaximumScrollOffset {
+  CGRect start = [self.view caretRectForPosition:self.view.beginningOfDocument];
+  CGRect end = [self.view caretRectForPosition:self.view.endOfDocument];
+  CGFloat content = fabs(end.origin.x - start.origin.x) + MAX(start.size.width, end.size.width);
+  CGFloat viewport = MAX(0, self.view.bounds.size.width - self.padding.left - self.padding.right);
+  return MAX(0, content - viewport);
+}
+
+- (CGFloat)textEditScrollOffset {
+  return self.view.bounds.origin.x;
+}
+
+- (void)applyTextEditScrollOffset:(CGFloat)offset {
+  LynxTextFieldLite *field = (LynxTextFieldLite *)self.view;
+  CGFloat viewport = MAX(0, field.bounds.size.width - self.padding.left - self.padding.right);
+  CGFloat width = viewport + [self textEditMaximumScrollOffset];
+  if (field.textEditEnabled == self.textEditEnabled &&
+      field.textEditContentWidth == width && field.bounds.origin.x == offset) {
+    return;
+  }
+  field.textEditEnabled = self.textEditEnabled;
+  field.textEditContentWidth = width;
+  CGRect bounds = field.bounds;
+  bounds.origin.x = offset;
+  field.bounds = bounds;
+  [field setNeedsLayout];
+  [field layoutIfNeeded];
+}
+
+- (void)ensureTextEditSelectionVisible {
+  [self ensureTextEditPositionVisible:self.view.selectedTextRange.end];
+}
+
+- (void)ensureTextEditPositionVisible:(UITextPosition *)position {
+  if (!self.textEditEnabled) {
+    return;
+  }
+  CGFloat offset = MIN([self textEditScrollOffset],
+                       [self textEditMaximumScrollOffset]);
+  [self applyTextEditScrollOffset:offset];
+  if (!position) {
+    return;
+  }
+  CGRect caret = [self.view caretRectForPosition:position];
+  caret = CGRectOffset(caret, -self.view.bounds.origin.x, 0);
+  CGFloat left = self.padding.left;
+  CGFloat right = self.view.bounds.size.width - self.padding.right;
+  if (CGRectGetMinX(caret) < left) {
+    offset += CGRectGetMinX(caret) - left;
+  } else if (CGRectGetMaxX(caret) > right) {
+    offset += CGRectGetMaxX(caret) - right;
+  }
+  [self applyTextEditScrollOffset:MIN([self textEditMaximumScrollOffset],
+                                            MAX(0, offset))];
+}
+
+- (void)scheduleTextEditState {
+  if (self.textEditEnabled) {
+    [self applyTextEditScrollOffset:MIN([self textEditScrollOffset],
+                                              [self textEditMaximumScrollOffset])];
+  }
+  [super scheduleTextEditState];
+}
+
 
 LYNX_UI_METHOD(setValue) {
   NSString *value = params[@"value"];
@@ -174,6 +243,8 @@ LYNX_UI_METHOD(setValue) {
 }
 
 - (void)textFieldDidChangeSelection:(UITextField *)textField {
+  [self ensureTextEditSelectionVisible];
+  [self invalidateTextEditGeometry];
   if ([self shouldSuppressInputEvent]) {
     return;
   }

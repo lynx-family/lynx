@@ -262,13 +262,11 @@ void PaintingContext::RequestInputFocus(int32_t anchor_sign, bool focused,
 
 void PaintingContext::ApplyListScrollState(int32_t container_id, float scroll_x,
                                            float scroll_y, float content_width,
-                                           float content_height,
-                                           bool cmp_managed) {
+                                           float content_height) {
   Enqueue([platform_ref = platform_impl_->GetPlatformRef(), container_id,
-           scroll_x, scroll_y, content_width, content_height, cmp_managed] {
+           scroll_x, scroll_y, content_width, content_height] {
     platform_ref->ApplyListScrollState(container_id, scroll_x, scroll_y,
-                                       content_width, content_height,
-                                       cmp_managed);
+                                       content_width, content_height);
     if (platform_ref->IsNativePaintingCtxPlatformRef()) {
       static_cast<NativePaintingCtxPlatformRef*>(platform_ref.get())
           ->RequestPositionChangeCheck();
@@ -283,6 +281,10 @@ void PaintingContext::ApplyScrollViewState(int32_t sign, float scroll_x,
            content_width, content_height] {
     ref->ApplyScrollViewState(sign, scroll_x, scroll_y, content_width,
                               content_height);
+    if (ref->IsNativePaintingCtxPlatformRef()) {
+      static_cast<NativePaintingCtxPlatformRef*>(ref.get())
+          ->RequestPositionChangeCheck();
+    }
   });
 }
 

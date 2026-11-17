@@ -27,9 +27,11 @@ bool NativePaintingCtxAndroidRef::RequestRootFocus(int32_t root_id,
          view_manager_->RequestRootFocus(root_id, focused);
 }
 
-void NativePaintingCtxAndroidRef::ApplyListScrollState(
-    int32_t sign, float scroll_x, float scroll_y, float content_width,
-    float content_height, bool) {
+void NativePaintingCtxAndroidRef::ApplyListScrollState(int32_t sign,
+                                                       float scroll_x,
+                                                       float scroll_y,
+                                                       float content_width,
+                                                       float content_height) {
   if (!destroyed_.load(std::memory_order_acquire))
     view_manager_->ApplyListScrollState(sign, scroll_x, scroll_y, content_width,
                                         content_height);

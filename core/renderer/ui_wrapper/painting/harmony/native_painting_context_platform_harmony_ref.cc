@@ -36,14 +36,14 @@ bool NativePaintingCtxPlatformHarmonyRef::RequestRootFocus(int32_t root_id,
 
 void NativePaintingCtxPlatformHarmonyRef::ApplyListScrollState(
     int32_t sign, float scroll_x, float scroll_y, float content_width,
-    float content_height, bool cmp_managed) {
+    float content_height) {
   auto context = renderer_context_.lock();
   auto* owner = context ? context->GetUIOwner() : nullptr;
   if (!owner || owner->Destroyed()) return;
   auto* ui = owner->FindUIBySign(sign);
   if (ui && ui->IsList()) {
-    static_cast<harmony::UIList*>(ui)->ApplyListScrollState(
-        scroll_x, scroll_y, content_width, content_height, cmp_managed);
+    static_cast<harmony::UIList*>(ui)->ApplyEngineScrollState(
+        scroll_x, scroll_y, content_width, content_height);
   }
 }
 

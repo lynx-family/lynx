@@ -569,6 +569,10 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   }
 }
 
+- (BOOL)isRawInputEnabled {
+  return _rawInputEnabled;
+}
+
 - (void)setRawInputEnabled:(BOOL)enabled {
   void (^work)(void) = ^{
     if (self->_rawInputEnabled == enabled) {

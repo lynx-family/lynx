@@ -764,6 +764,14 @@ void ListElement::PropsUpdateFinish() {
   }
 }
 
+void ListElement::OnSubtreeLayoutUpdated(PipelineOptions* options) {
+  // Child layout can change the list even when its own bounds are unchanged.
+  // Skip the list whose item is being rendered.
+  if (impl_id() != options->list_id_) {
+    options->updated_list_elements_.emplace_back(impl_id());
+  }
+}
+
 /**
  * @description: When the list element changes, this method will be invoked. For
  *example, if the list's width or height changes, or if the List itself has new

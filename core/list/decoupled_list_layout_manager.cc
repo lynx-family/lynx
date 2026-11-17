@@ -447,7 +447,7 @@ bool ListLayoutManager::UpdateStickyItemsAfterLayout(
   // enter their sticky mode. Since new sticky items may trigger extra
   // bindings and cause additional layout changes, which requires an update
   // to the layout afterwards.
-  const bool managed = list_container_->compose_scroll_managed();
+  const bool managed = list_container_->engine_scroll_managed();
   const size_t max_passes =
       managed ? list_container_->list_adapter()->GetStickyTops().size() : 0;
   bool reflowed = false;
@@ -546,7 +546,7 @@ bool ListLayoutManager::IsItemHolderNotAtStickyPosition(
 
 bool ListLayoutManager::CanItemHolderBeAnchor(
     const ItemHolder* item_holder) const {
-  return list_container_->compose_scroll_managed() ||
+  return list_container_->engine_scroll_managed() ||
          IsItemHolderNotAtStickyPosition(item_holder);
 }
 

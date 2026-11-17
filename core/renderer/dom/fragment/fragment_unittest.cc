@@ -267,7 +267,7 @@ class TestNativePaintingCtxPlatformRef : public NativePaintingCtxPlatformRef {
             std::make_unique<TestPlatformRendererFactory>()) {}
 
   void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y, float,
-                            float, bool) override {
+                            float) override {
     scroll_offsets[sign] = {scroll_x, scroll_y};
   }
 
@@ -4540,23 +4540,22 @@ TEST_F(FragmentTest, AppliedListScrollStateRefreshesPositionChange) {
   ASSERT_EQ(observer.targets_[100], (Rect{110.f, 260.f, 20.f, 30.f}));
 
   // Scroll projections refresh positions without host movement or touch input.
-  painting.ApplyListScrollState(1, 10.f, 30.f, 200.f, 400.f, true);
+  painting.ApplyListScrollState(1, 10.f, 30.f, 200.f, 400.f);
   EXPECT_TRUE(observer.check_pending_);
   loop.RunExpiredTasksNow();
   EXPECT_EQ(observer.targets_[100], (Rect{100.f, 230.f, 20.f, 30.f}));
 
-  painting.ApplyListScrollState(1, 15.f, 35.f, 200.f, 400.f, true);
-  painting.ApplyListScrollState(1, 20.f, 40.f, 200.f, 400.f, true);
+  painting.ApplyListScrollState(1, 15.f, 35.f, 200.f, 400.f);
+  painting.ApplyListScrollState(1, 20.f, 40.f, 200.f, 400.f);
   EXPECT_TRUE(observer.check_pending_);
   loop.RunExpiredTasksNow();
   EXPECT_EQ(observer.targets_[100], (Rect{90.f, 220.f, 20.f, 30.f}));
 
-  // Handing scrolling back to the platform still publishes its final state.
-  painting.ApplyListScrollState(1, 0.f, 0.f, 200.f, 400.f, false);
+  painting.ApplyListScrollState(1, 0.f, 0.f, 200.f, 400.f);
   loop.RunExpiredTasksNow();
   EXPECT_EQ(observer.targets_[100], (Rect{110.f, 260.f, 20.f, 30.f}));
   ref->UpdatePlatformEventBundle(100, {});
-  painting.ApplyListScrollState(1, 10.f, 30.f, 200.f, 400.f, true);
+  painting.ApplyListScrollState(1, 10.f, 30.f, 200.f, 400.f);
   EXPECT_TRUE(observer.targets_.empty());
   EXPECT_FALSE(observer.check_pending_);
 }

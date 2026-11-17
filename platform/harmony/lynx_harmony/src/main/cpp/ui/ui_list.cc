@@ -517,7 +517,7 @@ void UIList::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
   if (engine_scroll_managed_) {
     // A new content size takes effect after measurement. Reapply the absolute
     // target in case the immediate scroll was clamped to the previous range.
-    ScheduleComposeScrollProjection();
+    ScheduleEngineScrollProjection();
     return;
   }
   if (base::FloatsLarger(pending_delta_offset_, 0)) {
@@ -1205,15 +1205,14 @@ void UIList::UpdateContentSize(float width, float height) {
 }
 
 std::pair<float, float> UIList::GetScrollOffset() const {
-  return engine_scroll_managed_ ? compose_scroll_offset_
+  return engine_scroll_managed_ ? engine_scroll_offset_
                                 : BaseScrollContainer::GetScrollOffset();
 }
 
-void UIList::ApplyListScrollState(float scroll_x, float scroll_y,
-                                  float content_width, float content_height,
-                                  bool cmp_managed) {
-  engine_scroll_managed_ = cmp_managed;
-  compose_scroll_offset_ = {scroll_x, scroll_y};
+void UIList::ApplyEngineScrollState(float scroll_x, float scroll_y,
+                                    float content_width, float content_height) {
+  engine_scroll_managed_ = true;
+  engine_scroll_offset_ = {scroll_x, scroll_y};
   const bool content_size_changed =
       content_width_ != content_width || content_height_ != content_height;
   if (content_size_changed) UpdateContentSize(content_width, content_height);
@@ -1221,18 +1220,17 @@ void UIList::ApplyListScrollState(float scroll_x, float scroll_y,
   UpdateStickyView();
 }
 
-void UIList::ScheduleComposeScrollProjection() {
+void UIList::ScheduleEngineScrollProjection() {
   const auto& monitor = context_->VSyncMonitor();
   if (!monitor) return;
   monitor->ScheduleVSyncSecondaryCallback(
-      reinterpret_cast<uintptr_t>(&compose_scroll_offset_),
+      reinterpret_cast<uintptr_t>(&engine_scroll_offset_),
       [weak_this = weak_from_this()](int64_t, int64_t) {
         auto shared_this = weak_this.lock();
         if (!shared_this) return;
         auto* list = static_cast<UIList*>(shared_this.get());
-        if (!list->engine_scroll_managed_) return;
-        list->BaseScrollContainer::ScrollTo(list->compose_scroll_offset_.first,
-                                            list->compose_scroll_offset_.second,
+        list->BaseScrollContainer::ScrollTo(list->engine_scroll_offset_.first,
+                                            list->engine_scroll_offset_.second,
                                             false);
         list->UpdateStickyView();
       });
