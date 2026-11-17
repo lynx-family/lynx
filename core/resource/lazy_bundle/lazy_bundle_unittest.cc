@@ -86,7 +86,8 @@ TEST(LazyBundleLoaderTest, FetchBundleCompletesFromHostCacheBeforeReturning) {
 TEST(LazyBundleLoaderTest, FetchBundleCacheMissCanCompleteAsynchronously) {
   auto resource_loader = std::make_shared<CachedBundleResourceLoader>(false);
   auto loader = std::make_shared<LazyBundleLoader>(resource_loader);
-  auto promise = std::make_shared<runtime::ResponsePromise<BundleResourceInfo>>();
+  auto promise =
+      std::make_shared<runtime::ResponsePromise<BundleResourceInfo>>();
   bool completed = false;
   promise->AddCallback([&](BundleResourceInfo response) {
     EXPECT_EQ(response.code, LYNX_BUNDLE_RESOURCE_INFO_SUCCESS);
