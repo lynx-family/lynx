@@ -81,7 +81,9 @@ bool UIOwner::RequestRootFocus(int32_t sign, bool focused) {
       static auto request_focus = reinterpret_cast<RequestFocus>(dlsym(
           base::harmony::GetSharedObjectHandler(base::harmony::kAceNdkSoName),
           "OH_ArkUI_FocusRequest"));
-      if (request_focus) return request_focus(node) == 0;
+      // ArkUI can reject the proxy's ancestor chain while the focus
+      // attribute still works. Fall through and check the actual state.
+      if (request_focus && request_focus(node) == 0) return true;
     }
   }
   ArkUI_NumberValue value{.i32 = focused ? 1 : 0};
@@ -174,7 +176,8 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
   } else if ((tag == "x-overlay-ng" || tag == "overlay") &&
              context_->GetEnableHarmonyNewOverlay()) {
     ui = CreateJSUI(sign, tag);
-  } else if (auto* node_info = context_->GetNodeInfo(tag);
+  } else if (auto* node_info =
+                 context_->GetNodeInfo(tag, sync_xelement_registry_);
              node_info && node_info->ui_creator) {
     ui = node_info->ui_creator(context_.get(), sign, tag);
   } else if (tag == "page") {
@@ -1375,8 +1378,9 @@ void UIOwner::OnWindowFocusChanged(bool focused) {
       input_context && input_context->IsRawInputEnabled() && root_) {
     auto* root = static_cast<UIRoot*>(root_.get());
     const bool root_focused =
-        focused && NodeManager::Instance().GetAttribute<int32_t>(
-                       root->GetProxyNode(), NODE_FOCUS_STATUS) != 0;
+        focused && (NodeManager::Instance().GetAttribute<int32_t>(
+                        root->GetProxyNode(), NODE_FOCUS_STATUS) != 0 ||
+                    input_context->HasFocusedInputEditor(root->Sign()));
     input_context->NotifyInputRootStateChanged(
         root->Sign(), root->IsAttachedToViewTree(), root_focused);
   }
@@ -1794,6 +1798,7 @@ void UIOwner::InitGestureArenaManager(LynxContext* context) {
 }
 
 void UIOwner::SetEnableSyncXElementRegistry() {
+  sync_xelement_registry_ = true;
   if (context_) {
     std::unordered_map<std::string, std::string> tag_map = {
         {"x-viewpager-ng", "viewpager"},
@@ -1807,8 +1812,6 @@ void UIOwner::SetEnableSyncXElementRegistry() {
         {"x-foldview-slot-ng", "scroll-coordinator-slot"},
         {"x-foldview-slot-drag-ng", "scroll-coordinator-slot-drag"},
         {"x-foldview-toolbar-ng", "scroll-coordinator-toolbar"},
-        {"x-input-ng", "input"},
-        {"x-textarea-ng", "textarea"},
     };
     for (const auto& [legacy_tag_name, tag_name] : tag_map) {
       if (const auto* node_info = context_->GetNodeInfo(legacy_tag_name)) {

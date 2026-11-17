@@ -164,6 +164,8 @@ UIOverlay::~UIOverlay() {
       stack_, UIBase::CustomEventReceiver);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_EVENT_ON_DETACH);
+  NodeManager::Instance().UnregisterNodeEvent(stack_,
+                                              NODE_EVENT_ON_AREA_CHANGE);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_TOUCH_EVENT);
   NodeManager::Instance().UnregisterNodeEvent(stack_, NODE_ON_FOCUS);
@@ -197,6 +199,8 @@ UIOverlay::UIOverlay(LynxContext* context, int sign, const std::string& tag)
       stack_, UIBase::CustomEventReceiver);
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_ATTACH, this);
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_DETACH, this);
+  NodeManager::Instance().RegisterNodeEvent(stack_, NODE_EVENT_ON_AREA_CHANGE,
+                                            this);
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_TOUCH_INTERCEPT,
                                             this);
   NodeManager::Instance().RegisterNodeEvent(stack_, NODE_ON_FOCUS, this);
@@ -245,6 +249,23 @@ void UIOverlay::UpdateLayout(float left, float top, float width, float height,
 
 void UIOverlay::FrameDidChanged() {
   // overlay does not have any size
+}
+
+void UIOverlay::SyncPlatformRootOffset() {
+  auto input_context = context_->GetNativePaintingContext();
+  ArkUI_IntOffset origin = {0, 0};
+  if (!is_root_attached_ || !input_context ||
+      OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(stack_, &origin) !=
+          0) {
+    return;
+  }
+  float page_origin[2] = {0.f, 0.f};
+  input_context->GetRootViewLocationOnScreen(page_origin);
+  const float density = context_->ScaledDensity();
+  // Popup measures before its first touch; publish the dialog origin on layout.
+  input_context->SetPlatformEventRootOffset(
+      Sign(), origin.x / density - page_origin[0],
+      origin.y / density - page_origin[1]);
 }
 
 void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
@@ -300,7 +321,11 @@ void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
       input_context->SetPlatformEventRootActive(Sign(), true);
       input_context->NotifyInputRootStateChanged(Sign(), true, false);
     }
+    SyncPlatformRootOffset();
     context_->NotifyUIScroll();
+  } else if (OH_ArkUI_NodeEvent_GetEventType(event) ==
+             NODE_EVENT_ON_AREA_CHANGE) {
+    SyncPlatformRootOffset();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
     is_root_attached_ = false;
     if (auto input_context = context_->GetNativePaintingContext()) {
@@ -309,10 +334,12 @@ void UIOverlay::OnNodeEvent(ArkUI_NodeEvent* event) {
     context_->NotifyUIScroll();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS ||
              OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_BLUR) {
-    const bool focused =
-        OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS && dispatcher &&
-        dispatcher->InputWindowFocused();
     if (auto input_context = context_->GetNativePaintingContext()) {
+      // Root blur also occurs when focus moves to an editor in this dialog.
+      const bool focused =
+          dispatcher && dispatcher->InputWindowFocused() &&
+          (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS ||
+           input_context->HasFocusedInputEditor(Sign()));
       input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
                                                  focused);
     }

@@ -42,6 +42,7 @@ class LayoutNodeManager {
                                                bool final_measure) = 0;
   virtual void AlignmentByPlatform(int32_t id, float offset_top,
                                    float offset_left) = 0;
+  virtual bool GetSyncXElementRegistry() const { return false; }
 };
 
 }  // namespace tasm

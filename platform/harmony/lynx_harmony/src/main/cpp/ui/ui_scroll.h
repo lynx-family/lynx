@@ -71,6 +71,8 @@ class UIScroll : public BaseScrollContainer, public UIStickyScroller {
   }
 
   ~UIScroll() override;
+  void ApplyEngineScrollState(float x, float y, float width, float height);
+  std::pair<float, float> GetScrollOffset() const override;
 
   void OnPropUpdate(const std::string& name,
                     const lepus::Value& value) override;
@@ -129,6 +131,10 @@ class UIScroll : public BaseScrollContainer, public UIStickyScroller {
   void SetHorizontal(bool horizontal) override;
 
  private:
+  void ScheduleScrollProjection();
+  bool engine_scroll_managed_{false};
+  std::pair<float, float> engine_scroll_offset_{0, 0};
+  std::pair<float, float> engine_content_size_{0, 0};
   void UpdateStickyOnScroll();
   void RefreshStickyChildrenIfNeeded();
   void OnScrollSticky(float x_offset, float y_offset);

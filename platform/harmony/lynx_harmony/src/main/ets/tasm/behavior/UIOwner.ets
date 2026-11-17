@@ -114,6 +114,11 @@ export class UIOwner {
   }
 
   setEnableSyncXElementRegistry(): void {
+    // The overlay manager creates its UI from this per-renderer registry.
+    const overlay = this.behaviors.get('x-overlay-ng');
+    if (overlay !== undefined) {
+      this.behaviors.set('overlay', overlay);
+    }
     const behavior = this.behaviors.get('x-webview');
     if (behavior !== undefined) {
       this.behaviors.set('webview', behavior);

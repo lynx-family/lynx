@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_scroll.h"
 
+#include <deviceinfo.h>
+
 #include <algorithm>
 #include <limits>
 
@@ -274,6 +276,12 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
     UpdateContentSize(content_width, content_height);
   }
   layout_changed_ = false;
+  if (engine_scroll_managed_) {
+    BaseScrollContainer::ScrollTo(engine_scroll_offset_.first,
+                                  engine_scroll_offset_.second, false);
+    ScheduleScrollProjection();
+    return;
+  }
   if (IsValidScrollOffset(pending_scroll_offset_)) {
     ScrollToOffset(pending_scroll_offset_);
     pending_scroll_offset_ = scroll::kInvalidScrollOffset;
@@ -285,6 +293,12 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
 
 void UIScroll::OnNodeReady() {
   BaseScrollContainer::OnNodeReady();
+  if (engine_scroll_managed_) {
+    BaseScrollContainer::ScrollTo(engine_scroll_offset_.first,
+                                  engine_scroll_offset_.second, false);
+    ScheduleScrollProjection();
+    return;
+  }
   float scroll_offset = scroll::kInvalidScrollOffset;
   if (IsValidScrollToIndex(scroll_to_index_)) {
     UIBase* child = children_[scroll_to_index_];
@@ -314,6 +328,12 @@ void UIScroll::OnNodeReady() {
 
 void UIScroll::OnNodeReload() {
   BaseScrollContainer::OnNodeReload();
+  if (engine_scroll_managed_) {
+    BaseScrollContainer::ScrollTo(engine_scroll_offset_.first,
+                                  engine_scroll_offset_.second, false);
+    ScheduleScrollProjection();
+    return;
+  }
   ResetScrollTarget();
   pending_scroll_offset_ = scroll::kInvalidScrollOffset;
   // TODO: Handle scroll requests already scheduled through VSync that may
@@ -467,18 +487,32 @@ void UIScroll::FrameDidChanged() {
 }
 
 void UIScroll::UpdateContentSize(float width, float height) {
+  if (engine_scroll_managed_) {
+    width = engine_content_size_.first;
+    height = engine_content_size_.second;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_SCROLL_UPDATE_CONTENT_SIZE);
   BaseScrollContainer::UpdateContentSize(width, height);
   NodeManager::Instance().SetMeasuredSize(container_layout_,
                                           context_->ScaledDensity() * width,
                                           context_->ScaledDensity() * height);
-  HandleContentSizeChangedEvent(width, height);
-  HandleScrollEdgeEvent();
+  if (!engine_scroll_managed_) {
+    HandleContentSizeChangedEvent(width, height);
+    HandleScrollEdgeEvent();
+  }
   sticky_dirty_ = true;
 }
 
 void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
   auto type = OH_ArkUI_NodeEvent_GetEventType(event);
+  if (engine_scroll_managed_ && (type == NODE_SCROLL_EVENT_ON_SCROLL_START ||
+                                 type == NODE_SCROLL_EVENT_ON_SCROLL ||
+                                 type == NODE_SCROLL_EVENT_ON_SCROLL_STOP ||
+                                 type == NODE_SCROLL_EVENT_ON_SCROLL_EDGE ||
+                                 type == NODE_SCROLL_EVENT_ON_WILL_SCROLL ||
+                                 type == NODE_SCROLL_EVENT_ON_DID_SCROLL)) {
+    return;
+  }
 
   if (type == NODE_SCROLL_EVENT_ON_SCROLL_START) {
     HandleScrollStartEvent();
@@ -512,6 +546,45 @@ void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
   } else {
     UIBase::OnNodeEvent(event);
   }
+}
+
+std::pair<float, float> UIScroll::GetScrollOffset() const {
+  return engine_scroll_managed_ ? engine_scroll_offset_
+                                : BaseScrollContainer::GetScrollOffset();
+}
+
+void UIScroll::ApplyEngineScrollState(float x, float y, float width,
+                                      float height) {
+  if (!engine_scroll_managed_ && OH_GetSdkApiVersion() >= 18) {
+    // ArkUI Scroll owns the content clip independently of NODE_CLIP.
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        Node(), NODE_SCROLL_CLIP_CONTENT,
+        static_cast<int32_t>(ARKUI_CONTENT_CLIP_MODE_BOUNDARY));
+  }
+  engine_scroll_managed_ = true;
+  engine_scroll_offset_ = {x, y};
+  engine_content_size_ = {width, height};
+  if (content_width_ != width || content_height_ != height) {
+    UpdateContentSize(width, height);
+    ScheduleScrollProjection();
+  }
+  BaseScrollContainer::ScrollTo(x, y, false);
+}
+
+void UIScroll::ScheduleScrollProjection() {
+  const auto& monitor = context_->VSyncMonitor();
+  if (!monitor) return;
+  monitor->ScheduleVSyncSecondaryCallback(
+      reinterpret_cast<uintptr_t>(&engine_scroll_offset_),
+      [weak_this = weak_from_this()](int64_t, int64_t) {
+        auto shared_this = weak_this.lock();
+        if (!shared_this) return;
+        auto* scroll = static_cast<UIScroll*>(shared_this.get());
+        if (!scroll->engine_scroll_managed_) return;
+        scroll->BaseScrollContainer::ScrollTo(
+            scroll->engine_scroll_offset_.first,
+            scroll->engine_scroll_offset_.second, false);
+      });
 }
 
 void UIScroll::HandleScrollBounceEvent() {

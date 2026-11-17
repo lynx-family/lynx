@@ -225,7 +225,7 @@ ArkUI_NodeAttributeType UITextArea::GetPlaceholderAttributeType() const {
 }
 
 ArkUI_NodeAttributeType UITextArea::GetSelectionAttributeType() const {
-  return NODE_TEXT_INPUT_TEXT_SELECTION;
+  return NODE_TEXT_AREA_TEXT_SELECTION;
 }
 
 ArkUI_NodeAttributeType UITextArea::GetCaretAttributeType() const {

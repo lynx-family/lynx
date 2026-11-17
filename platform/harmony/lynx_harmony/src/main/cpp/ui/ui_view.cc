@@ -77,10 +77,11 @@ void UIView::OnNodeEvent(ArkUI_NodeEvent* event) {
       context_->NotifyUIScroll();
     } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS ||
                OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_BLUR) {
-      const bool focused =
-          OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS &&
-          dispatcher && dispatcher->InputWindowFocused();
       if (auto input_context = context_->GetNativePaintingContext()) {
+        const bool focused =
+            dispatcher && dispatcher->InputWindowFocused() &&
+            (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_ON_FOCUS ||
+             input_context->HasFocusedInputEditor(Sign()));
         input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
                                                    focused);
       }

@@ -398,7 +398,8 @@ class LynxContext {
     int node_type{LayoutNodeType::COMMON};
   };
 
-  const LynxContext::NodeInfo* GetNodeInfo(const std::string& node_name);
+  const LynxContext::NodeInfo* GetNodeInfo(const std::string& node_name,
+                                           bool sync_xelement_registry = false);
   void RegisterNodeInfo(const std::string& node_name, NodeInfo node_info);
 
   LYNX_EXPORT int32_t GetInstanceId() const;
