@@ -9,6 +9,8 @@
 
 #include <optional>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
@@ -63,6 +65,30 @@ class CountingResourceLoader : public pub::LynxResourceLoader {
     response.err_msg = "test resource miss";
     callback(response);
   }
+};
+
+class DeferredBundleResourceLoader : public pub::LynxResourceLoader {
+ public:
+  void Complete(bool success) {
+    auto callback = std::move(callback_);
+    ASSERT_TRUE(callback);
+    pub::LynxResourceResponse response;
+    tasm::LynxTemplateBundle bundle;
+    response.err_code = success ? 0 : -1;
+    response.bundle = success ? &bundle : nullptr;
+    callback(response);
+  }
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest&,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override {
+    callback_ = std::move(callback);
+  }
+
+ private:
+  base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback_;
 };
 
 TEST(BTSRuntimeMediatorTest,
@@ -142,8 +168,9 @@ TEST(BTSRuntimeMediatorTest, FetchBundleCacheMissDispatchesToEngine) {
         nullptr, engine_actor, nullptr, nullptr, js_runner,
         std::make_unique<ExternalResourceLoader>(resource_loader));
     mediator.runtime_standalone_mode_ = false;
+    std::shared_ptr<tasm::LazyBundleLoader> loader;
     if (has_loader) {
-      auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+      loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
       loader->InsertTemplateBundle("https://example.com/other.bundle",
                                    tasm::LynxTemplateBundle{});
       mediator.SetLazyBundleLoader(loader);
@@ -159,14 +186,70 @@ TEST(BTSRuntimeMediatorTest, FetchBundleCacheMissDispatchesToEngine) {
   }
 }
 
+TEST(BTSRuntimeMediatorTest, WeakReferenceDoesNotRetainDestroyedPageLoader) {
+  for (bool success : {false, true}) {
+    SCOPED_TRACE(success);
+    auto runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+    auto engine_actor = std::make_shared<LynxActor<LynxEngine>>(
+        std::make_unique<LynxEngine>(nullptr, nullptr, nullptr,
+                                     base::LogContext{}, kUnknownInstanceId),
+        runner);
+    auto resource_loader = std::make_shared<DeferredBundleResourceLoader>();
+    auto mediator = BTSRuntimeMediator(
+        nullptr, engine_actor, nullptr, nullptr, runner,
+        std::make_unique<ExternalResourceLoader>(resource_loader));
+    mediator.runtime_standalone_mode_ = false;
+    auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+    loader->SetEngineActor(engine_actor);
+    std::weak_ptr<tasm::LazyBundleLoader> weak_loader = loader;
+    mediator.SetLazyBundleLoader(loader);
+
+    // BTS can read the page cache without owning its loader.
+    constexpr const char kCachedUrl[] = "https://example.com/cached.bundle";
+    loader->InsertTemplateBundle(kCachedUrl, tasm::LynxTemplateBundle{});
+    auto pending =
+        std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+    bool listener_called = false;
+    pending->AddCallback([&listener_called](tasm::BundleResourceInfo) {
+      listener_called = true;
+    });
+    loader->FetchBundle({.url = "https://example.com/pending.bundle",
+                         .response_promise = pending});
+
+    // Keep BTS alive while the engine and all page-side loader owners go away.
+    engine_actor->Act([](auto& engine) { engine.reset(); });
+    loader.reset();
+    EXPECT_TRUE(weak_loader.expired());
+    std::thread resource_thread(
+        [&resource_loader, success] { resource_loader->Complete(success); });
+    resource_thread.join();
+    EXPECT_FALSE(listener_called);
+    EXPECT_FALSE(pending->Wait(0).has_value());
+
+    // A cached URL also fails once the page loader and engine are gone.
+    auto cached =
+        std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+    mediator.FetchBundle(kCachedUrl, cached);
+    ASSERT_TRUE(cached->Wait(0).has_value());
+    EXPECT_EQ(cached->Wait(0)->code,
+              tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED);
+    auto missing =
+        std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+    mediator.FetchBundle("https://example.com/missing.bundle", missing);
+    ASSERT_TRUE(missing->Wait(0).has_value());
+    EXPECT_EQ(missing->Wait(0)->code,
+              tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED);
+  }
+}
+
 TEST(BTSRuntimeMediatorTest, FetchBundleStandaloneCacheMissFetchesResource) {
   auto js_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
   auto resource_loader = std::make_shared<CountingResourceLoader>();
   auto mediator = BTSRuntimeMediator(
       nullptr, nullptr, nullptr, nullptr, js_runner,
       std::make_unique<ExternalResourceLoader>(resource_loader));
-  mediator.SetLazyBundleLoader(
-      std::make_shared<tasm::LazyBundleLoader>(resource_loader));
+  auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+  mediator.SetLazyBundleLoader(loader);
   auto response =
       std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
   constexpr const char kBundleUrl[] = "https://example.com/missing.bundle";
