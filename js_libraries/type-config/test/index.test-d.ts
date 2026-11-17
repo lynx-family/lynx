@@ -39,6 +39,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableRawInput').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableReloadLifecycle').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableSimultaneousTap').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('enableTextFontFamilyCascade').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTextOverflow').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTransformedTouchPosition').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('fontScaleEffectiveOnlyOnSp').toEqualTypeOf<boolean | undefined>();

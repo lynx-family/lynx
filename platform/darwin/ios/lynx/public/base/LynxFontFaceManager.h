@@ -45,6 +45,7 @@ typedef NS_ENUM(NSUInteger, LynxFontSrcType) {
 
 @end
 @interface LynxFontFaceContext : NSObject
+@property(nonatomic, assign) BOOL enableTextFontFamilyCascade;
 @property(nonatomic, weak) id<LynxResourceFetcher> resourceFetcher;
 @property(nonatomic, weak) id<LynxResourceProvider> resourceProvider;
 @property(nonatomic, weak) id<LynxGenericResourceFetcher> genericResourceServiceFetcher;

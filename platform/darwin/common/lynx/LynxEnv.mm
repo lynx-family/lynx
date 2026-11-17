@@ -704,6 +704,16 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
   return enableTextFontCascadeOpt;
 }
 
+- (BOOL)enableTextFontFamilyCascade {
+  static dispatch_once_t onceToken;
+  static BOOL enableTextFontFamilyCascade = YES;
+  dispatch_once(&onceToken, ^{
+    enableTextFontFamilyCascade = [self boolFromExternalEnv:LynxEnvEnableTextFontFamilyCascade
+                                               defaultValue:YES];
+  });
+  return enableTextFontFamilyCascade;
+}
+
 - (BOOL)enableTextStrokeInheritanceFix {
   static dispatch_once_t onceToken;
   static BOOL enableTextStrokeInheritanceFix = YES;
@@ -874,6 +884,7 @@ static bool IsThreadSchedulingPolicyEnabledFromEnv() {
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
     @(LynxEnvEnableTextFontCascadeOpt) : @"lynx_text_font_cascade_opt",
+    @(LynxEnvEnableTextFontFamilyCascade) : @"enable_text_font_family_cascade",
     @(LynxEnvEnableTextStrokeInheritanceFix) : @"enable_text_stroke_inheritance_fix",
     @(LynxEnvEnableTextGradientFontFix) : @"enable_text_gradient_font_fix",
     @(LynxEnvFSPEnable) : @"enable_fsp",

@@ -361,6 +361,17 @@ export interface Config {
   enableSimultaneousTap?: boolean;
 
   /**
+   * Controls whether the iOS UIFont/CoreText text path uses later available CSS font-family entries for missing glyphs. Disabled or omitted keeps first-available-font selection and skips later font resources. The external enable_text_font_family_cascade setting can disable this behavior even for an enabled page.
+   *
+   * @iOS
+   *
+   * Since: LynxSDK 4.5
+   *
+   * @defaultValue false
+   */
+  enableTextFontFamilyCascade?: boolean;
+
+  /**
    * Controls whether platform text renderers treat text overflow as visible instead of clipping to bounds. When enabled, page config forwards the flag to platform text contexts and iOS or Harmony text rendering allows visible overflow; when disabled, text keeps the older clipped overflow behavior. From target SDK 2.8 onward, the default override is enabled.
    *
    * @Android

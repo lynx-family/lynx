@@ -266,6 +266,8 @@ static id<LynxServiceTextProtocol> getTextService() {
 }
 
 - (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig {
+  _uiOwner.fontFaceContext.enableTextFontFamilyCascade =
+      pageConfig->GetEnableTextFontFamilyCascade();
   // Since page config is a C++ class and Event Handler is a pure OC class, the set methods must be
   // called here.
   [_eventHandler setEnableSimultaneousTap:pageConfig->GetEnableSimultaneousTap()];
