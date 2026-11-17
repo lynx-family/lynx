@@ -1185,7 +1185,7 @@ TEST_P(CustomDrawFlushTest,
   // Configuration-only updates use normal Flush without styles or attributes.
   EXPECT_EQ(element->dirty(), Element::kDirtyCustomDraw);
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(element->fragment_impl()->has_platform_renderer_);
+  EXPECT_FALSE(element->fragment_impl()->has_platform_renderer_);
   EXPECT_FALSE(element->dirty() & Element::kDirtyCustomDraw);
   draw();
   EXPECT_EQ(calls, 12);
@@ -1371,7 +1371,8 @@ TEST_F(FragmentDrawTest, CustomForegroundOverflowClipIsIndependentOfChildren) {
   draw(false);
 }
 
-TEST_P(CustomDrawFlushTest, CustomDrawLayerCreationAndContentUpdates) {
+TEST_P(CustomDrawFlushTest,
+       CustomDrawContentStaysFlattenedUntilLayerPropertiesAreBound) {
   auto page = manager->CreateFiberPage("0", 0);
   manager->SetFiberPageElement(page);
   auto parent = manager->CreateFiberView();
@@ -1407,6 +1408,34 @@ TEST_P(CustomDrawFlushTest, CustomDrawLayerCreationAndContentUpdates) {
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff00ff00);
   };
+  functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
+    RecordCustomDrawRect(builder, 0xff0000ff);
+  };
+  element->SetCustomDrawFunctions(functions);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(manager->need_layout_);
+  ASSERT_FALSE(fragment->has_platform_renderer_);
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(child->fragment_impl()->render_offset_[0], 17);
+  EXPECT_FLOAT_EQ(child->fragment_impl()->render_offset_[1], 20);
+  page->fragment_impl()->Draw();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  const auto* list = context->GetNativePlatformRef()->GetDisplayListForRenderer(
+      page->fragment_impl()->id());
+  ASSERT_NE(list, nullptr);
+  std::vector<uint32_t> colors;
+  for (const auto& item : CollectDisplayListItems(*list)) {
+    if (item.type == DisplayListOpType::kFill)
+      colors.push_back(item.payload.fill.color);
+  }
+  EXPECT_EQ(colors,
+            (std::vector<uint32_t>{0xff0000ff, 0xffff0000, 0xff00ff00}));
+
+  manager->need_layout_ = false;
+  functions.draw_layer_properties = [](Fragment&, DisplayListBuilder& builder) {
+    builder.Opacity(0.75f);
+  };
   element->SetCustomDrawFunctions(std::move(functions));
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
@@ -1418,17 +1447,20 @@ TEST_P(CustomDrawFlushTest, CustomDrawLayerCreationAndContentUpdates) {
   EXPECT_FLOAT_EQ(child->fragment_impl()->render_offset_[1], 0);
   EXPECT_TRUE(page->fragment_impl()->NeedRedraw());
   page->fragment_impl()->Draw();
-  auto* context = static_cast<NativeMockPaintingContext*>(
-      manager->painting_context()->impl());
-  const auto* list = context->GetNativePlatformRef()->GetDisplayListForRenderer(
+  list = context->GetNativePlatformRef()->GetDisplayListForRenderer(
       fragment->id());
   ASSERT_NE(list, nullptr);
-  std::vector<uint32_t> colors;
+  colors.clear();
   for (const auto& item : CollectDisplayListItems(*list)) {
     if (item.type == DisplayListOpType::kFill)
       colors.push_back(item.payload.fill.color);
   }
-  EXPECT_EQ(colors, (std::vector<uint32_t>{0xffff0000, 0xff00ff00}));
+  EXPECT_EQ(colors,
+            (std::vector<uint32_t>{0xff0000ff, 0xffff0000, 0xff00ff00}));
+  const auto* opacity =
+      LastSubtreeProperty(*list, DisplayListSubtreePropertyOpType::kOpacity);
+  ASSERT_NE(opacity, nullptr);
+  EXPECT_FLOAT_EQ(opacity->data.opacity, 0.75f);
 
   manager->need_layout_ = false;
   element->SetCustomDrawFunctions({});
@@ -1456,6 +1488,7 @@ TEST_F(FragmentDrawTest, CustomDrawBehindIsRetainedOnPropertyOnlyUpdates) {
   auto page = manager->CreateFiberPage("0", 0);
   manager->SetFiberPageElement(page);
   auto element = manager->CreateFiberView();
+  element->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
   page->InsertNode(element);
   int behind = 0;
   int draws = 0;
@@ -1555,10 +1588,9 @@ TEST_F(FragmentDrawTest, CustomDrawHooksPreserveNestedBeforeAfterOrder) {
   outer->SetCustomDrawFunctions(binding(1, 4));
   inner->SetCustomDrawFunctions(binding(2, 3));
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(outer->fragment_impl()->has_platform_renderer_);
-  EXPECT_TRUE(inner->fragment_impl()->has_platform_renderer_);
-  DisplayListBuilder builder;
-  outer->fragment_impl()->OnDraw(builder);
+  EXPECT_FALSE(outer->fragment_impl()->has_platform_renderer_);
+  EXPECT_FALSE(inner->fragment_impl()->has_platform_renderer_);
+  page->fragment_impl()->Draw();
   EXPECT_EQ(order, (std::vector<int>{1, 2, 3, 4}));
 }
 
@@ -1675,6 +1707,7 @@ TEST_F(FragmentDrawTest, CustomForegroundPreservesRetainedContent) {
   auto element = manager->CreateFiberView();
   auto child = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
+  element->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
   child->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
   element->InsertNode(child);
   page->InsertNode(element);
@@ -6942,7 +6975,9 @@ TEST_F(FragmentDrawTest,
     manager->SetFiberPageElement(page);
     auto element = manager->CreateFiberView();
     auto child = manager->CreateFiberView();
-    element->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
+    if (mode == 1) {
+      element->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
+    }
     child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
     child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
     int draws = 0;
@@ -6955,9 +6990,7 @@ TEST_F(FragmentDrawTest,
     page->InsertNode(element);
     page->FlushActionsAsRoot();
     page->Layout(std::make_shared<PipelineOptions>());
-    if (mode == 0) {
-      element->fragment_impl()->has_platform_renderer_ = false;
-    }
+    ASSERT_EQ(element->fragment_impl()->has_platform_renderer_, mode == 1);
     ASSERT_TRUE(child->fragment_impl()->has_platform_renderer_);
     ASSERT_EQ(child->fragment_impl()->fragment_parent(),
               element->fragment_impl());
@@ -7007,13 +7040,9 @@ TEST_F(FragmentDrawTest, HiddenFlattenedDescendantsCanInvalidateAgain) {
   auto middle = manager->CreateFiberView();
   auto child = manager->CreateFiberView();
   auto platform_child = manager->CreateFiberView();
-  parent->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
   child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   platform_child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
-  CustomDrawFunctions functions;
-  functions.draw_foreground = [](Fragment&, DisplayListBuilder&) {};
-  parent->SetCustomDrawFunctions(functions);
-  platform_child->SetCustomDrawFunctions(std::move(functions));
+  platform_child->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
   page->InsertNode(parent);
   parent->InsertNode(middle);
   middle->InsertNode(child);
@@ -7025,9 +7054,9 @@ TEST_F(FragmentDrawTest, HiddenFlattenedDescendantsCanInvalidateAgain) {
   auto* middle_fragment = middle->fragment_impl();
   auto* child_fragment = child->fragment_impl();
   auto* platform_fragment = platform_child->fragment_impl();
-  parent_fragment->has_platform_renderer_ = false;
-  middle_fragment->has_platform_renderer_ = false;
-  child_fragment->has_platform_renderer_ = false;
+  ASSERT_FALSE(parent_fragment->has_platform_renderer_);
+  ASSERT_FALSE(middle_fragment->has_platform_renderer_);
+  ASSERT_FALSE(child_fragment->has_platform_renderer_);
   ASSERT_TRUE(root->has_platform_renderer_);
   ASSERT_TRUE(platform_fragment->has_platform_renderer_);
   root->Draw();

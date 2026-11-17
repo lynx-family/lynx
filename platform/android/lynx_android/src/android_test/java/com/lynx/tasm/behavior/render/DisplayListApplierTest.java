@@ -528,6 +528,66 @@ public class DisplayListApplierTest {
   }
 
   @Test
+  public void testGradientRingPreservesCheckerboardAndRestoresClip() {
+    NativeDisplayListBuilder list = createDisplayList();
+    list.begin(0, VIEW_TYPE, 0, 0, 100, 100)
+        .recordBox(10, 10, 80, 60, 8, 8, 12, 12, 16, 16, 4, 4)
+        .recordBox(14, 14, 72, 52, 4, 4, 8, 8, 12, 12, 0, 0)
+        .linearGradient(new int[] {0x80FF0000, 0x800000FF}, new float[] {0, 1}, 0, 0, 1, 1, 90, 1)
+        .recordBox(94, 10, 4, 4)
+        .fill(0xFF00FF00, 2)
+        .end();
+    Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+    try {
+      Canvas canvas = new Canvas(bitmap);
+      canvas.drawColor(0xFFFFFFFF);
+      Paint paint = new Paint();
+      paint.setColor(0xFF000000);
+      canvas.drawRect(50, 0, 100, 100, paint);
+      setDisplayList(list);
+      displayListApplier.drawTillNextView(canvas);
+      assertEquals(0xFFFFFFFF, bitmap.getPixel(30, 40));
+      assertEquals(0xFF000000, bitmap.getPixel(60, 40));
+      assertEquals(0xFFFFFFFF, bitmap.getPixel(10, 10));
+      assertEquals(0xFF00FF00, bitmap.getPixel(95, 11));
+      int color = bitmap.getPixel(40, 11);
+      double u = (40.5 - 10) / 80;
+      assertEquals(127 + 128 * (1 - u), (color >> 16) & 255, 2);
+      assertEquals(127, (color >> 8) & 255, 2);
+      assertEquals(127 + 128 * u, color & 255, 2);
+    } finally {
+      bitmap.recycle();
+    }
+  }
+
+  @Test
+  public void testGradientExclusionZeroResetsPreviousRing() {
+    for (int innerIndex : new int[] {1, -1}) {
+      NativeDisplayListBuilder list = createDisplayList();
+      list.begin(0, VIEW_TYPE, 0, 0, 100, 100)
+          .recordBox(10, 10, 80, 60)
+          .recordBox(14, 14, 72, 52)
+          .linearGradient(
+              new int[] {0xFFFF0000, 0xFFFF0000}, new float[] {0, 1}, 0, 0, 1, 1, 90, innerIndex)
+          .recordBox(94, 10, 4, 4)
+          .fill(0xFF00FF00, 2)
+          .end();
+      Bitmap bitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
+      try {
+        Canvas canvas = new Canvas(bitmap);
+        canvas.drawColor(0xFFFFFFFF);
+        setDisplayList(list);
+        displayListApplier.drawTillNextView(canvas);
+        assertEquals(innerIndex == -1 ? 0xFFFF0000 : 0xFFFFFFFF, bitmap.getPixel(40, 40));
+        assertEquals(0xFFFF0000, bitmap.getPixel(40, 11));
+        assertEquals(0xFF00FF00, bitmap.getPixel(95, 11));
+      } finally {
+        bitmap.recycle();
+      }
+    }
+  }
+
+  @Test
   public void testRootLinearGradientKeepsExtendedAndNegativeOriginTiles() {
     when(mockRendererHost.getRendererHostWidth()).thenReturn(100);
     when(mockRendererHost.getRendererHostHeight()).thenReturn(100);
