@@ -146,6 +146,13 @@ bool MessageLoopTaskQueues::HasPendingTasks(TaskQueueId queue_id) const {
   return HasPendingTasksUnlocked(queue_id);
 }
 
+bool MessageLoopTaskQueues::HasTaskToRun(
+    const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time) const {
+  std::lock_guard guard(queue_mutex_);
+  return HasPendingTasksUnlocked(queue_ids) &&
+         PeekNextTaskUnlocked(queue_ids).task.GetTargetTime() <= from_time;
+}
+
 base::closure MessageLoopTaskQueues::GetNextTaskToRun(
     const std::vector<TaskQueueId>& queue_ids, fml::TimePoint from_time,
     std::vector<const base::closure*>* observers) {
