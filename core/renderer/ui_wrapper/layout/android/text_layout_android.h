@@ -46,6 +46,7 @@ class TextLayoutAndroid : public TextLayoutImpl {
   void Destroy(Element* element) override;
 
  private:
+  PlatformTextEventTargetRegions GetInlineTextRegions(TextElement* paragraph);
   std::optional<LayoutResult> MeasureInternal(Element* element, float width,
                                               int width_mode, float height,
                                               int height_mode);

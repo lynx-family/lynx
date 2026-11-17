@@ -12,6 +12,7 @@ import com.lynx.tasm.behavior.IPaintingContext;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIBody;
+import com.lynx.tasm.service.ILynxTextService;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,11 +40,14 @@ public class NativePaintingContext implements IPaintingContext {
       UIBody.UIBodyView rootView, LynxContext context, BehaviorRegistry behaviorRegistry) {
     mPlatformRendererContext = new PlatformRendererContext(rootView, context, behaviorRegistry);
     mContext = context;
-    if (context.isTextServiceModeOn() && context.getTextService() != null) {
-      mTextra = context.getTextService().createTextLayoutAPI(context);
+    long rangeRects = 0;
+    ILynxTextService textService = context.isTextServiceModeOn() ? context.getTextService() : null;
+    if (textService != null) {
+      mTextra = textService.createTextLayoutAPI(context);
+      rangeRects = textService.getTextLayoutRangeRects();
     }
     mNativePtr = nativeCreatePaintingContext(this, mPlatformRendererContext.getNativePtr(),
-        mPlatformRendererContext.getTextLayout(), mTextra);
+        mPlatformRendererContext.getTextLayout(), mTextra, rangeRects);
   }
 
   @Override
@@ -242,8 +246,8 @@ public class NativePaintingContext implements IPaintingContext {
         nativeGetMeaningfulPaintingAreaRecords(mNativePtr), mPlatformRendererContext, mContext);
   }
 
-  private native long nativeCreatePaintingContext(
-      NativePaintingContext jThis, long platformRendererContextPtr, Object textLayout, long textra);
+  private native long nativeCreatePaintingContext(NativePaintingContext jThis,
+      long platformRendererContextPtr, Object textLayout, long textra, long rangeRects);
 
   native void nativeSetLynxEngineActorForPlatformContextRef(long nativePtr, long ptr);
 

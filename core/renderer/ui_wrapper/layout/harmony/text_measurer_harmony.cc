@@ -443,8 +443,9 @@ bool AppendTextSubtree(
     builder.PopTextEventTarget();
   }
   const int32_t end = builder.GetCharCount();
-  if (element->is_inline_element() && element->HasEventListener("tap") &&
-      end > start) {
+  if (end > start && element->is_inline_element() &&
+      element->EnableLayoutInElementMode() &&
+      element->HasEventListener("tap")) {
     // Post-order matches the common event tree's nested target priority.
     event_ranges.push_back({element->impl_id(), start, end});
   }
@@ -566,19 +567,26 @@ void TextMeasurerHarmony::DispatchLayoutBefore(Element* element) {
 LayoutResult TextMeasurerHarmony::Measure(Element* element, float width,
                                           int width_mode, float height,
                                           int height_mode) {
-  return MeasureInternal(element, width, width_mode, height, height_mode)
-      .value_or(LayoutResult{});
+  PlatformTextEventTargetRegions inline_regions;
+  auto result = MeasureInternal(element, width, width_mode, height, height_mode,
+                                &inline_regions);
+  if (element && element->is_text()) {
+    static_cast<TextElement*>(element)->UpdateInlineTextGeometry(
+        inline_regions);
+  }
+  return result.value_or(LayoutResult{});
 }
 
 std::optional<LayoutResult> TextMeasurerHarmony::MeasureDetached(
     Element* element, float width, int width_mode, float height,
     int height_mode) {
-  return MeasureInternal(element, width, width_mode, height, height_mode);
+  return MeasureInternal(element, width, width_mode, height, height_mode,
+                         /*inline_regions=*/nullptr);
 }
 
 std::optional<LayoutResult> TextMeasurerHarmony::MeasureInternal(
     Element* element, float width, int width_mode, float height,
-    int height_mode) {
+    int height_mode, PlatformTextEventTargetRegions* inline_regions) {
   if (element == nullptr || !element->is_text() ||
       element->computed_css_style() == nullptr || font_collection_ == nullptr ||
       font_collection_->GetRawStruct() == nullptr) {
@@ -670,6 +678,19 @@ std::optional<LayoutResult> TextMeasurerHarmony::MeasureInternal(
 
   paragraph->SetMeasuredSize(result.width_, result.height_, result.baseline_);
   paragraph->SetText(builder.GetText());
+  if (inline_regions) {
+    const float offset_x = paragraph->GetTranslateLeftOffset();
+    for (const auto& range : event_ranges) {
+      auto rects = paragraph->GetRectsForRange(range.start, range.end);
+      for (uint32_t i = 0; i < rects.GetCount(); ++i) {
+        inline_regions->push_back(PlatformTextEventTargetRegion{
+            range.sign, (rects.GetLeft(i) + offset_x) / density,
+            rects.GetTop(i) / density,
+            (rects.GetRight(i) - rects.GetLeft(i)) / density,
+            (rects.GetBottom(i) - rects.GetTop(i)) / density});
+      }
+    }
+  }
   const int32_t id = element->impl_id();
   auto& stored_paragraph = paragraphs_[id];
   stored_paragraph = std::move(paragraph);

@@ -59,10 +59,11 @@ void InvokeCallback(JNIEnv* env, jobject jcaller, jlong context, jint callback,
 
 jlong CreatePaintingContext(JNIEnv* env, jobject jcaller,
                             jobject painting_context, jobject text_layout,
-                            jlong textra, jint thread_strategy,
+                            jlong textra, jlong range_rects,
+                            jint thread_strategy,
                             jboolean enable_context_free) {
   return reinterpret_cast<jlong>(new lynx::tasm::PaintingContextAndroid(
-      env, painting_context, text_layout, textra, thread_strategy,
+      env, painting_context, text_layout, textra, range_rects, thread_strategy,
       enable_context_free));
 }
 
@@ -405,7 +406,7 @@ void PaintingContextAndroid::ConsumeGesture(int64_t idx, int32_t gesture_id,
 
 PaintingContextAndroid::PaintingContextAndroid(JNIEnv* env, jobject impl,
                                                jobject text_layout,
-                                               jlong textra,
+                                               jlong textra, jlong range_rects,
                                                jint thread_strategy,
                                                bool enable_context_free)
     : impl_(std::make_shared<base::android::ScopedWeakGlobalJavaRef<jobject>>(
@@ -415,8 +416,9 @@ PaintingContextAndroid::PaintingContextAndroid(JNIEnv* env, jobject impl,
   platform_ref_ = std::make_shared<PaintingContextAndroidRef>(env, impl);
   // layout in element
   if (textra != 0) {
-    text_layout_impl_ =
-        std::make_unique<TextLayoutTextra>(static_cast<intptr_t>(textra));
+    text_layout_impl_ = std::make_unique<TextLayoutTextra>(
+        static_cast<intptr_t>(textra),
+        reinterpret_cast<text::TextLayoutRangeRects>(range_rects));
   } else if (text_layout != nullptr) {
     text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
   }

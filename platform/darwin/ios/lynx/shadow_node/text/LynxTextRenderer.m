@@ -66,6 +66,8 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   NSTextContainer *_textContainer;
   CGSize _truncatedSize;
   CGRect _textBoundingRect;
+  NSRange _replacedSourceRange;
+  NSUInteger _replacementLength;
 }
 
 - (instancetype)initWithAttributedString:(NSAttributedString *)attrStr
@@ -754,6 +756,11 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   };
 
   _ellipsisCount = originTextStorageLength - truncationPositionIndex;
+  if (truncationPositionIndex < _attrStr.length) {
+    _replacedSourceRange =
+        NSMakeRange(truncationPositionIndex, _attrStr.length - truncationPositionIndex);
+    _replacementLength = self.textStorage.length - truncationPositionIndex;
+  }
 }
 
 - (BOOL)isTextOverflowAfterTruncated:(NSInteger)lastLineStartIndex {
@@ -928,11 +935,11 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
       }
     }
     _ellipsisCount = truncatedCharacterRange.length;
-    [_textStorage
-        replaceCharactersInRange:truncatedCharacterRange
-                      withString:[LynxTextUtils
-                                     getEllpsisStringAccordingToWritingDirection:spec.textStyle
-                                                                                     .direction]];
+    NSString *ellipsis =
+        [LynxTextUtils getEllpsisStringAccordingToWritingDirection:spec.textStyle.direction];
+    _replacedSourceRange = truncatedCharacterRange;
+    _replacementLength = ellipsis.length;
+    [_textStorage replaceCharactersInRange:truncatedCharacterRange withString:ellipsis];
     [_layoutManager ensureLayoutForTextContainer:_textContainer];
   }
 }
@@ -995,6 +1002,89 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
 
 - (NSLayoutManager *)layoutManager {
   return _layoutManager;
+}
+
+// Keep the portions before and after a truncation range. The suffix is translated
+// into storage coordinates if the excluded source text was replaced with a token.
+static void RetainedRanges(NSRange range, NSRange excluded, NSUInteger replacementLength,
+                           NSRange parts[2]) {
+  parts[0] = range;
+  parts[1] = NSMakeRange(0, 0);
+  if (excluded.location == NSNotFound || excluded.length == 0) {
+    return;
+  }
+  NSUInteger rangeEnd = NSMaxRange(range);
+  NSUInteger prefixEnd = MIN(rangeEnd, excluded.location);
+  parts[0].length = prefixEnd > range.location ? prefixEnd - range.location : 0;
+  NSUInteger suffixStart = MAX(range.location, NSMaxRange(excluded));
+  if (suffixStart < rangeEnd) {
+    parts[1] =
+        NSMakeRange(suffixStart - excluded.length + replacementLength, rangeEnd - suffixStart);
+  }
+}
+
+- (void)enumerateVisibleRectsForSourceRange:(NSRange)sourceRange
+                          inTruncationToken:(BOOL)token
+                                 usingBlock:(void (^)(CGRect rect))block {
+  if (!_textContainer) {
+    return;
+  }
+  NSRange visible = [self visibleGlyphRange];
+  if (visible.length == 0) {
+    return;
+  }
+
+  NSRange hidden =
+      [_layoutManager truncatedGlyphRangeInLineFragmentForGlyphAtIndex:NSMaxRange(visible) - 1];
+  NSRange visibleParts[2];
+  // TextKit can hide glyphs without changing their indices in the layout manager.
+  RetainedRanges(visible, hidden, hidden.length, visibleParts);
+  NSRange retainedParts[2];
+  if (token) {
+    if (_truncationToken.length == 0 || _replacedSourceRange.length == 0) {
+      return;
+    }
+    NSRange tokenRange = NSIntersectionRange(sourceRange, NSMakeRange(0, _replacementLength));
+    retainedParts[0] =
+        NSMakeRange(_replacedSourceRange.location + tokenRange.location, tokenRange.length);
+    retainedParts[1] = NSMakeRange(0, 0);
+  } else {
+    RetainedRanges(NSIntersectionRange(sourceRange, NSMakeRange(0, _attrStr.length)),
+                   _replacedSourceRange, _replacementLength, retainedParts);
+  }
+  NSString *text = _textStorage.string;
+  NSUInteger textLength = text.length;
+  CGFloat offsetX = self.textContentOffsetX;
+  void (^emitRect)(CGRect, BOOL *) = ^(CGRect rect, BOOL *stop) {
+    block(CGRectOffset(rect, offsetX, 0));
+  };
+  for (NSUInteger i = 0; i < 2; ++i) {
+    NSRange retained = retainedParts[i];
+    NSUInteger limit = MIN(NSMaxRange(retained), textLength);
+    for (NSUInteger position = retained.location; position < limit;) {
+      NSUInteger lineEnd, contentsEnd;
+      [text getLineStart:NULL
+                     end:&lineEnd
+             contentsEnd:&contentsEnd
+                forRange:NSMakeRange(position, 0)];
+      NSUInteger end = MIN(contentsEnd, limit);
+      if (end > position) {
+        NSRange glyphs =
+            [_layoutManager glyphRangeForCharacterRange:NSMakeRange(position, end - position)
+                                   actualCharacterRange:NULL];
+        for (NSUInteger j = 0; j < 2; ++j) {
+          NSRange part = NSIntersectionRange(glyphs, visibleParts[j]);
+          if (part.length != 0) {
+            [_layoutManager enumerateEnclosingRectsForGlyphRange:part
+                                        withinSelectedGlyphRange:NSMakeRange(NSNotFound, 0)
+                                                 inTextContainer:_textContainer
+                                                      usingBlock:emitRect];
+          }
+        }
+      }
+      position = lineEnd;
+    }
+  }
 }
 
 - (NSTextStorage *)textStorage {
