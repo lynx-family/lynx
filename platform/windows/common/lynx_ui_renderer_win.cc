@@ -24,6 +24,7 @@
 #include "clay/shell/platform/windows/dpi_utils.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
 #if ENABLE_TESTBENCH_REPLAY
@@ -105,8 +106,11 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
+  const bool enable_memory_monitoring =
+      tasm::performance::MemoryMonitor::GetSettings().lynx_ui.enabled;
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateClay>(
-      view_context, std::move(module_factory));
+      view_context, std::move(module_factory), nullptr,
+      enable_memory_monitoring);
 
   clay::NativeViewServiceEmbedder::SetViewFactories(
       view_context, std::move(builder->native_view_creators));

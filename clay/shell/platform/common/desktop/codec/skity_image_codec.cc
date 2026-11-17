@@ -9,9 +9,11 @@
 #include <utility>
 
 #include "clay/gfx/image/graphics_image.h"
+#include "clay/gfx/image/graphics_image_skity.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 #include "skity/codec/codec.hpp"
 #include "skity/graphic/image.hpp"
+#include "skity/io/pixmap.hpp"
 
 namespace clay {
 namespace {
@@ -22,7 +24,8 @@ bool IsValidPixmap(const std::shared_ptr<skity::Pixmap>& pixmap) {
 }
 
 std::shared_ptr<skity::Pixmap> CopyPixmap(
-    const std::shared_ptr<skity::Pixmap>& source) {
+    const std::shared_ptr<skity::Pixmap>& source,
+    const std::shared_ptr<ClayMemoryTracker>& tracker) {
   if (!IsValidPixmap(source) ||
       source->Height() >
           std::numeric_limits<size_t>::max() / source->RowBytes()) {
@@ -30,12 +33,14 @@ std::shared_ptr<skity::Pixmap> CopyPixmap(
   }
   auto data = skity::Data::MakeWithCopy(source->Addr(),
                                         source->RowBytes() * source->Height());
-  if (!data) {
+  if (!data || data->IsEmpty()) {
     return nullptr;
   }
-  return std::make_shared<skity::Pixmap>(
-      std::move(data), source->RowBytes(), source->Width(), source->Height(),
-      source->GetAlphaType(), source->GetColorType());
+  return TrackDecodedPixmap(
+      tracker,
+      std::make_shared<skity::Pixmap>(
+          std::move(data), source->RowBytes(), source->Width(),
+          source->Height(), source->GetAlphaType(), source->GetColorType()));
 }
 
 fml::RefPtr<GraphicsImage> MakeGraphicsImage(
@@ -66,8 +71,9 @@ std::shared_ptr<skity::Pixmap> DecodeInitialPixmap(
 
 class SkityImageCodec::State {
  public:
-  explicit State(std::shared_ptr<SkityImageCodecGenerator> generator)
-      : generator_(std::move(generator)) {
+  State(std::shared_ptr<SkityImageCodecGenerator> generator,
+        std::shared_ptr<ClayMemoryTracker> tracker)
+      : generator_(std::move(generator)), memory_tracker_(std::move(tracker)) {
     frame_count_ = generator_->FrameCount();
   }
 
@@ -87,7 +93,8 @@ class SkityImageCodec::State {
     }
     auto result = generator_->DecodeFrame(next_frame_index_, current_pixmap_);
     if (result.image) {
-      auto next_pixmap = CopyPixmap(result.image->peekPixels());
+      auto next_pixmap =
+          CopyPixmap(result.image->peekPixels(), memory_tracker_);
       if (!next_pixmap) {
         return {};
       }
@@ -99,13 +106,15 @@ class SkityImageCodec::State {
 
  private:
   const std::shared_ptr<SkityImageCodecGenerator> generator_;
+  const std::shared_ptr<ClayMemoryTracker> memory_tracker_;
   std::shared_ptr<skity::Pixmap> current_pixmap_;
   int frame_count_ = 0;
   int next_frame_index_ = 0;
 };
 
 std::shared_ptr<ImageCodecGenerator> SkityImageCodecGenerator::Create(
-    std::shared_ptr<skity::Data> encoded_data, const Size& decode_size) {
+    std::shared_ptr<skity::Data> encoded_data, const Size& decode_size,
+    const std::shared_ptr<ClayMemoryTracker>& memory_tracker) {
   if (!encoded_data || encoded_data->IsEmpty()) {
     return nullptr;
   }
@@ -119,7 +128,8 @@ std::shared_ptr<ImageCodecGenerator> SkityImageCodecGenerator::Create(
       multi_frame_decoder ? multi_frame_decoder->GetFrameCount() : 0;
   const bool is_animated = decoded_frame_count > 1;
 
-  auto current_pixmap = DecodeInitialPixmap(codec, decode_size, is_animated);
+  auto current_pixmap = TrackDecodedPixmap(
+      memory_tracker, DecodeInitialPixmap(codec, decode_size, is_animated));
   if (!IsValidPixmap(current_pixmap)) {
     return nullptr;
   }
@@ -134,16 +144,18 @@ std::shared_ptr<ImageCodecGenerator> SkityImageCodecGenerator::Create(
   }
   return std::shared_ptr<SkityImageCodecGenerator>(new SkityImageCodecGenerator(
       std::move(codec), std::move(animation_decoder), std::move(current_pixmap),
-      frame_count));
+      frame_count, memory_tracker));
 }
 
 SkityImageCodecGenerator::SkityImageCodecGenerator(
     std::shared_ptr<skity::Codec> codec,
     std::shared_ptr<skity::MultiFrameDecoder> multi_frame_decoder,
-    std::shared_ptr<skity::Pixmap> initial_pixmap, int frame_count)
+    std::shared_ptr<skity::Pixmap> initial_pixmap, int frame_count,
+    const std::shared_ptr<ClayMemoryTracker>& memory_tracker)
     : codec_(std::move(codec)),
       multi_frame_decoder_(std::move(multi_frame_decoder)),
       initial_pixmap_(std::move(initial_pixmap)),
+      memory_tracker_(memory_tracker),
       image_info_(initial_pixmap_->Width(), initial_pixmap_->Height(),
                   ConvertToClayColorType(initial_pixmap_->GetColorType()),
                   ConvertToClayAlphaType(initial_pixmap_->GetAlphaType())),
@@ -157,7 +169,7 @@ int SkityImageCodecGenerator::FrameCount() const { return frame_count_; }
 
 fml::RefPtr<GraphicsImage> SkityImageCodecGenerator::GetImage() const {
   std::lock_guard<std::mutex> lock(mutex_);
-  return MakeGraphicsImage(CopyPixmap(initial_pixmap_));
+  return MakeGraphicsImage(CopyPixmap(initial_pixmap_, memory_tracker_));
 }
 
 fml::RefPtr<Codec> SkityImageCodecGenerator::CreateCodec() {
@@ -165,7 +177,8 @@ fml::RefPtr<Codec> SkityImageCodecGenerator::CreateCodec() {
     return nullptr;
   }
   return fml::MakeRefCounted<SkityImageCodec>(
-      std::make_shared<SkityImageCodec::State>(shared_from_this()));
+      std::make_shared<SkityImageCodec::State>(shared_from_this(),
+                                               memory_tracker_));
 }
 
 int SkityImageCodecGenerator::FrameDuration(int index) const {
@@ -178,7 +191,7 @@ int SkityImageCodecGenerator::FrameDuration(int index) const {
 }
 
 FrameInfo SkityImageCodecGenerator::DecodeFrame(
-    int frame_index, std::shared_ptr<skity::Pixmap> previous_frame) {
+    int frame_index, const std::shared_ptr<skity::Pixmap>& previous_frame) {
   std::lock_guard<std::mutex> lock(mutex_);
   if (!multi_frame_decoder_ || frame_index < 0 || frame_index >= frame_count_) {
     return {};
@@ -194,14 +207,16 @@ FrameInfo SkityImageCodecGenerator::DecodeFrame(
                                     previous_frame->GetColorType())) {
     return {};
   }
-  auto frame =
-      multi_frame_decoder_->DecodeFrame(frame_info, std::move(previous_frame));
+  auto frame = multi_frame_decoder_->DecodeFrame(frame_info, previous_frame);
   // Match the premultiplied alpha type advertised by image_info_ before
   // scaling or uploading the frame to a deferred texture image.
   if (!IsValidPixmap(frame) ||
       !frame->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
                            frame->GetColorType())) {
     return {};
+  }
+  if (frame != previous_frame) {
+    frame = TrackDecodedPixmap(memory_tracker_, std::move(frame));
   }
   return MakeFrameInfo(std::move(frame), frame_info->GetDuration());
 }

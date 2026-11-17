@@ -10,12 +10,17 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <random>
 #include <string>
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
+
+namespace Json {
+class Value;
+}  // namespace Json
 
 namespace lynx {
 namespace tasm {
@@ -39,11 +44,33 @@ struct PageMemoryUsage {
   bool bts_shared{false};
 };
 
+struct ClayMemoryDetailsBuilder {
+  std::function<void(Json::Value&)> write;
+
+  explicit operator bool() const { return static_cast<bool>(write); }
+
+  // Instantiate only in callers that include the complete JSON type.
+  template <typename Value = Json::Value>
+  Value operator()() const {
+    Value details;
+    write(details);
+    return details;
+  }
+};
+
+// The adapter binds the detail builder to the same reading as the total.
+struct ClayMemorySample {
+  int64_t accounted_ui_bytes{0};
+  ClayMemoryDetailsBuilder build_details;
+};
+
 struct InstanceMemoryUsage {
   int32_t instance_id{-1};
   std::string page_id;
   std::string url;
   PageMemoryUsage page;
+  // Empty if there is no detail reading. DevTool invokes the captured builder.
+  ClayMemoryDetailsBuilder clay_memory_details;
   // Whole heap of the BTS VM used by this page. For shared VMs this differs
   // from page.bts_bytes, which contains only the page-attributed slot.
   int64_t bts_heap_bytes{0};

@@ -9,7 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include "clay/gfx/image/graphics_image_skity.h"
 #include "clay/gfx/skity_to_skia_utils.h"
+#include "skity/io/pixmap.hpp"
 
 namespace clay {
 namespace {
@@ -26,7 +28,8 @@ FrameInfo DecodeNextFrame(const fml::RefPtr<Codec>& codec) {
 }
 
 std::shared_ptr<skity::Pixmap> ScalePixmap(
-    std::shared_ptr<skity::Pixmap> pixmap, const ImageInfo& render_info) {
+    std::shared_ptr<skity::Pixmap> pixmap, const ImageInfo& render_info,
+    const std::shared_ptr<ClayMemoryTracker>& tracker) {
   if (!pixmap || render_info.width() <= 0 || render_info.height() <= 0) {
     return pixmap;
   }
@@ -40,9 +43,10 @@ std::shared_ptr<skity::Pixmap> ScalePixmap(
   if (!image) {
     return pixmap;
   }
-  auto scaled_pixmap = std::make_shared<skity::Pixmap>(
-      target_width, target_height, pixmap->GetAlphaType(),
-      pixmap->GetColorType());
+  auto scaled_pixmap = TrackDecodedPixmap(
+      tracker, std::make_shared<skity::Pixmap>(target_width, target_height,
+                                               pixmap->GetAlphaType(),
+                                               pixmap->GetColorType()));
   if (!image->ScalePixels(scaled_pixmap, nullptr,
                           skity::SamplingOptions(skity::FilterMode::kLinear,
                                                  skity::MipmapMode::kNone))) {
@@ -53,8 +57,11 @@ std::shared_ptr<skity::Pixmap> ScalePixmap(
 
 class DesktopImageAnimation final : public PlatformImageAnimation {
  public:
-  explicit DesktopImageAnimation(std::shared_ptr<ImageCodecGenerator> generator)
-      : generator_(std::move(generator)), codec_(generator_->CreateCodec()) {
+  DesktopImageAnimation(std::shared_ptr<ImageCodecGenerator> generator,
+                        std::shared_ptr<ClayMemoryTracker> tracker)
+      : generator_(std::move(generator)),
+        memory_tracker_(std::move(tracker)),
+        codec_(generator_->CreateCodec()) {
     for (int i = 0; i < generator_->FrameCount(); ++i) {
       frame_durations_.push_back(codec_ ? codec_->FrameDuration(i) : 0);
     }
@@ -74,9 +81,6 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
     if (frame_index < 0 || frame_index >= GetFrameCount()) {
       return nullptr;
     }
-    if (frame_index == decoded_frame_index_) {
-      return ScalePixmap(PixmapFromFrame(decoded_frame_), render_info);
-    }
     if (!codec_ || frame_index < decoded_frame_index_) {
       codec_ = generator_->CreateCodec();
       decoded_frame_index_ = -1;
@@ -92,11 +96,13 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
       decoded_frame_ = std::move(frame);
       ++decoded_frame_index_;
     }
-    return ScalePixmap(PixmapFromFrame(decoded_frame_), render_info);
+    return ScalePixmap(PixmapFromFrame(decoded_frame_), render_info,
+                       memory_tracker_);
   }
 
  private:
   const std::shared_ptr<ImageCodecGenerator> generator_;
+  const std::shared_ptr<ClayMemoryTracker> memory_tracker_;
   std::vector<int64_t> frame_durations_;
   fml::RefPtr<Codec> codec_;
   std::mutex decoder_mutex_;
@@ -106,8 +112,10 @@ class DesktopImageAnimation final : public PlatformImageAnimation {
 
 }  // namespace
 
-DesktopImage::DesktopImage(std::shared_ptr<ImageCodecGenerator> generator)
-    : generator_(std::move(generator)) {
+DesktopImage::DesktopImage(std::shared_ptr<ImageCodecGenerator> generator,
+                           std::shared_ptr<ClayMemoryTracker> memory_tracker)
+    : generator_(std::move(generator)),
+      memory_tracker_(std::move(memory_tracker)) {
   if (!generator_) {
     return;
   }
@@ -136,7 +144,7 @@ std::shared_ptr<skity::Pixmap> DesktopImage::ToBitmap(
     const ImageInfo& render_info) {
   auto image = generator_ ? generator_->GetImage() : nullptr;
   auto pixmap = image ? image->peekPixels() : nullptr;
-  return ScalePixmap(std::move(pixmap), render_info);
+  return ScalePixmap(std::move(pixmap), render_info, memory_tracker_);
 }
 
 bool DesktopImage::IsAnimated() { return is_animated_; }
@@ -145,7 +153,7 @@ std::unique_ptr<PlatformImageAnimation> DesktopImage::CreateAnimation() {
   if (!is_animated_ || !generator_) {
     return nullptr;
   }
-  return std::make_unique<DesktopImageAnimation>(generator_);
+  return std::make_unique<DesktopImageAnimation>(generator_, memory_tracker_);
 }
 
 }  // namespace clay

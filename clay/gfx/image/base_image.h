@@ -21,6 +21,7 @@
 #include "clay/gfx/image/platform_image.h"
 
 namespace clay {
+class ClayMemoryTracker;
 class ImageFetcher;
 
 enum class ImageType {
@@ -78,6 +79,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   Size decode_size_;
   ImageType type_ = ImageType::kStatic;
   std::shared_ptr<PlatformImage> image_;
+  std::shared_ptr<ClayMemoryTracker> memory_tracker_;
   GPUObject<GraphicsImage> gpu_image_;
   ImageInfo render_info_;
   ImageInfo orig_info_;

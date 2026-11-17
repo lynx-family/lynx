@@ -7,18 +7,21 @@
 #include <utility>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/image/graphics_image_skity.h"
 
 namespace clay {
 
 std::shared_ptr<AnimatedImage> AnimatedImage::Make(
     fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
     std::shared_ptr<PlatformImage> platform_image,
-    fml::WeakPtr<AnimationHandler> animation_handler) {
+    fml::WeakPtr<AnimationHandler> animation_handler,
+    std::shared_ptr<ClayMemoryTracker> memory_tracker) {
   auto image = std::shared_ptr<AnimatedImage>(new AnimatedImage);
   image->type_ = ImageType::kAnimated;
   image->image_fetcher_ = image_fetcher;
   image->url_ = std::move(url);
   image->image_ = std::move(platform_image);
+  image->memory_tracker_ = std::move(memory_tracker);
   image->animation_handler_ = std::move(animation_handler);
   image->orig_info_ =
       ImageInfo::makeWH(image->image_->GetWidth(), image->image_->GetHeight());
@@ -133,6 +136,7 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
   unref_queue->GetTaskRunner()->PostTask(
       [context = unref_queue->GetContext(), image, render_info,
        mipmapped = need_mipmapped, weak_lifetime,
+       memory_tracker = image_resource->memory_tracker_,
        animation = std::move(animation), frame_index]() {
         if (weak_lifetime.expired()) {
           return;
@@ -144,18 +148,8 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
           FML_LOG(ERROR) << "AnimatedImageInstance::Upload: Bitmap is null";
           return;
         }
-        skity::TextureDescriptor desc{};
-        desc.format =
-            skity::Texture::FormatFromColorType(pixmap->GetColorType());
-        desc.width = pixmap->Width();
-        desc.height = pixmap->Height();
-        desc.alpha_type = pixmap->GetAlphaType();
-        desc.mipmapped = mipmapped;
-        auto texture = context->CreateTextureWithDesc(&desc);
-        if (texture) {
-          texture->DeferredUploadImage(std::move(pixmap));
-          image->SetTexture(texture);
-        }
+        SetDeferredRasterImageTexture(*context, *image, std::move(pixmap),
+                                      mipmapped, memory_tracker);
       });
 }
 

@@ -5,6 +5,10 @@
 import("../common/config.gni")
 import("../testing/testing.gni")
 
+source_set("memory_tracker") {
+  sources = [ "clay_memory_tracker.h" ]
+}
+
 source_set("memory") {
   sources = [
     "discardable_memory.h",

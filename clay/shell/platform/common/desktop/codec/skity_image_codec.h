@@ -17,6 +17,7 @@
 
 namespace clay {
 
+class ClayMemoryTracker;
 class SkityImageCodecGenerator;
 
 class SkityImageCodec final : public Codec {
@@ -44,7 +45,8 @@ class SkityImageCodecGenerator final
       public std::enable_shared_from_this<SkityImageCodecGenerator> {
  public:
   static std::shared_ptr<ImageCodecGenerator> Create(
-      std::shared_ptr<skity::Data> encoded_data, const Size& decode_size);
+      std::shared_ptr<skity::Data> encoded_data, const Size& decode_size,
+      const std::shared_ptr<ClayMemoryTracker>& memory_tracker);
 
   const ImageInfo& GetImageInfo() const override;
   int FrameCount() const override;
@@ -53,17 +55,19 @@ class SkityImageCodecGenerator final
 
   int FrameDuration(int index) const;
   FrameInfo DecodeFrame(int frame_index,
-                        std::shared_ptr<skity::Pixmap> previous_frame);
+                        const std::shared_ptr<skity::Pixmap>& previous_frame);
 
  private:
   SkityImageCodecGenerator(
       std::shared_ptr<skity::Codec> codec,
       std::shared_ptr<skity::MultiFrameDecoder> multi_frame_decoder,
-      std::shared_ptr<skity::Pixmap> initial_pixmap, int frame_count);
+      std::shared_ptr<skity::Pixmap> initial_pixmap, int frame_count,
+      const std::shared_ptr<ClayMemoryTracker>& memory_tracker);
 
   const std::shared_ptr<skity::Codec> codec_;
   const std::shared_ptr<skity::MultiFrameDecoder> multi_frame_decoder_;
   const std::shared_ptr<skity::Pixmap> initial_pixmap_;
+  const std::shared_ptr<ClayMemoryTracker> memory_tracker_;
   const ImageInfo image_info_;
   const int frame_count_;
   mutable std::mutex mutex_;

@@ -13,9 +13,12 @@
 
 namespace clay {
 
+class ClayMemoryTracker;
+
 class DesktopImage : public PlatformImage {
  public:
-  explicit DesktopImage(std::shared_ptr<ImageCodecGenerator> generator);
+  explicit DesktopImage(std::shared_ptr<ImageCodecGenerator> generator,
+                        std::shared_ptr<ClayMemoryTracker> memory_tracker);
   ~DesktopImage() override;
 
   int GetWidth() override;
@@ -34,6 +37,7 @@ class DesktopImage : public PlatformImage {
   skity::ColorType color_type_ = skity::ColorType::kUnknown;
   skity::AlphaType alpha_type_ = skity::AlphaType::kUnknown_AlphaType;
   std::shared_ptr<ImageCodecGenerator> generator_;
+  const std::shared_ptr<ClayMemoryTracker> memory_tracker_;
 };
 
 }  // namespace clay

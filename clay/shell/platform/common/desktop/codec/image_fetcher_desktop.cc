@@ -7,6 +7,7 @@
 
 #include "clay/common/service/service_manager.h"
 #include "clay/gfx/graphics_isolate.h"
+#include "clay/memory/clay_memory_tracker.h"
 #include "clay/net/loader/resource_loader.h"
 #include "clay/net/loader/resource_loader_factory.h"
 #include "clay/shell/platform/common/desktop/codec/desktop_image.h"
@@ -75,29 +76,36 @@ void ImageFetcherDesktop::FetchImage(const std::string& url,
           callback(nullptr, {});
           return;
         }
-        static_cast<ImageFetcherDesktop*>(self.get())
-            ->DecodeWhenReady(request_key, [callback, codec_service, raw_data,
-                                            ui_task_runner](Size decode_size) {
-              GraphicsIsolate::Instance()
-                  .GetConcurrentWorkerTaskRunner()
-                  ->PostTask([callback, codec_service, raw_data, ui_task_runner,
-                              decode_size]() {
-                    auto generator = codec_service
-                                         ? codec_service->CreateCodecGenerator(
-                                               raw_data, decode_size)
-                                         : nullptr;
-                    if (!generator) {
-                      ui_task_runner->PostTask(
-                          [callback]() { callback(nullptr, {}); });
-                      return;
-                    }
-                    auto image =
-                        std::make_shared<DesktopImage>(std::move(generator));
-                    ui_task_runner->PostTask([image, callback, decode_size]() {
-                      callback(image, decode_size);
-                    });
-                  });
-            });
+        auto* fetcher = static_cast<ImageFetcherDesktop*>(self.get());
+        auto tracker = fetcher->memory_tracker_;
+        if (tracker) {
+          raw_data = tracker->TrackImageData(ImageMemoryType::kEncoded,
+                                             std::move(raw_data), size);
+        }
+        fetcher->DecodeWhenReady(request_key, [callback, codec_service,
+                                               raw_data = std::move(raw_data),
+                                               ui_task_runner,
+                                               tracker = std::move(tracker)](
+                                                  Size decode_size) {
+          GraphicsIsolate::Instance().GetConcurrentWorkerTaskRunner()->PostTask(
+              [callback, codec_service, raw_data, ui_task_runner, decode_size,
+               tracker]() {
+                auto generator = codec_service
+                                     ? codec_service->CreateCodecGenerator(
+                                           raw_data, decode_size, tracker)
+                                     : nullptr;
+                if (!generator) {
+                  ui_task_runner->PostTask(
+                      [callback]() { callback(nullptr, {}); });
+                  return;
+                }
+                auto image = std::make_shared<DesktopImage>(
+                    std::move(generator), tracker);
+                ui_task_runner->PostTask([image, callback, decode_size]() {
+                  callback(image, decode_size);
+                });
+              });
+        });
       },
       ResourceType::kImage, need_redirect);
 }

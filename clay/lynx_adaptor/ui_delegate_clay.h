@@ -32,7 +32,8 @@ class UIDelegateClay : public UIDelegate {
       clay::ViewContext* view_context,
       std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory,
       std::shared_ptr<base::VSyncMonitorPlatformImpl>
-          vsync_monitor_platform_impl = nullptr);
+          vsync_monitor_platform_impl = nullptr,
+      bool enable_memory_monitoring = false);
   ~UIDelegateClay() override;
 
   std::unique_ptr<PaintingCtxPlatformImpl> CreatePaintingContext() override;

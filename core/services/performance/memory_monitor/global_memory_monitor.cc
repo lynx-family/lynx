@@ -359,6 +359,8 @@ void GlobalMemoryMonitor::OnInstanceDestroyed(int32_t id, int64_t at_ms) {
       vm->idle_since_ms = at_ms;
     }
     state.memory_monitor = nullptr;
+    state.read_clay_memory = nullptr;
+    state.clay_memory_details = {};
     state.destroyed = true;
     state.exited_at_ms = at_ms;
     // Preserve creator attribution before untracked exited pages are erased.
@@ -838,6 +840,14 @@ PageMemoryUsage GlobalMemoryMonitor::UpdatePageMemory(int32_t id,
   if (it == instance_state_.end()) return usage;
   auto& page = it->second;
   if (page.destroyed) return page.usage;
+  if (page.read_clay_memory) {
+    auto sample = page.read_clay_memory();
+    usage.ui_bytes += sample.accounted_ui_bytes;
+    usage.total_bytes += sample.accounted_ui_bytes;
+    page.clay_memory_details = std::move(sample.build_details);
+  } else {
+    page.clay_memory_details = {};
+  }
   page.usage = usage;
   if (auto* vm = FindVM(page.bts_vm)) RefreshPageBts(page, *vm);
   page.memory_usage = static_cast<size_t>(page.usage.total_bytes);
@@ -972,6 +982,7 @@ InstanceMemoryUsage GlobalMemoryMonitor::BuildInstanceMemoryUsage(
   result.page_id = page.page_key;
   result.url = page.url();
   result.page = page.usage;
+  result.clay_memory_details = page.clay_memory_details;
   result.bts_runtime_group_id = page.group_id;
   result.bts_runtime_type =
       page.bts_known ? RuntimeName(page.bts_runtime_type) : "unknown";

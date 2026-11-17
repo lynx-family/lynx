@@ -4,22 +4,24 @@
 #include "clay/gfx/image/static_image.h"
 
 #include <memory>
+#include <utility>
 
 #include "clay/fml/logging.h"
-#include "clay/gfx/graphics_context.h"
-#include "clay/gfx/skity_to_skia_utils.h"
+#include "clay/gfx/image/graphics_image_skity.h"
 
 namespace clay {
 std::shared_ptr<StaticImage> StaticImage::Make(
     fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
-    std::shared_ptr<PlatformImage> platform_image) {
+    std::shared_ptr<PlatformImage> platform_image,
+    std::shared_ptr<ClayMemoryTracker> memory_tracker) {
   auto image = std::shared_ptr<StaticImage>(new StaticImage);
   image->type_ = ImageType::kStatic;
   image->image_fetcher_ = image_fetcher;
   image->url_ = std::move(url);
-  image->image_ = platform_image;
-  image->orig_info_ = ImageInfo::makeWH(platform_image->GetWidth(),
-                                        platform_image->GetHeight());
+  image->image_ = std::move(platform_image);
+  image->memory_tracker_ = std::move(memory_tracker);
+  image->orig_info_ =
+      ImageInfo::makeWH(image->image_->GetWidth(), image->image_->GetHeight());
   return image;
 }
 
@@ -48,18 +50,8 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
               FML_LOG(ERROR) << "StaticImage::Upload: Bitmap is null";
               return;
             }
-            skity::TextureDescriptor desc{};
-            desc.format =
-                skity::Texture::FormatFromColorType(pixmap->GetColorType());
-            desc.width = pixmap->Width();
-            desc.height = pixmap->Height();
-            desc.alpha_type = pixmap->GetAlphaType();
-            desc.mipmapped = mipmapped;
-            auto texture = context->CreateTextureWithDesc(&desc);
-            if (texture) {
-              texture->DeferredUploadImage(std::move(pixmap));
-              image->SetTexture(texture);
-            }
+            SetDeferredRasterImageTexture(*context, *image, std::move(pixmap),
+                                          mipmapped, self->memory_tracker_);
           }
         });
   }
