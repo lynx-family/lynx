@@ -8,6 +8,7 @@
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxTransformRaw.h>
+#import <Lynx/LynxTransitionAnimationManager+Private.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 
@@ -119,6 +120,20 @@ NSArray<LynxTransformRaw*>* ToLynxTransformRaw(const gfx::TransformOperations& o
   return result;
 }
 
+id GetTypedKeyframeValue(const gfx::Keyframe* frame, bool transform) {
+  const auto type = transform ? gfx::KeyframeValueType::kTransform : gfx::KeyframeValueType::kFloat;
+  if (!frame || frame->IsEmpty() || frame->ValueType() != type) {
+    return nil;
+  }
+  if (transform) {
+    const auto* transform_frame = static_cast<const gfx::TransformKeyframe*>(frame);
+    return transform_frame->HasResolvedValue()
+               ? ToLynxTransformRaw(transform_frame->ResolvedValue())
+               : nil;
+  }
+  return @(static_cast<const gfx::FloatKeyframe*>(frame)->Value());
+}
+
 LynxKeyframeParsedData* MakeTypedKeyframes(const gfx::PlatformAnimationProperty& property,
                                            const gfx::AnimationData& animation_data, LynxUI* ui) {
   const bool transform = property.property == gfx::AnimationPropertyType::kTransform;
@@ -132,23 +147,14 @@ LynxKeyframeParsedData* MakeTypedKeyframes(const gfx::PlatformAnimationProperty&
   NSMutableArray<NSNumber*>* times =
       [[NSMutableArray alloc] initWithCapacity:property.keyframes.size()];
   LynxKeyframeParsedData* parsed = transform ? nil : [[LynxKeyframeParsedData alloc] init];
-  const auto value_type =
-      transform ? gfx::KeyframeValueType::kTransform : gfx::KeyframeValueType::kFloat;
   const auto& keyframes = property.keyframes;
   for (size_t i = 0; i < keyframes.size(); ++i) {
     const auto& keyframe = keyframes[reverse ? keyframes.size() - 1 - i : i];
-    if (!keyframe || keyframe->IsEmpty() || keyframe->ValueType() != value_type) {
+    id value = GetTypedKeyframeValue(keyframe.get(), transform);
+    if (!value) {
       return nil;
     }
-    id value;
-    if (transform) {
-      const auto* frame = static_cast<const gfx::TransformKeyframe*>(keyframe.get());
-      if (!frame->HasResolvedValue()) {
-        return nil;
-      }
-      value = ToLynxTransformRaw(frame->ResolvedValue());
-    } else {
-      value = @(static_cast<const gfx::FloatKeyframe*>(keyframe.get())->Value());
+    if (!transform) {
       if (keyframe->Offset() == 0.0) {
         parsed.beginStyles[@"opacity"] = value;
       } else if (keyframe->Offset() == 1.0) {
@@ -231,6 +237,38 @@ LynxPlatformAnimationPlayback* MakePlatformPlayback(
   return platformPlayback;
 }
 
+void ApplyTransitionCommand(LynxUI* ui, const gfx::PlatformAnimationCommand& command) {
+  if (command.type == gfx::PlatformAnimationCommandType::kCancel) {
+    auto* manager = [ui transitionManagerCreatingIfNeeded:NO];
+    [manager cancelPlatformTransition:command.animation_id generation:command.generation];
+    return;
+  }
+  if (command.type == gfx::PlatformAnimationCommandType::kDetach ||
+      command.properties.size() != 1) {
+    return;
+  }
+  const auto& property = command.properties.front();
+  const auto& frames = property.keyframes;
+  const bool transform = property.property == gfx::AnimationPropertyType::kTransform;
+  if (frames.size() != 2 ||
+      (!transform && property.property != gfx::AnimationPropertyType::kOpacity)) {
+    return;
+  }
+  id from = GetTypedKeyframeValue(frames[0].get(), transform);
+  id to = GetTypedKeyframeValue(frames[1].get(), transform);
+  LynxAnimationInfo* info = MakeAnimationInfo(command);
+  if (!from || !to || !info) {
+    return;
+  }
+  info.prop = transform ? TRANSITION_TRANSFORM : OPACITY;
+  auto* manager = [ui transitionManagerCreatingIfNeeded:YES];
+  [manager applyPlatformTransition:info
+                              from:from
+                                to:to
+                       animationID:command.animation_id
+                        generation:command.generation];
+}
+
 }  // namespace
 
 void ApplyPlatformAnimationCommands(
@@ -240,6 +278,10 @@ void ApplyPlatformAnimationCommands(
   }
 
   for (const auto& command : *commands) {
+    if (command.kind == gfx::AnimationKind::kTransition) {
+      ApplyTransitionCommand(ui, command);
+      continue;
+    }
     if (command.kind != gfx::AnimationKind::kKeyframe) {
       continue;
     }

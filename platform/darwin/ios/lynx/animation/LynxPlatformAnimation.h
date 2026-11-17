@@ -5,7 +5,6 @@
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxKeyframeManager.h>
 #import <Lynx/LynxTransformRaw.h>
-#import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI.h>
 
 NS_ASSUME_NONNULL_BEGIN
