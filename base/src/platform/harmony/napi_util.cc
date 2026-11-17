@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <variant>
 
+#include "base/include/byte_utils.h"
 #include "base/include/no_destructor.h"
 
 // temporarily workaround to compile without logging
@@ -281,9 +282,10 @@ bool NapiUtil::ConvertToArrayBuffer(napi_env env, napi_value arg,
     LOGE("Fail to get array buffer " << NapiGetLastError(env, status));
     return false;
   }
-  buffer.resize(length);
-  if (data != nullptr && length != 0) {
-    memcpy(buffer.data(), data, length);
+  if (data != nullptr) {
+    AssignByteArray(buffer, data, length);
+  } else {
+    buffer.resize(length);
   }
   return true;
 }

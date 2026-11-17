@@ -50,6 +50,7 @@ base_core_public_headers_list = [
   "boost/unordered.h",
   "buffer.h",
   "bundled_optional.h",
+  "byte_utils.h",
   "cast_util.h",
   "closure.h",
   "compiler_specific.h",

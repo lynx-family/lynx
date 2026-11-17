@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "base/include/byte_utils.h"
 #include "base/include/log/logging.h"
 #include "platform/embedder/lynx_service/lynx_security_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
@@ -26,7 +27,7 @@ LYNX_EXTERN_C lynx_template_bundle_t* lynx_template_bundle_create(
   } else {
     // Content copy free is currently not supported, we hope it will be
     // supported later.
-    std::vector<uint8_t> source(content, content + length);
+    auto source = lynx::base::CopyByteArray(content, length);
     if (dtor) {
       dtor(content, length, opaque);
     }
