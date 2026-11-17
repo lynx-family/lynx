@@ -15,10 +15,13 @@ import static java.util.Arrays.asList;
 
 import android.graphics.Typeface;
 import android.os.Build;
+import android.text.BoringLayout;
 import android.text.Layout;
 import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.AlignmentSpan;
+import android.text.style.MetricAffectingSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
 import android.util.SparseArray;
@@ -93,6 +96,8 @@ public class TextMeasurer {
   private final static int kPropImageLoopCount = 110;
   private final static int kPropImageMode = 111;
   private final static int kPropInlineEventTarget = 112;
+  private final static int kPropInlineTruncation = 113; // UTF-16 body length
+  private final static int kPropInlineEndWithFont = 114;
 
   private final static int kTextPropEnd = 0xFF;
 
@@ -109,7 +114,6 @@ public class TextMeasurer {
   }
 
   public void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer valueArray) {
-    CharSequence span;
     boolean mHasImageSpan = false;
     boolean hasFontVariations = false;
     List<BaseTextShadowNode.SetSpanOperation> ops = new ArrayList<>();
@@ -127,6 +131,7 @@ public class TextMeasurer {
     int start = 0, end = 0;
     int inlineViewSign = -1;
     int inlineEventTargetSign = -1;
+    int truncationStart = -1;
     HashMap<Integer, NativeLayoutNodeSpan> inlineViewMap = new HashMap<>();
 
     int[] margins = null;
@@ -140,11 +145,15 @@ public class TextMeasurer {
     while (iterator.hasNext()) {
       int operation = iterator.next().getInt();
       switch (operation) {
+        case kPropInlineTruncation:
+          truncationStart = iterator.next().getInt();
+          break;
         case kPropInlineStart: // only inline node has the kPropRangeStart&kPropRangeEnd!
           start = iterator.next().getInt();
           isParagraph = false;
           shadowStyle = null;
           break;
+        case kPropInlineEndWithFont:
         case kPropInlineEnd:
           end = iterator.next().getInt();
           if (inlineViewSign != -1) {
@@ -156,7 +165,7 @@ public class TextMeasurer {
                 baselineShiftCalculatorSpans);
           } else {
             buildStyledSpanIfNeeded(
-                start, end, ops, textAttributes, getTypefaceListener(sign), false);
+                start, end, ops, textAttributes, getTypefaceListener(sign), operation);
           }
           if (inlineEventTargetSign >= 0) {
             Map<String, EventsListener> events = new HashMap<>();
@@ -184,7 +193,7 @@ public class TextMeasurer {
           spannableString.append(decodedText);
 
           buildStyledSpanIfNeeded(
-              0, decodedText.length(), ops, textAttributes, getTypefaceListener(sign), true);
+              0, decodedText.length(), ops, textAttributes, getTypefaceListener(sign), operation);
           break;
         case kTextPropFontSize:
           textAttributes = ensureTextAttributes(textAttributes);
@@ -590,8 +599,7 @@ public class TextMeasurer {
       op.execute(spannableString);
     }
 
-    span = spannableString;
-    if (span == null || textAttributes == null) {
+    if (textAttributes == null) {
       return;
     }
 
@@ -612,7 +620,8 @@ public class TextMeasurer {
 
     textAttributes.setHasImageSpan(mHasImageSpan);
     textAttributes.setHasInlineViewSpan(!inlineViewMap.isEmpty());
-    AttributedTextBundle attributedTextBundle = new AttributedTextBundle(span, textAttributes);
+    AttributedTextBundle attributedTextBundle =
+        new AttributedTextBundle(spannableString, textAttributes, truncationStart);
     if (!inlineViewMap.isEmpty()) {
       attributedTextBundle.setInlineViewMap(inlineViewMap);
     }
@@ -658,66 +667,74 @@ public class TextMeasurer {
 
   private float[] measureTextInternal(int sign, float width, MeasureMode widthMode, float height,
       MeasureMode heightMode, TextMeasurer.TypefaceListener typefaceListener) {
-    // Default result with just width, height, baseline
-    float[] result = new float[3];
-
-    AttributedTextBundle attributedTextBundle =
-        (AttributedTextBundle) mAttributedTextBundles.get(sign);
-    if (attributedTextBundle == null) {
-      return result;
+    AttributedTextBundle text = (AttributedTextBundle) mAttributedTextBundles.get(sign);
+    if (text == null) {
+      return new float[3];
     }
 
-    TextRendererKey key = new TextRendererKey(attributedTextBundle.getSpan(),
-        attributedTextBundle.getTextAttributes(), widthMode, heightMode, width, height, 0, false,
-        true, true);
-    TextRenderer renderer = new TextRenderer(mContext, key);
-    float measuredHeight = renderer.getTextLayoutHeight();
-    float measuredWidth = renderer.getLayoutWidth();
-
+    CharSequence body = text.getSpan();
+    CharSequence token = text.getTruncationSpan();
+    TextAttributes attributes = text.getTextAttributes();
+    TextAttributes layoutAttributes = attributes;
+    if (token != null) {
+      layoutAttributes = attributes.copy();
+      layoutAttributes.setTextOverflow(StyleConstants.TEXTOVERFLOW_CLIP);
+    }
+    TextRenderer renderer =
+        buildRenderer(body, layoutAttributes, width, widthMode, height, heightMode);
+    int truncationStart = -1;
+    if (token != null && widthMode != MeasureMode.UNDEFINED && renderer.isTextContentOverflow()) {
+      Layout layout = renderer.getTextLayout();
+      int lastLine = TextShadowNode.getTruncatedLastLineIndex(renderer, height, heightMode);
+      boolean onlyHeightOverflows = heightMode != MeasureMode.UNDEFINED
+          && layout.getHeight() > height && layout.getLineEnd(lastLine) == body.length()
+          && layout.getLineMax(lastLine) <= width;
+      if (!onlyHeightOverflows) {
+        TextRenderer truncated = fitInlineTruncation(text, renderer, lastLine);
+        if (truncated != null) {
+          renderer = truncated;
+          // The fitted source consists of the retained body prefix followed by the whole token.
+          truncationStart = truncated.mKey.getSpan().length() - token.length();
+        } else {
+          renderer = buildRenderer(body, attributes, width, widthMode, height, heightMode);
+        }
+      }
+    }
+    int omitted =
+        truncationStart >= 0 ? body.length() - truncationStart : renderer.getEllipsisCount();
     Layout textLayout = renderer.getTextLayout();
     int baseline = textLayout.getLineBaseline(0);
 
     // Build result with line information for layout event
     // Format: [width, height, baseline, lineCount, line1_start, line1_end, line1_ellipsisCount,
-    // ..., eventWidth, eventHeight]. Event dimensions use DIP, while the layout
-    // result retains its existing units and constraint-dependent dimensions.
+    // ..., eventWidth, eventHeight, optionalTruncationStart]. Event dimensions use DIP, while the
+    // layout result retains its existing units and constraint-dependent dimensions.
     int lineCount = renderer.getLineCount();
     int eventSizeOffset = 4 + lineCount * 3;
-    result = new float[eventSizeOffset + 2];
-    result[0] = measuredWidth;
-    result[1] = measuredHeight;
+    float[] result = new float[eventSizeOffset + (token == null ? 2 : 3)];
+    if (token != null) {
+      result[eventSizeOffset + 2] = truncationStart;
+    }
+    result[0] = renderer.getLayoutWidth();
+    result[1] = renderer.getTextLayoutHeight();
     result[2] = baseline;
     result[3] = lineCount;
 
     for (int i = 0; i < lineCount; i++) {
-      int lineStart = textLayout.getLineStart(i);
-      int lineEnd = textLayout.getLineEnd(i);
+      int end = textLayout.getLineEnd(i);
       int ellipsisCount = textLayout.getEllipsisCount(i);
-
-      result[4 + i * 3] = lineStart;
-      result[4 + i * 3 + 1] = lineEnd;
-      result[4 + i * 3 + 2] = ellipsisCount;
-    }
-
-    if (lineCount > 0) {
-      int lastLineIndex = lineCount - 1;
-      int spannableStringLength = attributedTextBundle.getSpan().length();
-      int lastLineEndIndex = 4 + lastLineIndex * 3 + 1;
-      int lastLineEllipsisCountIndex = 4 + lastLineIndex * 3 + 2;
-      int lastLineEnd = (int) result[lastLineEndIndex];
-      int lastLineEllipsisCount = (int) result[lastLineEllipsisCountIndex];
-      int rendererEllipsisCount = renderer.getEllipsisCount();
-
-      if (rendererEllipsisCount > 0) {
-        lastLineEllipsisCount = rendererEllipsisCount;
-      } else if (lineCount < textLayout.getLineCount()
-          || attributedTextBundle.getTextAttributes().getTextOverflow()
-              == StyleConstants.TEXTOVERFLOW_CLIP) {
-        lastLineEllipsisCount = spannableStringLength - lastLineEnd;
+      if (i == lineCount - 1) {
+        if (omitted > 0) {
+          ellipsisCount = omitted;
+        } else if (lineCount < textLayout.getLineCount()
+            || attributes.getTextOverflow() == StyleConstants.TEXTOVERFLOW_CLIP) {
+          ellipsisCount = body.length() - end;
+        }
+        end = body.length();
       }
-
-      result[lastLineEllipsisCountIndex] = lastLineEllipsisCount;
-      result[lastLineEndIndex] = spannableStringLength;
+      result[4 + i * 3] = textLayout.getLineStart(i);
+      result[4 + i * 3 + 1] = end;
+      result[4 + i * 3 + 2] = ellipsisCount;
     }
 
     float textLayoutWidth = renderer.calculateMaxWidth();
@@ -726,22 +743,95 @@ public class TextMeasurer {
       result[eventSizeOffset + 1] = PixelUtils.pxToDip(textLayout.getLineBottom(lineCount - 1));
     }
 
-    TextUpdateBundle bundle = new TextUpdateBundle(textLayout,
-        attributedTextBundle.getTextAttributes().hasImageSpan(), null,
-        false
-            && (attributedTextBundle.getTextAttributes() != null
-                && attributedTextBundle.getTextAttributes().getTextAlign()
-                    == StyleConstants.TEXTALIGN_JUSTIFY));
+    TextUpdateBundle bundle =
+        new TextUpdateBundle(textLayout, attributes.hasImageSpan(), null, false);
     bundle.setTextTranslateOffset(renderer.getTextTranslateOffset());
-    bundle.setOriginText(attributedTextBundle.getSpan());
-
-    bundle.setLayoutEventParams(attributedTextBundle.getTextAttributes().getTextOverflow(),
-        renderer.getLineCount(), renderer.getEllipsisCount(),
-        attributedTextBundle.getSpan().length(), textLayoutWidth, true);
-
+    bundle.setOriginText(body);
+    bundle.setLayoutEventParams(
+        attributes.getTextOverflow(), lineCount, omitted, body.length(), textLayoutWidth, true);
     mExtraDatas.put(sign, bundle);
 
     return result;
+  }
+
+  private TextRenderer fitInlineTruncation(
+      AttributedTextBundle text, TextRenderer bodyRenderer, int lastLine) {
+    TextRendererKey key = bodyRenderer.mKey;
+    CharSequence token = text.getTruncationSpan();
+    TextRenderer tokenRenderer = buildRenderer(token, key.getAttributes(), key.width,
+        MeasureMode.AT_MOST, key.height, MeasureMode.UNDEFINED);
+    Layout tokenLayout = tokenRenderer.getTextLayout();
+    float tokenWidth = tokenRenderer.calculateMaxWidth();
+    if (tokenLayout.getLineCount() != 1 || tokenLayout.getLineEnd(0) != token.length()
+        || tokenWidth > key.width) {
+      return null;
+    }
+
+    Layout bodyLayout = bodyRenderer.getTextLayout();
+    CharSequence body = text.getSpan();
+    int lineStart = bodyLayout.getLineStart(lastLine);
+    int cut = Math.min(body.length(),
+        findInlineTruncationCut(bodyLayout, lastLine, lineStart, key.width, tokenWidth));
+    while (cut >= lineStart) {
+      while (cut > lineStart
+          && (Character.isWhitespace(body.charAt(cut - 1))
+              || Character.isHighSurrogate(body.charAt(cut - 1)))) {
+        --cut;
+      }
+      CharSequence displayed = text.buildTruncatedSpan(cut);
+      TextRenderer candidate = buildRenderer(
+          displayed, key.getAttributes(), key.width, key.widthMode, key.height, key.heightMode);
+      Layout layout = candidate.getTextLayout();
+      if (lastLine < candidate.getLineCount() && layout.getLineEnd(lastLine) == displayed.length()
+          && layout.getLineMax(lastLine) <= key.width) {
+        return candidate;
+      }
+      if (cut == lineStart)
+        break;
+      cut = TextUtils.getOffsetBefore(body, cut);
+    }
+    return null;
+  }
+
+  private static int findInlineTruncationCut(
+      Layout layout, int lastLine, int lineStart, float width, float tokenWidth) {
+    if (layout instanceof BoringLayout && layout.getAlignment() == Layout.Alignment.ALIGN_NORMAL
+        && layout.getEllipsisCount(0) == 0) {
+      float limit = width - tokenWidth;
+      int cut = layout.getOffsetForHorizontal(0, limit);
+      // The nearest caret may already be past the space available for the body.
+      if (layout.getPrimaryHorizontal(cut) > limit) {
+        cut = layout.getOffsetToLeftOf(cut);
+      }
+      if (isPlainAsciiPrefix(layout.getText(), cut)) {
+        return cut;
+      }
+    }
+    return TextShadowNode.findTruncationPositionIndex(
+        layout, lastLine, lineStart, width, tokenWidth);
+  }
+
+  // Complex clusters can share a caret. Check only the visible prefix and the next character.
+  private static boolean isPlainAsciiPrefix(CharSequence text, int cut) {
+    int end = Math.min(cut + 1, text.length());
+    if (text instanceof Spanned
+        && ((Spanned) text).nextSpanTransition(-1, end, MetricAffectingSpan.class) < end) {
+      return false;
+    }
+    for (int i = 0; i < end; i++) {
+      char ch = text.charAt(i);
+      if (ch < ' ' || ch > '~') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private TextRenderer buildRenderer(CharSequence text, TextAttributes attributes, float width,
+      MeasureMode widthMode, float height, MeasureMode heightMode) {
+    return new TextRenderer(mContext,
+        new TextRendererKey(
+            text, attributes, widthMode, heightMode, width, height, 0, false, true, true));
   }
 
   private boolean needSetLineHeightSpan(TextAttributes attributes) {
@@ -752,14 +842,14 @@ public class TextMeasurer {
 
   private void buildStyledSpanIfNeeded(int start, int end,
       List<BaseTextShadowNode.SetSpanOperation> ops, TextAttributes attributes,
-      TextMeasurer.TypefaceListener typefaceListener, boolean isParaAttr) {
+      TextMeasurer.TypefaceListener typefaceListener, int operation) {
     if (attributes == null) {
       return;
     }
 
     // para attributes which need span
     //  Set text line-height
-    if (isParaAttr && needSetLineHeightSpan(attributes)) {
+    if (operation == kPropTextString && needSetLineHeightSpan(attributes)) {
       ops.add(new BaseTextShadowNode.SetSpanOperation(
           start, end, new CustomLineHeightSpan(attributes.mLineHeight, true, 0, false)));
     }
@@ -794,7 +884,7 @@ public class TextMeasurer {
           start, end, new LynxTextGradientSpan(attributes.mTextGradient)));
     }
 
-    if (isParaAttr) {
+    if (operation == kPropTextString) {
       return;
     }
 
@@ -831,7 +921,9 @@ public class TextMeasurer {
     // Set text font weight and font style
     // FIXME(zhouzhuangzhuang): need to fix the inline node default attributes not working issue
     // later
-    if (attributes.isFontWeightBOLD() || attributes.mFontStyle > Typeface.NORMAL) {
+    if (attributes.isFontWeightBOLD() || attributes.mFontStyle > Typeface.NORMAL
+        || (operation == kPropInlineEndWithFont
+            && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         ops.add(new BaseTextShadowNode.SetSpanOperation(start, end,
             new CustomStyleSpan(attributes.mFontStyle, attributes.mFontWeight,
@@ -972,27 +1064,30 @@ public class TextMeasurer {
       return new float[0];
     }
     Layout layout = extraData.getTextLayout();
-    HashSet viewTruncatedSet = new HashSet();
+    Spanned displayed = (Spanned) layout.getText();
+    HashSet<Integer> viewTruncatedSet = new HashSet<>();
     for (Map.Entry<Integer, NativeLayoutNodeSpan> entry : nativeLayoutNodeSpans) {
       NativeLayoutNodeSpan span = entry.getValue();
-      float leftOffset = 0.f, topOffset = 0.f;
-      if (span.getSpanIndex() < layout.getText().length()) {
-        int line = layout.getLineForOffset(span.getSpanIndex());
-        leftOffset =
-            layout.getPrimaryHorizontal(span.getSpanIndex()) + extraData.getTextTranslateOffset().x;
-        if (layout.isRtlCharAt(span.getSpanIndex())) {
-          leftOffset -= span.getWidth();
-        }
-        topOffset = span.getYOffset(layout.getLineTop(line), layout.getLineBottom(line),
-                        layout.getLineAscent(line), layout.getLineDescent(line))
-            + extraData.getTextTranslateOffset().y;
-      }
-      if (span.getSpanIndex() >= layout.getText().length()
-          || layout.getText().charAt(span.getSpanIndex())
-              != TextAttributes.INLINE_IMAGE_PLACEHOLDER.charAt(0)) {
+      int index = displayed.getSpanStart(span);
+      if (index < 0 || index >= displayed.length()
+          || displayed.charAt(index) != TextAttributes.INLINE_IMAGE_PLACEHOLDER.charAt(0)) {
         viewTruncatedSet.add(entry.getKey());
+        continue;
       }
-
+      int line = layout.getLineForOffset(index);
+      if (line >= extraData.getLayoutEventLineCount()
+          || (layout.getEllipsisCount(line) > 0
+              && index >= layout.getLineStart(line) + layout.getEllipsisStart(line))) {
+        viewTruncatedSet.add(entry.getKey());
+        continue;
+      }
+      float leftOffset = layout.getPrimaryHorizontal(index) + extraData.getTextTranslateOffset().x;
+      if (layout.isRtlCharAt(index)) {
+        leftOffset -= span.getWidth();
+      }
+      float topOffset = span.getYOffset(layout.getLineTop(line), layout.getLineBottom(line),
+                            layout.getLineAscent(line), layout.getLineDescent(line))
+          + extraData.getTextTranslateOffset().y;
       alignResult.add(Float.valueOf(entry.getKey()));
       alignResult.add(topOffset);
       alignResult.add(leftOffset);
