@@ -60,6 +60,7 @@
 #include "core/renderer/dom/fiber/tree_resolver.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fiber/wrapper_element.h"
+#include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/testing/fiber_element_test.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
@@ -89,7 +90,6 @@
 #include "core/shell/testing/mock_layout_platform.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
-#include "core/template_bundle/template_codec/generator/ttml_holder.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -537,6 +537,41 @@ bool EvalCustomLayout(const std::shared_ptr<runtime::MTSRuntime>& runtime,
   lepus::Value result;
   return runtime::MTSRuntime::ToQuickContext(runtime.get())
       ->EvalBuf(source, strlen(source), result, "custom_layout.js");
+}
+
+void PrepareCustomLayoutBackend(FiberElementTest* test, bool fragment) {
+  if (fragment) {
+    PageOptions page_options;
+    page_options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+        EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT |
+        EmbeddedMode::FRAGMENT_LAYER_RENDER));
+    test->tasm->SetPageOptions(page_options);
+  } else {
+    PrepareLayoutInElementFirstScreenTest(test);
+  }
+}
+
+void FlushAndPlaceCustomLayout(Element& page, Element& owner) {
+  page.FlushActionsAsRoot();
+  owner.slnode()->UpdateMeasureByPlatform(starlight::Constraints(), true);
+  owner.slnode()->AlignmentByPlatform(0, 0);
+}
+
+bool InstallSingleChildCustomLayout(
+    const std::shared_ptr<runtime::MTSRuntime>& runtime,
+    const fml::RefPtr<ComposeElementHandle>& owner,
+    const fml::RefPtr<Element>& child) {
+  runtime->SetGlobalData("owner", lepus::Value(owner));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  return EvalCustomLayout(runtime, R"(
+    __SetCustomLayout(owner, () => {
+      __MeasureElement(owner, child, 10, 10, 10, 10);
+      return {width: 50, height: 50};
+    }, () => {
+      __PlaceElement(owner, child, 0, 0, 0);
+      return true;
+    });
+  )");
 }
 
 }  // namespace
@@ -6381,6 +6416,186 @@ TEST_P(FiberElementTest, CustomLayoutRestoresRemovedChildren) {
   flush();
   EXPECT_EQ(child->ZIndex(), 0);
   EXPECT_FALSE(child->has_z_props());
+}
+
+TEST_P(FiberElementTest, CustomLayoutClearAcrossDetachMoveAndReinsertion) {
+  for (bool fragment : {false, true}) {
+    SCOPED_TRACE(fragment);
+    // 1. Detach child, clear policy, flush removal, then reinsert in next
+    // flush.
+    PrepareCustomLayoutBackend(this, fragment);
+    auto page = CreateLayoutInElementPage(this);
+    auto handle = CreateComposeViewHandle(manager);
+    auto owner = handle->content_element();
+    auto runtime = CreateCustomLayoutRuntime(tasm.get());
+    auto child = manager->CreateFiberView();
+    auto sibling = manager->CreateFiberView();
+    auto descendant = manager->CreateFiberView();
+    descendant->SetStyle(kPropertyIDZIndex, lepus::Value(3));
+    child->InsertNode(descendant);
+    owner->InsertNode(child);
+    owner->InsertNode(sibling);
+    page->InsertNode(owner);
+    ASSERT_TRUE(InstallSingleChildCustomLayout(runtime, handle, child));
+    FlushAndPlaceCustomLayout(*page, *owner);
+    auto* container = child->element_container();
+    ASSERT_EQ(container->old_z_index(), 1);
+
+    owner->RemoveNode(child, false);
+    ASSERT_TRUE(
+        EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+    EXPECT_EQ(child->ZIndex(), 0);
+    EXPECT_EQ(container->old_z_index(), 1);
+    page->FlushActionsAsRoot();
+    ASSERT_EQ(container->parent(), nullptr);
+    owner->InsertNodeBefore(child, sibling);
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(container->old_z_index(), 0);
+    EXPECT_FALSE(container->was_stacking_context());
+    EXPECT_EQ(container->parent(), owner->element_container());
+    EXPECT_EQ(descendant->element_container()->parent(),
+              page->element_container());
+
+    // 2. Move child to empty/non-empty target in both flush orders before
+    // clear.
+    for (bool empty_target : {false, true}) {
+      for (bool target_first : {false, true}) {
+        SCOPED_TRACE(empty_target);
+        SCOPED_TRACE(target_first);
+        PrepareCustomLayoutBackend(this, fragment);
+        auto move_page = CreateLayoutInElementPage(this);
+        auto move_handle = CreateComposeViewHandle(manager);
+        auto move_owner = move_handle->content_element();
+        auto move_runtime = CreateCustomLayoutRuntime(tasm.get());
+        auto moved_handle = CreateComposeViewHandle(manager);
+        auto moved = moved_handle->content_element();
+        auto target = manager->CreateFiberView();
+        target->SetStyle(kPropertyIDOpacity, lepus::Value(0.9));
+        if (!empty_target) target->InsertNode(manager->CreateFiberView());
+        move_owner->InsertNode(moved);
+        move_page->InsertNode(target_first ? target : move_owner);
+        move_page->InsertNode(target_first ? move_owner : target);
+        ASSERT_TRUE(
+            InstallSingleChildCustomLayout(move_runtime, move_handle, moved));
+        FlushAndPlaceCustomLayout(*move_page, *move_owner);
+
+        move_owner->RemoveNode(moved, false);
+        target->InsertNode(moved);
+        ASSERT_TRUE(EvalCustomLayout(move_runtime,
+                                     "__SetCustomLayout(owner, null, null)"));
+        EXPECT_EQ(moved->element_container()->old_z_index(), 1);
+        move_page->FlushActionsAsRoot();
+        EXPECT_EQ(moved->render_parent(), target.get());
+        EXPECT_EQ(moved->element_container()->old_z_index(), 0);
+        EXPECT_EQ(moved->element_container()->parent(),
+                  target->element_container());
+        move_page->RemoveNode(move_owner);
+        move_page->FlushActionsAsRoot();
+        EXPECT_EQ(moved->element_container()->parent(),
+                  target->element_container());
+      }
+    }
+  }
+}
+
+TEST_P(FiberElementTest, CustomLayoutClearRestoresOrderAndHandlesAncestorMove) {
+  for (bool fragment : {false, true}) {
+    SCOPED_TRACE(fragment);
+    PrepareCustomLayoutBackend(this, fragment);
+    auto page = CreateLayoutInElementPage(this);
+    auto handle = CreateComposeViewHandle(manager);
+    auto owner = handle->content_element();
+    owner->SetStyle(kPropertyIDZIndex, lepus::Value(0));
+    auto first = manager->CreateFiberView();
+    auto second = manager->CreateFiberView();
+    auto third = manager->CreateFiberView();
+    owner->InsertNode(first);
+    owner->InsertNode(second);
+    owner->InsertNode(third);
+    page->InsertNode(owner);
+    auto runtime = CreateCustomLayoutRuntime(tasm.get());
+    runtime->SetGlobalData("owner", lepus::Value(handle));
+    runtime->SetGlobalData("first", lepus::Value(first));
+    runtime->SetGlobalData("second", lepus::Value(second));
+    runtime->SetGlobalData("third", lepus::Value(third));
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      __SetCustomLayout(owner, () => {
+        __MeasureElement(owner, third, 10, 10, 10, 10);
+        __MeasureElement(owner, second, 10, 10, 10, 10);
+        __MeasureElement(owner, first, 10, 10, 10, 10);
+        return {width: 50, height: 50};
+      }, () => {
+        __PlaceElement(owner, third, 0, 0, 0);
+        __PlaceElement(owner, second, 0, 0, 0);
+        __PlaceElement(owner, first, 0, 0, 0);
+        return true;
+      });
+    )"));
+    auto child_ids = [&] {
+      std::vector<int> ids;
+      if (fragment) {
+        for (auto* c : owner->fragment_impl()->children_)
+          ids.push_back(c->id());
+      } else {
+        platform_impl_->Flush();
+        for (auto* c :
+             platform_impl_->node_map_.at(owner->impl_id())->children_)
+          ids.push_back(c->id_);
+      }
+      return ids;
+    };
+    FlushAndPlaceCustomLayout(*page, *owner);
+    EXPECT_EQ(child_ids(),
+              (std::vector<int>{third->impl_id(), second->impl_id(),
+                                first->impl_id()}));
+    ASSERT_TRUE(
+        EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+    page->FlushActionsAsRoot();
+    owner->element_container()->UpdateZIndexList();
+    EXPECT_EQ(child_ids(),
+              (std::vector<int>{first->impl_id(), second->impl_id(),
+                                third->impl_id()}));
+  }
+
+  // Move ancestor across distinct stacking contexts with a wrapper child.
+  for (bool target_first : {false, true}) {
+    SCOPED_TRACE(target_first);
+    PrepareCustomLayoutBackend(this, true);
+    auto page = CreateLayoutInElementPage(this);
+    auto handle = CreateComposeViewHandle(manager);
+    auto owner = handle->content_element();
+    auto runtime = CreateCustomLayoutRuntime(tasm.get());
+    auto source = manager->CreateFiberView();
+    auto target = manager->CreateFiberView();
+    source->SetStyle(kPropertyIDOpacity, lepus::Value(0.8));
+    target->SetStyle(kPropertyIDOpacity, lepus::Value(0.9));
+    auto wrapper = manager->CreateFiberWrapperElement();
+    auto child = manager->CreateFiberView();
+    auto z_descendant = manager->CreateFiberView();
+    z_descendant->SetStyle(kPropertyIDZIndex, lepus::Value(3));
+    child->InsertNode(z_descendant);
+    wrapper->InsertNode(child);
+    owner->InsertNode(wrapper);
+    source->InsertNode(owner);
+    page->InsertNode(target_first ? target : source);
+    page->InsertNode(target_first ? source : target);
+    ASSERT_TRUE(InstallSingleChildCustomLayout(runtime, handle, child));
+    FlushAndPlaceCustomLayout(*page, *owner);
+
+    source->RemoveNode(owner, false);
+    target->InsertNode(owner);
+    ASSERT_TRUE(
+        EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+    EXPECT_EQ(child->element_container()->old_z_index(), 1);
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(child->element_container()->old_z_index(), 0);
+    EXPECT_EQ(z_descendant->element_container()->parent(),
+              target->element_container());
+    page->RemoveNode(source);
+    page->FlushActionsAsRoot();
+    EXPECT_EQ(z_descendant->element_container()->parent(),
+              target->element_container());
+  }
 }
 
 TEST_P(FiberElementTest, LayoutInElementLegacyFirstScreenWithReadyViewport) {

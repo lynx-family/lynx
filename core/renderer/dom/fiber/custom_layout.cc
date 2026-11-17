@@ -40,7 +40,7 @@ void SetPlacementZIndex(Element& element,
   }
   if (changed) {
     if (auto* container = element.element_container())
-      container->StyleChanged();
+      container->UpdatePlacementZIndex();
   }
 }
 

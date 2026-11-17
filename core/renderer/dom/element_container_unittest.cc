@@ -1875,6 +1875,43 @@ TEST_F(ElementContainerTest, Create) {
   EXPECT_EQ(child_container->element(), child.get());
 }
 
+TEST_F(UnifiedFixedLayoutOnlyTest, DeferredPlacementZIndexSync) {
+  auto owner = CreateNativeView();
+  auto child = CreateNativeView();
+  auto descendant = CreateNativeView();
+  child->SetStyle(kPropertyIDZIndex, lepus::Value(1));
+  descendant->SetStyle(kPropertyIDZIndex, lepus::Value(3));
+  child->InsertNode(descendant);
+  owner->InsertNode(child);
+  page_->InsertNode(owner);
+  page_->FlushActionsAsRoot();
+  auto* container = child->element_container_impl();
+  ASSERT_EQ(container->old_z_index(), 1);
+  ASSERT_EQ(descendant->element_container()->parent(), container);
+
+  container->RemoveSelf(false);
+  ASSERT_EQ(container->parent(), nullptr);
+  child->computed_css_style()->SetValue(kPropertyIDZIndex, CSSValue(), true);
+  container->UpdatePlacementZIndex();
+  ASSERT_EQ(container->old_z_index(), 1);
+  container->InsertSelf();
+  EXPECT_EQ(container->old_z_index(), 0);
+  EXPECT_FALSE(container->was_stacking_context());
+  EXPECT_EQ(container->parent(), owner->element_container());
+  EXPECT_EQ(descendant->element_container()->parent(),
+            page_->element_container());
+
+  container->props_changed_ = false;
+  child->computed_css_style()->SetValue(
+      kPropertyIDZIndex, CSSValue(lepus::Value(5), CSSValuePattern::NUMBER),
+      false);
+  container->UpdatePlacementZIndex();
+  EXPECT_EQ(container->old_z_index(), 5);
+  EXPECT_EQ(descendant->element_container()->parent(), container);
+  EXPECT_FALSE(container->props_changed_);
+  EXPECT_EQ(child->dirty(), 0u);
+}
+
 TEST_F(ElementContainerTest, InsertAndDestroy) {
   auto element = manager->CreateFiberElement("view");
   element->CreateElementContainer(false);
