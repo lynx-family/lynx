@@ -13,12 +13,12 @@ namespace lynx {
 namespace base {
 
 // Returns an absolute UTF-8 path to a directory for application data.
-// Android and Harmony use filesDir; iOS uses Documents. Desktop platforms
-// create a "lynx" subdirectory in the current user's application data
-// directory: Application Support on macOS, Local AppData on Windows, and
-// XDG_DATA_HOME (or HOME/.local/share) on Linux. Returns empty when
-// unavailable, including before mobile base initialization. Successful lookups
-// are cached.
+// Android uses externalFilesDir; Harmony uses filesDir; iOS uses Documents.
+// Desktop platforms create a "lynx" subdirectory in the current user's
+// application data directory: Application Support on macOS, Local AppData on
+// Windows, and XDG_DATA_HOME (or HOME/.local/share) on Linux. Returns empty
+// when unavailable, including before mobile base initialization. Successful
+// lookups are cached.
 BASE_EXPORT std::string GetApplicationDataDirectory();
 
 // Returns a UTF-8 path to a child of the effective application data directory,
