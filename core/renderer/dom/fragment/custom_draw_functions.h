@@ -13,10 +13,11 @@ class Fragment;
 
 // Element-owned callbacks, installed on its Fragment during Flush. Callbacks
 // record commands directly into the active DisplayListBuilder. They belong to
-// one element instance and are not copied when the element is cloned. A binding
-// requires an independent platform layer; clearing it retains an existing
-// layer. Bindings must remain unchanged during drawing; updates are installed
-// during Flush.
+// one element instance and are not copied when the element is cloned. Only
+// draw_layer_properties requires an independent platform layer; content
+// callbacks can flatten into the ancestor's display list. Clearing a binding
+// retains an existing layer. Bindings must remain unchanged during drawing;
+// updates are installed during Flush.
 struct CustomDrawFunctions {
   // Runs after ordinary background, behavior and children, inside Begin/End.
   // These content callbacks run only when contents are recorded; property-only

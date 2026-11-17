@@ -64,14 +64,14 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     return false;
   }
 
-  // Custom draw callbacks can record subtree properties, so their output needs
-  // an independent platform layer.
+  // Only custom layer properties require an independent platform layer.
+  // Content callbacks can draw into the ancestor's display list.
   const bool can_flatten_without_platform_renderer =
       (!element()->is_page() &&
        !element()->is_direct_child_of_compatible_component() &&
        (element()->is_text() || element()->is_image() || element()->is_view() ||
         element()->is_component())) &&
-      element()->TendToFlatten() && !element()->HasCustomDrawFunctions();
+      element()->TendToFlatten() && !HasCustomLayerProperties();
   if (can_flatten_without_platform_renderer) {
     // If the fragment is a view, text, image, or component, and it tends to
     // flatten, then it does not need to be layerized. The page must keep its
