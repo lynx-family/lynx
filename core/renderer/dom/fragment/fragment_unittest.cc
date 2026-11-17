@@ -1850,9 +1850,9 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
 class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
  public:
   lepus::Value Behind(const std::string& expression,
-                      const lepus::Value& previous = {}) {
+                      const lepus::Value& previous = {}, int op = 12) {
     auto node = lepus::Dictionary::Create();
-    node->SetValue("op", lepus::Value(12));
+    node->SetValue("op", lepus::Value(op));
     node->SetValue("previous", previous);
     node->SetValue(
         "resolve",
@@ -1883,6 +1883,200 @@ class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
     return false;
   }
 };
+
+class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
+ public:
+  static std::string LegacyRect() {
+    return "[[1,10,20,width-10,height-20,0x40123456]]";
+  }
+
+  static void Prefix(DisplayListBuilder* builder) {
+    RoundedRectangle box;
+    box.SetWidth(13);
+    box.SetHeight(17);
+    int32_t index;
+    builder->RecordBoxModel(box, index);
+    builder->LinearGradient(180, {0xff010203, 0xff040506}, {0, 1}, index, index,
+                            1, 1);
+  }
+
+  static std::vector<uint32_t> Fills(const DisplayList& list) {
+    std::vector<uint32_t> fills;
+    DisplayListReader reader(list);
+    while (reader.HasNext()) {
+      const auto& item = reader.Next();
+      if (item.type == DisplayListOpType::kFill)
+        fills.push_back(item.payload.fill.color);
+    }
+    return fills;
+  }
+  void Rebind(const lepus::Value& node) {
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(handle_.get(), node, runtime_.get())
+            .success);
+    page_->FlushActionsAsRoot();
+  }
+};
+
+class ComposeDrawReuseIntegrationTest
+    : public ComposeDrawRecordingIntegrationTest {
+ public:
+  void SetUp() override {
+    ComposeDrawRecordingIntegrationTest::SetUp();
+    Eval("globalThis.legacyCalls=0;globalThis.resolveCalls=0;");
+  }
+
+  static std::string Wire(
+      const std::string& bounds = "10,20,width-10,height-20",
+      uint32_t color = 0x40123456) {
+    return "[[1," + bounds + "," + std::to_string(color) + "]]";
+  }
+
+  static std::string EmptyWire() { return "[]"; }
+
+  lepus::Value Cached(const std::string& body,
+                      const lepus::Value& previous = {}, int op = 12) {
+    auto node =
+        Behind("(globalThis.legacyCalls++," + Wire() + ")", previous, op);
+    node.SetProperty("resolveRecording",
+                     Eval("(function(element,width,height) {"
+                          "globalThis.resolveCalls++;"
+                          "globalThis.resolveArgCount=arguments.length;" +
+                          body + "})"));
+    return node;
+  }
+
+  DisplayList Resolve(Element* element, int op = 12) {
+    DisplayListBuilder builder;
+    if (op == 17)
+      element->fragment_impl()->DrawForeground(builder);
+    else
+      element->fragment_impl()->DrawBehind(builder);
+    return builder.Build();
+  }
+};
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       ProducerReusesRecordingAndRebuildsAfterSizeChangesInFullSubmission) {
+  Install(Cached(
+      "if(globalThis.savedWidth===width&&globalThis.savedHeight==="
+      "height)return [true,globalThis.savedWire];"
+      "globalThis.savedWidth=width;globalThis.savedHeight=height;"
+      "globalThis.wireBuilds=(globalThis.wireBuilds||0)+1;"
+      "globalThis.savedWire=" +
+      Wire("0,0,width,height") + ";return [false,globalThis.savedWire];"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* ref = context->GetNativePlatformRef();
+  for (int iteration = 0; iteration < 3; ++iteration) {
+    fragment->InvalidateForRedraw();
+    fragment->Draw();
+    const auto* list = ref->GetDisplayListForRenderer(fragment->id());
+    ASSERT_NE(list, nullptr);
+    EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0x40123456));
+    EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 1);
+  }
+  fragment->InvalidateForSubtreeProperty();
+  fragment->Draw();
+  EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
+  Size(content, 120, 80);
+  fragment->Draw();
+  EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 2);
+  const auto* resized = ref->GetDisplayListForRenderer(fragment->id());
+  ASSERT_NE(resized, nullptr);
+  bool found = false;
+  for (const auto& item : CollectDisplayListItems(*resized)) {
+    if (item.type != DisplayListOpType::kRecordBox) continue;
+    found = true;
+    EXPECT_FLOAT_EQ(item.payload.record_box.w, 120);
+    EXPECT_FLOAT_EQ(item.payload.record_box.h, 80);
+  }
+  EXPECT_TRUE(found);
+  EXPECT_EQ(Eval("globalThis.resolveArgCount").Number(), 3);
+  EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       SuppliedRecordingCompilesForNewBindingsAndPixelScales) {
+  const auto node = Cached("return [true," + Wire("10,20,40,20") + "];");
+  Install(node);
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (int stage = 0; stage < 4; ++stage) {
+    if (stage == 2) Rebind(node);
+    if (stage == 3) {
+      manager->lynx_env_config_.UpdateDevicePixelRatio(2);
+      Size(content, 50, 30);
+    }
+    const auto list = Resolve(content);
+    EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456));
+    const auto items = CollectDisplayListItems(list);
+    ASSERT_EQ(items.size(), 2u);
+    const float pixels = stage == 3 ? 2 : 1;
+    EXPECT_FLOAT_EQ(items[0].payload.record_box.x, 10 / pixels);
+    EXPECT_FLOAT_EQ(items[0].payload.record_box.y, 20 / pixels);
+    EXPECT_FLOAT_EQ(items[0].payload.record_box.w, 40 / pixels);
+    EXPECT_FLOAT_EQ(items[0].payload.record_box.h, 20 / pixels);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       ProducerReplacementAndEmptyRecordingReplaceCachedOutput) {
+  Install(Cached("if(globalThis.stage===0)return [false," + Wire() +
+                 "];if(globalThis.stage===1)return [true," + Wire() +
+                 "];return [globalThis.stage===3," + EmptyWire() + "];"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (int stage = 0; stage < 4; ++stage) {
+    Eval("globalThis.stage=" + std::to_string(stage));
+    const auto list = Resolve(content);
+    if (stage < 2)
+      EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456));
+    else
+      EXPECT_EQ(list.GetContentItemsSize(), 0u);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       LegacyAndCacheAwareCallbacksKeepThreeArgumentCompatibility) {
+  Install(
+      Behind("(globalThis.legacyArgCount=arguments.length," + Wire() + ")"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456));
+  EXPECT_EQ(Eval("globalThis.legacyArgCount").Number(), 3);
+  Rebind(Cached("return [true," + Wire() + "];"));
+  EXPECT_THAT(Fills(Resolve(content)), ::testing::ElementsAre(0x40123456));
+  EXPECT_EQ(Eval("globalThis.resolveArgCount").Number(), 3);
+  EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       ModifierBoundariesAndDrawPhasesOwnIndependentCaches) {
+  const auto behind = Cached("return [true," + Wire() + "];");
+  Install(Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", behind,
+                 17));
+  std::vector<Element*> boundaries;
+  for (auto* target = handle_->mount_root().get(); target;
+       target = target->GetChildAt(0)) {
+    if (target->HasCustomDrawFunctions()) boundaries.push_back(target);
+    Size(target, 100, 60);
+    if (target->GetChildCount() == 0) break;
+  }
+  ASSERT_EQ(boundaries.size(), 2u);
+  for (int iteration = 0; iteration < 3; ++iteration) {
+    DisplayListBuilder builder;
+    for (auto* target : boundaries) {
+      target->fragment_impl()->DrawBehind(builder);
+      target->fragment_impl()->DrawForeground(builder);
+    }
+    EXPECT_THAT(Fills(builder.Build()),
+                ::testing::UnorderedElementsAre(0x40123456, 0xff00ff00));
+  }
+}
 
 TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
