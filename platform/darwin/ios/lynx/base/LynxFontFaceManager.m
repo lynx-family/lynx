@@ -7,6 +7,7 @@
 #import <CoreText/CTFontManager.h>
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxContext.h>
+#import <Lynx/LynxEnv+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxLog.h>
@@ -959,6 +960,67 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
   return font;
 }
 
+- (UIFont *)font:(UIFont *)font withFallbackFonts:(NSArray<UIFont *> *)fallbackFonts {
+  static NSCache<NSArray<UIFont *> *, UIFont *> *cascadeFontCache;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    cascadeFontCache = [NSCache new];
+    cascadeFontCache.countLimit = kLynxCascadeFontCacheCountLimit;
+  });
+  NSArray<UIFont *> *fonts = [@[ font ] arrayByAddingObjectsFromArray:fallbackFonts];
+  UIFont *cachedFont = [cascadeFontCache objectForKey:fonts];
+  if (cachedFont != nil) return cachedFont;
+
+  NSMutableArray<UIFontDescriptor *> *cascadeList = [NSMutableArray array];
+  for (UIFont *fallbackFont in fallbackFonts) {
+    [cascadeList addObject:fallbackFont.fontDescriptor];
+  }
+  // CSS candidates take precedence over any cascade supplied with the primary font.
+  NSArray *existingCascade = [font.fontDescriptor
+      objectForKey:(__bridge UIFontDescriptorAttributeName)kCTFontCascadeListAttribute];
+  if (existingCascade != nil) [cascadeList addObjectsFromArray:existingCascade];
+  UIFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorByAddingAttributes:@{
+    (__bridge UIFontDescriptorAttributeName)kCTFontCascadeListAttribute : cascadeList
+  }];
+  UIFont *result = [UIFont fontWithDescriptor:descriptor size:font.pointSize];
+  [cascadeFontCache setObject:result forKey:fonts];
+  return result;
+}
+
+- (UIFont *)fontByApplyingTraits:(LynxInnerFontInfo)info toFont:(UIFont *)font {
+  // Make sure italic and bold are applied to font
+  BOOL forceApplyBold = !info.isFontWeightBoldMatched && info.isBold;
+  BOOL forceApplyItalic = !info.isItalicMatched && info.isItalic;
+  if (forceApplyItalic || forceApplyBold) {
+    UIFontDescriptor *fontDescriptor = [font fontDescriptor];
+    NSMutableDictionary<UIFontDescriptorAttributeName, id> *attributes = [NSMutableDictionary new];
+    if (forceApplyItalic) {
+      // A hack way to set italic, the proper way is to use font with italic (but italic for chinese
+      // is not work on most case). Custom font always handle the italic with ttf or otf but if
+      // there are no avaiable font for italic, we will still use this hack way to apply italic for
+      // font.
+      CGAffineTransform matrix =
+          CGAffineTransformMake(1, 0, tanf(15 * (CGFloat)M_PI / 180), 1, 0, 0);
+      [attributes setObject:[NSValue valueWithCGAffineTransform:matrix]
+                     forKey:UIFontDescriptorMatrixAttribute];
+    }
+    if (forceApplyBold) {
+      UIFontDescriptorSymbolicTraits symbolicTraits = fontDescriptor.symbolicTraits;
+      symbolicTraits |= UIFontDescriptorTraitBold;
+      [attributes setObject:@{UIFontSymbolicTrait : @(symbolicTraits)}
+                     forKey:UIFontDescriptorTraitsAttribute];
+    }
+    if (!info.isSystemFont) {
+      // Font name need to reset here or system font will be apply
+      [attributes setObject:font.fontName forKey:UIFontDescriptorNameAttribute];
+    }
+    fontDescriptor = [fontDescriptor fontDescriptorByAddingAttributes:attributes];
+    font = [UIFont fontWithDescriptor:fontDescriptor size:font.pointSize];
+  }
+
+  return font;
+}
+
 - (UIFont *)generateFontWithSize:(CGFloat)fontSize
                           weight:(CGFloat)fontWeight
                            style:(LynxFontStyleType)fontStyle
@@ -989,8 +1051,11 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
     systemFontCache = [NSCache new];
   });
 
-  LynxInnerFontInfo info;
+  BOOL enableFontFamilyCascade = fontFaceContext.enableTextFontFamilyCascade &&
+                                 [LynxEnv.sharedInstance enableTextFontFamilyCascade];
+  LynxInnerFontInfo info = {0};
   UIFont *font = nil;
+  NSMutableArray<UIFont *> *fallbackFonts = nil;
   NSArray *fontFamilyNameArray = [fontFamilyName componentsSeparatedByString:@","];
   info.isBold = fontWeight > UIFontWeightMedium;
   info.isItalic = fontStyle != LynxFontStyleNormal;
@@ -1002,17 +1067,29 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
     [trimmingSet addCharactersInString:@"\"'"];
     for (NSString *itName in fontFamilyNameArray) {
       NSString *curFontFamilyName = [itName stringByTrimmingCharactersInSet:trimmingSet];
-      info.isSystemFont = [curFontFamilyName isEqualToString:defaultFontFamilyName];
-      info.isFontWeightBoldMatched = info.isItalicMatched = NO;
-      font = [self generateUIFontWithSize:fontSize
-                                   weight:fontWeight
-                                    style:fontStyle
-                           fontFamilyName:curFontFamilyName
-                          fontFaceContext:fontFaceContext
-                         fontFaceObserver:observer
-                          didRequestAsync:didRequestAsync
-                                 fontInfo:&info];
-      if (font != nil) break;
+      if (curFontFamilyName.length == 0) continue;
+      LynxInnerFontInfo candidateInfo = {0};
+      candidateInfo.isBold = info.isBold;
+      candidateInfo.isItalic = info.isItalic;
+      candidateInfo.isSystemFont = [curFontFamilyName isEqualToString:defaultFontFamilyName];
+      UIFont *candidate = [self generateUIFontWithSize:fontSize
+                                                weight:fontWeight
+                                                 style:fontStyle
+                                        fontFamilyName:curFontFamilyName
+                                       fontFaceContext:fontFaceContext
+                                      fontFaceObserver:observer
+                                       didRequestAsync:didRequestAsync
+                                              fontInfo:&candidateInfo];
+      if (candidate == nil) continue;
+      if (font == nil) {
+        font = candidate;
+        info = candidateInfo;
+        if (!enableFontFamilyCascade) break;
+      } else {
+        candidate = [self fontByApplyingTraits:candidateInfo toFont:candidate];
+        if (fallbackFonts == nil) fallbackFonts = [NSMutableArray array];
+        [fallbackFonts addObject:candidate];
+      }
     }
   }
 
@@ -1042,34 +1119,9 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
     info.isFontWeightBoldMatched = YES;
   }
 
-  // Make sure italic and bold are applied to font
-  BOOL forceApplyBold = !info.isFontWeightBoldMatched && info.isBold;
-  BOOL forceApplyItalic = !info.isItalicMatched && info.isItalic;
-  if (forceApplyItalic || forceApplyBold) {
-    UIFontDescriptor *fontDescriptor = [font fontDescriptor];
-    NSMutableDictionary<UIFontDescriptorAttributeName, id> *attributes = [NSMutableDictionary new];
-    if (forceApplyItalic) {
-      // A hack way to set italic, the proper way is to use font with italic (but italic for chinese
-      // is not work on most case). Custom font always handle the italic with ttf or otf but if
-      // there are no avaiable font for italic, we will still use this hack way to apply italic for
-      // font.
-      CGAffineTransform matrix =
-          CGAffineTransformMake(1, 0, tanf(15 * (CGFloat)M_PI / 180), 1, 0, 0);
-      [attributes setObject:[NSValue valueWithCGAffineTransform:matrix]
-                     forKey:UIFontDescriptorMatrixAttribute];
-    }
-    if (forceApplyBold) {
-      UIFontDescriptorSymbolicTraits symbolicTraits = fontDescriptor.symbolicTraits;
-      symbolicTraits |= UIFontDescriptorTraitBold;
-      [attributes setObject:@{UIFontSymbolicTrait : @(symbolicTraits)}
-                     forKey:UIFontDescriptorTraitsAttribute];
-    }
-    if (!info.isSystemFont) {
-      // Font name need to reset here or system font will be apply
-      [attributes setObject:font.fontName forKey:UIFontDescriptorNameAttribute];
-    }
-    fontDescriptor = [fontDescriptor fontDescriptorByAddingAttributes:attributes];
-    font = [UIFont fontWithDescriptor:fontDescriptor size:fontSize];
+  font = [self fontByApplyingTraits:info toFont:font];
+  if (fallbackFonts.count > 0) {
+    font = [self font:font withFallbackFonts:fallbackFonts];
   }
 
   if (!info.isSystemFont && [LynxEnv.sharedInstance enableTextFontCascadeOpt]) {

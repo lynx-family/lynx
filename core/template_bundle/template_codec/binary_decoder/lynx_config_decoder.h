@@ -842,6 +842,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableTextFontFamilyCascade) &&
+        doc[config::kEnableTextFontFamilyCascade].IsBool()) {
+      page_config->SetEnableTextFontFamilyCascade(
+          doc[config::kEnableTextFontFamilyCascade].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableTextGradientOpt) &&
         doc[config::kEnableTextGradientOpt].IsBool()) {
       page_config->SetEnableTextGradientOpt(

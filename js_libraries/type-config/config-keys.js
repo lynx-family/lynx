@@ -35,6 +35,7 @@ const configKeys = [
   'enableRawInput',
   'enableReloadLifecycle',
   'enableSimultaneousTap',
+  'enableTextFontFamilyCascade',
   'enableTextOverflow',
   'enableTransformedTouchPosition',
   'fontScaleEffectiveOnlyOnSp',

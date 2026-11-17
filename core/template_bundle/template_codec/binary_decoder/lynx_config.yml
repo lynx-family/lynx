@@ -1809,6 +1809,15 @@ enableHarmonyVisibleAreaChangeForExposure:
   since: '3.4'
   supportPlatform:
     - HarmonyOS
+enableTextFontFamilyCascade:
+  description: Controls whether the iOS UIFont/CoreText text path uses later available CSS font-family entries for missing glyphs. Disabled or omitted keeps first-available-font selection and skips later font resources. The external enable_text_font_family_cascade setting can disable this behavior even for an enabled page.
+  defaultValue: 'false'
+  valueType: bool
+  author: linxiaosong
+  since: '4.5'
+  supportPlatform:
+    - iOS
+  export: true
 enableTextGradientOpt:
   description: Controls whether iOS text rendering turns on the gradient optimization path. When enabled, LynxUIText records the experiment flag and uses the optimized gradient text path; when disabled, text gradients stay on the legacy rendering flow. When unset, it falls back to external settings or native config.
   defaultValue: TernaryBool::UNDEFINE_VALUE

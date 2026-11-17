@@ -207,6 +207,23 @@ TEST_F(LynxBinaryConfigDecoderTest,
   EXPECT_EQ(output[kPropertyIDFlexBasis].AsNumber(), 0);
 }
 
+TEST_F(LynxBinaryConfigDecoderTest,
+       FontFamilyCascadeRequiresExplicitPageConfig) {
+  for (const auto* json : {"{}", "{\"enableTextFontFamilyCascade\":false}",
+                           "{\"enableTextFontFamilyCascade\":\"true\"}"}) {
+    auto config = std::make_shared<PageConfig>();
+    config_decoder_->DecodePageConfig(json, config);
+    EXPECT_FALSE(config->GetEnableTextFontFamilyCascade());
+  }
+
+  config_decoder_->DecodePageConfig("{\"enableTextFontFamilyCascade\":true}",
+                                    page_config_);
+  EXPECT_TRUE(page_config_->GetEnableTextFontFamilyCascade());
+  config_decoder_->DecodePageConfig("{\"enableTextFontFamilyCascade\":false}",
+                                    page_config_);
+  EXPECT_FALSE(page_config_->GetEnableTextFontFamilyCascade());
+}
+
 TEST_F(LynxBinaryConfigDecoderTest, ReadEnableGridPlacementShorthands) {
   EXPECT_FALSE(page_config_->GetEnableGridPlacementShorthands());
   EXPECT_FALSE(

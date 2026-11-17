@@ -1530,6 +1530,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv()::enableAnimationSyncTimeOpt();
   public BOOL LynxEnv()::enableTextStrokeInheritanceFix();
   public BOOL LynxEnv()::enableTextGradientFontFix();
+  public BOOL LynxEnv()::enableTextFontFamilyCascade();
   public NSString * LynxEnv()::_stringFromExternalEnv:(NSString *key);
   public void LynxEnv()::updateExternalEnvCacheForKey:withValue:(NSString *key, [withValue] NSString *value);
   public instancetype LynxEnv::sharedInstance();
@@ -1875,6 +1876,7 @@ public class LynxFontFace : NSObject {
 }
 
 public class LynxFontFaceContext : NSObject {
+  public BOOL LynxFontFaceContext::enableTextFontFamilyCascade enableTextFontFamilyCascade;
   public id<LynxResourceFetcher> LynxFontFaceContext::resourceFetcher resourceFetcher;
   public id<LynxResourceProvider> LynxFontFaceContext::resourceProvider resourceProvider;
   public id<LynxGenericResourceFetcher> LynxFontFaceContext::genericResourceServiceFetcher genericResourceServiceFetcher;
@@ -6548,6 +6550,7 @@ public enum LynxEnvKey {
   LynxEnvEnablePlatformThreadSchedulingPolicy
   LynxEnvEnableImageLoadSVG
   LynxEnvEnableTextGradientFontFix
+  LynxEnvEnableTextFontFamilyCascade
   LynxEnvKeyEndMark
 }
 
