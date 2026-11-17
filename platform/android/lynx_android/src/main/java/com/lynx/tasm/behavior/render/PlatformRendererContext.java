@@ -1154,18 +1154,23 @@ public class PlatformRendererContext implements TextMeasurerProvider {
           Map<Integer, EventTargetSpan> spansBySign = new HashMap<>();
           for (EventTargetSpan span : spans) {
             if (span.isClickable()) {
-              spansBySign.put(span.getSign(), span);
+              int target = span.getSign();
+              // A truncation ancestor can have a body span and a separate token span.
+              spansBySign.put(target, spansBySign.containsKey(target) ? null : span);
             }
           }
           // Native ranges list nested targets from inner to outer in both layout
-          // paths. Preserve that order while using offsets from the final Layout.
+          // paths. Split targets already have each range mapped to the fitted text.
           for (int i = 0; i < targetRanges.length; i += 3) {
-            EventTargetSpan span = spansBySign.get(targetRanges[i]);
-            if (span == null) {
+            int target = targetRanges[i];
+            EventTargetSpan span = spansBySign.get(target);
+            if (span == null && !spansBySign.containsKey(target)) {
               continue;
             }
-            appendLayoutRegions(result, span.getSign(), layout, text.getSpanStart(span),
-                text.getSpanEnd(span), bundle.getTextTranslateOffset());
+            int start = span == null ? targetRanges[i + 1] : text.getSpanStart(span);
+            int end = span == null ? targetRanges[i + 2] : text.getSpanEnd(span);
+            appendLayoutRegions(
+                result, target, layout, start, end, bundle.getTextTranslateOffset());
           }
         }
       }
