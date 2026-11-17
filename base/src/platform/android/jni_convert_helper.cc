@@ -4,6 +4,7 @@
 
 #include "base/include/platform/android/jni_convert_helper.h"
 
+#include "base/include/byte_utils.h"
 #include "base/include/fml/macros.h"
 
 namespace lynx {
@@ -55,8 +56,7 @@ std::vector<uint8_t> JNIConvertHelper::ConvertJavaBinary(JNIEnv* env,
     auto* temp = env->GetByteArrayElements(j_binary, JNI_FALSE);
     size_t len = env->GetArrayLength(j_binary);
     if (len > 0) {
-      auto begin = reinterpret_cast<const uint8_t*>(temp);
-      binary.assign(begin, begin + len);
+      AssignByteArray(binary, temp, len);
     }
     env->ReleaseByteArrayElements(j_binary, temp, JNI_FALSE);
   }
