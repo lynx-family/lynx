@@ -4,6 +4,8 @@
 
 #include "platform/embedder/lynx_service/lynx_http_request.h"
 
+#include "base/include/byte_utils.h"
+
 LYNX_EXTERN_C lynx_http_request_t* lynx_http_request_create(const char* url) {
   lynx_http_request_t* request = new lynx_http_request_t();
   request->url = url ? url : "";
@@ -55,7 +57,7 @@ LYNX_EXTERN_C void lynx_http_request_set_body(lynx_http_request_t* request,
     return;
   }
   // Copy before replacing the body so `data` may refer to the current body.
-  std::vector<uint8_t> body(data, data + length);
+  auto body = lynx::base::CopyByteArray(data, length);
   request->body.swap(body);
 }
 

@@ -85,7 +85,14 @@ class LynxHttpRequest {
     const uint8_t* body = nullptr;
     size_t body_size = lynx_http_request_get_body(request_, &body);
     if (body_size > 0 && body) {
+#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION >= 200000
+      // libc++ 20 requires mutable input iterators for bulk uninitialized copy.
+      // assign still only reads the source.
+      auto* begin = const_cast<uint8_t*>(body);
+      body_.assign(begin, begin + body_size);
+#else
       body_.assign(body, body + body_size);
+#endif
     }
   }
 

@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/byte_utils.h"
 #include "base/include/log/logging.h"
 #include "platform/embedder/lynx_service/lynx_http_service_priv.h"
 #include "platform/embedder/lynx_service/lynx_service_center_priv.h"
@@ -106,8 +107,7 @@ Napi::Value Fetch(const Napi::CallbackInfo& info) {
   }
   if (body.ByteLength() > 0) {
     // Assign the body data to the request.
-    uint8_t* data = (uint8_t*)body.Data();
-    request->body.assign(data, data + body.ByteLength());
+    base::AssignByteArray(request->body, body.Data(), body.ByteLength());
   }
   auto tsf = Napi::TypedThreadSafeFunction<
       FetchCallbackContext, lynx_http_response_t,
