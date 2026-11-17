@@ -535,27 +535,31 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
 
 - (bool)onRequestStartForItem:(LynxFontSrcItem *)item
                         cache:(NSString *)cacheKey
-             fontFaceObserver:(id<LynxFontFaceObserver>)fontFaceObserver {
+             fontFaceObserver:(id<LynxFontFaceObserver>)fontFaceObserver
+              didRequestAsync:(BOOL *)didRequestAsync {
   @synchronized(_registedFontMap) {
     id cached = [_registedFontMap objectForKey:cacheKey];
-    if (cached != nil) {
-      if ([cached isKindOfClass:[NSString class]]) {
-        // has name cached
-        return false;
-      }
-      if ([cached isKindOfClass:[NSMutableSet class]]) {
-        // is requesting for items
-        NSMutableSet *itemSet = cached;
-        if (fontFaceObserver != nil) {
-          // only add into the existing notify array
-          for (LynxFontSrcItem *cur in itemSet) {
-            [cur.notifierArray addPointer:(__bridge void *_Nullable)(fontFaceObserver)];
-          }
+    if ([cached isKindOfClass:[NSString class]]) {
+      // Registration may finish after the caller's initial cache lookup.
+      item.dataFontName = cached;
+      return false;
+    }
+    // Starting or joining a load schedules a notification even if the fetcher completes inline.
+    if (didRequestAsync != NULL) {
+      *didRequestAsync = YES;
+    }
+    if ([cached isKindOfClass:[NSMutableSet class]]) {
+      // is requesting for items
+      NSMutableSet *itemSet = cached;
+      if (fontFaceObserver != nil) {
+        // only add into the existing notify array
+        for (LynxFontSrcItem *cur in itemSet) {
+          [cur.notifierArray addPointer:(__bridge void *_Nullable)(fontFaceObserver)];
         }
-        [itemSet addObject:item];
-        // do not request again
-        return false;
       }
+      [itemSet addObject:item];
+      // do not request again
+      return false;
     }
     NSMutableSet *newSet = [NSMutableSet new];
     if (item.notifierArray == nil) {
@@ -682,7 +686,8 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
 - (void)requestFontfaceItem:(LynxFontSrcItem *)item
             fontFaceContext:(LynxFontFaceContext *)fontFaceContext
            fontFaceObserver:(id<LynxFontFaceObserver>)fontFaceObserver
-                   cacheKey:(NSString *)cacheKey {
+                   cacheKey:(NSString *)cacheKey
+            didRequestAsync:(BOOL *)didRequestAsync {
   __weak typeof(self) weakSelf = self;
   __weak typeof(fontFaceContext) weakFontFaceContext = fontFaceContext;
   __weak typeof(fontFaceObserver) weakFontFaceObserver = fontFaceObserver;
@@ -690,7 +695,10 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
   if ([urlStr hasPrefix:@"data:"]) {
     NSRange range = [urlStr rangeOfString:@";base64," options:0 range:NSMakeRange(0, 100)];
     if (range.location != NSNotFound) {
-      if ([self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
+      if ([self onRequestStartForItem:item
+                                cache:cacheKey
+                     fontFaceObserver:fontFaceObserver
+                      didRequestAsync:didRequestAsync]) {
         // decode base64
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
           NSData *decodedData = [[NSData alloc]
@@ -719,7 +727,10 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
       fontFaceContext.genericResourceServiceFetcher;
   if (urlStr != nil && genericResourceFetcher != nil &&
       [genericResourceFetcher respondsToSelector:@selector(fetchResource:onComplete:)]) {
-    if ([self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
+    if ([self onRequestStartForItem:item
+                              cache:cacheKey
+                   fontFaceObserver:fontFaceObserver
+                    didRequestAsync:didRequestAsync]) {
       LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
                          FONT_FACE_MANAGER_REQUEST_WITH_GENERIC_FETCHER);
       LynxResourceRequest *request = [[LynxResourceRequest alloc] initWithUrl:urlStr
@@ -748,7 +759,8 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
                  [weakSelf requestFontfaceByFontProviderWithItem:item
                                                  fontFaceContext:weakFontFaceContext
                                                 fontFaceObserver:weakFontFaceObserver
-                                                        cacheKey:cacheKey];
+                                                        cacheKey:cacheKey
+                                                 didRequestAsync:NULL];
                } else {
                  [weakSelf notifyFontFaceObserverWithItem:item
                                       lynxFontFaceContext:weakFontFaceContext];
@@ -767,19 +779,24 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
   [self requestFontfaceByFontProviderWithItem:item
                               fontFaceContext:fontFaceContext
                              fontFaceObserver:fontFaceObserver
-                                     cacheKey:cacheKey];
+                                     cacheKey:cacheKey
+                              didRequestAsync:didRequestAsync];
 }
 
 - (void)requestFontfaceByFontProviderWithItem:(LynxFontSrcItem *)item
                               fontFaceContext:(LynxFontFaceContext *)fontFaceContext
                              fontFaceObserver:(id<LynxFontFaceObserver>)fontFaceObserver
-                                     cacheKey:(NSString *)cacheKey {
+                                     cacheKey:(NSString *)cacheKey
+                              didRequestAsync:(BOOL *)didRequestAsync {
   __weak typeof(self) weakSelf = self;
   __weak typeof(fontFaceContext) weakFontFaceContext = fontFaceContext;
   id<LynxResourceProvider> fontResProvider = fontFaceContext.resourceProvider;
   NSString *urlStr = item.src;
   if (fontResProvider != nil && urlStr != nil) {
-    if (![self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
+    if (![self onRequestStartForItem:item
+                               cache:cacheKey
+                    fontFaceObserver:fontFaceObserver
+                     didRequestAsync:didRequestAsync]) {
       return;
     }
     LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, FONT_FACE_MANAGER_REQUEST_BY_FONT_PROVIDER);
@@ -816,7 +833,10 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
       [fetcher respondsToSelector:@selector(loadResourceWithURL:type:completion:)] &&
       urlStr != nil) {
     NSURL *url = [[NSURL alloc] initWithString:urlStr];
-    if ([self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
+    if ([self onRequestStartForItem:item
+                              cache:cacheKey
+                   fontFaceObserver:fontFaceObserver
+                    didRequestAsync:didRequestAsync]) {
       LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
                          FONT_FACE_MANAGER_REQUEST_BY_RESOURCE_PROVIDER);
       [fetcher loadResourceWithURL:url
@@ -846,6 +866,9 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
                         }];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
     }
+  } else if (didRequestAsync != NULL && item.dataFontName == nil) {
+    // Preserve the pending result for an unresolved URL without a resource loader.
+    *didRequestAsync = YES;
   }
 }
 
@@ -882,14 +905,11 @@ static NSUInteger const kLynxCascadeFontCacheCountLimit = 128;
           }
 
           if (item.dataFontName == nil) {
-            // request by url, return will be sync or ansync
-            if (didRequestAsync != nil) {
-              *didRequestAsync = YES;
-            }
             [self requestFontfaceItem:item
                       fontFaceContext:fontFaceContext
                      fontFaceObserver:fontFaceObserver
-                             cacheKey:cacheKey];
+                             cacheKey:cacheKey
+                      didRequestAsync:didRequestAsync];
           }
         }
         if (item.dataFontName != nil) {
