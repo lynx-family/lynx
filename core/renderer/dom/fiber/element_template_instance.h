@@ -150,6 +150,9 @@ class ElementTemplateInstance
 
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event) const;
+  static void UpdateTraceDebugInfo(TraceEvent* event,
+                                   const ElementTemplateInstance& instance,
+                                   const char* prefix);
 #endif
 
  protected:

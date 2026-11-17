@@ -1384,6 +1384,39 @@ TEST_P(ListElementTemplateInstanceTest,
   EXPECT_TRUE(manager->pending_element_template_child_mounts_.empty());
 }
 
+TEST_P(ListElementTemplateInstanceTest,
+       ReusePoolRebindsTransferredRootWithReuseIdentifier) {
+  // Purpose: Verify that re-registering a transferred root removes its old
+  // candidate entry when using a reuse identifier.
+  // Input: source and target share the "shared" identifier. Materialize source,
+  // then dequeue a candidate for target.
+  // Expected: ReuseElementsFrom transfers the same root; source loses its root,
+  // the sign is registered to target, and the old bucket becomes empty.
+  ListElementTemplateReusePool pool;
+  auto source = CreateChild("source");
+  auto target = CreateChild("target");
+  for (const auto& item : {source, target}) {
+    auto info = lepus::Dictionary::Create();
+    info->SetValue("reuse-identifier", lepus::Value("shared"));
+    item->SetListItemPlatformInfo(lepus::Value(std::move(info)));
+  }
+  auto root = source->GetRoot();
+  ASSERT_NE(root, nullptr);
+  const auto sign = root->impl_id();
+  ASSERT_TRUE(pool.RegisterNewBinding(sign, source));
+  ASSERT_EQ(pool.Enqueue(sign), source);
+  const auto action = pool.Dequeue(target);
+  ASSERT_EQ(action.type_, ListElementTemplateReusePool::Action::Type::kReuse);
+  EXPECT_EQ(action.reusable_instance_, source);
+  EXPECT_EQ(action.reusable_root_, root);
+  ASSERT_TRUE(target->ReuseElementsFrom(*source));
+  EXPECT_EQ(source->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(target->PeekMaterializedRoot(), root);
+  ASSERT_TRUE(pool.RegisterNewBinding(sign, target));
+  EXPECT_EQ(pool.GetInstance(sign), target);
+  EXPECT_EQ(pool.recycled_pool_.count(base::String("view:shared")), 0u);
+}
+
 namespace {
 
 using ::testing::ElementsAre;

@@ -15,19 +15,21 @@ namespace lynx {
 namespace tasm {
 
 // Each List owns a pool that records ET instances by the physical root's
-// impl_id (sign). Candidates are grouped by GetTemplateType(), preserving
-// enqueue order and reservation state. This class does not create or transfer
-// physical trees, or modify ET UIDs, attributes, or logical children.
+// impl_id (sign). Candidates are grouped by template type plus the optional
+// reuse-identifier, preserving enqueue order and reservation state. Each
+// instance's reuse-identifier remains stable throughout its lifetime. This
+// class does not create or transfer physical trees, or modify ET UIDs,
+// attributes, or logical children.
 class ListElementTemplateReusePool {
  public:
   struct Action {
     enum class Type {
-      // The target has no root and no available same-type source; the caller
-      // materializes the target.
+      // The caller materializes a rootless target when its reuse pool has no
+      // compatible source.
       kCreate,
       // The target's root passes this pool's binding and reservation checks.
       kUseExisting,
-      // A same-type source was selected for the rootless target and reserved.
+      // A compatible source in the target's reuse pool was reserved.
       kReuse,
       // The target is null, or its root fails binding or reservation checks.
       kUnavailable
@@ -51,20 +53,20 @@ class ListElementTemplateReusePool {
   // Returns a strong reference copy of the owner registered for sign, or null.
   fml::RefPtr<ElementTemplateInstance> GetInstance(int32_t sign) const;
 
-  // Adds sign to its current type's candidate queue if its registered instance
-  // still owns the corresponding root. Returns the instance when the candidate
-  // is available, including repeated enqueues, or null if validation fails or
-  // the candidate is reserved.
+  // Adds sign to its current reuse key's candidate queue if its registered
+  // instance still owns the corresponding root. Returns the instance when the
+  // candidate is available, including repeated enqueues, or null if validation
+  // fails or the candidate is reserved.
   fml::RefPtr<ElementTemplateInstance> Enqueue(int32_t sign);
 
   // Registers sign to new_instance, which must already own its physical root.
   // Returns false if validation fails. On success, removes the old owner's
-  // candidate entry under its current type, then updates the registration.
+  // candidate entry under its reuse key, then updates registration.
   bool RegisterNewBinding(
       int32_t sign, const fml::RefPtr<ElementTemplateInstance>& new_instance);
 
   // Uses an existing target root first; otherwise selects a valid, available
-  // same-type source in enqueue order.
+  // compatible source with the same reuse key in enqueue order.
   Action Dequeue(const fml::RefPtr<ElementTemplateInstance>& instance);
 
   void CancelDequeue(const Action& action);
@@ -80,9 +82,11 @@ class ListElementTemplateReusePool {
   void Clear();
 
  private:
-  bool IsReserved(const base::String& type, int32_t sign) const;
+  static base::String GetReuseKey(const ElementTemplateInstance& instance);
 
-  void Invalidate(const base::String& type, int32_t sign);
+  bool IsReserved(const base::String& reuse_key, int32_t sign) const;
+
+  void Invalidate(const base::String& reuse_key, int32_t sign);
 
  private:
   // Strong sign-to-owner mapping. Registration does not imply reusability.
@@ -91,7 +95,7 @@ class ListElementTemplateReusePool {
   std::unordered_map<int32_t, fml::RefPtr<ElementTemplateInstance>>
       sign_et_instance_map_;
 
-  // Candidate sign queues grouped by template type, storing no extra ET refs.
+  // Candidate sign queues grouped by reuse key, storing no extra ET refs.
   // LinkedHashMap preserves enqueue order: true allows validation and
   // selection; false means reserved. Selecting a source with Dequeue or
   // cancelling with CancelDequeue changes only the flag, keeping its position.

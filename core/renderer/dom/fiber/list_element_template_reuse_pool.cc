@@ -6,6 +6,22 @@
 
 namespace lynx {
 namespace tasm {
+namespace {
+static constexpr const char kReuseIdentifier[] = "reuse-identifier";
+}  // namespace
+
+base::String ListElementTemplateReusePool::GetReuseKey(
+    const ElementTemplateInstance& instance) {
+  const auto template_type = instance.GetTemplateType();
+  const auto platform_info = instance.GetListItemPlatformInfoFromOptions();
+  const auto reuse_identifier =
+      platform_info.GetProperty(BASE_STATIC_STRING(kReuseIdentifier));
+  if (!reuse_identifier.IsString()) {
+    return template_type;
+  }
+  return base::String(template_type.str() + ":" +
+                      reuse_identifier.String().str());
+}
 
 fml::RefPtr<ElementTemplateInstance> ListElementTemplateReusePool::GetInstance(
     int32_t sign) const {
@@ -26,12 +42,10 @@ fml::RefPtr<ElementTemplateInstance> ListElementTemplateReusePool::Enqueue(
   if (!list_item_root || list_item_root->impl_id() != sign) {
     return nullptr;
   }
-  // Append only when sign is absent from this type's queue. Existing entries
-  // retain their position and true/false flag; in particular, repeated enqueue
-  // must not change a reserved entry from false back to true.
+  // Duplicate enqueues retain FIFO order and preserve reservations.
+  const auto reuse_key = GetReuseKey(*list_item_instance);
   const auto enqueue_result =
-      recycled_pool_[list_item_instance->GetTemplateType()].insert_if_absent(
-          sign, true);
+      recycled_pool_[reuse_key].insert_if_absent(sign, true);
   if (!enqueue_result.first->second) {
     return nullptr;
   }
@@ -53,16 +67,17 @@ bool ListElementTemplateReusePool::RegisterNewBinding(
   }
   auto old_instance = GetInstance(sign);
   if (old_instance) {
+    const auto old_reuse_key = GetReuseKey(*old_instance);
     if (old_instance.get() == new_instance.get() &&
-        IsReserved(old_instance->GetTemplateType(), sign)) {
+        IsReserved(old_reuse_key, sign)) {
       // After B reserves A's root but before transfer, sign still maps to A.
       // Re-registering A must preserve the reservation; otherwise, a later
       // Enqueue could make the same source available again.
       return false;
     }
-    // Revoke eligibility under the old owner's current type first; update the
+    // Revoke eligibility under the old owner's reuse key first; update the
     // registration separately below.
-    Invalidate(old_instance->GetTemplateType(), sign);
+    Invalidate(old_reuse_key, sign);
   }
   sign_et_instance_map_.insert_or_assign(sign, new_instance);
   return true;
@@ -76,7 +91,7 @@ ListElementTemplateReusePool::Action ListElementTemplateReusePool::Dequeue(
     return action;
   }
 
-  const auto template_type = instance->GetTemplateType();
+  const auto reuse_key = GetReuseKey(*instance);
   auto list_item_root = instance->PeekMaterializedRoot();
   // Prefer the target's existing root, checking this sign's registration and
   // reservation state in the pool.
@@ -84,18 +99,16 @@ ListElementTemplateReusePool::Action ListElementTemplateReusePool::Dequeue(
     auto sign = list_item_root->impl_id();
     auto registered_instance = GetInstance(sign);
     if (registered_instance && (registered_instance.get() != instance.get() ||
-                                IsReserved(template_type, sign))) {
+                                IsReserved(reuse_key, sign))) {
       // Reject a root registered to another instance or a reserved sign of the
       // current registered instance. Leave existing registrations and candidate
       // queues unchanged.
       action.type_ = Action::Type::kUnavailable;
       return action;
     }
-    if (registered_instance.get() == instance.get()) {
-      // Taking the target's own root removes its candidate entry; it must be
-      // enqueued again before future recycling.
-      Invalidate(template_type, sign);
-    }
+    // Taking the target's own root removes its candidate entry; it must be
+    // enqueued again before future recycling.
+    Invalidate(reuse_key, sign);
     // An unregistered existing root is also usable. Return the instance and
     // root here; the caller registers them afterward.
     action.type_ = Action::Type::kUseExisting;
@@ -104,11 +117,10 @@ ListElementTemplateReusePool::Action ListElementTemplateReusePool::Dequeue(
     return action;
   }
 
-  // For a target without a root, search only the candidate queue matching
-  // its current GetTemplateType().
-  auto pool_it = recycled_pool_.find(template_type);
+  // Read the identifier from logical metadata without materializing the target.
+  auto pool_it = recycled_pool_.find(reuse_key);
   if (pool_it == recycled_pool_.end()) {
-    // No queue for this type: keep the default kCreate and let the caller
+    // No queue for this reuse key: keep kCreate and let the caller
     // materialize the target.
     return action;
   }
@@ -122,11 +134,11 @@ ListElementTemplateReusePool::Action ListElementTemplateReusePool::Dequeue(
       ++sign_it;
       continue;
     }
+
     const auto sign = sign_it->first;
     auto reusable_instance = GetInstance(sign);
-    if (!reusable_instance ||
-        reusable_instance->GetTemplateType() != template_type) {
-      // If registration is missing or the source's current type differs, remove
+    if (!reusable_instance || GetReuseKey(*reusable_instance) != reuse_key) {
+      // If registration is missing or the source's current key differs, remove
       // only this candidate entry without changing the registration table.
       sign_it = recycled_signs.erase(sign_it);
       continue;
@@ -162,11 +174,9 @@ void ListElementTemplateReusePool::CancelDequeue(const Action& action) {
       !action.reusable_root_) {
     return;
   }
-  // Action carries no request identifier; the caller must cancel only a
-  // reservation that is still valid for this request. Locate it by the
-  // source's current type and the root sign stored in Action.
-  auto pool_it =
-      recycled_pool_.find(action.reusable_instance_->GetTemplateType());
+  // The caller must cancel only this request's valid reservation. Locate the
+  // candidate using its source's stable reuse key and the root sign.
+  auto pool_it = recycled_pool_.find(GetReuseKey(*action.reusable_instance_));
   if (pool_it == recycled_pool_.end()) {
     return;
   }
@@ -183,9 +193,9 @@ void ListElementTemplateReusePool::Clear() {
   sign_et_instance_map_.clear();
 }
 
-bool ListElementTemplateReusePool::IsReserved(const base::String& type,
+bool ListElementTemplateReusePool::IsReserved(const base::String& reuse_key,
                                               int32_t sign) const {
-  auto pool_it = recycled_pool_.find(type);
+  auto pool_it = recycled_pool_.find(reuse_key);
   if (pool_it == recycled_pool_.end()) {
     return false;
   }
@@ -193,9 +203,9 @@ bool ListElementTemplateReusePool::IsReserved(const base::String& type,
   return sign_it != pool_it->second.end() && !sign_it->second;
 }
 
-void ListElementTemplateReusePool::Invalidate(const base::String& type,
+void ListElementTemplateReusePool::Invalidate(const base::String& reuse_key,
                                               int32_t sign) {
-  auto pool_it = recycled_pool_.find(type);
+  auto pool_it = recycled_pool_.find(reuse_key);
   if (pool_it == recycled_pool_.end()) {
     return;
   }
