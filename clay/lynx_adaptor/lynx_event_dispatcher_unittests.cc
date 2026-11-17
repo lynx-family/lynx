@@ -6,11 +6,13 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "base/include/closure.h"
 #include "clay/gfx/animation/transition_manager.h"
+#include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/lynx_event_dispatcher.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/public/value.h"
@@ -47,13 +49,18 @@ class RecordingEngineProxy : public lynx::shell::LynxEngineProxy {
               (const std::string&, int32_t, const lynx::pub::Value&,
                const std::string&),
               (override));
-  void SendGestureEvent(int, int, std::string,
-                        const lynx::pub::Value&) override {}
+  MOCK_METHOD(void, SendCustomEventWithOptions,
+              (const std::string&, int32_t, const lynx::pub::Value&,
+               const std::string&,
+               const lynx::shell::CustomEventDispatchOptions&),
+              (override));
+  MOCK_METHOD(void, SendGestureEvent,
+              (int, int, std::string, const lynx::pub::Value&), (override));
   MOCK_METHOD(void, SendBubbleEvent,
               (const std::string&, int32_t, const lynx::pub::Value&),
               (override));
-  void OnPseudoStatusesChanged(
-      std::vector<lynx::event::PseudoStatusChange>) override {}
+  MOCK_METHOD(void, OnPseudoStatusesChanged,
+              (std::vector<lynx::event::PseudoStatusChange>), (override));
   void StartEventGenerate(const lynx::pub::Value&) override {}
   void StartEventCapture(int64_t) override {}
   void StartEventBubble(int64_t) override {}
@@ -466,6 +473,106 @@ TEST_F(LynxEventDispatcherTest, CancelUsesSurvivingTouchTarget) {
   EXPECT_EQ(Identifier(3, 30), 0);
 }
 
+TEST_F(LynxEventDispatcherTest, KeyEventPreservesKeyAndRepeat) {
+  const struct {
+    const char* name;
+    bool repeat;
+  } events[] = {{"keydown", false}, {"keydown", true}, {"keyup", false}};
+
+  for (const auto& event : events) {
+    SCOPED_TRACE(::testing::Message()
+                 << event.name << " repeat=" << event.repeat);
+    EXPECT_CALL(*engine_, SendBubbleEvent(event.name, 42, ::testing::_))
+        .WillOnce(
+            ::testing::WithArg<2>([event](const lynx::pub::Value& params) {
+              const auto type = params.GetValueForKey("type");
+              ASSERT_TRUE(type && type->IsString());
+              EXPECT_EQ(type->str(), event.name);
+              const auto key = params.GetValueForKey("key");
+              ASSERT_TRUE(key && key->IsString());
+              EXPECT_EQ(key->str(), "ArrowLeft");
+              const auto repeated = params.GetValueForKey("repeat");
+              ASSERT_TRUE(repeated && repeated->IsBool());
+              EXPECT_EQ(repeated->Bool(), event.repeat);
+            }));
+
+    dispatcher_.OnKeyEvent(event.name, 42, "ArrowLeft", event.repeat);
+  }
+}
+
+template <typename Dispatcher, typename = void>
+constexpr bool kHasPointerDispatch = false;
+
+template <typename Dispatcher>
+constexpr bool kHasPointerDispatch<
+    Dispatcher, std::void_t<decltype(&Dispatcher::OnPointerEvent)>> = true;
+
+template <typename Dispatcher>
+void ExpectPointerEventPayloads(Dispatcher& dispatcher,
+                                RecordingEngineProxy& engine) {
+  constexpr int64_t kTimestamp = 5'000'000'001;
+  const struct {
+    ClayPointerDeviceKind kind;
+    const char* type;
+    bool is_primary;
+  } devices[] = {{kClayPointerDeviceKindMouse, "mouse", true},
+                 {kClayPointerDeviceKindTrackpad, "mouse", true},
+                 {kClayPointerDeviceKindStylus, "pen", true},
+                 {kClayPointerDeviceKindTouch, "touch", false}};
+  engine.density = 2.f;
+
+  for (const auto& device : devices) {
+    SCOPED_TRACE(device.kind);
+    EXPECT_CALL(engine, SendBubbleEvent("pointerout", 42, ::testing::_))
+        .WillOnce(
+            ::testing::WithArg<2>([device](const lynx::pub::Value& params) {
+              const auto type = params.GetValueForKey("type");
+              ASSERT_TRUE(type && type->IsString());
+              EXPECT_EQ(type->str(), "pointerout");
+              const auto pointer_type = params.GetValueForKey("pointerType");
+              ASSERT_TRUE(pointer_type && pointer_type->IsString());
+              EXPECT_EQ(pointer_type->str(), device.type);
+              const auto primary = params.GetValueForKey("isPrimary");
+              ASSERT_TRUE(primary && primary->IsBool());
+              EXPECT_EQ(primary->Bool(), device.is_primary);
+
+              const std::initializer_list<std::pair<const char*, double>>
+                  expected = {{"pointerId", 17},
+                              {"button", -1},
+                              {"buttons", 2},
+                              {"width", 3},
+                              {"height", 4},
+                              {"pressure", 0.75},
+                              {"timestamp", static_cast<double>(kTimestamp)},
+                              {"__lynxRelatedTargetSign", 99},
+                              {"x", 5},
+                              {"y", 10},
+                              {"pageX", 15},
+                              {"pageY", 20},
+                              {"clientX", 15},
+                              {"clientY", 20}};
+              for (const auto& [key, number] : expected) {
+                const auto value = params.GetValueForKey(key);
+                ASSERT_TRUE(value && value->IsNumber()) << key;
+                EXPECT_DOUBLE_EQ(value->Number(), number) << key;
+              }
+            }));
+
+    dispatcher.OnPointerEvent("pointerout", 42, 17, device.kind,
+                              device.is_primary, -1, 2, 3.f, 4.f, 0.75f, 10.f,
+                              20.f, 30.f, 40.f, kTimestamp, 99);
+  }
+}
+
+TEST_F(LynxEventDispatcherTest,
+       PointerEventPreservesInputAndReportsLogicalCoordinates) {
+  if constexpr (kHasPointerDispatch<LynxEventDispatcher>) {
+    ExpectPointerEventPayloads(dispatcher_, *engine_);
+  } else {
+    GTEST_SKIP() << "This platform has no dispatcher pointer event API";
+  }
+}
+
 TEST_F(LynxEventDispatcherTest,
        WheelPreservesDeltasAndReportsLogicalCoordinates) {
   engine_->density = 2.f;
@@ -515,6 +622,195 @@ TEST_F(LynxEventDispatcherTest, AnimationCancelForwardsKeyframeIdentity) {
       }));
 
   dispatcher_.OnAnimationEvent("animationcancel", "fade-out", 42, 0.0);
+}
+
+void ExpectStringField(const lynx::pub::Value& params, const char* name,
+                       const char* expected) {
+  const auto value = params.GetValueForKey(name);
+  ASSERT_TRUE(value && value->IsString()) << name;
+  EXPECT_EQ(value->str(), expected) << name;
+}
+
+void ExpectNumberFields(
+    const lynx::pub::Value& params,
+    std::initializer_list<std::pair<const char*, double>> expected) {
+  for (const auto& [name, number] : expected) {
+    const auto value = params.GetValueForKey(name);
+    ASSERT_TRUE(value && value->IsNumber()) << name;
+    EXPECT_DOUBLE_EQ(value->Number(), number) << name;
+  }
+}
+
+auto PseudoChange(int view_id, uint32_t previous, uint32_t current) {
+  using Change = lynx::event::PseudoStatusChange;
+  return ::testing::ElementsAre(
+      ::testing::AllOf(::testing::Field(&Change::id, view_id),
+                       ::testing::Field(&Change::pre_status, previous),
+                       ::testing::Field(&Change::current_status, current)));
+}
+
+TEST_F(LynxEventDispatcherTest, MouseEventPreservesButtonsAndLogicalPosition) {
+  engine_->density = 2.f;
+  EXPECT_CALL(*engine_, SendBubbleEvent("mousedown", 42, ::testing::_))
+      .WillOnce(::testing::WithArg<2>([](const lynx::pub::Value& params) {
+        ExpectStringField(params, "type", "mousedown");
+        ExpectNumberFields(params, {{"button", 2},
+                                    {"buttons", 3},
+                                    {"scale", 1.5},
+                                    {"x", 5},
+                                    {"y", 10},
+                                    {"pageX", 15},
+                                    {"pageY", 20},
+                                    {"clientX", 15},
+                                    {"clientY", 20}});
+        const auto identifier = params.GetValueForKey("identifier");
+        ASSERT_TRUE(identifier && identifier->IsInt64());
+        EXPECT_NE(identifier->Int64(), 0);
+      }));
+
+  dispatcher_.OnMouseEvent("mousedown", 42, 2, 3, 1.5f, 10.f, 20.f, 30.f, 40.f);
+}
+
+TEST_F(LynxEventDispatcherTest, GestureExtrasPreserveAuthoritativeCoordinates) {
+  engine_->density = 2.f;
+  ::testing::InSequence sequence;
+  EXPECT_CALL(*engine_, SendGestureEvent(42, 17, "onUpdate", ::testing::_))
+      .WillOnce(::testing::WithArg<3>([](const lynx::pub::Value& params) {
+        ExpectStringField(params, "type", "onUpdate");
+        ExpectNumberFields(params, {{"x", 5},
+                                    {"y", 10},
+                                    {"pageX", 15},
+                                    {"pageY", 20},
+                                    {"clientX", 15},
+                                    {"clientY", 20},
+                                    {"timestamp", 1234},
+                                    {"scrollX", 2.5}});
+      }));
+  EXPECT_CALL(*engine_, SendGestureEvent(42, 17, "onEnd", ::testing::_))
+      .WillOnce(::testing::WithArg<3>([](const lynx::pub::Value& params) {
+        ExpectStringField(params, "type", "onEnd");
+        ExpectNumberFields(params, {{"x", 6}, {"timestamp", 1250}});
+        EXPECT_FALSE(params.Contains("scrollX"));
+      }));
+
+  Value::Map extra;
+  // Gesture-specific data must not shadow the normalized event coordinates.
+  extra.emplace("x", Value(999));
+  extra.emplace("scrollX", Value(2.5f));
+  Value update(std::move(extra));
+  dispatcher_.OnGestureHandlerEvent("onUpdate", 42, 17, 10.f, 20.f, 30.f, 40.f,
+                                    1234, update);
+  Value end;
+  dispatcher_.OnGestureHandlerEvent("onEnd", 42, 17, 12.f, 20.f, 30.f, 40.f,
+                                    1250, end);
+}
+
+TEST_F(LynxEventDispatcherTest, ActiveFocusAndHoverReportBothStateDirections) {
+  ::testing::InSequence sequence;
+  const auto none = lynx::kPseudoStateNone;
+  for (const auto& [change, state] :
+       {std::make_pair(&LynxEventDispatcher::OnActiveChanged,
+                       lynx::kPseudoStateActive),
+        std::make_pair(&LynxEventDispatcher::OnFocusChanged,
+                       lynx::kPseudoStateFocus)}) {
+    EXPECT_CALL(*engine_,
+                OnPseudoStatusesChanged(PseudoChange(42, none, state)));
+    EXPECT_CALL(*engine_,
+                OnPseudoStatusesChanged(PseudoChange(42, state, none)));
+    (dispatcher_.*change)(42, true);
+    (dispatcher_.*change)(42, false);
+  }
+
+  for (bool hover : {true, false}) {
+    EXPECT_CALL(*engine_,
+                SendCustomEvent("hoverchange", 42, ::testing::_, "detail"))
+        .WillOnce(
+            ::testing::WithArg<2>([hover](const lynx::pub::Value& params) {
+              const auto value = params.GetValueForKey("hover");
+              ASSERT_TRUE(value && value->IsBool());
+              EXPECT_EQ(value->Bool(), hover);
+            }));
+    const auto hovered = lynx::kPseudoStateHover;
+    EXPECT_CALL(*engine_,
+                OnPseudoStatusesChanged(PseudoChange(42, hover ? none : hovered,
+                                                     hover ? hovered : none)));
+    dispatcher_.OnHoverChanged(42, hover);
+  }
+}
+
+TEST_F(LynxEventDispatcherTest, DropEventPreservesFileMetadata) {
+  EXPECT_CALL(*engine_, SendBubbleEvent("drop", 42, ::testing::_))
+      .WillOnce(::testing::WithArg<2>([](const lynx::pub::Value& params) {
+        ExpectStringField(params, "type", "drop");
+        ExpectStringField(params, "dropEffect", "link");
+        const auto files = params.GetValueForKey("files");
+        ASSERT_TRUE(files && files->IsArray());
+        ASSERT_EQ(files->Length(), 1);
+        const auto file = files->GetValueAtIndex(0);
+        ASSERT_TRUE(file && file->IsMap());
+        ExpectStringField(*file, "name", "example.txt");
+        ExpectNumberFields(*file, {{"size", 4096}});
+      }));
+
+  Value::Map file;
+  file.emplace("name", Value("example.txt"));
+  file.emplace("size", Value(int64_t{4096}));
+  Value::Array files;
+  files.emplace_back(std::move(file));
+  Value::Map detail;
+  detail.emplace("dropEffect", Value("link"));
+  detail.emplace("files", Value(std::move(files)));
+  dispatcher_.OnDragDropEvent("drop", 42, std::move(detail));
+}
+
+TEST_F(LynxEventDispatcherTest, CustomEventPreservesDetailAndUrgency) {
+  using Options = lynx::shell::CustomEventDispatchOptions;
+  ::testing::InSequence sequence;
+  const auto expect_detail = [](const lynx::pub::Value& detail) {
+    ExpectStringField(detail, "id", "target");
+  };
+  EXPECT_CALL(*engine_, SendCustomEventWithOptions(
+                            "ready", 42, ::testing::_, "detail",
+                            ::testing::Field(&Options::emergency, false)))
+      .WillOnce(::testing::WithArg<2>(expect_detail));
+  EXPECT_CALL(*engine_, SendCustomEventWithOptions(
+                            "ready", 42, ::testing::_, "detail",
+                            ::testing::Field(&Options::emergency, true)))
+      .WillOnce(::testing::WithArg<2>(expect_detail));
+
+  Value::Map detail;
+  detail.emplace("id", Value("target"));
+  dispatcher_.OnSendCustomEvent(42, "ready", std::move(detail));
+  Value::Map urgent_detail;
+  urgent_detail.emplace("id", Value("target"));
+  EventDispatchOptions options;
+  options.emergency = true;
+  dispatcher_.OnSendCustomEventWithOptions(42, "ready",
+                                           std::move(urgent_detail), options);
+}
+
+TEST_F(LynxEventDispatcherTest, OverlayEventPreservesCurrentIdAndStackOrder) {
+  EXPECT_CALL(*engine_,
+              SendCustomEvent("onRequestClose", 42, ::testing::_, "detail"))
+      .WillOnce(::testing::WithArg<2>([](const lynx::pub::Value& params) {
+        ASSERT_TRUE(params.IsArray());
+        ASSERT_EQ(params.Length(), 1);
+        const auto detail = params.GetValueAtIndex(0);
+        ASSERT_TRUE(detail && detail->IsMap());
+        ExpectStringField(*detail, "currentOverlayId", "top");
+        const auto overlays = detail->GetValueForKey("overlays");
+        ASSERT_TRUE(overlays && overlays->IsArray());
+        ASSERT_EQ(overlays->Length(), 2);
+        const auto bottom = overlays->GetValueAtIndex(0);
+        const auto top = overlays->GetValueAtIndex(1);
+        ASSERT_TRUE(bottom && bottom->IsString());
+        ASSERT_TRUE(top && top->IsString());
+        EXPECT_EQ(bottom->str(), "bottom");
+        EXPECT_EQ(top->str(), "top");
+      }));
+
+  const char* overlays[] = {"bottom", "top"};
+  dispatcher_.OnOverlayEvent(42, "top", 2, overlays, "onRequestClose");
 }
 
 }  // namespace
