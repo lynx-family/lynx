@@ -6,10 +6,10 @@
 #import <Lynx/LynxAnimationTransformRotation.h>
 #import <Lynx/LynxAnimationUtils.h>
 #import <Lynx/LynxConverter+LynxCSSType.h>
+#import <Lynx/LynxConverter+Transform.h>
 #import <Lynx/LynxConverter.h>
 #import <Lynx/LynxGlobalObserver.h>
-#import <Lynx/LynxLog.h>
-#import <Lynx/LynxTransitionAnimationManager.h>
+#import <Lynx/LynxTransitionAnimationManager+Private.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIUnitUtils.h>
@@ -17,16 +17,120 @@
 static const NSString* const kTransitionEventStart = @"transitionstart";
 static const NSString* const kTransitionEventEnd = @"transitionend";
 
-@interface LynxTransitionAnimationManager ()
-@property(nonatomic, weak) LynxUI* ui;
-@property(nonatomic, strong, nullable)
-    NSMutableDictionary<NSNumber*, CAAnimation*>* transitionAnimations;
+enum {
+  kOpacityTransitionSlot,
+  kTransformTransitionSlot,
+  kRoutedTransitionCount,
+};
+
+static NSUInteger RoutedTransitionSlot(LynxAnimationProp property) {
+  return property == TRANSITION_TRANSFORM ? kTransformTransitionSlot : kOpacityTransitionSlot;
+}
+
+@interface LynxRoutedTransition : NSObject <CAAnimationDelegate> {
+ @public
+  __weak LynxTransitionAnimationManager* _manager;
+  uint64_t _animationID;
+  uint32_t _generation;
+  LynxAnimationProp _property;
+  id _startValue;  // The installed start value, cleared when the transition stops.
+
+ @private
+  LynxGlobalObserver* _observer;
+  BOOL _didStart;
+}
+- (void)endObservation __attribute__((objc_direct));
+@end
+
+static id RoutedStartValue(LynxUI* ui, LynxRoutedTransition* transition) {
+  if (!transition || !transition->_startValue) {
+    return nil;
+  }
+  CALayer* layer = transition->_property == OPACITY ? ui.backgroundManager.opacityView.layer : nil;
+  CALayer* presentation = (layer ?: ui.view.layer).presentationLayer;
+  if (!presentation) {
+    return transition->_startValue;
+  }
+  return transition->_property == OPACITY ? @(presentation.opacity)
+                                          : [NSValue valueWithCATransform3D:presentation.transform];
+}
+
+typedef struct {
+  CATransform3D withoutRotate;
+  CATransform3D withoutRotateXY;
+  CGFloat rotation[3];
+} LynxTransitionTransform;
+
+static NSString* const kRotationPaths[] = {@"transform.rotation.x", @"transform.rotation.y",
+                                           @"transform.rotation.z"};
+
+static void ConvertPlatformTransformEndpoint(NSArray<LynxTransformRaw*>* raw, LynxUI* ui,
+                                             LynxTransitionTransform* endpoint) {
+  char rotationType = LynxTransformRotationNone;
+  [LynxConverter toCATransform3D:raw
+                              ui:ui
+                        newFrame:ui.updatedFrame
+          transformWithoutRotate:&endpoint->withoutRotate
+        transformWithoutRotateXY:&endpoint->withoutRotateXY
+                    rotationType:&rotationType
+                       rotationX:&endpoint->rotation[0]
+                       rotationY:&endpoint->rotation[1]
+                       rotationZ:&endpoint->rotation[2]];
+}
+
+static void DecomposePresentationTransform(CATransform3D transform,
+                                           LynxTransitionTransform* endpoint) {
+  CALayer* snapshot = [CALayer layer];
+  snapshot.transform = transform;
+  for (NSUInteger axis = 0; axis < 3; ++axis) {
+    endpoint->rotation[axis] = [[snapshot valueForKeyPath:kRotationPaths[axis]] doubleValue];
+  }
+  [snapshot setValue:@0 forKeyPath:kRotationPaths[0]];
+  [snapshot setValue:@0 forKeyPath:kRotationPaths[1]];
+  endpoint->withoutRotateXY = snapshot.transform;
+  [snapshot setValue:@0 forKeyPath:kRotationPaths[2]];
+  endpoint->withoutRotate = snapshot.transform;
+}
+
+static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform* from,
+                                                   const LynxTransitionTransform* to,
+                                                   LynxAnimationInfo* config) {
+  const BOOL rotateZInMatrix = fabs(to->rotation[2] - from->rotation[2]) < M_PI;
+  const CATransform3D* fromMatrix = rotateZInMatrix ? &from->withoutRotateXY : &from->withoutRotate;
+  const CATransform3D* toMatrix = rotateZInMatrix ? &to->withoutRotateXY : &to->withoutRotate;
+  NSMutableArray* animations = [NSMutableArray array];
+  [animations addObject:[LynxAnimationUtils
+                            createBasicAnimation:@"transform"
+                                            from:[NSValue valueWithCATransform3D:*fromMatrix]
+                                              to:[NSValue valueWithCATransform3D:*toMatrix]
+                                            info:config]];
+  const NSUInteger axes = rotateZInMatrix ? 2 : 3;
+  for (NSUInteger axis = 0; axis < axes; ++axis) {
+    if (from->rotation[axis] != to->rotation[axis]) {
+      [animations addObject:[LynxAnimationUtils
+                                createBasicAnimation:kRotationPaths[axis]
+                                                from:[NSNumber numberWithFloat:from->rotation[axis]]
+                                                  to:[NSNumber numberWithFloat:to->rotation[axis]]
+                                                info:config]];
+    }
+  }
+  CAAnimationGroup* group = [CAAnimationGroup animation];
+  group.animations = animations;
+  return group;
+}
+
+@interface LynxTransitionAnimationManager () {
+  LynxRoutedTransition* _routedTransitions[kRoutedTransitionCount];
+  NSMutableDictionary<NSNumber*, CAAnimation*>* _transitionAnimations;
+}
+@property(nonatomic, weak, readonly) LynxUI* ui;
 @property(nonatomic, readonly, nullable)
     NSMutableDictionary<NSNumber*, LynxAnimationInfo*>* transitionInfos;
-@property(nonatomic, nullable)
+@property(nonatomic, readonly, nullable)
     NSMutableDictionary<NSNumber*, LynxAnimationDelegate*>* transitionDelegates;
 @property(nonatomic) CGRect latestFrame;
 
+- (BOOL)removePlatformTransition:(LynxRoutedTransition*)transition __attribute__((objc_direct));
 - (void)transitionsDidAssemble;
 - (BOOL)isTransitionSize:(CGRect)oldFrame newFrame:(CGRect)newFrame;
 - (BOOL)isTransitionPosition:(CGRect)oldFrame newFrame:(CGRect)newFrame;
@@ -42,6 +146,30 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                                              frame:(CGRect)newFrame
                                             config:(LynxAnimationInfo*)config
                                           withProp:(LynxAnimationProp)prop;
+@end
+
+@implementation LynxRoutedTransition
+
+- (void)animationDidStart:(CAAnimation*)animation {
+  if (_startValue && !_didStart) {
+    _didStart = YES;
+    _observer = _manager.ui.context.observer;
+    [_observer notifyAnimationStart];
+  }
+}
+
+- (void)animationDidStop:(CAAnimation*)animation finished:(BOOL)finished {
+  if (_startValue && ![_manager removePlatformTransition:self]) {
+    [self endObservation];
+  }
+}
+
+- (void)endObservation {
+  LynxGlobalObserver* observer = _observer;
+  _observer = nil;
+  [observer notifyAnimationEnd];
+}
+
 @end
 
 @implementation LynxTransitionAnimationManager
@@ -180,6 +308,92 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
                                         }
                                       }];
   return YES;
+}
+
+// Style updates own the layer's model value.
+- (void)applyPlatformTransition:(LynxAnimationInfo*)info
+                           from:(id)from
+                             to:(id)to
+                    animationID:(uint64_t)animationID
+                     generation:(uint32_t)generation {
+  const LynxAnimationProp property = info.prop;
+  const NSUInteger slot = RoutedTransitionSlot(property);
+  LynxRoutedTransition* previous = _routedTransitions[slot];
+  if (previous && (animationID < previous->_animationID || (animationID == previous->_animationID &&
+                                                            generation <= previous->_generation))) {
+    return;
+  }
+  LynxUI* ui = _ui;
+  from = RoutedStartValue(ui, previous) ?: from;
+  CAAnimation* animation;
+  if (property == OPACITY) {
+    animation = [LynxAnimationUtils createBasicAnimation:@"opacity" from:from to:to info:info];
+  } else {
+    LynxTransitionTransform start = {0}, end = {0};
+    if ([from isKindOfClass:[NSValue class]]) {
+      DecomposePresentationTransform([from CATransform3DValue], &start);
+    } else {
+      ConvertPlatformTransformEndpoint(from, ui, &start);
+    }
+    ConvertPlatformTransformEndpoint(to, ui, &end);
+    animation = CreateTransformTransition(&start, &end, info);
+  }
+  LynxRoutedTransition* transition = [LynxRoutedTransition new];
+  transition->_manager = self;
+  transition->_animationID = animationID;
+  transition->_generation = generation;
+  transition->_property = property;
+  transition->_startValue = from;
+  _routedTransitions[slot] = transition;
+
+  if (previous) {
+    previous->_startValue = nil;
+  }
+  NSString* name = [LynxConverter toLynxPropName:property];
+  [LynxAnimationUtils removeAnimation:ui withName:name];
+  [previous endObservation];
+  if (_routedTransitions[slot] != transition || !transition->_startValue) {
+    return;
+  }
+
+  animation.delegate = transition;
+  [LynxAnimationUtils applyAnimationProperties:animation withInfo:info forLayer:ui.view.layer];
+  if (property == OPACITY && ui.backgroundManager.opacityView) {
+    [LynxAnimationUtils attachOpacityTo:ui animation:animation forKey:name];
+  } else {
+    [LynxAnimationUtils attachTo:ui animation:animation forKey:name];
+  }
+}
+
+- (void)cancelPlatformTransition:(uint64_t)animationID generation:(uint32_t)generation {
+  for (NSUInteger slot = 0; slot < kRoutedTransitionCount; ++slot) {
+    LynxRoutedTransition* transition = _routedTransitions[slot];
+    if (transition && transition->_animationID == animationID &&
+        generation >= transition->_generation) {
+      transition->_generation = generation;
+      [self removePlatformTransition:transition];
+      return;
+    }
+  }
+}
+
+- (BOOL)removePlatformTransition:(LynxRoutedTransition*)transition {
+  if (!transition || !transition->_startValue ||
+      _routedTransitions[RoutedTransitionSlot(transition->_property)] != transition) {
+    return NO;
+  }
+  transition->_startValue = nil;
+  [LynxAnimationUtils removeAnimation:_ui
+                             withName:[LynxConverter toLynxPropName:transition->_property]];
+  [transition endObservation];
+  return YES;
+}
+
+- (void)removeLegacyTransformTransition {
+  LynxRoutedTransition* transition = _routedTransitions[kTransformTransitionSlot];
+  if (!transition || !transition->_startValue) {
+    [self removeTransitionAnimation:TRANSITION_TRANSFORM];
+  }
 }
 
 - (BOOL)maybeUpdateFrameWithTransitionAnimation:(CGRect)newFrame
@@ -582,49 +796,17 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
     return;
   }
   config.completeBlock = block;
-
-  CAAnimationGroup* group = [CAAnimationGroup animation];
-  NSMutableArray* animations = [NSMutableArray array];
-
-  LynxAnimationTransformRotation* oldRotation = _ui.lastTransformRotation;
-
-  BOOL performRotateZInMatrix = fabs(newRotation.rotationZ - oldRotation.rotationZ) < M_PI;
-  CATransform3D lastTransformMatrix =
-      performRotateZInMatrix ? _ui.lastTransformWithoutRotateXY : _ui.lastTransformWithoutRotate;
-  CATransform3D newTransformMatrix =
-      performRotateZInMatrix ? newTransformWithoutRotateXY : newTransformWithoutRotate;
-
-  [animations
-      addObject:[LynxAnimationUtils
-                    createBasicAnimation:@"transform"
-                                    from:[NSValue valueWithCATransform3D:lastTransformMatrix]
-                                      to:[NSValue valueWithCATransform3D:newTransformMatrix]
-                                    info:config]];
-
-  if (oldRotation.rotationX != newRotation.rotationX) {
-    [animations addObject:[LynxAnimationUtils
-                              createBasicAnimation:@"transform.rotation.x"
-                                              from:[NSNumber numberWithFloat:oldRotation.rotationX]
-                                                to:[NSNumber numberWithFloat:newRotation.rotationX]
-                                              info:config]];
-  }
-  if (oldRotation.rotationY != newRotation.rotationY) {
-    [animations addObject:[LynxAnimationUtils
-                              createBasicAnimation:@"transform.rotation.y"
-                                              from:[NSNumber numberWithFloat:oldRotation.rotationY]
-                                                to:[NSNumber numberWithFloat:newRotation.rotationY]
-                                              info:config]];
-  }
-  if (!performRotateZInMatrix && oldRotation.rotationZ != newRotation.rotationZ) {
-    [animations addObject:[LynxAnimationUtils
-                              createBasicAnimation:@"transform.rotation.z"
-                                              from:[NSNumber numberWithFloat:oldRotation.rotationZ]
-                                                to:[NSNumber numberWithFloat:newRotation.rotationZ]
-                                              info:config]];
-  }
-
-  group.animations = animations;
-  [self enqueueTransitionAnimation:group withConfig:config];
+  LynxUI* ui = _ui;
+  LynxAnimationTransformRotation* oldRotation = ui.lastTransformRotation;
+  LynxTransitionTransform from = {
+      ui.lastTransformWithoutRotate,
+      ui.lastTransformWithoutRotateXY,
+      {oldRotation.rotationX, oldRotation.rotationY, oldRotation.rotationZ}};
+  LynxTransitionTransform to = {
+      newTransformWithoutRotate,
+      newTransformWithoutRotateXY,
+      {newRotation.rotationX, newRotation.rotationY, newRotation.rotationZ}};
+  [self enqueueTransitionAnimation:CreateTransformTransition(&from, &to, config) withConfig:config];
 }
 
 #pragma mark - prepare && start transition
@@ -692,9 +874,15 @@ static const NSString* const kTransitionEventEnd = @"transitionend";
   for (LynxAnimationProp i = TRANSITION_WIDTH; i <= TRANSITION_TRANSFORM; i <<= 1) {
     [self removeTransitionAnimation:i];
   }
+  _routedTransitions[kOpacityTransitionSlot] = nil;
+  _routedTransitions[kTransformTransitionSlot] = nil;
 }
 
 - (void)removeTransitionAnimation:(LynxAnimationProp)prop {
+  if ((prop == OPACITY || prop == TRANSITION_TRANSFORM) &&
+      [self removePlatformTransition:_routedTransitions[RoutedTransitionSlot(prop)]]) {
+    return;
+  }
   NSNumber* key = [NSNumber numberWithUnsignedInteger:prop];
   LynxAnimationDelegate* delegate = [_transitionDelegates objectForKey:key];
   if (delegate) {

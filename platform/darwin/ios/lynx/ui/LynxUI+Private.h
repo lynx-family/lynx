@@ -10,6 +10,8 @@ NS_ASSUME_NONNULL_BEGIN
 #define LYNX_ASSERT_ON_MAIN_THREAD \
   NSAssert([NSThread isMainThread], @"This function must be called on main thread.");
 
+@class LynxTransitionAnimationManager;
+
 typedef void (^LynxPropsDidUpdateBlockReadyBlock)(LynxUI*);
 
 @interface LynxUI ()
@@ -44,6 +46,11 @@ typedef void (^LynxPropsDidUpdateBlockReadyBlock)(LynxUI*);
                                 isVertical:(BOOL)isVertical
                               scrollerSize:(CGFloat)scrollerSize
                                  maxOffset:(CGFloat)maxOffset;
+
+/** @cond */
+- (nullable LynxTransitionAnimationManager*)transitionManagerCreatingIfNeeded:(BOOL)createIfNeeded
+    __attribute__((objc_direct));
+/** @endcond */
 
 @end
 NS_ASSUME_NONNULL_END

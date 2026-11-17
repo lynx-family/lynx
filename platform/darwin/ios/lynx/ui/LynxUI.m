@@ -24,7 +24,6 @@
 #import <Lynx/LynxHeroTransition.h>
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxLayoutAnimationManager.h>
-#import <Lynx/LynxLog.h>
 #import <Lynx/LynxMeaningfulContentSnapshot.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRootUI.h>
@@ -34,7 +33,7 @@
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTransformOriginRaw.h>
 #import <Lynx/LynxTransformRaw.h>
-#import <Lynx/LynxTransitionAnimationManager.h>
+#import <Lynx/LynxTransitionAnimationManager+Private.h>
 #import <Lynx/LynxUI+Accessibility.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
@@ -52,6 +51,7 @@
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/UIView+Lynx.h>
+#import <LynxBase/LynxLog.h>
 #import <limits.h>
 #import <malloc/malloc.h>
 #import <math.h>
@@ -1962,7 +1962,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
 - (void)applyTransform {
   LYNX_ASSERT_ON_MAIN_THREAD;
   [self prepareLastInfo];
-  [_transitionAnimationManager removeTransitionAnimation:TRANSITION_TRANSFORM];
+  [_transitionAnimationManager removeLegacyTransformTransition];
   if (_enableNewTransformOrigin) {
     [self applyTransformOrigin];
   }
@@ -2883,6 +2883,13 @@ LYNX_PROP_DEFINE("image-rendering", setImageRendering, LynxImageRenderingType) {
   if (!_transitionAnimationManager) {
     _transitionAnimationManager = [[LynxTransitionAnimationManager alloc] initWithLynxUI:self];
   }
+}
+
+- (LynxTransitionAnimationManager*)transitionManagerCreatingIfNeeded:(BOOL)createIfNeeded {
+  if (createIfNeeded) {
+    [self prepareTransitionAnimationManager];
+  }
+  return _transitionAnimationManager;
 }
 
 // create
