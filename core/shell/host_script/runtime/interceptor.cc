@@ -10,9 +10,13 @@
 #include <mutex>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#include "base/include/value/base_string.h"
+#include "base/include/value/byte_array.h"
+#include "base/include/value/table.h"
 
 namespace lynx::shell {
 namespace {
@@ -41,9 +45,9 @@ std::atomic<size_t>& HandlerCount(InterceptKind kind,
 
 const char* Interceptor::Name(InterceptKind kind) {
   static constexpr const char* names[] = {
-      "view.created", "view.loadTemplate",  "view.updateMetaData",
-      "jsb.call",     "jsb.result",         "jsb.callback",
-      "view.create",  "view.updateViewport"};
+      "view.created", "view.loadTemplate",   "view.updateMetaData",
+      "jsb.call",     "jsb.result",          "jsb.callback",
+      "view.create",  "view.updateViewport", "resource.fetch"};
   static_assert(std::size(names) == kKinds);
   return names[static_cast<size_t>(kind)];
 }
@@ -84,6 +88,39 @@ std::shared_ptr<Interceptor> Interceptor::Current(
     break;
   }
   return nullptr;
+}
+
+bool Interceptor::HasResourceFetchHandler(base::LynxEntityId view) {
+  return IsEnabled() &&
+         HandlerCount(InterceptKind::kResourceFetch, Domain::kUI).load() != 0 &&
+         IsViewAlive(view);
+}
+
+bool Interceptor::InterceptResourceFetch(base::LynxEntityId view,
+                                         std::string* url,
+                                         std::vector<uint8_t>* bytes) {
+  if (!url || !bytes || !IsEnabled() || !IsViewAlive(view)) return false;
+  auto provider = Current({InterceptKind::kResourceFetch}, Domain::kUI);
+  if (!provider) return false;
+  BASE_STATIC_STRING_DECL(kViewId, "viewId");
+  BASE_STATIC_STRING_DECL(kRequest, "request");
+  BASE_STATIC_STRING_DECL(kUrl, "url");
+  BASE_STATIC_STRING_DECL(kBytes, "bytes");
+  lepus::Value detail(lepus::Dictionary::Create());
+  detail.SetProperty(kUrl, lepus::Value(*url));
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty(kViewId, lepus::Value(std::to_string(view)));
+  event.SetProperty(kRequest, std::move(detail));
+  auto result = provider->Dispatch(InterceptKind::kResourceFetch, event);
+  if (result.mock.IsTable()) {
+    auto array = result.mock.GetProperty(kBytes).ByteArray();
+    bytes->assign(array->GetPtr(), array->GetPtr() + array->GetLength());
+    return true;
+  }
+  if (auto patched = result.patch.GetProperty(kUrl); patched.IsString()) {
+    *url = patched.StdString();
+  }
+  return false;
 }
 
 void Interceptor::HandlerAdded(InterceptKind kind, Domain domain) {

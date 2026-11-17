@@ -10,6 +10,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/log/log_context.h"
 #include "base/include/value/base_value.h"
@@ -27,6 +28,7 @@ enum class InterceptKind {
   kCallback,
   kCreate,
   kUpdateViewport,
+  kResourceFetch,
   kCount
 };
 
@@ -65,6 +67,11 @@ class LYNX_EXPORT Interceptor {
   // missing coverage at most once, using the first registered stage.
   static std::shared_ptr<Interceptor> Current(
       std::initializer_list<InterceptKind> kinds, Domain domain);
+  static bool HasResourceFetchHandler(base::LynxEntityId view);
+  // Dispatches a bundle fetch on UI. Returns true when answered with mock
+  // bytes; otherwise updates *url if redirected and returns false.
+  static bool InterceptResourceFetch(base::LynxEntityId view, std::string* url,
+                                     std::vector<uint8_t>* bytes);
   static void HandlerAdded(InterceptKind kind, Domain domain = Domain::kUI);
   static void HandlerRemoved(InterceptKind kind, Domain domain = Domain::kUI);
   static bool IsEnabled();

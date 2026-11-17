@@ -109,6 +109,13 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void OnRuntimeReady() override;
   void OnErrorOccurred(base::LynxError error) override;
 
+  // Keeps the wrapped resource loader's View identity in sync with the
+  // shell-published LogContext.
+  void SetLogContext(const base::LogContext& context) override {
+    TemplateDelegate::SetLogContext(context);
+    external_resource_loader_->SetViewId(context.view_id);
+  }
+
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override;
   void OnEvaluateJavaScriptEnd(const std::string& url) override;

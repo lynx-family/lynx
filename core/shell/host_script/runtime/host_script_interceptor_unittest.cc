@@ -116,16 +116,16 @@ TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
   const std::pair<Interceptor::Domain, const char*> cases[] = {
       {Interceptor::Domain::kUI,
        "[['view.created','view.create','view.loadTemplate',"
-       "'view.updateMetaData','view.updateViewport'],"
+       "'view.updateMetaData','view.updateViewport','resource.fetch'],"
        "['jsb.call','jsb.result','jsb.callback']]"},
       {Interceptor::Domain::kBTS,
        "[['view.created','jsb.call','jsb.result','jsb.callback'],"
        "['view.create','view.loadTemplate',"
-       "'view.updateMetaData','view.updateViewport']]"},
+       "'view.updateMetaData','view.updateViewport','resource.fetch']]"},
       {Interceptor::Domain::kMTS,
        "[['view.created'],['view.create',"
        "'view.loadTemplate','view.updateMetaData','view.updateViewport',"
-       "'jsb.call','jsb.result','jsb.callback']]"}};
+       "'resource.fetch','jsb.call','jsb.result','jsb.callback']]"}};
   for (const auto& [domain, names] : cases) {
     Install(domain);
     std::string script =
@@ -227,7 +227,7 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
         // In InterceptKind order, which is the dispatch order below.
         domain == Interceptor::Domain::kUI
             ? "['view.created','view.loadTemplate','view.updateMetaData',"
-              "'view.create','view.updateViewport']"
+              "'view.create','view.updateViewport','resource.fetch']"
             : "['view.created','jsb.call','jsb.result','jsb.callback']";
     std::string script = R"(
       globalThis.calls = [];
@@ -798,6 +798,105 @@ TEST_F(HostScriptInterceptorTest, ViewportPatchesAreValidatedPerField) {
     Script(("patch = " + std::string(invalid)).c_str());
     EXPECT_TRUE(Dispatch(InterceptKind::kUpdateViewport).failed) << invalid;
   }
+}
+
+TEST_F(HostScriptInterceptorTest, ResourceFetchRedirectsOrAnswersWithBytes) {
+  Install(HostScriptInterceptor::Domain::kUI);
+  lepus::Value request(lepus::Dictionary::Create());
+  request.SetProperty("url", lepus::Value("original"));
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("viewId", lepus::Value("1"));
+  event.SetProperty("request", request);
+  Script(R"(
+    globalThis.decide = undefined;
+    interceptor.on('resource.fetch', (e, c) => decide(e.request, c));
+  )");
+  Script("decide = (r, c) => c.proceed({...r, url: r.url + '-patched'})");
+  auto result = provider_->Dispatch(InterceptKind::kResourceFetch, event);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("url").StdString(), "original-patched");
+  Script("decide = (r, c) => c.mock({bytes: new Uint8Array([1, 2]).buffer})");
+  result = provider_->Dispatch(InterceptKind::kResourceFetch, event);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.mock.GetProperty("bytes").ByteArray()->GetLength(), 2u);
+  for (const char* invalid :
+       {"(r, c) => c.mock({bytes: new ArrayBuffer(0)})",
+        "(r, c) => c.mock({bytes: new ArrayBuffer(1), url: 'x'})",
+        "(r, c) => c.mock({})", "(r, c) => c.proceed({type: 'lazyBundle'})",
+        "(r, c) => c.proceed({url: ''})"}) {
+    Script(("decide = " + std::string(invalid)).c_str());
+    result = provider_->Dispatch(InterceptKind::kResourceFetch, event);
+    EXPECT_TRUE(result.failed) << invalid;
+    EXPECT_FALSE(result.mock.IsTable()) << invalid;
+  }
+}
+
+TEST_F(HostScriptInterceptorTest,
+       InterceptResourceFetchChecksLivenessAndAppliesDecision) {
+  std::string url = "plain";
+  std::vector<uint8_t> bytes;
+  EXPECT_FALSE(Interceptor::HasResourceFetchHandler(7));
+  EXPECT_FALSE(Interceptor::InterceptResourceFetch(7, &url, &bytes));
+  EXPECT_EQ(url, "plain");
+
+  Install(HostScriptInterceptor::Domain::kUI);
+  Script(R"(
+    globalThis.seen = [];
+    interceptor.on('resource.fetch', (e, c) => {
+      seen.push([e.viewId, e.viewURL, e.request.url].join(' '));
+      if (e.request.url === 'mocked')
+        return c.mock({bytes: new Uint8Array([4, 5]).buffer});
+      if (e.request.url === 'redirected') return c.proceed({url: 'target'});
+      if (e.request.url === 'invalid') return c.proceed({url: 1});
+      return c.proceed();
+    });
+  )");
+  // Unregistered or negative Views never trigger interception.
+  EXPECT_FALSE(Interceptor::HasResourceFetchHandler(-1));
+  EXPECT_FALSE(Interceptor::HasResourceFetchHandler(99));
+  EXPECT_FALSE(Interceptor::InterceptResourceFetch(99, &url, &bytes));
+  EXPECT_EQ(EvalString("seen.join(',')"), "");
+
+  Interceptor::RegisterView(7);
+  Interceptor::UpdateViewUrl(7, "https://app/card.js");
+  EXPECT_TRUE(Interceptor::HasResourceFetchHandler(7));
+
+  url = "mocked";
+  EXPECT_TRUE(Interceptor::InterceptResourceFetch(7, &url, &bytes));
+  EXPECT_EQ(bytes, (std::vector<uint8_t>{4, 5}));
+
+  bytes.clear();
+  url = "redirected";
+  EXPECT_FALSE(Interceptor::InterceptResourceFetch(7, &url, &bytes));
+  EXPECT_EQ(url, "target");
+  EXPECT_TRUE(bytes.empty());
+
+  url = "invalid";
+  EXPECT_FALSE(Interceptor::InterceptResourceFetch(7, &url, &bytes));
+  EXPECT_EQ(url, "invalid");
+  EXPECT_EQ(EvalString("seen.join(',')"),
+            "7 https://app/card.js mocked,"
+            "7 https://app/card.js redirected,"
+            "7 https://app/card.js invalid");
+
+  // Calling without a UI provider attached on the current thread reports a gap.
+  const auto before = Interceptor::FailureCount();
+  std::thread other([] {
+    std::string off_thread_url = "off-thread";
+    std::vector<uint8_t> off_thread_bytes;
+    EXPECT_FALSE(Interceptor::InterceptResourceFetch(7, &off_thread_url,
+                                                     &off_thread_bytes));
+    EXPECT_EQ(off_thread_url, "off-thread");
+  });
+  other.join();
+  EXPECT_EQ(Interceptor::FailureCount(), before + 1);
+
+  Interceptor::DestroyView(7);
+  Interceptor::ClearViewUrl(7);
+  EXPECT_FALSE(Interceptor::HasResourceFetchHandler(7));
+  url = "after-destroy";
+  EXPECT_FALSE(Interceptor::InterceptResourceFetch(7, &url, &bytes));
+  EXPECT_EQ(EvalString("seen.length.toString()"), "3");
 }
 
 TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {

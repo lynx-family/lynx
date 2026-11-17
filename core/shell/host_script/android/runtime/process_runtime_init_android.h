@@ -5,6 +5,10 @@
 #ifndef CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_INIT_ANDROID_H_
 #define CORE_SHELL_HOST_SCRIPT_ANDROID_RUNTIME_PROCESS_RUNTIME_INIT_ANDROID_H_
 
+#include <string>
+#include <vector>
+
+#include "base/include/closure.h"
 #include "base/include/log/log_context.h"
 
 namespace lynx {
@@ -23,6 +27,15 @@ void OnHostScriptViewCreated();
 // interception can tell live Views apart. Callable on any thread.
 void RegisterHostScriptView(base::LynxEntityId view);
 void UnregisterHostScriptView(base::LynxEntityId view);
+
+using HostScriptResourceCallback =
+    base::MoveOnlyClosure<void, const std::string&, std::vector<uint8_t>*,
+                          bool>;
+
+// Offers a View's bundle fetch to UI `resource.fetch` handlers when active.
+bool ShouldInterceptHostScriptResource(base::LynxEntityId view);
+void DispatchHostScriptResource(base::LynxEntityId view, std::string url,
+                                HostScriptResourceCallback complete);
 
 // Updates the View interception hooks on UI without stopping the process
 // runtimes.

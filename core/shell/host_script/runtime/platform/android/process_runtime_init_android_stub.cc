@@ -20,6 +20,13 @@ void RegisterHostScriptView(base::LynxEntityId) {}
 void UnregisterHostScriptView(base::LynxEntityId) {}
 void UpdateHostScriptDebugState(bool) {}
 
+bool ShouldInterceptHostScriptResource(base::LynxEntityId) { return false; }
+
+void DispatchHostScriptResource(base::LynxEntityId, std::string url,
+                                HostScriptResourceCallback complete) {
+  complete(url, nullptr, false);
+}
+
 void LoadHostScriptRuntime(std::string, std::string,
                            ProcessRuntime::Completion completion,
                            ProcessRuntime::Domain) {

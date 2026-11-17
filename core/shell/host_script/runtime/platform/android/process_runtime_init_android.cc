@@ -70,7 +70,8 @@ bool SetHostScriptRuntimeProvider(const HostScriptRuntimeCallbacks* callbacks,
       callbacks->executor_features != kHostScriptExecutorFeatures ||
       !callbacks->prepare || !callbacks->update_debug_state ||
       !callbacks->create_module_interceptor || !callbacks->register_view ||
-      !callbacks->destroy_view)
+      !callbacks->destroy_view || !callbacks->has_resource_handler ||
+      !callbacks->fetch_resource)
     return false;
   if (!commit) {
     const auto* current = LoadProvider();
@@ -135,6 +136,31 @@ void UnregisterHostScriptView(base::LynxEntityId view) {
   const auto* callbacks = LoadProvider();
   if (!callbacks) return;
   callbacks->destroy_view(view);
+}
+
+bool ShouldInterceptHostScriptResource(base::LynxEntityId view) {
+  const auto* callbacks = LoadProvider();
+  return callbacks && callbacks->has_resource_handler(view);
+}
+
+void DispatchHostScriptResource(base::LynxEntityId view, std::string url,
+                                HostScriptResourceCallback complete) {
+  auto run = [view, url = std::move(url),
+              complete = std::move(complete)](bool hopped) mutable {
+    const auto* callbacks = LoadProvider();
+    std::vector<uint8_t> mocked;
+    if (callbacks && callbacks->fetch_resource(view, &url, &mocked)) {
+      complete(url, &mocked, hopped);
+      return;
+    }
+    complete(url, nullptr, hopped);
+  };
+  auto ui_runner = base::UIThread::GetRunner();
+  if (!ui_runner || ui_runner->RunsTasksOnCurrentThread()) {
+    run(false);
+    return;
+  }
+  ui_runner->PostTask([run = std::move(run)]() mutable { run(true); });
 }
 
 }  // namespace shell

@@ -274,6 +274,23 @@ TEST(BTSRuntimeMediatorTest, SetPausedFromJSSkipsStandaloneRuntime) {
   mediator.SetPausedFromJS(false);
 }
 
+TEST(BTSRuntimeMediatorTest, SetLogContextPublishesViewIdToResourceLoader) {
+  auto task_runner = fml::MakeRefCounted<ImmediateTaskRunner>();
+  auto resource_loader = std::make_shared<CountingResourceLoader>();
+  auto mediator = BTSRuntimeMediator(
+      nullptr, nullptr, nullptr, nullptr, task_runner,
+      std::make_unique<ExternalResourceLoader>(resource_loader));
+
+  EXPECT_EQ(resource_loader->GetViewId(), base::kUnavailableLynxEntityId);
+
+  base::LogContext context;
+  context.view_id = 42;
+  mediator.SetLogContext(context);
+
+  EXPECT_EQ(mediator.GetLogContext().view_id, 42);
+  EXPECT_EQ(resource_loader->GetViewId(), 42);
+}
+
 TEST(BTSRuntimeMediatorTest,
      FetchBundleShouldFailImmediatelyWhenEngineIsDestroyed) {
   auto task_runner = fml::MakeRefCounted<ImmediateTaskRunner>();

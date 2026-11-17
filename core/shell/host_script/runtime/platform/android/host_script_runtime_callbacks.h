@@ -6,6 +6,8 @@
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_PLATFORM_ANDROID_HOST_SCRIPT_RUNTIME_CALLBACKS_H_
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 namespace lynx {
 namespace runtime {
@@ -25,9 +27,12 @@ struct HostScriptRuntimeCallbacks {
   runtime::js::ModuleInterceptor* (*create_module_interceptor)();
   void (*register_view)(int32_t view);
   void (*destroy_view)(int32_t view);
+  bool (*has_resource_handler)(int32_t view);
+  bool (*fetch_resource)(int32_t view, std::string* url,
+                         std::vector<uint8_t>* bytes);
 };
 
-constexpr uint32_t kHostScriptRuntimeAbiVersion = 7;
+constexpr uint32_t kHostScriptRuntimeAbiVersion = 8;
 // Engine-owned executor allocation isolates replay/recorder field differences.
 // Shared inline types still require matching build features.
 constexpr uint32_t kHostScriptExecutorFeatures =

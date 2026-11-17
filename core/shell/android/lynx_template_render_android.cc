@@ -312,11 +312,16 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
   auto* runtime_wrapper =
       reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid*>(
           runtime_wrapper_ptr);
+  const auto shell_view_id = static_cast<lynx::base::LynxEntityId>(view_id);
   const auto vsync_source = ui_delegate->GetVSyncMonitorPlatformImpl();
   // TODO(chenyouhui): Create LazyBundleLoader in LynxShellBuilder
-  auto loader = std::make_shared<lynx::tasm::LazyBundleLoader>(
-      std::make_shared<lynx::shell::LynxResourceLoaderAndroid>(
-          env, platform_loader));
+  // The TASM-side loader lives outside the BTS runtime's LogContext flow, so
+  // publish the View identity explicitly here.
+  auto resource_loader =
+      std::make_shared<lynx::shell::LynxResourceLoaderAndroid>(env,
+                                                               platform_loader);
+  resource_loader->SetViewId(shell_view_id);
+  auto loader = std::make_shared<lynx::tasm::LazyBundleLoader>(resource_loader);
 
   std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager;
   if (module_factory != nullptr) {
@@ -327,7 +332,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong view_id,
             env, module_factory));
   }
   lynx::shell::ShellOption shell_option;
-  shell_option.view_id_ = static_cast<lynx::base::LynxEntityId>(view_id);
+  shell_option.view_id_ = shell_view_id;
   lynx::shell::RegisterHostScriptView(shell_option.view_id_);
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;

@@ -45,6 +45,10 @@ class LynxResourceLoaderAndroid : public pub::LynxResourceLoader {
       override;
 
  private:
+  void LoadPlatformResource(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback);
+
   base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;
 };
 

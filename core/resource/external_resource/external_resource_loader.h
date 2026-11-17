@@ -82,6 +82,14 @@ class ExternalResourceLoader
     runtime_actor_ = runtime_actor;
   }
 
+  // Forwards the shell-published View identity to the wrapped resource
+  // loader, which lives outside the actor hierarchy.
+  inline void SetViewId(base::LynxEntityId view_id) {
+    if (resource_loader_) {
+      resource_loader_->SetViewId(view_id);
+    }
+  }
+
  private:
   void ReportResourceError(int error_code, const std::string& message,
                            const std::string& url);

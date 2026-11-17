@@ -4,10 +4,13 @@
 
 #include "core/resource/lynx_resource_loader_android.h"
 
+#include <memory>
+
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/jni_helper.h"
 #include "core/resource/lynx_resource_setting.h"
+#include "core/shell/host_script/android/runtime/process_runtime_init_android.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxResourceLoader_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxResourceLoader_register_jni.h"
 
@@ -68,6 +71,50 @@ void LynxResourceLoaderAndroid::LoadResourceInternal(
               [&request](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("url", request.url);
               });
+  if (request.type == pub::LynxResourceType::kLazyBundle ||
+      request.type == pub::LynxResourceType::kFrame) {
+    const auto view = GetViewId();
+    if (ShouldInterceptHostScriptResource(view)) {
+      DispatchHostScriptResource(
+          view, request.url,
+          [this, weak_self = weak_from_this(), request,
+           callback = std::move(callback)](const std::string& url,
+                                           std::vector<uint8_t>* mocked_bytes,
+                                           bool hopped_to_ui) mutable {
+            if (mocked_bytes != nullptr) {
+              pub::LynxResourceResponse response{.data =
+                                                     std::move(*mocked_bytes)};
+              callback(response);
+              return;
+            }
+            auto locked = hopped_to_ui ? weak_self.lock() : nullptr;
+            auto* target =
+                hopped_to_ui
+                    ? static_cast<LynxResourceLoaderAndroid*>(locked.get())
+                    : this;
+            if (target == nullptr) {
+              pub::LynxResourceResponse response{
+                  .err_code = -1,
+                  .err_msg = std::string("Resource loader destroyed")};
+              callback(response);
+              return;
+            }
+            auto next = request;
+            next.url = url;
+            if (hopped_to_ui) {
+              next.request_in_current_thread = false;
+            }
+            target->LoadPlatformResource(next, std::move(callback));
+          });
+      return;
+    }
+  }
+  LoadPlatformResource(request, std::move(callback));
+}
+
+void LynxResourceLoaderAndroid::LoadPlatformResource(
+    const pub::LynxResourceRequest& request,
+    base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   JNIEnv* env = AttachCurrentThread();
   ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) {

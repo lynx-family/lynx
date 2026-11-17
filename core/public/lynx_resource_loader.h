@@ -5,11 +5,13 @@
 #ifndef CORE_PUBLIC_LYNX_RESOURCE_LOADER_H_
 #define CORE_PUBLIC_LYNX_RESOURCE_LOADER_H_
 
+#include <atomic>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/log/log_context.h"
 #include "core/base/lynx_export.h"
 
 namespace lynx {
@@ -155,6 +157,15 @@ class LYNX_EXPORT LynxResourceLoader
   void SetReplayResourceCache(
       std::shared_ptr<tasm::replay::ReplayResourceCache> cache);
 
+  // Identity of the View this loader serves, published by the shell's
+  // LogContext flow; unavailable before the View is attached.
+  void SetViewId(base::LynxEntityId view_id) {
+    view_id_.store(view_id, std::memory_order_relaxed);
+  }
+  base::LynxEntityId GetViewId() const {
+    return view_id_.load(std::memory_order_relaxed);
+  }
+
  protected:
   virtual void LoadResourceInternal(
       const LynxResourceRequest& request,
@@ -165,6 +176,9 @@ class LYNX_EXPORT LynxResourceLoader
       base::MoveOnlyClosure<void, LynxPathResponse&> path_callback){};
 
   std::shared_ptr<tasm::replay::ReplayResourceCache> replay_cache_;
+
+ private:
+  std::atomic<base::LynxEntityId> view_id_{base::kUnavailableLynxEntityId};
 };
 
 }  // namespace pub

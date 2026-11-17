@@ -83,7 +83,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
   TemplateDelegate() {}
   virtual ~TemplateDelegate() override = default;
 
-  void SetLogContext(const base::LogContext& context) {
+  virtual void SetLogContext(const base::LogContext& context) {
     log_context_ = context;
   }
   const base::LogContext& GetLogContext() const { return log_context_; }
