@@ -38,6 +38,71 @@ TEST(LazyBundleLoaderTest, LoadFrameLynxML) {
   EXPECT_NE(bundle->GetContextBundle(), nullptr);
 }
 
+class CachedBundleResourceLoader : public pub::LynxResourceLoader {
+ public:
+  explicit CachedBundleResourceLoader(bool cached) : cached_(cached) {}
+
+  void Complete() {
+    pub::LynxResourceResponse response{.bundle = &bundle_};
+    callback_(response);
+    callback_ = nullptr;
+  }
+
+ protected:
+  void LoadResourceInternal(
+      const pub::LynxResourceRequest& request,
+      base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+      override {
+    callback_ = std::move(callback);
+    if (cached_ && request.request_in_current_thread) {
+      Complete();
+    }
+  }
+
+ private:
+  bool cached_;
+  LynxTemplateBundle bundle_;
+  base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback_;
+};
+
+TEST(LazyBundleLoaderTest, FetchBundleCompletesFromHostCacheBeforeReturning) {
+  auto resource_loader = std::make_shared<CachedBundleResourceLoader>(true);
+  auto loader = std::make_shared<LazyBundleLoader>(resource_loader);
+  auto promise =
+      std::make_shared<runtime::ResponsePromise<BundleResourceInfo>>();
+  bool completed = false;
+  promise->AddCallback([&](BundleResourceInfo response) {
+    EXPECT_EQ(response.code, LYNX_BUNDLE_RESOURCE_INFO_SUCCESS);
+    EXPECT_EQ(response.url, "cached-bundle");
+    completed = true;
+  });
+
+  loader->FetchBundle({.url = "cached-bundle", .response_promise = promise});
+
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(loader->GetTemplateBundle("cached-bundle").has_value());
+}
+
+TEST(LazyBundleLoaderTest, FetchBundleCacheMissCanCompleteAsynchronously) {
+  auto resource_loader = std::make_shared<CachedBundleResourceLoader>(false);
+  auto loader = std::make_shared<LazyBundleLoader>(resource_loader);
+  auto promise = std::make_shared<runtime::ResponsePromise<BundleResourceInfo>>();
+  bool completed = false;
+  promise->AddCallback([&](BundleResourceInfo response) {
+    EXPECT_EQ(response.code, LYNX_BUNDLE_RESOURCE_INFO_SUCCESS);
+    completed = true;
+  });
+
+  loader->FetchBundle({.url = "uncached-bundle", .response_promise = promise});
+  EXPECT_FALSE(completed);
+  EXPECT_FALSE(loader->GetTemplateBundle("uncached-bundle").has_value());
+
+  resource_loader->Complete();
+
+  EXPECT_TRUE(completed);
+  EXPECT_TRUE(loader->GetTemplateBundle("uncached-bundle").has_value());
+}
+
 // Test that pre-registered bundle can be retrieved via GetTemplateBundle
 TEST(LazyBundleLoaderTest, InsertAndGetTemplateBundle) {
   // Create LazyBundleLoader without resource_loader (for testing cache only)
