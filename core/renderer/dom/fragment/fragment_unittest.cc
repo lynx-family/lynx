@@ -3461,6 +3461,102 @@ TEST_F(FragmentDrawTest, NonZeroZIndexChangeResortsSiblings) {
   EXPECT_EQ(page_fragment->children_[1], lower_fragment);
 }
 
+TEST_F(FragmentDrawTest, ZIndexResetAndPlacementDeferredOnDetach) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto owner = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto projected = manager->CreateFiberView();
+  auto descendant = manager->CreateFiberView();
+  auto last = manager->CreateFiberView();
+  first->SetStyle(kPropertyIDClipPath, lepus::Value("inset(1px)"));
+  descendant->SetStyle(kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(owner);
+  owner->InsertNode(first);
+  owner->InsertNode(projected);
+  owner->InsertNode(last);
+  projected->InsertNode(descendant);
+  page->FlushActionsAsRoot();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* owner_fragment = owner->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* projected_fragment = projected->fragment_impl();
+  auto* descendant_fragment = descendant->fragment_impl();
+  first_fragment->UpdateCachedClipPath();
+  StyleMap raw_clip;
+  CSSParserConfigs parser_configs;
+  UnitHandler::Process(kPropertyIDClipPath, lepus::Value("inset(4px)"),
+                       raw_clip, parser_configs);
+  first->computed_css_style()->SetValue(kPropertyIDClipPath,
+                                        raw_clip.at(kPropertyIDClipPath));
+  first->computed_css_style()->SetValue(
+      kPropertyIDZIndex, CSSValue(lepus::Value(1), CSSValuePattern::NUMBER),
+      false);
+  first_fragment->UpdatePlacementZIndex();
+  EXPECT_FALSE(first_fragment->cached_clip_path_.dirty);
+  first->computed_css_style()->SetValue(kPropertyIDZIndex, CSSValue(), true);
+  first_fragment->UpdatePlacementZIndex();
+
+  projected->computed_css_style()->SetValue(
+      kPropertyIDZIndex, CSSValue(lepus::Value(1), CSSValuePattern::NUMBER),
+      false);
+  projected_fragment->UpdatePlacementZIndex();
+  ASSERT_EQ(projected_fragment->fragment_parent(), page_fragment);
+  ASSERT_EQ(descendant_fragment->fragment_parent(), projected_fragment);
+
+  owner->RemoveNode(projected, false);
+  projected->computed_css_style()->SetValue(kPropertyIDZIndex, CSSValue(),
+                                            true);
+  projected_fragment->UpdatePlacementZIndex();
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(projected_fragment->fragment_parent(), nullptr);
+  EXPECT_TRUE(owner_fragment->z_children_.empty());
+  EXPECT_EQ(projected_fragment->old_z_index(), 1);
+  EXPECT_EQ(descendant_fragment->fragment_parent(), projected_fragment);
+
+  owner->InsertNodeBefore(projected, last);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(projected_fragment->old_z_index(), 0);
+  EXPECT_FALSE(projected_fragment->was_stacking_context());
+  EXPECT_EQ(descendant_fragment->fragment_parent(), page_fragment);
+  ASSERT_EQ(owner_fragment->children_.size(), 3u);
+  EXPECT_EQ(owner_fragment->children_[0], first->fragment_impl());
+  EXPECT_EQ(owner_fragment->children_[1], projected_fragment);
+  EXPECT_EQ(owner_fragment->children_[2], last->fragment_impl());
+}
+
+TEST_F(FragmentDrawTest, ReinsertZIndexSubtreeKeepsFixedDescendant) {
+  manager->GetConfig()->SetEnableFixedNew(true);
+  manager->SetConfig(manager->GetConfig());
+  auto page = manager->CreateFiberPage("0", 0);
+  auto owner = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto fixed = manager->CreateFiberView();
+  child->SetStyle(kPropertyIDZIndex, lepus::Value(9));
+  fixed->SetStyle(kPropertyIDPosition, lepus::Value("fixed"));
+  page->InsertNode(owner);
+  owner->InsertNode(child);
+  child->InsertNode(fixed);
+  page->FlushActionsAsRoot();
+
+  child->computed_css_style()->SetValue(
+      kPropertyIDZIndex, CSSValue(lepus::Value(1), CSSValuePattern::NUMBER),
+      false);
+  child->fragment_impl()->UpdatePlacementZIndex();
+  owner->RemoveNode(child, false);
+  child->computed_css_style()->SetValue(
+      kPropertyIDZIndex, CSSValue(lepus::Value(9), CSSValuePattern::NUMBER),
+      false);
+  child->fragment_impl()->UpdatePlacementZIndex();
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(fixed->fragment_impl()->fragment_parent(), nullptr);
+
+  owner->InsertNode(child);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(child->fragment_impl()->old_z_index(), 9);
+  EXPECT_EQ(fixed->fragment_impl()->fragment_parent(), page->fragment_impl());
+}
+
 TEST_F(FragmentDrawTest,
        ZIndexAcrossPlatformAncestorAndStackingContextKeepsOffset) {
   auto page = manager->CreateFiberPage("0", 0);

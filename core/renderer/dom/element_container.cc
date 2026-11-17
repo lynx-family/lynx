@@ -421,6 +421,16 @@ ElementContainer* ElementContainer::EnclosingNativeStackingContextNode() {
 
 void ElementContainer::InsertElementContainerAccordingToElement(Element* child,
                                                                 Element* ref) {
+  InsertElementContainerAccordingToElementInternal(child, ref);
+  auto* child_container = child ? child->element_container_impl() : nullptr;
+  if (child_container != nullptr &&
+      std::exchange(child_container->placement_z_index_pending_, false)) {
+    child_container->ApplyPlacementZIndex();
+  }
+}
+
+void ElementContainer::InsertElementContainerAccordingToElementInternal(
+    Element* child, Element* ref) {
   if (child->IsFixedNewOrUnified()) {
     auto* root = element_manager()->root()->element_container_impl();
     root->AddChild(child->element_container_impl(), -1);
@@ -943,7 +953,12 @@ void ElementContainer::MoveZChildrenRecursively(Element* element,
 void ElementContainer::StyleChanged() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_STYLE_CHANGED);
   props_changed_ = true;
-  if (element()->GetEnableZIndex()) {
+  if (placement_z_index_pending_) {
+    if (IsStackingPositionFlushed()) {
+      placement_z_index_pending_ = false;
+      ApplyPlacementZIndex();
+    }
+  } else if (element()->GetEnableZIndex()) {
     ZIndexChanged();
   }
   if (element()->GetEnableFixedNew() || element()->IsFixedUnifiedEnabled()) {
@@ -951,6 +966,12 @@ void ElementContainer::StyleChanged() {
   }
   if (element_manager()->GetEnableNewSticky()) {
     StickyChanged();
+  }
+}
+
+void ElementContainer::ApplyPlacementZIndex() {
+  if (element()->GetEnableZIndex()) {
+    ZIndexChanged();
   }
 }
 

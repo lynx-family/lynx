@@ -78,6 +78,7 @@ class ElementContainer : public BaseElementContainer {
 
   bool IsStackingContextNode();
 
+  void ApplyPlacementZIndex() override;
   void ZIndexChanged();
   void PositionFixedChanged();
   void StickyChanged();
@@ -127,6 +128,8 @@ class ElementContainer : public BaseElementContainer {
   bool props_changed_{true};
 
  private:
+  void InsertElementContainerAccordingToElementInternal(Element* child,
+                                                        Element* ref);
   ElementContainer* EnclosingNativeStackingContextNode();
   bool TracksMountedChildren() const;
   void AddChildAt(ElementContainer* child, int index,
