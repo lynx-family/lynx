@@ -343,6 +343,9 @@ public class UIBody extends UIGroup<UIBodyView> {
     if (mA11yWrapper != null) {
       mA11yWrapper.onPageConfigDecoded(config);
     }
+    if (config.getEnableRawInput() && mContext.getLynxView() != null) {
+      mContext.getLynxView().getKeyboardEvent().start();
+    }
   }
 
   @Override

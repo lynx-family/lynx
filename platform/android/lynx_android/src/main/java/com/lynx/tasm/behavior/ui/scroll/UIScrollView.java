@@ -105,6 +105,11 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   private CustomUIScrollViewAccessibilityDelegate mDelegate = null;
 
   private boolean mEnableScroll = true;
+  private boolean mEngineScrollManaged;
+  private int mEngineScrollX;
+  private int mEngineScrollY;
+  private int mEngineContentWidth;
+  private int mEngineContentHeight;
 
   private boolean mUsePagingTouchSlop = false;
   private boolean mEnableOverflowHiddenPaddingVisible = true;
@@ -402,6 +407,10 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
             child.getHeight() + child.getTop() + child.getMarginBottom() + mPaddingBottom);
       }
     }
+    if (mEngineScrollManaged) {
+      contentWidth = mEngineContentWidth;
+      contentHeight = mEngineContentHeight;
+    }
     if (mView.getContentWidth() != contentWidth || mView.getContentHeight() != contentHeight) {
       onContentSizeChanged(contentWidth, contentHeight);
       mView.setMeasuredSize(contentWidth, contentHeight);
@@ -438,6 +447,10 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   }
 
   private void consumePendingScrollOffsetIfReady() {
+    if (mEngineScrollManaged) {
+      applyEngineScrollStateAfterLayout();
+      return;
+    }
     if (mPendingScrollOffset < 0) {
       return;
     }
@@ -458,6 +471,30 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
         mEnableScrollY ? target : mView.getRealScrollY(), false);
   }
 
+  /** Projects absolute Engine state without running native scroll gestures or animations. */
+  public void applyEngineScrollState(float x, float y, float width, float height) {
+    mEngineScrollManaged = true;
+    mEngineScrollX = Math.round(x);
+    mEngineScrollY = Math.round(y);
+    mEngineContentWidth = Math.round(width);
+    mEngineContentHeight = Math.round(height);
+    if (mView.getContentWidth() != mEngineContentWidth
+        || mView.getContentHeight() != mEngineContentHeight) {
+      mView.setMeasuredSize(mEngineContentWidth, mEngineContentHeight);
+    }
+    mView.setScrollTo(mEngineScrollX, mEngineScrollY, false);
+  }
+
+  void applyEngineScrollStateAfterLayout() {
+    if (mEngineScrollManaged) {
+      mView.setScrollTo(mEngineScrollX, mEngineScrollY, false);
+    }
+  }
+
+  boolean isEngineScrollManaged() {
+    return mEngineScrollManaged;
+  }
+
   private void syncOverflowClipStateIfNeeded() {
     if (mView == null) {
       return;
@@ -475,6 +512,10 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements 
   @Override
   public void onNodeReload() {
     super.onNodeReload();
+    if (mEngineScrollManaged) {
+      applyEngineScrollStateAfterLayout();
+      return;
+    }
     if (mLynxDirection == DIRECTION_RTL) {
       getView().setScrollTo(getScrollRange(), 0, false);
     } else {

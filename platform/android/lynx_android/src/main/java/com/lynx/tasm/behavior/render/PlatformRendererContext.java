@@ -43,6 +43,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
+import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
@@ -56,7 +57,9 @@ import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlatformRendererContext implements TextMeasurerProvider {
@@ -222,6 +225,16 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     if (focused) {
       view.setFocusableInTouchMode(true);
+      if (view instanceof ViewGroup) {
+        ViewGroup group = (ViewGroup) view;
+        int descendantFocusability = group.getDescendantFocusability();
+        group.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        try {
+          return group.requestFocus();
+        } finally {
+          group.setDescendantFocusability(descendantFocusability);
+        }
+      }
       return view.requestFocus();
     }
     view.clearFocus();
@@ -229,11 +242,24 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  public void applyListScrollState(
-      int sign, float x, float y, float width, float height, boolean managed) {
+  public void applyListScrollState(int sign, float x, float y, float width, float height) {
     UIListContainer list = getCUIListContainer(sign);
     if (list != null) {
-      list.applyComposeScrollState(x, y, width, height, managed);
+      list.applyEngineScrollState(x, y, width, height);
+    }
+  }
+
+  @CalledByNative
+  public void applyScrollViewState(int sign, float x, float y, float width, float height) {
+    if (mDestroyed || mContext == null) {
+      return;
+    }
+    LynxUIOwner owner = mContext.getLynxUIOwner();
+    LynxBaseUI ui = owner != null ? owner.getNode(sign) : null;
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    if (ui instanceof UIScrollView && renderer != null && renderer.getUIHost() == ui) {
+      ((UIScrollView) ui).applyEngineScrollState(x, y, width, height);
     }
   }
 
@@ -778,16 +804,51 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     LynxUIOwner owner = mContext.getLynxUIOwner();
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(child) : null;
+    IRendererHost hParent = mViewHolder.get(parent);
+    IRendererHost hChild = mViewHolder.get(child);
     if (shouldUpdateUIOwner && parentUI != null && childUI != null) {
-      owner.insert(parent, child, index);
+      ViewGroup rendererChildren = hParent != null ? hParent.getRendererChildViewGroup() : null;
+      int ownerInsertionIndex = index;
+      if (index >= 0 && rendererChildren != null) {
+        ownerInsertionIndex = 0;
+        if (index > 0 && !parentUI.getChildren().isEmpty()) {
+          // Convert the mixed renderer prefix to a UIOwner index in one pass
+          // per child list, since UIOwner omits pure renderer layers.
+          Set<View> prefix = new HashSet<>();
+          int end = Math.min(index, rendererChildren.getChildCount());
+          for (int i = 0; i < end; i++) {
+            prefix.add(rendererChildren.getChildAt(i));
+          }
+          for (LynxBaseUI sibling : parentUI.getChildren()) {
+            if (sibling instanceof LynxUI && prefix.contains(((LynxUI<?>) sibling).getView())) {
+              ownerInsertionIndex++;
+            }
+          }
+        }
+      }
+      owner.insert(parent, child, ownerInsertionIndex);
+      View childView = hChild != null ? hChild.getView() : null;
+      if (rendererChildren != null && childView != null
+          && childView.getParent() == rendererChildren) {
+        // Preserve custom host insertion, then restore the mixed layer order.
+        // Appending without detach also preserves focus in an attached editor.
+        int rendererIndex = index < 0 ? rendererChildren.getChildCount() - 1
+                                      : Math.min(index, rendererChildren.getChildCount() - 1);
+        if (rendererChildren.indexOfChild(childView) != rendererIndex) {
+          if (rendererIndex == rendererChildren.getChildCount() - 1) {
+            rendererChildren.bringChildToFront(childView);
+          } else {
+            rendererChildren.removeView(childView);
+            rendererChildren.addView(childView, rendererIndex);
+          }
+        }
+      }
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
       return;
     }
 
-    IRendererHost hParent = mViewHolder.get(parent);
-    IRendererHost hChild = mViewHolder.get(child);
     if (hParent == null || hChild == null) {
       return;
     }
