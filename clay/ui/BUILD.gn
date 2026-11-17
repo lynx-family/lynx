@@ -345,6 +345,41 @@ if (enable_unittests) {
     }
   }
 
+  if (clay_enable_tttext) {
+    static_library("text_paragraph_builder_tttext_test_support") {
+      testonly = true
+      complete_static_lib = true
+      deps = [ ":ui" ]
+    }
+
+    executable("text_paragraph_builder_tttext_unittests") {
+      testonly = true
+      sources = [ "component/text/text_paragraph_builder_tttext_unittests.cc" ]
+      deps = [
+        ":text_paragraph_builder_tttext_test_support",
+        ":ui_fixtures",
+        "../../base/src:base_static",
+        "../../base/trace/native:trace",
+        "../common/service",
+        "../testing",
+        "../third_party/txt",
+      ]
+      configs += [ "../:config" ]
+      if (is_mac || is_win) {
+        deps += [ "../shell/platform/common/desktop/svg" ]
+      }
+      if (is_mac) {
+        frameworks = [
+          "AppKit.framework",
+          "ApplicationServices.framework",
+          "CoreGraphics.framework",
+          "CoreText.framework",
+          "Metal.framework",
+        ]
+      }
+    }
+  }
+
   if (enable_clay && enable_inspector && (is_mac || is_win)) {
     group("ui_tree_helper_unittests") {
       testonly = true
