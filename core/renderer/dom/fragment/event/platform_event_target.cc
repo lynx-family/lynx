@@ -147,7 +147,7 @@ PlatformEventTarget::HitTestResult PlatformEventTarget::HitTestInternal(
               local, fml::RefPtr<PlatformEventTarget>(this), point)) {
         continue;
       }
-      const bool inside = (*child)->ContainsPoint(local);
+      const bool inside = (*child)->ContainsPoint(local, mode);
       if (!inside && (!event_targets_only ||
                       !std::isfinite((*child)->DistanceToTouchTarget(local)))) {
         continue;
@@ -279,7 +279,7 @@ void PlatformEventTarget::NormalizeEventRegionUnits(EventRegion* regions,
   }
 }
 
-bool PlatformEventTarget::ContainsPoint(float point[2]) {
+bool PlatformEventTarget::ContainsPoint(float point[2], HitTestMode mode) {
   float x = point[0];
   float y = point[1];
   if (hit_test_regions_) {
@@ -311,7 +311,7 @@ bool PlatformEventTarget::ContainsPoint(float point[2]) {
     return false;
   }
   if (overflow_x_ || overflow_y_) {
-    auto hit_target = HitTest(point);
+    auto hit_target = HitTest(point, mode);
     return hit_target != nullptr && hit_target.get() != this;
   }
   return false;

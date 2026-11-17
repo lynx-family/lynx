@@ -223,7 +223,7 @@ class PlatformEventTarget
   bool GetPointInTarget(float target_point[2],
                         fml::RefPtr<PlatformEventTarget> parent_target,
                         float point[2]);
-  bool ContainsPoint(float point[2]);
+  bool ContainsPoint(float point[2], HitTestMode mode = HitTestMode::kDefault);
   bool IsVisibleForExposure(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
       float root_view_origin_on_screen[2], const float window_rect[4]) const;

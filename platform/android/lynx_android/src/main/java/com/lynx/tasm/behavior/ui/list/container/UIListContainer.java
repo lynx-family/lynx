@@ -1365,10 +1365,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
-  public void applyComposeScrollState(
-      float x, float y, float width, float height, boolean managed) {
-    mView.setComposeScrollManaged(managed);
-    mView.applyComposeScrollState(
+  public void applyEngineScrollState(float x, float y, float width, float height) {
+    mView.applyEngineScrollState(
         Math.round(x), Math.round(y), Math.round(width), Math.round(height));
   }
 

@@ -19,6 +19,11 @@ ElementLayoutNodeManager::ElementLayoutNodeManager(
     ElementManager& element_manager)
     : element_manager_(element_manager) {}
 
+bool ElementLayoutNodeManager::GetSyncXElementRegistry() const {
+  const auto& config = element_manager_.GetConfig();
+  return config && config->GetSyncXElementRegistry();
+}
+
 void ElementLayoutNodeManager::SetMeasureFunc(
     int32_t id, std::unique_ptr<MeasureFunc> measure_func) {
   auto* element = GetElement(id);
