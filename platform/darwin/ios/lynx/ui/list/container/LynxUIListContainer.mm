@@ -80,7 +80,7 @@ static const NSInteger kDefaultMaxSnapCount = 1;
 @property(nonatomic, copy) LynxUIMethodCallbackBlock scrollToCallback;
 // True if this setContentOffset is triggered by onNodeReady
 @property(nonatomic, assign) BOOL shouldBlockScrollByListContainer;
-@property(nonatomic, assign) BOOL composeScrollManaged;
+@property(nonatomic, assign) BOOL engineScrollManaged;
 @property(nonatomic, assign) CGPoint previousContentOffset;
 @property(nonatomic, strong) LynxListItemHelper *itemHelper;
 @property(nonatomic, strong) LynxListScrollHelper *scrollHelper;
@@ -204,10 +204,8 @@ LYNX_REGISTER_UI("list-container")
   // c++.
 }
 
-- (void)applyComposeScrollState:(CGPoint)offset
-                    contentSize:(CGSize)contentSize
-                        managed:(BOOL)managed {
-  _composeScrollManaged = managed;
+- (void)applyEngineScrollState:(CGPoint)offset contentSize:(CGSize)contentSize {
+  _engineScrollManaged = YES;
   // Engine offsets are absolute and already include RTL and anchor corrections.
   // Discard pending legacy deltas so node-ready cannot apply them a second time.
   _needAdjustContentOffset = NO;
@@ -734,7 +732,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 #pragma mark delegate
 
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
-  if (!_composeScrollManaged && scrollView.scrollsToTop && self.verticalOrientation) {
+  if (!_engineScrollManaged && scrollView.scrollsToTop && self.verticalOrientation) {
     return YES;
   }
   return NO;
@@ -757,7 +755,7 @@ LYNX_UI_METHOD(getVisibleCells) {
     return;
   }
 
-  if (!_shouldBlockScrollByListContainer && !_composeScrollManaged) {
+  if (!_shouldBlockScrollByListContainer && !_engineScrollManaged) {
     // Before sending scrollByListContainer, previousContentOffset should be updated to avoid
     // scrollViewDidScroll->scrollByListContainer->onNodeReady->setContentOffset->scrollViewDidScroll
     // loop

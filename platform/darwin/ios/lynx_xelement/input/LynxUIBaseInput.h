@@ -29,6 +29,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) NSString *placeholder;
 
+@property(nonatomic, assign, readonly) BOOL textEditEnabled;
+
+- (CGFloat)textEditScrollOffset;
+- (CGFloat)textEditMaximumScrollOffset;
+- (void)applyTextEditScrollOffset:(CGFloat)offset;
+- (void)scheduleTextEditState;
+- (void)invalidateTextEditGeometry;
+- (void)ensureTextEditSelectionVisible;
+- (void)ensureTextEditPositionVisible:(UITextPosition *)position;
 
 - (nonnull V)view;
 

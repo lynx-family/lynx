@@ -341,7 +341,7 @@ void ListMediator::ApplyListScrollState(float scroll_x, float scroll_y,
   if (auto* manager = list_element_->element_manager()) {
     manager->painting_context()->ApplyListScrollState(
         list_element_->impl_id(), scroll_x, scroll_y, content_width,
-        content_height, true);
+        content_height);
   }
 }
 

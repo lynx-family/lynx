@@ -138,6 +138,9 @@ static NSString *const kScrollReadyScrollToIndexKey = @"scroll-to-index";
 @end
 
 @implementation LynxUIScroller {
+  BOOL _engineScrollManaged;
+  CGPoint _engineScrollOffset;
+  CGSize _engineContentSize;
   BOOL _hasReachBottom;
   BOOL _hasReachTop;
   CGFloat _preScrollTop;
@@ -309,6 +312,10 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
 - (void)onNodeReload {
   [super onNodeReload];
+  if (_engineScrollManaged) {
+    [self updateContentSize];
+    return;
+  }
   [self resetContentOffset];
 }
 
@@ -364,6 +371,11 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 }
 
 - (void)updateContentSize {
+  if (_engineScrollManaged) {
+    self.view.contentSize = _engineContentSize;
+    [self.view setContentOffset:_engineScrollOffset animated:NO];
+    return;
+  }
   float contentWidth = 0;
   float contentHeight = 0;
   if (!_enableScrollY) {
@@ -911,7 +923,17 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
 #pragma mark - UIScrollViewDelegate
 
+- (void)applyEngineScrollOffset:(CGPoint)offset contentSize:(CGSize)contentSize {
+  _engineScrollManaged = YES;
+  _engineScrollOffset = offset;
+  _engineContentSize = contentSize;
+  [self updateContentSize];
+}
+
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  if (_engineScrollManaged) {
+    return;
+  }
   if (scrollView == self.view &&
       ![scrollView respondToScrollViewDidScroll:((LynxScrollView *)scrollView).gestureConsumer]) {
     return;

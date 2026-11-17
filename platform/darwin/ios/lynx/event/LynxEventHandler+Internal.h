@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setEnableViewReceiveTouch:(BOOL)enable;
 - (void)setRawInputEnabled:(BOOL)enabled;
+- (BOOL)isRawInputEnabled;
 - (void)setEnableSimultaneousTap:(BOOL)enable;
 - (void)setDisableLongpressAfterScroll:(bool)value;
 - (void)setTapSlop:(NSString *)tapSlop;

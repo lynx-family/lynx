@@ -348,7 +348,7 @@ void ListContainerImpl::FlushPatching() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_CONTAINER_FLUSH_PATCHING);
   bool should_flush_finish_layout = should_flush_finish_layout_;
   should_flush_finish_layout_ = false;
-  if (compose_scroll_managed_) {
+  if (engine_scroll_managed_) {
     // The regular output pass has just written every bound item at its flow
     // position. Overlay the active sticky header before observers read state.
     ProjectComposeStickyHeader();
@@ -419,7 +419,7 @@ void ListContainerImpl::ClearComposeStickyProjection() {
 // Managed lists intercept "sticky" so that the platform does not translate
 // headers a second time. Switching modes must deliver the effective value.
 void ListContainerImpl::SyncPlatformSticky() {
-  const bool platform_sticky = sticky_enabled_ && !compose_scroll_managed_;
+  const bool platform_sticky = sticky_enabled_ && !engine_scroll_managed_;
   if (platform_sticky == platform_sticky_ || !value_factory_) {
     return;
   }
@@ -432,7 +432,7 @@ void ListContainerImpl::SyncPlatformSticky() {
 void ListContainerImpl::UpdateContentOffsetAndSizeToPlatform(
     float content_size, float delta_x, float delta_y,
     bool is_init_scroll_offset, bool from_layout) {
-  if (!compose_scroll_managed_) {
+  if (!engine_scroll_managed_) {
     list_delegate_->UpdateContentOffsetAndSizeToPlatform(
         content_size, delta_x, delta_y, is_init_scroll_offset, from_layout);
   }
@@ -441,7 +441,7 @@ void ListContainerImpl::UpdateContentOffsetAndSizeToPlatform(
 // Update scroll info to platform view.
 void ListContainerImpl::UpdateScrollInfo(float estimated_offset, bool smooth,
                                          bool scrolling) {
-  if (smooth && !compose_scroll_managed_) {
+  if (smooth && !engine_scroll_managed_) {
     float platform_estimated_offset = estimated_offset;
     // List layout uses logical offsets, while native horizontal scroll views
     // use physical offsets. Convert at the platform boundary with the content
@@ -713,7 +713,7 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     // sticky
     const bool was_sticky = sticky_enabled_;
     sticky_enabled_ = value.Bool();
-    if (compose_scroll_managed_) {
+    if (engine_scroll_managed_) {
       if (sticky_enabled_ != was_sticky) should_mark_layout_dirty = true;
       if (!sticky_enabled_) ClearComposeStickyProjection();
       should_set_props = false;
@@ -832,7 +832,7 @@ void ListContainerImpl::OnLayoutChildren(
       }
       // Record completion of the initial layout.
       has_completed_first_layout_ = true;
-      if (compose_scroll_managed_) {
+      if (engine_scroll_managed_) {
         PublishComposeScrollState();
       }
     }
@@ -946,7 +946,7 @@ void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
                                                   float content_offset_y,
                                                   float original_x,
                                                   float original_y) {
-  if (list_layout_manager_ && !compose_scroll_managed_) {
+  if (list_layout_manager_ && !engine_scroll_managed_) {
     // reset should_flush_finish_layout_ flag to false.
     should_flush_finish_layout_ = false;
     list_layout_manager_->ScrollByPlatformContainer(
@@ -955,10 +955,10 @@ void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
 }
 
 void ListContainerImpl::EnableEngineManagedScroll() {
-  if (compose_scroll_managed_) {
+  if (engine_scroll_managed_) {
     return;
   }
-  compose_scroll_managed_ = true;
+  engine_scroll_managed_ = true;
   SyncPlatformSticky();
   list_layout_manager_->ScrollStopped();
   // The first projection establishes ownership even before layout is valid.
@@ -968,7 +968,7 @@ void ListContainerImpl::EnableEngineManagedScroll() {
 ListScrollState ListContainerImpl::GetScrollState() const {
   ListScrollState state;
   state.revision = compose_scroll_revision_;
-  if (!compose_scroll_managed_ || !has_completed_first_layout_ ||
+  if (!engine_scroll_managed_ || !has_completed_first_layout_ ||
       !list_layout_manager_ || list_layout_manager_->main_axis_size() <= 0.f) {
     return state;
   }

@@ -266,7 +266,7 @@ class PaintingContext {
                          const std::string& request_token);
   void ApplyListScrollState(int32_t container_id, float scroll_x,
                             float scroll_y, float content_width,
-                            float content_height, bool cmp_managed);
+                            float content_height);
   void ApplyScrollViewState(int32_t sign, float scroll_x, float scroll_y,
                             float content_width, float content_height);
 

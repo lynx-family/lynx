@@ -208,6 +208,7 @@ class ListElement : public Element, public tasm::ListNode {
       : Element(element, clone_resolved_props) {}
 
   void OnNodeAdded(Element* child) override;
+  void OnSubtreeLayoutUpdated(PipelineOptions* options) override;
   void FilterComponents(
       std::vector<std::unique_ptr<ListComponentInfo>>& components,
       tasm::TemplateAssembler* tasm) override {}
