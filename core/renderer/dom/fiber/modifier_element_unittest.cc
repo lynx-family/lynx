@@ -312,6 +312,25 @@ class ModifierElementTest : public FiberElementTest {
 };
 
 TEST_P(ModifierElementTest,
+       InvalidDrawingResolverDoesNotReplaceExistingTopology) {
+  auto handle = CreateComposeHandle(manager);
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(handle.get(),
+                                               MakePaddingChain(1, 4), nullptr)
+                  .success);
+  auto root = handle->mount_root();
+  for (int op : {11, 12, 17, 18, 19}) {
+    auto node = lepus::Dictionary::Create();
+    node->SetValue("op", lepus::Value(op));
+    node->SetValue("resolve", lepus::Value(42));
+    const auto result = ComposeModifierApplicator::Apply(
+        handle.get(), lepus::Value(node), nullptr);
+    EXPECT_FALSE(result.success);
+    EXPECT_EQ(handle->mount_root(), root);
+    EXPECT_EQ(root->GetChildAt(0), handle->content_element().get());
+  }
+}
+
+TEST_P(ModifierElementTest,
        WrapContentHeightAndSizeAlignAndPreserveOuterBounds) {
   for (bool both_axes : {false, true}) {
     for (bool unbounded : {false, true}) {

@@ -57,10 +57,11 @@ constexpr int kModifierOpOffset = 14;
 constexpr int kModifierOpSizeRange = 15;
 constexpr int kModifierOpAttachment = 16;
 constexpr int kModifierOpDrawForeground = 17;
+constexpr int kModifierOpScopedClip = 18;
 
 bool IsDrawOperation(int op) {
   return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind ||
-         op == kModifierOpDrawForeground;
+         op == kModifierOpDrawForeground || op == kModifierOpScopedClip;
 }
 
 constexpr int kModifierCallbackKindClick = 1;
@@ -87,6 +88,7 @@ BASE_STATIC_STRING_DECL(kAttachField, "attach");
 BASE_STATIC_STRING_DECL(kOp, "op");
 BASE_STATIC_STRING_DECL(kPrevious, "previous");
 BASE_STATIC_STRING_DECL(kResolve, "resolve");
+BASE_STATIC_STRING_DECL(kResolveRecording, "resolveRecording");
 BASE_STATIC_STRING_DECL(kLeft, "left");
 BASE_STATIC_STRING_DECL(kRight, "right");
 BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
@@ -130,6 +132,7 @@ struct ModifierOperation {
   bool introduces_frame{false};
   bool event_target{false};
   bool share_touch_target{false};
+  bool supports_draw_reuse{false};
   float minimum_touch_target_px{0.f};
   base::String name;
   base::String event_type;
@@ -462,10 +465,22 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
     case kModifierOpDrawForeground:
+    case kModifierOpScopedClip:
       operation->callback = node.GetProperty(kResolve);
       if (!operation->callback.ToLepusValue().IsCallable()) {
         *error = "drawing resolve should be callable";
         return false;
+      }
+      if (operation->op != kModifierOpGraphicsLayer) {
+        const auto cached = node.GetProperty(kResolveRecording);
+        if (!cached.IsEmpty()) {
+          if (!cached.ToLepusValue().IsCallable()) {
+            *error = "cache-aware drawing resolve should be callable";
+            return false;
+          }
+          operation->callback = cached;
+          operation->supports_draw_reuse = true;
+        }
       }
       return true;
     default:
@@ -1021,6 +1036,7 @@ void ApplyNonLayoutOperation(
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
     case kModifierOpDrawForeground:
+    case kModifierOpScopedClip:
       // The following Element records the callback result during Draw.
       break;
     case kModifierOpAttribute:
@@ -1208,9 +1224,19 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
                                          operation.callback)
         : operation.op == kModifierOpDrawForeground
             ? ComposeDrawForegroundFunctions(registration_context,
-                                             operation.callback)
+                                             operation.callback,
+                                             operation.supports_draw_reuse)
             : ComposeDrawBehindFunctions(registration_context,
-                                         operation.callback));
+                                         operation.callback,
+                                         operation.op == kModifierOpScopedClip
+                                             ? ComposeDrawPhase::kClip
+                                             : ComposeDrawPhase::kBehind,
+                                         operation.supports_draw_reuse));
+    if (operation.op == kModifierOpScopedClip) {
+      // The explicit ClipRect owns this carrier's mask. Do not let the later
+      // ordinary DrawClip replace it with the carrier's CSS rounded rectangle.
+      target->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+    }
   }
 }
 

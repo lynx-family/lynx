@@ -14,13 +14,20 @@ class MTSRuntime;
 }
 namespace tasm {
 
+enum class ComposeDrawPhase { kBehind, kForeground, kClip };
+
 // Calls the runtime during full content drawing. Cache construction and State
-// observation belong to the producer; this bridge retains no draw cache.
-// Both phases use the same commands; foreground runs after native content.
-CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback);
+// observation belong to the producer. Cache-aware callbacks return
+// [canReuse, encodedRecording]. Native retains the compiled DisplayList and
+// uses the supplied recording when compiling for the first time or a new pixel
+// scale. Foreground runs after native content.
+CustomDrawFunctions ComposeDrawBehindFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback,
+    ComposeDrawPhase phase = ComposeDrawPhase::kBehind,
+    bool supports_reuse = false);
 CustomDrawFunctions ComposeDrawForegroundFunctions(runtime::MTSRuntime* runtime,
-                                                   lepus::Value callback);
+                                                   lepus::Value callback,
+                                                   bool supports_reuse = false);
 
 }  // namespace tasm
 }  // namespace lynx
