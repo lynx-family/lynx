@@ -187,6 +187,8 @@ typedef struct DisplayListItem {
       int32_t repeat_x;
       int32_t repeat_y;
       float angle;
+      // Zero preserves legacy fills; positive values reference box index + 1.
+      int32_t inner_clip_index_plus_one;
     } linear_gradient;
     struct {
       uint32_t color_count_offset;
@@ -290,6 +292,9 @@ static_assert(offsetof(DisplayListItem, payload.linear_gradient.repeat_y) ==
               32);
 static_assert(offsetof(DisplayListItem, payload.linear_gradient.angle) == 36);
 static_assert(offsetof(DisplayListItem,
+                       payload.linear_gradient.inner_clip_index_plus_one) ==
+              40);
+static_assert(offsetof(DisplayListItem,
                        payload.radial_gradient.color_count_offset) == 4);
 static_assert(offsetof(DisplayListItem, payload.radial_gradient.color_count) ==
               8);
@@ -383,8 +388,8 @@ class DisplayList {
 
   void AddLinearGradient(float angle, const base::Vector<uint32_t>& colors,
                          const base::Vector<float>& stops, int32_t tiling_index,
-                         int32_t clip_index, int32_t repeat_x,
-                         int32_t repeat_y);
+                         int32_t clip_index, int32_t repeat_x, int32_t repeat_y,
+                         int32_t inner_clip_index = -1);
 
   void AddRadialGradient(float center_x, float center_y, float radius_x,
                          float radius_y, const base::Vector<uint32_t>& colors,
@@ -399,6 +404,12 @@ class DisplayList {
                           float position_x = 0.f, float position_y = 0.f);
 
   void AppendItem(const DisplayListItem& item);
+  // Append validated decoder-owned drawing content or its immutable cached
+  // copy. Source is distinct from this list and has no owner properties or
+  // resources; box_index_base is the destination builder's nonnegative box
+  // count. Capacity failure preserves this list and appended_box_count.
+  bool AppendDrawingContent(const DisplayList& source, int32_t box_index_base,
+                            size_t& appended_box_count);
 
   void AddSubLayer(int id) { sub_layers_.emplace_back(id); }
   const auto& SubLayers() const { return sub_layers_; }

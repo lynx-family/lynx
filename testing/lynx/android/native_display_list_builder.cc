@@ -150,8 +150,8 @@ void RecordBox(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr, jfloat x,
 
 void LinearGradient(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr,
                     jintArray colors, jfloatArray stops, jint tiling_index,
-                    jint clip_index, jint repeat_x, jint repeat_y,
-                    jfloat angle) {
+                    jint clip_index, jint repeat_x, jint repeat_y, jfloat angle,
+                    jint inner_clip_index) {
   lynx::base::Vector<uint32_t> color_values;
   if (colors != nullptr) {
     const jsize color_count = env->GetArrayLength(colors);
@@ -176,7 +176,8 @@ void LinearGradient(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr,
 
   State(native_ptr)
       ->builder.LinearGradient(angle, color_values, stop_values, tiling_index,
-                               clip_index, repeat_x, repeat_y);
+                               clip_index, repeat_x, repeat_y,
+                               inner_clip_index);
 }
 
 void RadialGradient(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr,
