@@ -237,6 +237,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       has_layout_only_props_(element.has_layout_only_props_),
       can_has_layout_only_children_(element.can_has_layout_only_children_),
       need_process_direction_(element.need_process_direction_),
+      simple_style_direction_(element.simple_style_direction_),
       enable_extended_layout_only_opt_(
           element.enable_extended_layout_only_opt_),
       enable_component_layout_only_(element.enable_component_layout_only_),
