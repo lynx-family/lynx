@@ -94,23 +94,65 @@ class TTShapeRun : public tttext::RunDelegate {
              const tttext::Style& style,
              const std::optional<tttext::FontInfo>& font_info) {
     FML_DCHECK(span.baseline == TextBaseline::kAlphabetic);
-    if (span.alignment == PlaceholderAlignment::kMiddle) {
-      float text_size = style.GetTextSize();
-      if (text_size <= 0) {
-        text_size = static_cast<float>(span.height);
+    const float height = static_cast<float>(span.height);
+    switch (span.alignment) {
+      case PlaceholderAlignment::kBaseline: {
+        const float baseline = static_cast<float>(span.baseline_offset);
+        ascent_ = -baseline;
+        descent_ = height - baseline;
+        break;
       }
-      const float text_ascent =
-          font_info.has_value() ? -font_info->GetAscent() : text_size * 0.75f;
-      const float text_descent = font_info.has_value()
-                                     ? font_info->GetDescent()
-                                     : text_size - text_ascent;
-      const float middle = (text_ascent - text_descent) / 2.f;
-      ascent_ = -std::max(0.f, middle + static_cast<float>(span.height) / 2.f);
-      descent_ = std::max(0.f, -middle + static_cast<float>(span.height) / 2.f);
-    } else {
-      const float baseline = static_cast<float>(span.baseline_offset);
-      ascent_ = -baseline;
-      descent_ = static_cast<float>(span.height) - baseline;
+      case PlaceholderAlignment::kAboveBaseline:
+        // The placeholder bottom edge rests on the baseline, so the whole
+        // placeholder sits above the baseline.
+        ascent_ = -height;
+        descent_ = 0.f;
+        break;
+      case PlaceholderAlignment::kBelowBaseline:
+        // The placeholder top edge rests on the baseline, so the whole
+        // placeholder hangs below the baseline.
+        ascent_ = 0.f;
+        descent_ = height;
+        break;
+      case PlaceholderAlignment::kTop: {
+        float text_size = style.GetTextSize();
+        if (text_size <= 0) {
+          text_size = height;
+        }
+        const float font_ascent = font_info.has_value()
+                                      ? font_info->GetAscent()
+                                      : -text_size * 0.75f;
+        ascent_ = font_ascent;
+        descent_ = height + font_ascent;
+        break;
+      }
+      case PlaceholderAlignment::kBottom: {
+        float text_size = style.GetTextSize();
+        if (text_size <= 0) {
+          text_size = height;
+        }
+        const float font_descent = font_info.has_value()
+                                       ? font_info->GetDescent()
+                                       : text_size * 0.25f;
+        ascent_ = font_descent - height;
+        descent_ = font_descent;
+        break;
+      }
+      case PlaceholderAlignment::kMiddle: {
+        float text_size = style.GetTextSize();
+        if (text_size <= 0) {
+          text_size = static_cast<float>(span.height);
+        }
+        const float text_ascent =
+            font_info.has_value() ? -font_info->GetAscent() : text_size * 0.75f;
+        const float text_descent = font_info.has_value()
+                                       ? font_info->GetDescent()
+                                       : text_size - text_ascent;
+        const float middle = (text_ascent - text_descent) / 2.f;
+        ascent_ = -std::max(0.f, middle + static_cast<float>(span.height) / 2.f);
+        descent_ = std::max(0.f, -middle + static_cast<float>(span.height) / 2.f);
+        break;
+      }
     }
     advance_ = span.width;
   }
