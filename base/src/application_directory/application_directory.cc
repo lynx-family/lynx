@@ -78,12 +78,18 @@ std::string GetApplicationDataSubDirectory(const std::string& name) {
     }
   }
 #else
-  if (mkdir(directory.c_str(), 0700) != 0) {
-    if (errno != EEXIST) return {};
-    struct stat info {};
-    if (stat(directory.c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
-      return {};
-    }
+  if (mkdir(directory.c_str(), 0770) != 0 && errno != EEXIST) {
+    return {};
+  }
+  struct stat info {};
+  if (stat(directory.c_str(), &info) != 0 || !S_ISDIR(info.st_mode)) {
+    return {};
+  }
+  // Keep group access (used by adb on Android) even for existing directories
+  // or when a restrictive umask affects creation.
+  if ((info.st_mode & S_IRWXG) != S_IRWXG &&
+      chmod(directory.c_str(), (info.st_mode & 07777) | S_IRWXG) != 0) {
+    return {};
   }
 #endif
   return directory;
