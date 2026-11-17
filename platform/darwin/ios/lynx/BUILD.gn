@@ -510,6 +510,7 @@ subspec_target("UnitTests") {
     "LynxWasmFuncRegistryWasmContractUnitTest.mm",
     "base/LynxComponentStatisticUnitTest.m",
     "base/LynxFPSMonitorUnitTest.m",
+    "base/LynxFontFaceManagerUnitTest.m",
     "base/LynxLogUnitTest.m",
     "base/background/LynxBackgroundManagerUnitTest.m",
     "event/Test/LynxEventHandlerUnitTest.h",
