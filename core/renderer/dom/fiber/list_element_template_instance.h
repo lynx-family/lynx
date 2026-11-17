@@ -91,7 +91,7 @@ class ListElementTemplateInstance : public ElementTemplateInstance {
   lepus::Value enqueue_component_{};
   lepus::Value component_at_indexes_{};
   // Pool owned by this List, managing sign ownership and recycling eligibility
-  // grouped by template type.
+  // grouped by template type plus reuse-identifier.
   ListElementTemplateReusePool reuse_pool_;
 };
 

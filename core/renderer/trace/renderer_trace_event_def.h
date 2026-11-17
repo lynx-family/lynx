@@ -698,6 +698,14 @@ inline constexpr const char* const
         "TemplateElement::ApplyInitialElementSlots";
 inline constexpr const char* const TEMPLATE_ELEMENT_GET_ROOT =
     "TemplateElement::GetRoot";
+inline constexpr const char* const ELEMENT_TEMPLATE_INSTANCE_HYDRATE_IMPL =
+    "ElementTemplateInstance::HydrateImpl";
+inline constexpr const char* const
+    ELEMENT_TEMPLATE_INSTANCE_HYDRATE_SLOT_CHILDREN =
+        "ElementTemplateInstance::HydrateImpl::HydrateSlotChildren";
+inline constexpr const char* const
+    ELEMENT_TEMPLATE_INSTANCE_HYDRATE_APPLY_SLOT_CHILDREN_DIFF =
+        "ElementTemplateInstance::HydrateImpl::ApplySlotChildrenDiff";
 inline constexpr const char* const
     ELEMENT_TEMPLATE_INSTANCE_FLUSH_PENDING_CHILD_MOUNTS =
         "ElementTemplateInstance::FlushPendingChildMounts";
