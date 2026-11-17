@@ -11,6 +11,20 @@
 
 inline constexpr const char* const LOAD_RESOURCE = "LoadResource";
 inline constexpr const char* const LOAD_BYTE_CODE = "LoadExternalBytecode";
+inline constexpr const char* const RESOURCE_HANDLE_READ_ALL_BYTES =
+    "ResourceHandle::ReadAllBytes";
+inline constexpr const char* const RESOURCE_HANDLE_READ_ALL_BYTES_RESULT =
+    "ResourceHandle::ReadAllBytesResult";
+inline constexpr const char* const TEMPLATE_BUNDLE_FROM_RESOURCE_HANDLE =
+    "TemplateBundle::FromResourceHandle";
+inline constexpr const char* const TEMPLATE_BUNDLE_VERIFY_RESOURCE_HANDLE =
+    "TemplateBundle::VerifyResourceHandle";
+inline constexpr const char* const TEMPLATE_BUNDLE_DECODE_RESOURCE_HANDLE =
+    "TemplateBundle::DecodeResourceHandle";
+inline constexpr const char* const EXTERNAL_BYTECODE_LOAD_PATH =
+    "ExternalResourceLoader::BytecodeLoadPath";
+inline constexpr const char* const EXTERNAL_BYTECODE_READ_RESOURCE_HANDLE =
+    "ExternalResourceLoader::ReadBytecodeHandle";
 inline constexpr const char* const DYNAMIC_COMPONENT_DID_LOAD_COMPONENT =
     "DynamicComponent::DidLoadComponent";
 inline constexpr const char* const DYNAMIC_COMPONENT_REQUIRE_TEMPLATE =

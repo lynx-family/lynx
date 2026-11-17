@@ -3,6 +3,7 @@ service_api_public = rebase_path([
                                    "service_api_services.h",
                                    "service_api_utils.h",
                                    "service_lazy_load.h",
+                                   "services/security/security_service.h",
                                    "services/trail/trail_service.h",
                                    "services/trail/trail_setting_key.h",
                                  ])
