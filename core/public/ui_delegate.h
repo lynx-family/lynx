@@ -29,6 +29,7 @@ using TakeSnapshotCompletedCallback =
     std::function<void(const std::string&, float timestamp, float device_width,
                        float device_height, float page_scale_factor)>;
 class PageConfig;
+struct PageOptions;
 /*
  * UIDelegate is used for communication between LynxShell and UI rendering
  * module.
@@ -100,6 +101,11 @@ class UIDelegate {
   virtual std::shared_ptr<base::VSyncMonitorPlatformImpl>
   GetVSyncMonitorPlatformImpl() const {
     return nullptr;
+  }
+
+  virtual std::unique_ptr<PaintingCtxPlatformImpl>
+  CreatePaintingContextWithOptions(const PageOptions&) {
+    return CreatePaintingContext();
   }
 
   // WeakFlag is used to create a weak reference to the UIDelegate instance.

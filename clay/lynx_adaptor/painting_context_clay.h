@@ -61,6 +61,9 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   explicit PaintingContextClay(clay::ViewContext* view_context);
   ~PaintingContextClay() override;
 
+  virtual void SetPerfController(
+      const std::shared_ptr<PerfControllerClay>& controller);
+
   void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override {
     ui_operation_queue_ref_ = queue;

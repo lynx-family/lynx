@@ -1,0 +1,33 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../clay/common/config.gni")
+import("../../core/Lynx.gni")
+
+# The Embedder links this bridge with both Lynx Core and Clay.
+lynx_core_source_set("lynx_clay") {
+  public = [ "ui_delegate_lynx_clay.h" ]
+  sources = public
+  public_deps = [ "../../clay/lynx_adaptor" ]
+
+  if (enable_clay && enable_skity) {
+    sources += [
+      "native_painting_context_clay.cc",
+      "platform_renderer_clay.cc",
+      "platform_renderer_clay.h",
+    ]
+    deps = [
+      "../../clay/gfx",
+      "../../core/public",
+      "../../core/renderer/starlight",
+      "../../core/renderer/ui_wrapper/painting",
+      "../../gfx/display_list",
+    ]
+    if (is_mac || is_android || is_ios) {
+      defines = [ "TRACE_EVENT_HIDE_MACROS" ]
+    }
+  } else {
+    sources += [ "ui_delegate_lynx_clay_stub.cc" ]
+  }
+}

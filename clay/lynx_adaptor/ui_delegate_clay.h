@@ -89,6 +89,10 @@ class UIDelegateClay : public UIDelegate {
 
   clay::ViewContext* GetViewContext() const { return view_context_; }
 
+ protected:
+  std::unique_ptr<PaintingCtxPlatformImpl> BindPaintingContext(
+      std::unique_ptr<PaintingContextClay> painting_context);
+
  private:
   clay::ViewContext* view_context_;
   std::unique_ptr<runtime::NativeModuleFactory> module_factory_;
