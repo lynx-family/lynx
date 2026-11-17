@@ -727,6 +727,9 @@ void TemplateAssembler::RenderTemplateForFiber(
 
   fml::RefPtr<Element> element_cache = card->TryToGetElementCache();
   if (element_cache.get()) {
+    // Cached-tree consumption bypasses the script-facing clone API counter.
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_ELEMENT_TREE_REUSE, GetInstanceId());
     TreeResolver::AttachRootToElementManager(
         element_cache, page_proxy()->element_manager().get(),
         style_sheet_manager(DEFAULT_ENTRY_NAME), true);
@@ -3662,6 +3665,12 @@ void TemplateAssembler::DumpElementTree(
   auto* template_bundle = card->GetCompleteTemplateBundle();
   auto& element_manager = page_proxy_.element_manager();
   if (template_bundle && element_manager) {
+    // Include first-time export, which clones the tree before any cache hit.
+    // TODO(linxiaosong): In the next release, review cpp_element_tree_reuse and
+    // cpp_element_clone together. Confirm both counters report correctly and
+    // neither records usage before removing the related element cloning logic.
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_ELEMENT_TREE_REUSE, GetInstanceId());
     auto page_node = lepus::Value(TreeResolver::CloneElementRecursively(
         element_manager->GetPageElement(), true));
     ElementBundle element_bundle = ElementBundle(std::move(page_node));

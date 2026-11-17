@@ -47,6 +47,8 @@ cpp:
   - enable_native_list_from_env
   - element_from_binary
   - element_clone
+  # Includes exporting an element tree and rendering from a cached tree.
+  - element_tree_reuse
 typescript:
   - bundle_support_load_script
 objc:
