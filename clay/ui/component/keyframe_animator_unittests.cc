@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <string>
+#include <tuple>
 #include <vector>
 
 #include "base/include/auto_reset.h"
@@ -1071,13 +1073,15 @@ TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
   animator_view_->AddEventCallback(event_attr::kEventTransitionStart);
   animator_view_->AddEventCallback(event_attr::kEventTransitionEnd);
 
-  std::vector<std::string> events;
-  transition_event_callback_ = [&events](const std::string& event_name,
-                                         const char*, int,
-                                         ClayAnimationPropertyType type) {
-    events.emplace_back(event_name + ":" +
-                        std::to_string(static_cast<int>(type)));
-  };
+  using TransitionEvent =
+      std::tuple<std::string, int, ClayAnimationPropertyType>;
+  std::vector<TransitionEvent> events;
+  lynx::base::AutoReset<decltype(transition_event_callback_)> callback(
+      &transition_event_callback_,
+      [&events](const std::string& event_name, const char*, int view_id,
+                ClayAnimationPropertyType type) {
+        events.emplace_back(event_name, view_id, type);
+      });
 
   TransitionData transition;
   transition.property = ClayAnimationPropertyType::kOpacity;
@@ -1086,10 +1090,9 @@ TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
   animator_view_->OnNodeReady();
   animator_view_->SetOpacity(1.f);
 
-  const std::string opacity_type =
-      std::to_string(static_cast<int>(ClayAnimationPropertyType::kOpacity));
-  EXPECT_THAT(events,
-              ::testing::ElementsAre("transitionstart:" + opacity_type));
+  const TransitionEvent start{"transitionstart", animator_view_->id(),
+                              ClayAnimationPropertyType::kOpacity};
+  EXPECT_THAT(events, ::testing::ElementsAre(start));
 
   RecordingAnimationEventHandler raster_events;
   FixedSizeAnimatorTarget raster_target(FloatSize(100.f, 100.f));
@@ -1120,8 +1123,9 @@ TEST_F_UI(KeyFrameTest, RasterTransitionEventsRemainUIOwned) {
 
   page_->GetAnimationHandler()->DoAnimationFrame(0);
   page_->GetAnimationHandler()->DoAnimationFrame(160);
-  EXPECT_THAT(events, ::testing::ElementsAre("transitionstart:" + opacity_type,
-                                             "transitionend:" + opacity_type));
+  const TransitionEvent end{"transitionend", animator_view_->id(),
+                            ClayAnimationPropertyType::kOpacity};
+  EXPECT_THAT(events, ::testing::ElementsAre(start, end));
 }
 
 TEST_F_UI(KeyFrameTest, RasterTransitionUsesLifecycleOnlyUiAnimator) {

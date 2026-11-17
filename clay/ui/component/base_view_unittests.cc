@@ -120,8 +120,8 @@ class BackgroundEventView final : public BaseView {
                  std::make_unique<RenderContainer>(), page),
         callback_id_(callback_id) {}
 
-  void NotifyBackgroundEvent(bool success) {
-    NotifyBgImageLoadStatus(success, clay::Value::Map());
+  void NotifyBackgroundEvent(bool success, Value::Map detail = {}) {
+    NotifyBgImageLoadStatus(success, std::move(detail));
   }
 
   int GetCallbackId() override { return callback_id_; }
@@ -144,42 +144,76 @@ TEST_F_UI(BaseViewTest, ImageLoaderTokensInvalidateOnlyTheirResourceType) {
   EXPECT_FALSE(view.IsCurrent(false, mask_token));
 }
 
-TEST_F_UI(BaseViewTest, BackgroundErrorUsesCallbackId) {
+TEST_F_UI(BaseViewTest, BackgroundErrorRequiresListenerAndPreservesDetail) {
   constexpr int kCallbackId = 42;
   BackgroundEventView view(kCallbackId, page_.get());
-  view.AddEventCallback(event_attr::kEventBgError);
 
-  int received_id = -1;
-  std::string received_event;
-  custom_event_callback_ = [&](int id, const char* event_name,
-                               clay::Value::Map) {
-    received_id = id;
-    received_event = event_name;
-  };
+  int event_count = 0;
+  lynx::base::AutoReset<decltype(custom_event_callback_)> callback(
+      &custom_event_callback_,
+      [&](int id, const char* event_name, Value::Map detail) {
+        ++event_count;
+        EXPECT_EQ(id, kCallbackId);
+        EXPECT_STREQ(event_name, "bgerror");
+        const auto url = detail.find("url");
+        ASSERT_NE(url, detail.end());
+        ASSERT_TRUE(url->second.IsString());
+        EXPECT_EQ(url->second.GetString(), "missing.png");
+        const auto error = detail.find("errMsg");
+        ASSERT_NE(error, detail.end());
+        ASSERT_TRUE(error->second.IsString());
+        EXPECT_EQ(error->second.GetString(), "resource load fail");
+      });
 
+  // A completion only dispatches the event for its own registered outcome.
   view.NotifyBackgroundEvent(false);
+  view.AddEventCallback(event_attr::kEventBgError);
+  view.NotifyBackgroundEvent(true);
+  EXPECT_EQ(event_count, 0);
 
-  EXPECT_EQ(received_id, kCallbackId);
-  EXPECT_EQ(received_event, event_attr::kEventBgError);
+  Value::Map detail;
+  detail.emplace("url", Value("missing.png"));
+  detail.emplace("errMsg", Value("resource load fail"));
+  view.NotifyBackgroundEvent(false, std::move(detail));
+  EXPECT_EQ(event_count, 1);
 }
 
-TEST_F_UI(BaseViewTest, BackgroundLoadUsesCallbackId) {
+TEST_F_UI(BaseViewTest, BackgroundLoadRequiresListenerAndPreservesDetail) {
   constexpr int kCallbackId = 42;
   BackgroundEventView view(kCallbackId, page_.get());
-  view.AddEventCallback(event_attr::kEventBgLoad);
 
-  int received_id = -1;
-  std::string received_event;
-  custom_event_callback_ = [&](int id, const char* event_name,
-                               clay::Value::Map) {
-    received_id = id;
-    received_event = event_name;
-  };
+  int event_count = 0;
+  lynx::base::AutoReset<decltype(custom_event_callback_)> callback(
+      &custom_event_callback_,
+      [&](int id, const char* event_name, Value::Map detail) {
+        ++event_count;
+        EXPECT_EQ(id, kCallbackId);
+        EXPECT_STREQ(event_name, "bgload");
+        const auto url = detail.find("url");
+        ASSERT_NE(url, detail.end());
+        ASSERT_TRUE(url->second.IsString());
+        EXPECT_EQ(url->second.GetString(), "background.png");
+        const auto width = detail.find("width");
+        const auto height = detail.find("height");
+        ASSERT_NE(width, detail.end());
+        ASSERT_NE(height, detail.end());
+        ASSERT_TRUE(width->second.IsInt());
+        ASSERT_TRUE(height->second.IsInt());
+        EXPECT_EQ(width->second.GetInt(), 32);
+        EXPECT_EQ(height->second.GetInt(), 48);
+      });
 
   view.NotifyBackgroundEvent(true);
+  view.AddEventCallback(event_attr::kEventBgLoad);
+  view.NotifyBackgroundEvent(false);
+  EXPECT_EQ(event_count, 0);
 
-  EXPECT_EQ(received_id, kCallbackId);
-  EXPECT_EQ(received_event, event_attr::kEventBgLoad);
+  Value::Map detail;
+  detail.emplace("url", Value("background.png"));
+  detail.emplace("width", Value(32));
+  detail.emplace("height", Value(48));
+  view.NotifyBackgroundEvent(true, std::move(detail));
+  EXPECT_EQ(event_count, 1);
 }
 
 TEST_F_UI(BaseViewTest, LayoutChangeReportsLogicalBoundsOnlyWithListener) {
