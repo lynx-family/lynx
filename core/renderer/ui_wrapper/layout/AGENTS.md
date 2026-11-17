@@ -31,6 +31,9 @@ This directory contains layout-wrapper objects such as `LayoutContext`, layout n
 
 - This directory should translate layout state, not own layout algorithms.
 - Platform text-layout adapters can drift from the shared wrapper surface if one backend gets patched in isolation.
+- On iOS, keep custom truncation content separate from the body attributed string. Measure images and views inside the token before TextKit layout, and derive their final visibility from the rendered text storage. For FLR, retain overlapping body and token click ranges in post-order and translate them at the final UTF-16 cut.
+- On Android, serialize custom truncation offsets in UTF-16 units and keep the token separate during measurement. Derive inline-view positions from spans in the final layout, and remap fragment event ranges after the body prefix is shortened. Restore hidden views through measurement before publishing subsequent layouts.
+- Virtual Elements can retain an unparented SLNode. Use its dirty state for the node's own layout-before callback. Continue traversing its descendants during layout preparation and result publication.
 
 ## Common Regression Symptoms
 

@@ -11,9 +11,11 @@
 
 #include <cstdint>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include "core/public/text_layout_impl.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 
@@ -47,20 +49,29 @@ class TextLayoutDarwin : public TextLayoutImpl {
                                               float height, int height_mode);
 
   static void ApplyTextStyle(TextElement* text_element, LynxTextStyle* textStyle);
+  static void ApplyTextStyle(Element* element, const CSSIDBitset& property_bits,
+                             LynxTextStyle* textStyle);
   static void HandleParagraphStyle(TextElement* text_element, LynxTextStyle* textStyle,
                                    LynxAttributedTextBundle* textBundle);
+  struct EventRanges {
+    std::vector<PlatformTextEventTargetRange> body;
+    std::vector<PlatformTextEventTargetRange> token;
+  };
   void GenerateAttributedString(NSMutableAttributedString* attributedString, Element* element,
                                 NSDictionary<NSAttributedStringKey, id>* baseAttributes,
-                                NSMutableSet* inlineElementSigns, Boolean* hasViewOrImage);
+                                NSMutableSet* inlineElementSigns, Boolean* hasViewOrImage,
+                                NSAttributedString* __strong* truncationString,
+                                EventRanges& ranges);
   void ProcessChildAttribute(NSMutableAttributedString* attributedString, Element* element,
                              NSDictionary<NSAttributedStringKey, id>* baseAttributes,
-                             NSMutableSet* inlineElementSigns, Boolean* hasViewOrImage);
+                             NSMutableSet* inlineElementSigns, Boolean* hasViewOrImage,
+                             NSAttributedString* __strong* truncationString, EventRanges& ranges);
   void MeasureChildrenRecursively(Element* element, const starlight::Constraints& constraints,
                                   bool final_measure, NSMutableDictionary* layoutResultDic);
 
   void AlignChildrenRecursively(Element* element, NSDictionary* offsetDic);
 
-  std::vector<PlatformTextEventTargetRange> event_target_ranges_;
+  std::unordered_map<int32_t, EventRanges> truncation_event_ranges_;
   std::optional<int32_t> prepared_detached_id_;
   LynxTextRenderManager* _textRenderManager;
   LynxFontFaceContext* _fontFaceContext;

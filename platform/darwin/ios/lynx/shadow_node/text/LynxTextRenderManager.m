@@ -61,11 +61,19 @@
     [self updateAttachmentSize:childrenSizeDic
               attributedString:textBundle.attributedString
                     lineHeight:textBundle.textStyle.lineHeight];
+    [self updateAttachmentSize:childrenSizeDic
+              attributedString:textBundle.textStyle.truncationAttributedStr
+                    lineHeight:textBundle.textStyle.lineHeight];
   }
 
   LynxTextRenderer *renderer =
       [[LynxTextRenderer alloc] initWithAttributedString:textBundle.attributedString
                                               layoutSpec:spec];
+  if (textBundle.textStyle.truncationAttributedStr.length > 0) {
+    renderer.layoutTruncationBlock = ^(NSMutableAttributedString *text) {
+      layoutDelegate.attributedString = text;
+    };
+  }
   [renderer ensureTextRenderLayout];
   [_textRenderDic setObject:renderer forKey:@(sign)];
 
