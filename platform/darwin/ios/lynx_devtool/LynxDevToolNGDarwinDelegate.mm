@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/byte_utils.h"
 #include "devtool/base_devtool/native/public/message_sender.h"
 #include "devtool/lynx_devtool/agent/network_request_observer.h"
 #include "devtool/lynx_devtool/js_debug/lepus/manager/rts_inspector_manager_factory.h"
@@ -95,11 +96,7 @@ std::map<std::string, std::string> ConvertHeaders(NSDictionary* headers) {
 }
 
 std::vector<uint8_t> ConvertNSData(NSData* data) {
-  if (data.length == 0) {
-    return {};
-  }
-  const auto* bytes = static_cast<const uint8_t*>(data.bytes);
-  return std::vector<uint8_t>(bytes, bytes + data.length);
+  return lynx::base::CopyByteArray(data.bytes, data.length);
 }
 
 std::shared_ptr<lynx::devtool::NetworkRequestObserver> GetNetworkObserver(

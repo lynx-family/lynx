@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include "base/include/byte_utils.h"
 #include "base/include/fml/make_copyable.h"
 
 namespace {
@@ -55,9 +56,8 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
     // For lynx_core.js
     auto assets = js_source_loader_.LoadJSSource(request.url);
     if (!assets.empty()) {
-      const uint8_t* bytes = reinterpret_cast<const uint8_t*>(assets.data());
       pub::LynxResourceResponse response{
-          .data = std::vector<uint8_t>(bytes, bytes + assets.size())};
+          .data = base::CopyByteArray(assets.data(), assets.size())};
       callback(response);
       return;
     }
@@ -82,10 +82,9 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
             response.err_code = fetcher_response->code;
             response.err_msg = fetcher_response->error_message;
             if (fetcher_response->data.length > 0) {
-              response.data =
-                  std::vector<uint8_t>(fetcher_response->data.content,
-                                       fetcher_response->data.content +
-                                           fetcher_response->data.length);
+              base::AssignByteArray(response.data,
+                                    fetcher_response->data.content,
+                                    fetcher_response->data.length);
             }
             callback(response);
           }));

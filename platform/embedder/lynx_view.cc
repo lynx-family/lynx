@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "base/include/byte_utils.h"
 #include "base/include/fml/thread.h"
 #include "base/include/no_destructor.h"
 #include "core/renderer/data/lynx_view_data_manager.h"
@@ -370,9 +371,8 @@ LYNX_EXTERN_C void lynx_view_load_template(lynx_view_t* view,
         load_meta->url, *load_meta->template_bundle, nullptr,
         load_meta->initial_data);
   } else if (load_meta->binary_data.data && load_meta->binary_data.length > 0) {
-    std::vector<uint8_t> source(
-        load_meta->binary_data.data,
-        load_meta->binary_data.data + load_meta->binary_data.length);
+    auto source = lynx::base::CopyByteArray(load_meta->binary_data.data,
+                                            load_meta->binary_data.length);
     view->lynx_template_renderer->LoadTemplate(
         load_meta->url, std::move(source), nullptr, load_meta->initial_data);
   } else if (!load_meta->url.empty()) {
