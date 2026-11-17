@@ -201,6 +201,18 @@ void Fragment::StyleChanged() {
 
   CaptureClipPathStyleChange();
 
+  if (placement_z_index_pending_) {
+    if (IsStackingPositionFlushed()) {
+      placement_z_index_pending_ = false;
+      ApplyPlacementZIndex();
+      if (element()->is_fixed() == was_position_fixed()) {
+        return;
+      }
+    } else {
+      return;
+    }
+  }
+
   // There are four cases for z-index:
   // z.0. z-index does not change.
   // z.1. The value of z-index changes, but it is not 0 before or after.
@@ -301,6 +313,58 @@ void Fragment::StyleChanged() {
             ? this
             : EnclosingStackingContextNode()->CastToFragment();
     MoveDirectStackingChildren(target_parent, this);
+  }
+}
+
+void Fragment::ApplyPlacementZIndex() {
+  if (element() == nullptr ||
+      (element()->parent() == nullptr && !element()->is_page())) {
+    return;
+  }
+  const int32_t previous_z_index = old_z_index();
+  const int32_t current_z_index = element()->ZIndex();
+  if (element()->GetEnableZIndex()) {
+    ZIndexChanged();
+  }
+  set_old_z_index(current_z_index);
+
+  if (!was_position_fixed() &&
+      ((previous_z_index == 0) != (current_z_index == 0))) {
+    Fragment* element_parent = element()->parent()->fragment_impl();
+    Fragment* target_parent = current_z_index != 0
+                                  ? EnclosingStackingContextFromElementParent()
+                                  : element_parent;
+    if (fragment_parent() != nullptr &&
+        (target_parent != fragment_parent() || current_z_index == 0)) {
+      fragment_parent()->RemoveChild(this);
+      Element* ref = nullptr;
+      if (current_z_index == 0) {
+        ref = element()->next_render_sibling();
+        while (ref != nullptr &&
+               (!ref->fragment_impl()->IsReliableSibling() ||
+                ref->fragment_impl()->fragment_parent() != target_parent)) {
+          ref = ref->next_render_sibling();
+        }
+      }
+      target_parent->AddChildBefore(
+          this, ref != nullptr ? ref->fragment_impl() : nullptr);
+    }
+    if (current_z_index == 0) {
+      element_parent->z_children_.erase(this);
+      set_fragment_from_element_parent(nullptr);
+    } else {
+      element_parent->z_children_.insert(this);
+      set_fragment_from_element_parent(element_parent);
+    }
+  }
+
+  if (element()->IsStackingContextNode() != was_stacking_context()) {
+    set_was_stacking_context(element()->IsStackingContextNode());
+    MoveDirectStackingChildren(
+        was_stacking_context()
+            ? this
+            : EnclosingStackingContextNode()->CastToFragment(),
+        this);
   }
 }
 
@@ -1713,7 +1777,9 @@ void Fragment::InsertElementContainerAccordingToElement(Element* child,
 
     element_manager()->root()->fragment_impl()->AddChildBefore(
         child->fragment_impl(), nullptr);
-    return;
+    if (!child->fragment_impl()->placement_z_index_pending_) {
+      return;
+    }
   } else if (child->fragment_impl()->old_z_index() != 0) {
     // If the child is not fixed, insert it to the enclosing stacking context
     // node.
@@ -1723,7 +1789,9 @@ void Fragment::InsertElementContainerAccordingToElement(Element* child,
     auto* parent_stacking_context =
         EnclosingStackingContextNode()->CastToFragment();
     parent_stacking_context->AddChildBefore(child->fragment_impl(), nullptr);
-    return;
+    if (!child->fragment_impl()->placement_z_index_pending_) {
+      return;
+    }
   } else {
     // If the child is not fixed and z-index is 0, insert it to the first
     // reliable sibling.
@@ -1737,6 +1805,10 @@ void Fragment::InsertElementContainerAccordingToElement(Element* child,
   // Reinsert the child's descendants with fixed or z-index !=0 to the correct
   // parent.
   child->fragment_impl()->ReinsertDescendantsToCorrectParent();
+  if (std::exchange(child->fragment_impl()->placement_z_index_pending_,
+                    false)) {
+    child->fragment_impl()->ApplyPlacementZIndex();
+  }
 }
 
 void Fragment::RemoveElementContainerAccordingToElement(Element* child,

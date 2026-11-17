@@ -315,5 +315,38 @@ void BaseElementContainer::UpdateGlobalInsertionOrder() {
   global_insertion_order_ = element_manager()->GenerateGlobalInsertionOrder();
 }
 
+bool BaseElementContainer::IsStackingPositionFlushed() const {
+  Element* current = element();
+  if (current == nullptr || (!current->is_page() && parent() == nullptr &&
+                             !current->IsLayoutOnly())) {
+    return false;
+  }
+  for (; !current->is_page(); current = current->parent()) {
+    Element* logical_parent = current->parent();
+    if (logical_parent == nullptr ||
+        current->render_parent() != logical_parent ||
+        (logical_parent->dirty() & Element::kDirtyTreeMask) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void BaseElementContainer::UpdatePlacementZIndex() {
+  if (element() == nullptr) {
+    return;
+  }
+  if (!IsStackingPositionFlushed()) {
+    placement_z_index_pending_ = true;
+    if (element()->parent() != nullptr &&
+        (parent() != nullptr || element()->IsLayoutOnly())) {
+      element()->MarkPropsDirty();
+    }
+    return;
+  }
+  placement_z_index_pending_ = false;
+  ApplyPlacementZIndex();
+}
+
 }  // namespace tasm
 }  // namespace lynx

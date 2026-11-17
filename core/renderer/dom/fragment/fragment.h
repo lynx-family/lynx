@@ -175,6 +175,7 @@ class Fragment : public BaseElementContainer {
   static const int32_t kDefaultDrawNodeCapacity;
 
   bool is_fragment() const override { return true; }
+  void ApplyPlacementZIndex() override;
 
  private:
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
