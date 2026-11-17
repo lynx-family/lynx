@@ -98,7 +98,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         dend: Int
       ): CharSequence? {
         // readonly should block user edits, but not framework-originated default value updates.
-        if (mReadonly && !mShouldSuppressInputEvent) {
+        if (mReadonly && !mShouldSuppressInputEvent && !mIsSettingInputType) {
           return dest?.subSequence(dstart, dend)
         } else {
           return null
@@ -138,11 +138,22 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     override fun createView(context: Context?): LynxEditTextView {
         mFontSize = UnitUtils.toPxWithDisplayMetrics("14px", 0f, 0f, 0f, 0f, mContext?.screenMetrics)
         val editText = LynxEditTextView(context!!).apply {
-            onFocusChangeListener =  View.OnFocusChangeListener { _: View?, hasFocus ->
+            textEditVertical = isTextArea()
+            onFocusChangeListener =  View.OnFocusChangeListener { inputView: View?, hasFocus ->
                 // Make sure keyboard is displayed while being focused
                 if (hasFocus && !mUseCustomKeyboard) {
                     ensureKeyboardEventStarted()
                     showSoftInput()
+                }
+                lynxContext.lynxView?.let {
+                    if (hasFocus) {
+                        it.keyboardEvent.inputDidBeginEditingForOwner(
+                            this@LynxUIBaseInput, inputView, it,
+                            mAvoidKeyboardInLynxView, mAvoidKeyboardSpacingInLynxView
+                        )
+                    } else {
+                        it.keyboardEvent.inputDidEndEditingForOwner(this@LynxUIBaseInput)
+                    }
                 }
                 lynxContext.eventEmitter.sendCustomEvent(
                     LynxDetailEvent(
@@ -235,6 +246,24 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                         })
                 }
             }
+            onTextEditStateChanged = { commandId, offset, maximum ->
+                // cspell:ignore texteditstate
+                lynxContext.eventEmitter.sendCustomEvent(
+                    LynxDetailEvent(sign, "texteditstate").apply {
+                        addDetail("commandId", commandId)
+                        addDetail("offsetPx", offset)
+                        addDetail("maximumPx", maximum)
+                        addDetail("focused", isFocused)
+                        addDetail("cursorRevision", textEditGeometryRevision)
+                        textEditCursorRect()?.let { rect ->
+                            addDetail("cursorLeftPx", rect.left)
+                            addDetail("cursorTopPx", rect.top)
+                            addDetail("cursorRightPx", rect.right)
+                            addDetail("cursorBottomPx", rect.bottom)
+                        }
+                    }
+                )
+            }
 
         }
         editText.hint = ""
@@ -274,7 +303,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
     @LynxProp(name = "default-value")
     fun setDefaultValue(value: String?) {
-        if (mDefaultValueConsumed) {
+        if (mDefaultValueConsumed && !mView.textEditEnabled) {
             return
         }
         val text = value ?: ""
@@ -542,7 +571,8 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
                 LynxUIBaseInput.TYPE_PASSWORD -> mView.inputType = InputType.TYPE_TEXT_VARIATION_PASSWORD
                 LynxUIBaseInput.TYPE_DIGIT -> mView.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
                 LynxUIBaseInput.TYPE_TEL ->  mView.inputType = InputType.TYPE_CLASS_PHONE
-                LynxUIBaseInput.TYPE_EMAIL -> mView.inputType = InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                LynxUIBaseInput.TYPE_EMAIL ->
+                    mView.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
             }
             val selectionStart = mView.selectionStart
             if (value != LynxUIBaseInput.TYPE_PASSWORD) {
@@ -814,6 +844,22 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
 
     @LynxUIMethod
+    fun textEditCommand(params: ReadableMap?, callback: Callback?) {
+        if (params == null) {
+            callback?.invoke(LynxUIMethodConstants.PARAM_INVALID, "Param is not a map.")
+            return
+        }
+        mView.applyTextEditCommand(
+            params.getString("type") ?: "",
+            params.getInt("commandId"),
+            params.getDouble("xPx").toFloat(),
+            params.getDouble("yPx").toFloat(),
+            params.getDouble("offsetPx").toFloat()
+        )
+        callback?.invoke(LynxUIMethodConstants.SUCCESS)
+    }
+
+    @LynxUIMethod
     fun setValue(params: ReadableMap?, callback: Callback?) {
         if (params == null) {
             callback?.invoke(LynxUIMethodConstants.PARAM_INVALID, "Param is not a map.")
@@ -892,6 +938,15 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         if (mUseCustomKeyboard) {
           hideSoftInput()
           callback?.invoke(LynxUIMethodConstants.SUCCESS)
+        } else if (mView.textEditEnabled) {
+          // Commit editor focus before queued edits. The IME can attach later
+          // or be unavailable (for example with a hardware keyboard).
+          if (view.mHasDrawn) {
+            showSoftInput()
+          } else {
+            mView.post { if (mView.isFocused) showSoftInput() }
+          }
+          callback?.invoke(LynxUIMethodConstants.SUCCESS)
         } else if (showSoftInput()){
           callback?.invoke(LynxUIMethodConstants.SUCCESS)
         } else {
@@ -903,18 +958,21 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   
     private fun doBlur(callback: Callback?) {
+      val wasFocused = mView.isFocused
       if (mView.isFocused) {
         mView.clearFocus()
-        if (!mUseCustomKeyboard) {
-          hideSoftInput()
-        }
+      }
+      val shouldHide = wasFocused ||
+          (lynxContext.enableRawInput && mView.rootView.findFocus()?.onCheckIsTextEditor() != true)
+      if (!mUseCustomKeyboard && shouldHide) {
+        hideSoftInput()
       }
       callback?.invoke(LynxUIMethodConstants.SUCCESS)
     }
   
     @LynxUIMethod
     fun focus(params: ReadableMap?, callback: Callback?) {
-      if (view.mHasDrawn) {
+      if (mView.textEditEnabled || view.mHasDrawn) {
        doFocus(callback)
       } else {
         mView.post {
@@ -925,7 +983,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
     @LynxUIMethod
     fun blur(params: ReadableMap?, callback: Callback?) {
-      if (view.mHasDrawn) {
+      if (mView.textEditEnabled || view.mHasDrawn) {
         doBlur(callback)
       } else {
         mView.post {

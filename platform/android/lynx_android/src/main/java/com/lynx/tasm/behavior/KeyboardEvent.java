@@ -20,6 +20,7 @@ import android.view.animation.PathInterpolator;
 import androidx.appcompat.widget.LinearLayoutCompat;
 import androidx.recyclerview.widget.OrientationHelper;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.core.LynxThreadPool;
@@ -60,6 +61,9 @@ public class KeyboardEvent {
   private static final WeakHashMap<View, KeyboardInsetsAnimationDispatcher>
       sInsetsAnimationDispatchers = new WeakHashMap<>();
   private final KeyboardAvoidingContext mKeyboardAvoidingContext = new KeyboardAvoidingContext();
+  private final int[] mKeyboardPageLocation = new int[2];
+  private float mLastProjectedImeHeight;
+  private float mLastProjectedImeTop = Float.NaN;
 
   public KeyboardEvent(LynxContext lynxContext) {
     LLog.d(LynxConstants.TAG, "KeyboardEvent initialized.");
@@ -193,11 +197,25 @@ public class KeyboardEvent {
           "KeyboardEvent visible = " + visible + ", height = " + keyboardHeight
               + ", compatHeight = " + keyboardHeightCompat);
 
-      if ((keyboardHeight != keyboardHeightForLast)
-          || (useRelativeKeyboardHeightApi && (keyboardHeightCompat != keyboardTopFromLynxView))) {
-        sendKeyboardEvent(visible, keyboardHeight, keyboardHeightCompat);
+      float projectedImeHeight = 0;
+      float projectedImeTop = Float.NaN;
+      if (lynxContext.getEnableRawInput() && bodyInst != null && visible) {
+        bodyInst.getLocationOnScreen(mKeyboardPageLocation);
+        final int topInPage = keyboardTop - mKeyboardPageLocation[1];
+        projectedImeTop = topInPage / mDpi;
+        projectedImeHeight =
+            Math.max(0, Math.min(bodyInst.getHeight(), bodyInst.getHeight() - topInPage)) / mDpi;
+      }
+      if (keyboardHeight != keyboardHeightForLast
+          || (useRelativeKeyboardHeightApi && keyboardHeightCompat != keyboardTopFromLynxView)
+          || projectedImeHeight != mLastProjectedImeHeight
+          || Float.compare(projectedImeTop, mLastProjectedImeTop) != 0) {
+        sendKeyboardEvent(
+            visible, keyboardHeight, keyboardHeightCompat, projectedImeHeight, projectedImeTop);
         keyboardHeightForLast = keyboardHeight;
         keyboardTopFromLynxView = keyboardHeightCompat;
+        mLastProjectedImeHeight = projectedImeHeight;
+        mLastProjectedImeTop = projectedImeTop;
       }
 
       dispatchOnGlobalLayout();
@@ -264,7 +282,8 @@ public class KeyboardEvent {
     isStartedInUIThread = false;
   }
 
-  private void sendKeyboardEvent(boolean isVisible, int height, int heightCompat) {
+  private void sendKeyboardEvent(boolean isVisible, int height, int heightCompat,
+      float projectedImeHeight, float projectedImeTop) {
     // for keeping backward compatible, we send 2 kinds of height here.
     // height is the older implementation, base view height below the status bar
     // heightCompat is the newer one, base view height below the status bar and above the virtual
@@ -274,7 +293,18 @@ public class KeyboardEvent {
       args.pushString(isVisible ? "on" : "off");
       args.pushInt(heightCompat);
       args.pushInt(heightCompat);
-      mLynxContext.sendGlobalEvent(LynxKeyboardEvent.KEYBOARD_STATUS_CHANGED, args);
+      if (mLynxContext.getEnableRawInput() && mLynxContext.getLynxView() != null) {
+        JavaOnlyMap projection = new JavaOnlyMap();
+        projection.putDouble("imeHeight", projectedImeHeight);
+        // The Page can already be resized while a separate Overlay still overlaps the IME.
+        if (!Float.isNaN(projectedImeTop)) {
+          projection.putDouble("imeTop", projectedImeTop);
+        }
+        args.pushMap(projection);
+        mLynxContext.getLynxView().sendGlobalEvent(LynxKeyboardEvent.KEYBOARD_STATUS_CHANGED, args);
+      } else {
+        mLynxContext.sendGlobalEvent(LynxKeyboardEvent.KEYBOARD_STATUS_CHANGED, args);
+      }
     }
     for (Map.Entry<Object, KeyboardEventObserver> entry : mObservers.entrySet()) {
       KeyboardEventObserver observer = entry.getValue();

@@ -105,6 +105,7 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
     // A mutable context can acquire an Activity after Dialog caches its WindowManager.
     private var mDialogActivity = ContextUtils.getActivity(context)
     private var mDialog = LynxOverlayDialog(context, this)
+    private var mDefaultSoftInputAdjustMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED
     private var mDialogTouchListener: LynxOverlayDialog.TouchEventListener? = null
     private val mFragmentScope = FragmentOverlayScope(
         proxy.view,
@@ -175,6 +176,10 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
         dialog.window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         dialog.window?.setDimAmount(0f)
         dialog.setContentView(mOverlayContainer, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        dialog.window?.let {
+            mDefaultSoftInputAdjustMode =
+                it.attributes.softInputMode and WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST
+        }
         dialog.setTouchListener(mDialogTouchListener)
         dialog.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
@@ -619,16 +624,56 @@ class LynxOverlayView(context: LynxContext, val proxy: LynxUIOverlay) : UIGroup<
      * @supportVersion: 2.7
      **/
     @LynxProp(name = "android-set-soft-input-mode")
-    fun setAndroidSetSoftInputMode(value: String) {
-        if ("unspecified".equals(value)) {
-            mDialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED)
-        } else if ("nothing".equals(value)) {
-            mDialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
-        } else if ("pan".equals(value)) {
-            mDialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
-        } else if ("resize".equals(value)) {
-            mDialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+    fun setAndroidSetSoftInputMode(value: String?) {
+        val window = mDialog.window ?: return
+        if (value == null || value == "unspecified") {
+            restoreSoftInputAdjustMode(window)
+            return
         }
+        val adjustMode = when (value) {
+            "nothing" -> WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+            "pan" -> WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
+            "resize" -> WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            else -> return
+        }
+        window.setSoftInputMode(adjustMode)
+    }
+
+    private fun restoreSoftInputAdjustMode(window: Window) {
+        val attrs = window.attributes
+        val adjustMask = WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST
+        val unspecified = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_UNSPECIFIED
+        if ((attrs.softInputMode and adjustMask) == mDefaultSoftInputAdjustMode) return
+
+        val state = attrs.softInputMode and adjustMask.inv()
+        if (mDefaultSoftInputAdjustMode != unspecified) {
+            window.setSoftInputMode(state or mDefaultSoftInputAdjustMode)
+            return
+        }
+        if (mOverlayContainer.isAttachedToWindow) {
+            // Android retains the last effective adjustment for an attached
+            // window. Seed its automatic resize/pan choice before clearing it.
+            val effectiveMode = if (hasVisibleScrollContainer(mOverlayContainer)) {
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            } else {
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN
+            }
+            window.setSoftInputMode(state or effectiveMode)
+        }
+        // setSoftInputMode(0) clears the explicit flag but does not clear the attributes.
+        attrs.softInputMode = state
+        window.setSoftInputMode(unspecified)
+    }
+
+    private fun hasVisibleScrollContainer(view: View): Boolean {
+        if (view.visibility != View.VISIBLE) return false
+        if (view.isScrollContainer) return true
+        if (view is ViewGroup) {
+            for (index in 0 until view.childCount) {
+                if (hasVisibleScrollContainer(view.getChildAt(index))) return true
+            }
+        }
+        return false
     }
 
     /**
