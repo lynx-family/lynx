@@ -1,4 +1,4 @@
-{% from 'opts_hardcode.js.tmpl' import overload_resolvers, partial_data_opt, hardcode_for_hook_method, hardcode_for_interface %}
+{% from 'opts_hardcode.js.tmpl' import overload_resolvers, partial_data_opt, hardcode_for_hook_method, hardcode_for_interface, hardcode_before_command %}
 {% include 'lynx_copyright_block_js.txt' %}
 {% for statement in script_imports %}
 {{statement}}
@@ -101,6 +101,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
   {% endfor %}
 
   {% macro method_content(interface_name, method) %}
+  {{ hardcode_before_command(interface_name, method) }}
   {% if method.arguments | selectattr('is_canvas_round_rect_radii') | list %}
   if (arguments.length < 4) throw new TypeError('roundRect requires at least 4 arguments');
   x = +x;
@@ -111,14 +112,14 @@ const commandBufferCreator = function(appendTarget, idGen) {
   if (!validateRoundRect(x, y, w, h, radii)) return;
   {% endif %}
 
-  {% if method.is_setter %}
+  {% if method.is_setter and not method.fully_buffered %}
   if ({{method.name}} === null || typeof {{method.name}} === 'undefined') {
     return;
   }
 
   this.__{{method.name}} = {{method.name}};
   {% endif %}
-  {% for argument in method.arguments if argument.is_string_type and method.is_setter %}
+  {% for argument in method.arguments if argument.is_string_type and method.is_setter and not argument.buffered_reference %}
   if (typeof {{argument.name}} !== 'string') {
     {{argument.name}} = String({{argument.name}});
   }
@@ -164,16 +165,19 @@ const commandBufferCreator = function(appendTarget, idGen) {
     {% endfor %}
     {% if ns.has_optional_argument %}
     {% set ns.count = ns.count + 1 %}
-    uint32View[$end + 2] = {{method.arguments | length if method.arguments | selectattr('is_canvas_round_rect_radii') | list else 'arguments.length'}};
+    uint32View[$end + 2] = {{'converted.length' if method.fully_buffered else (method.arguments | length if method.arguments | selectattr('is_canvas_round_rect_radii') | list else 'arguments.length')}};
     {% endif %} 
     {% for argument in method.arguments %}
-    {% if argument.is_boolean_type %}
+    {% if argument.buffered_reference %}
+    uint32View[$end + {{ns.count}}] = objects.push({{argument.name}}) - 1;
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument.is_boolean_type %}
     uint32View[$end + {{ns.count}}] = {{argument.name}};
     {% set ns.count = ns.count + 1 %}
-    {% elif argument.is_dictionary %}{# has_dict #}
+    {% elif argument.is_dictionary and not argument.buffered_reference %}{# has_dict #}
     uint32View[$end + {{ns.count}}] = {{argument.name}} ? 1 : 0;
     {% set ns.count = ns.count + 1 %}
-    {% elif argument.union_types %}
+    {% elif argument.union_types and not argument.buffered_reference %}
     let {{argument.name}}Len = 0;
     if (typeof {{argument.name}} === 'string') {
       uint32View[$end + {{ns.count}}] = 3102; // string type
@@ -200,7 +204,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[$end + {{ns.count}}] = {{argument.name}};
     {% endif %}
     {% set ns.count = ns.count + 1 %}
-    {% elif argument.is_string_type %}
+    {% elif argument.is_string_type and not argument.buffered_reference %}
     {% if not method.is_setter %}
     let {{argument.name}}Len = {{argument.name}}.length; // throws when null
     if ({{argument.name}}Len / 2 > cmdLengthCutoff) {
@@ -274,7 +278,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[$end + {{ns.count}}] = {{argument.name}}BufferView.byteLength;
     {% set ns.count = ns.count + 1 %}
     {% endif %}
-    {% elif argument.is_dictionary %}{# has_dict #}
+    {% elif argument.is_dictionary and not argument.buffered_reference %}{# has_dict #}
     uint32View[$end + {{ns.count}}] = {{argument.name}} ? 1 : 0;
     {% set ns.count = ns.count + 1 %}
     {% endif %}
@@ -286,7 +290,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
     {% endif %}
     $end += {{ns.count}};
 
-    {% for argument in method.arguments if argument.is_typed_array or argument.is_sequence_type %}
+    {% for argument in method.arguments if (argument.is_typed_array or argument.is_sequence_type) and not argument.buffered_reference %}
     {% if argument.idl_type == 'Float32Array' %}
     float32View.set({{argument.name}}, $end);
     $end += {{argument.name}}.length;
@@ -316,11 +320,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
     {% endif %}
     {% endfor %}
 {#                                                                            #}
-    {% for argument in method.arguments if argument.is_string_type %}
+    {% for argument in method.arguments if argument.is_string_type and not argument.buffered_reference %}
     str2view({{argument.name}}, dataView, $end);
     $end += Math.ceil({{argument.name}}Len / 2);
     {% endfor %}
-    {% for argument in method.arguments if argument.union_types %}
+    {% for argument in method.arguments if argument.union_types and not argument.buffered_reference %}
     if (typeof {{argument.name}}.$typeID === 'undefined') {
       str2view({{argument.name}}, dataView, $end);
       $end += Math.ceil({{argument.name}}Len / 2);
@@ -332,7 +336,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
     $end += Math.ceil({{argument.name}}BufferView.byteLength / 4);
     {% endfor %}
 
-    {% for argument in method.arguments if argument.is_dictionary %}
+    {% for argument in method.arguments if argument.is_dictionary and not argument.buffered_reference %}
     if ({{argument.name}}) {
       $end += cb.reg.encode('{{argument.idl_type}}', buffer, {{argument.name}}, $end);
     }
@@ -341,9 +345,17 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[0] = $end;
 
     {% if method.is_sync %}
+    {% if method.fully_buffered %}
+    try {
+      return cb.call();
+    } finally {
+      objects.length = 0;
+    }
+    {% else %}
     const result = cb.call();
     objects.length = 0;
     return result;
+    {% endif %}
     {% else %}
     if ($end > flushThresh{{ ' || !active[contextId]' if method.flushed_within_frame }}) {
       {% if method.flushed_within_frame %}
@@ -360,7 +372,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
   {% for method in methods if method.is_getter or method.is_setter %}
   {% if method.is_getter %}
   function {{method.name}}Getter({{ method.arguments | map(attribute='name') | join(', ')}}) { 
+    {% if method.fully_buffered %}
+    {{ method_content(interface_name, method) }}
+    {% else %}
     return this.__{{method.name}};
+    {% endif %}
   }
 
   {% endif %}
@@ -404,7 +420,7 @@ const commandBufferCreator = function(appendTarget, idGen) {
 let protoHooked = false;
 
 function hook{{interface_name}}(appendTarget, context, idGen) {
-  const commandBuffer = commandBufferCreator(appendTarget, idGen);
+  const commandBuffer = { ...commandBufferCreator(appendTarget, idGen) };
   {{ hardcode_for_hook_method(interface_name) }}
   {% set attributes = {} %}
   {% for method in methods if method.is_setter or method.is_getter %}

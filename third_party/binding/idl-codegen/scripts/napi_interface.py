@@ -432,6 +432,7 @@ k_command_buffer_init = {
     'async_classes': [],
     'slow_if_buffered_methods': [],
     'buffering_disabled_methods': [],
+    'fully_buffered_interfaces': [],
     'flushed_within_frame_methods': [],
 }
 command_buffer_context = copy.deepcopy(k_command_buffer_init)
@@ -580,7 +581,14 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                     method['keep_binding_version'] = False
 
                 # TODO(yuyifei): Maybe remove the last part to migrate remaining binding methods.
-                method['do_not_buffer_for_single_thread'] = method.get('skip_buffering', False) or (method['idl_type'] != 'void' and not method['handles_async'])
+                if interface.name in command_buffer_context['fully_buffered_interfaces']:
+                    method['slow_if_buffered'] = False
+                    method['keep_binding_version'] = False
+
+                method['do_not_buffer_for_single_thread'] = (
+                    method.get('skip_buffering', False) or
+                    (method['idl_type'] != 'void' and not method['handles_async'] and
+                     interface.name not in command_buffer_context['fully_buffered_interfaces']))
                 if method.get('do_not_buffer_for_single_thread', False):
                     method['keep_binding_version'] = False
                 method_is_remote_only = method_is_remote_only or method['do_not_buffer_for_single_thread']
@@ -643,6 +651,14 @@ def add_buffered_method(interface, method, ptr_name, command_buffer_context, ove
     # Keep the base impl only
     if interface.sharing_impl and method['from_shared']:
         return
+    method['fully_buffered'] = (
+        interface.name in command_buffer_context['fully_buffered_interfaces'])
+    if method['fully_buffered']:
+        for argument in method.get('arguments', []):
+            # Retain converted payloads instead of imposing a fixed buffer limit.
+            argument['buffered_reference'] = any(argument.get(key) for key in [
+                'is_string_type', 'is_sequence_type', 'is_dictionary', 'union_types'
+            ])
     if gen_for_napi:
         method['buffered_method_id'] = command_buffer_context['method_index']
         command_buffer_context['method_index'] += 1
@@ -667,6 +683,7 @@ def add_buffered_method(interface, method, ptr_name, command_buffer_context, ove
 def init_command_buffer_context(component, metadata):
     global command_buffer_context
     command_buffer_context = copy.deepcopy(k_command_buffer_init)
+    command_buffer_context['fully_buffered_interfaces'] = metadata.get('fully_buffered_interfaces', [])
     command_buffer_context['component'] = component
     command_buffer_context['generates_remote'] = metadata.get('has_remote', False)
     command_buffer_context['remote_excludes'] = metadata.get('remote_excluding_regexps', [])
