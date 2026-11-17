@@ -43,7 +43,7 @@ public class LynxBaseEnv {
       mIsNativeLibraryLoaded = loadNativeTraceLibrary(nativeLibraryLoader);
     }
     if (mIsNativeLibraryLoaded && context != null) {
-      File directory = context.getExternalFilesDir(null);
+      File directory = context.getFilesDir();
       if (directory != null) {
         nativeSetApplicationDataDirectory(directory.getAbsolutePath());
       }
