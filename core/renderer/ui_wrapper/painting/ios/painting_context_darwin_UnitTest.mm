@@ -17,17 +17,27 @@
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
+#include <algorithm>
 #import "LynxTimingConstants.h"
+
 #include "base/include/fml/message_loop.h"
 #include "core/event/event.h"
+#include "core/event/event_dispatcher.h"
 #include "core/event/event_listener.h"
+#include "core/event/touch_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_manager_delegate.h"
+#include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
+#include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/text_fragment_behavior.h"
+#include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 #import "core/renderer/ui_wrapper/painting/ios/native_painting_context_darwin.h"
+#import "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 #import "core/renderer/ui_wrapper/painting/ios/painting_context_darwin_utils.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/runtime/common/bindings/event/message_event.h"
@@ -38,12 +48,27 @@ namespace {
 class TextLayoutTestElement : public lynx::tasm::TextElement {
  public:
   using Element::EnsureSLNode;
+  using TextElement::SetAttributeInternal;
   using TextElement::TextElement;
+  void SetRenderChild(lynx::tasm::Element* child) { first_render_child_ = child; }
+  void SetRenderSibling(lynx::tasm::Element* sibling) { next_render_sibling_ = sibling; }
   void MarkLayoutDirtyLite() override {
     ++layout_dirty_count;
     TextElement::MarkLayoutDirtyLite();
   }
   int layout_dirty_count{0};
+};
+
+class TextTruncationTestContainer : public lynx::tasm::Element {
+ public:
+  using Element::Element;
+  void SetRenderChild(Element* child) { first_render_child_ = child; }
+};
+
+class TextTruncationTestImage : public lynx::tasm::ImageElement {
+ public:
+  using Element::EnsureSLNode;
+  using ImageElement::ImageElement;
 };
 
 class TextLayoutEventListener : public lynx::event::EventListener {
@@ -214,6 +239,264 @@ class TextLayoutTestDelegate
 }
 
 - (void)tearDown {
+}
+
+- (void)testElementTruncationPreservesAuthoredToken {
+  using namespace lynx::tasm;
+  for (NSString* content in @[ @"more", @"\u2026more" ]) {
+    TextLayoutTestDelegate delegate;
+    LynxUIOwner* owner =
+        [[LynxUIOwner alloc] initWithContainerView:nil
+                                 componentRegistry:nil
+                                     screenMetrics:nil
+                                      errorHandler:nil
+                                          uiConfig:nil
+                                      embeddedMode:LynxEmbeddedModeLayoutInElement];
+    auto platform = std::make_unique<PaintingContextDarwin>(owner);
+    PageOptions options;
+    options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+    auto manager = std::make_unique<ElementManager>(std::move(platform), &delegate,
+                                                    LynxEnvConfig(100, 100, 1, 1), options);
+    manager->SetElementManagerDelegate(&delegate);
+    auto text = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "text"));
+    text->content() =
+        lynx::base::String("A long paragraph that must use its custom truncation token.");
+    text->EnsureSLNode();
+    text->SetAttributeInternal(lynx::base::String("text-maxline"), lynx::lepus::Value(1));
+    auto token =
+        lynx::fml::AdoptRef(new TextTruncationTestContainer(manager.get(), "inline-truncation"));
+    auto label = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "inline-text"));
+    label->MarkAsInline();
+    XCTAssertTrue(label->AddEventListener("tap", std::make_shared<TextLayoutEventListener>()));
+    label->content() = lynx::base::String(content.UTF8String);
+    token->SetRenderChild(label.get());
+    text->SetRenderChild(token.get());
+    TextLayoutDarwin layout(owner.textRenderManager, owner.fontFaceContext);
+    layout.DispatchLayoutBefore(text.get());
+    layout.Measure(text.get(), 100, 1, 0, 0);
+    LynxTextRenderer* renderer = [owner.textRenderManager takeTextRender:text->impl_id()];
+    XCTAssertEqualObjects(renderer.attrStr.string,
+                          @"A long paragraph that must use its custom truncation token.");
+    XCTAssertEqualObjects(renderer.truncationToken.string, content);
+    XCTAssertTrue([renderer.textStorage.string hasSuffix:renderer.truncationToken.string]);
+    NSNumber* target = [renderer.textStorage attribute:@"LynxInlineTextEventTargetSignKey"
+                                               atIndex:renderer.textStorage.length - 1
+                                        effectiveRange:nil];
+    XCTAssertEqual(target.intValue, label->impl_id());
+
+    // A later short value must not display the token as ordinary body content.
+    text->content() = lynx::base::String("short");
+    layout.DispatchLayoutBefore(text.get());
+    layout.Measure(text.get(), 100, 1, 0, 0);
+    renderer = [owner.textRenderManager takeTextRender:text->impl_id()];
+    XCTAssertEqualObjects(renderer.textStorage.string, @"short");
+  }
+}
+
+- (void)testTruncationRawTextUsesComputedFont {
+  using namespace lynx::tasm;
+  using lynx::starlight::FontStyleType;
+  using lynx::starlight::FontWeightType;
+  TextLayoutTestDelegate delegate;
+  LynxUIOwner* owner = [[LynxUIOwner alloc] initWithContainerView:nil
+                                                componentRegistry:nil
+                                                    screenMetrics:nil
+                                                     errorHandler:nil
+                                                         uiConfig:nil
+                                                     embeddedMode:LynxEmbeddedModeLayoutInElement];
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto manager =
+      std::make_unique<ElementManager>(std::make_unique<PaintingContextDarwin>(owner), &delegate,
+                                       LynxEnvConfig(100, 100, 1, 1), options);
+  manager->SetElementManagerDelegate(&delegate);
+  auto text = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "text"));
+  text->EnsureSLNode();
+  text->content() = lynx::base::String("A long paragraph that must be truncated.");
+  text->SetAttributeInternal(lynx::base::String("text-maxline"), lynx::lepus::Value(1));
+  text->ResolveStyleValue(kPropertyIDFontFamily,
+                          CSSValue("Georgia", CSSValuePattern::STRING, CSSValueType::DEFAULT));
+  text->ResolveStyleValue(kPropertyIDFontStyle, CSSValue(FontStyleType::kItalic));
+  text->ResolveStyleValue(kPropertyIDFontWeight, CSSValue(FontWeightType::kBold));
+  auto token =
+      lynx::fml::AdoptRef(new TextTruncationTestContainer(manager.get(), "inline-truncation"));
+  auto label = manager->CreateFiberRawText();
+  label->SetText(lynx::lepus::Value("More"));
+  text->SetRenderChild(token.get());
+  token->SetRenderChild(label.get());
+  auto* tokenStyle = token->computed_css_style();
+  tokenStyle->InheritNormalPropertiesFrom(
+      *text->computed_css_style(),
+      {kPropertyIDFontFamily, kPropertyIDFontStyle, kPropertyIDFontWeight});
+  TextLayoutDarwin layout(owner.textRenderManager, owner.fontFaceContext);
+  for (auto weight : {FontWeightType::kBold, FontWeightType::kNormal}) {
+    if (weight == FontWeightType::kNormal) {
+      tokenStyle->SetValue(kPropertyIDFontWeight, CSSValue(weight));
+    }
+    layout.DispatchLayoutBefore(text.get());
+    layout.Measure(text.get(), 100, 1, 0, 0);
+    LynxTextRenderer* renderer = [owner.textRenderManager takeTextRender:text->impl_id()];
+    XCTAssertTrue([renderer.textStorage.string hasSuffix:@"More"]);
+    UIFont* font = [renderer.textStorage attribute:NSFontAttributeName
+                                           atIndex:renderer.textStorage.length - 1
+                                    effectiveRange:nil];
+    XCTAssertEqualObjects(
+        font.fontName, weight == FontWeightType::kBold ? @"Georgia-BoldItalic" : @"Georgia-Italic");
+  }
+}
+
+- (void)testFLRTruncationPreservesNestedTapTargetsAcrossWidths {
+  using namespace lynx::tasm;
+  TextLayoutTestDelegate delegate;
+  LynxUIOwner* owner =
+      [[LynxUIOwner alloc] initWithContainerView:nil
+                               componentRegistry:nil
+                                   screenMetrics:nil
+                                    errorHandler:nil
+                                        uiConfig:nil
+                                    embeddedMode:LynxEmbeddedModeFragmentLayerRender];
+  auto platform = std::make_unique<NativePaintingCtxDarwin>(owner, nil, nullptr);
+  auto ref =
+      std::static_pointer_cast<NativePaintingCtxPlatformDarwinRef>(platform->GetPlatformRef());
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  auto manager = std::make_unique<ElementManager>(std::move(platform), &delegate,
+                                                  LynxEnvConfig(100, 100, 1, 1), options);
+  manager->SetElementManagerDelegate(&delegate);
+  lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();
+  auto queue = std::make_shared<lynx::shell::DynamicUIOperationQueue>(
+      lynx::base::ThreadStrategyForRendering::ALL_ON_UI,
+      lynx::fml::MessageLoop::GetCurrent().GetTaskRunner());
+  manager->painting_context()->SetUIOperationQueue(queue);
+
+  const int pageId = manager->GenerateElementID();
+  XCTAssertEqual(pageId, kRootId);
+  ref->CreatePlatformRenderer(pageId, PlatformRendererType::kPage, nullptr);
+  auto text = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "text"));
+  text->MarkAttached();
+  text->EnsureSLNode();
+  text->SetAttributeInternal(lynx::base::String("text-maxline"), lynx::lepus::Value(1));
+  auto listener = std::make_shared<TextLayoutEventListener>();
+  auto makeInline = [&](Element* parent) {
+    auto node = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "inline-text"));
+    node->MarkAttached();
+    node->MarkAsInline();
+    node->set_parent(parent);
+    node->AddEventListener("tap", listener);
+    return node;
+  };
+  auto outer = makeInline(text.get());
+  auto inner = makeInline(outer.get());
+  auto marker =
+      lynx::fml::AdoptRef(new TextTruncationTestContainer(manager.get(), "inline-truncation"));
+  auto label = makeInline(marker.get());
+  marker->MarkAttached();
+  marker->set_parent(outer.get());
+  text->SetRenderChild(outer.get());
+  outer->SetRenderChild(inner.get());
+  inner->SetRenderSibling(marker.get());
+  inner->content() = lynx::base::String("These words belong entirely to the inner target.");
+  marker->SetRenderChild(label.get());
+  label->content() = lynx::base::String("More");
+
+  DisplayListBuilder builder;
+  builder.Begin(kRootId, PlatformRendererType::kPage, 0, 0, 1000, 100)
+      .Begin(text->impl_id(), PlatformRendererType::kText, 0, 0, 1000, 100)
+      .End()
+      .End();
+  ref->UpdateDisplayList(kRootId, builder.Build());
+  TextLayoutDarwin layout(owner.textRenderManager, owner.fontFaceContext);
+  layout.DispatchLayoutBefore(text.get());
+  for (int width : {1000, 100, 1000}) {
+    layout.Measure(text.get(), width, 1, 0, 0);
+    queue->ForceFlush();
+    auto root = ref->ReconstructEventTargetTreeRecursively();
+    XCTAssertTrue(root);
+    auto* helper = ref->GetEventTargetHelper();
+    XCTAssertTrue(helper->GetEventTarget(outer->impl_id()));
+    XCTAssertEqual(helper->GetEventTarget(label->impl_id()) != nullptr, width == 100);
+    auto* expected = width == 100 ? label.get() : inner.get();
+    const auto regions = ref->GetTextEventTargetRegions(text->impl_id());
+    auto region = std::find_if(regions.begin(), regions.end(),
+                               [&](const auto& r) { return r.sign == expected->impl_id(); });
+    XCTAssertTrue(region != regions.end());
+    if (!root || region == regions.end()) return;
+    float point[] = {region->left + region->width / 2, region->top + region->height / 2};
+    auto hit = root->HitTest(point);
+    XCTAssertTrue(hit);
+    if (!hit) return;
+    XCTAssertEqual(hit->Sign(), expected->impl_id());
+    const int before = listener->count;
+    lynx::event::EventDispatcher::DispatchEvent(
+        *expected, lynx::fml::MakeRefCounted<lynx::event::TouchEvent>("tap"));
+    XCTAssertEqual(listener->count - before, 2);
+  }
+}
+
+- (void)testElementTruncationMeasuresItsImageAndReusesNodeMeasurement {
+  using namespace lynx::tasm;
+  TextLayoutTestDelegate delegate;
+  LynxUIOwner* owner = [[LynxUIOwner alloc] initWithContainerView:nil
+                                                componentRegistry:nil
+                                                    screenMetrics:nil
+                                                     errorHandler:nil
+                                                         uiConfig:nil
+                                                     embeddedMode:LynxEmbeddedModeLayoutInElement];
+  auto platform = std::make_unique<PaintingContextDarwin>(owner);
+  PageOptions options;
+  options.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto manager = std::make_unique<ElementManager>(std::move(platform), &delegate,
+                                                  LynxEnvConfig(100, 100, 1, 1), options);
+  manager->SetElementManagerDelegate(&delegate);
+  auto text = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "text"));
+  text->content() = lynx::base::String("A long paragraph that must be truncated beside an image.");
+  text->EnsureSLNode();
+  text->SetAttributeInternal(lynx::base::String("text-maxline"), lynx::lepus::Value(1));
+  auto token =
+      lynx::fml::AdoptRef(new TextTruncationTestContainer(manager.get(), "inline-truncation"));
+  auto label = lynx::fml::AdoptRef(new TextLayoutTestElement(manager.get(), "inline-text"));
+  label->content() = lynx::base::String("\u2026more");
+  auto image = lynx::fml::AdoptRef(new TextTruncationTestImage(manager.get(), "image"));
+  image->EnsureSLNode();
+  int measures = 0;
+  image->SetMeasureFunc(&measures, [](void* context, const lynx::starlight::Constraints&, bool) {
+    ++*static_cast<int*>(context);
+    return FloatSize(9, 9, 9);
+  });
+  label->SetRenderSibling(image.get());
+  token->SetRenderChild(label.get());
+  text->SetRenderChild(token.get());
+  text->slnode()->AppendChild(image->slnode());
+  text->DispatchLayoutBefore();
+  lynx::starlight::Constraints constraints;
+  constraints[lynx::starlight::kHorizontal] = lynx::starlight::OneSideConstraint::Definite(100);
+  constraints[lynx::starlight::kVertical] = lynx::starlight::OneSideConstraint::Indefinite();
+  text->slnode()->UpdateMeasure(constraints, false);
+  LynxTextRenderer* first = [owner.textRenderManager takeTextRender:text->impl_id()];
+  for (int i = 0; i < 3; ++i) text->slnode()->UpdateMeasure(constraints, true);
+  XCTAssertEqual(measures, 1);
+  XCTAssertEqual(first, [owner.textRenderManager takeTextRender:text->impl_id()]);
+  XCTAssertTrue(text->slnode()->IsInflowSubTreeInSyncWithLastMeasurement());
+  XCTAssertTrue([first.textStorage.string hasSuffix:@"\u2026more\ufffc"]);
+  text->Align();
+  XCTAssertEqual(image->slnode()->GetBorderBoundWidth(), 9);
+  text->slnode()->MarkUpdated();
+
+  text->content() = lynx::base::String("short");
+  text->slnode()->MarkDirty();
+  text->DispatchLayoutBefore();
+  text->slnode()->UpdateMeasure(constraints, true);
+  text->Align();
+  XCTAssertEqual(image->slnode()->GetBorderBoundWidth(), 0);
+  text->slnode()->MarkUpdated();
+
+  text->content() = lynx::base::String("A long paragraph that must be truncated beside an image.");
+  text->slnode()->MarkDirty();
+  text->DispatchLayoutBefore();
+  text->slnode()->UpdateMeasure(constraints, true);
+  text->Align();
+  XCTAssertEqual(image->slnode()->GetBorderBoundWidth(), 9);
+  text->slnode()->RemoveChild(image->slnode());
 }
 
 - (void)testScrollBy {

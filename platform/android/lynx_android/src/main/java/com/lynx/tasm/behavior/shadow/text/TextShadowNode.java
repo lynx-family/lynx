@@ -396,7 +396,7 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
 
         float truncationWidth = truncationTextRender.getLayoutWidth();
         int lastLineStartCharIndex = mRenderer.getTextLayout().getLineStart(lastLineIndex);
-        int truncationPositionIndex = findTruncationPositionIndex(
+        int truncationPositionIndex = findTruncationPositionIndex(mRenderer.getTextLayout(),
             lastLineIndex, lastLineStartCharIndex, width, truncationWidth);
 
         while (truncationPositionIndex >= lastLineStartCharIndex) {
@@ -460,7 +460,7 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
         && truncationTextLayout.getLineEnd(0) == truncationTextLayout.getText().length();
   }
 
-  private int getTruncatedLastLineIndex(
+  static int getTruncatedLastLineIndex(
       TextRenderer textRenderer, float constraintHeight, MeasureMode constraintHeightMode) {
     int lastLineIndex = 0;
     if (constraintHeightMode != MeasureMode.UNDEFINED
@@ -507,18 +507,17 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
    * Find the most suitable truncation position based on the truncation width.
    * "This is...truncation" is a suitable result.
    */
-  private int findTruncationPositionIndex(
-      int lastLineIndex, int lastLineStartCharIndex, float textMaxWidth, float truncationWidth) {
-    int lastLineEndCharIndex = mRenderer.getTextLayout().getLineEnd(lastLineIndex);
+  static int findTruncationPositionIndex(Layout layout, int lastLineIndex,
+      int lastLineStartCharIndex, float textMaxWidth, float truncationWidth) {
+    int lastLineEndCharIndex = layout.getLineEnd(lastLineIndex);
     int truncationPositionIndex = lastLineEndCharIndex;
     float remainLastLineWidth = textMaxWidth - truncationWidth;
-    if (mRenderer.getTextLayout().getLineMax(lastLineIndex)
-            - mRenderer.getTextLayout().getLineLeft(lastLineIndex)
+    if (layout.getLineMax(lastLineIndex) - layout.getLineLeft(lastLineIndex)
         <= remainLastLineWidth) {
       return truncationPositionIndex;
     }
     Map<Integer, Float> lastLineGlyphWidthMap = calculateLastLineGlyphWidth(
-        lastLineIndex, lastLineStartCharIndex, lastLineEndCharIndex, mRenderer.getTextLayout());
+        lastLineIndex, lastLineStartCharIndex, lastLineEndCharIndex, layout);
     float sumOfGlyphWidth = 0.f;
     for (int i = lastLineStartCharIndex; i < lastLineEndCharIndex; i++) {
       if (lastLineGlyphWidthMap.containsKey(i)) {
@@ -540,7 +539,7 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
    * @param layout layout result
    * @return
    */
-  private Map<Integer, Float> calculateLastLineGlyphWidth(
+  private static Map<Integer, Float> calculateLastLineGlyphWidth(
       int lastLineIndex, int lastLineStartCharIndex, int lastLineEndCharIndex, Layout layout) {
     Map<Integer, Float> lastLineGlyphIndexWidthMap = new HashMap<>();
     ArrayList<Float> charPositionList = new ArrayList<>();
