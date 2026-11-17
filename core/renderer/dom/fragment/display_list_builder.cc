@@ -94,6 +94,16 @@ DisplayListBuilder& DisplayListBuilder::Transform(const gfx::Matrix44& matrix) {
 
 DisplayList DisplayListBuilder::Build() { return std::move(display_list_); }
 
+bool DisplayListBuilder::AppendDrawingContent(const DisplayList& source) {
+  size_t appended_box_count = 0;
+  if (!display_list_.AppendDrawingContent(source, current_index_of_box_model,
+                                          appended_box_count)) {
+    return false;
+  }
+  current_index_of_box_model += static_cast<int32_t>(appended_box_count);
+  return true;
+}
+
 void DisplayListBuilder::Clear() { display_list_ = DisplayList(); }
 
 DisplayListBuilder& DisplayListBuilder::DrawImage(fml::RefPtr<PaintImage> image,
@@ -208,9 +218,10 @@ DisplayListBuilder& DisplayListBuilder::RecordBoxModel(
 DisplayListBuilder& DisplayListBuilder::LinearGradient(
     float angle, const base::Vector<uint32_t>& colors,
     const base::Vector<float>& stops, int32_t tiling_index, int32_t clip_index,
-    int32_t repeat_x, int32_t repeat_y) {
+    int32_t repeat_x, int32_t repeat_y, int32_t inner_clip_index) {
   display_list_.AddLinearGradient(angle, colors, stops, tiling_index,
-                                  clip_index, repeat_x, repeat_y);
+                                  clip_index, repeat_x, repeat_y,
+                                  inner_clip_index);
   return *this;
 }
 

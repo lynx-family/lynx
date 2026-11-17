@@ -118,6 +118,7 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int GRADIENT_REPEAT_X_OFFSET = 28;
   static final int GRADIENT_REPEAT_Y_OFFSET = 32;
   static final int GRADIENT_ANGLE_OFFSET = 36;
+  static final int GRADIENT_INNER_CLIP_INDEX_PLUS_ONE_OFFSET = 40;
   static final int RADIAL_GRADIENT_CENTER_X_OFFSET = 36;
   static final int RADIAL_GRADIENT_CENTER_Y_OFFSET = 40;
   static final int RADIAL_GRADIENT_RADIUS_X_OFFSET = 44;
@@ -766,6 +767,7 @@ public class DisplayListApplier implements Drawable.Callback {
         }
 
         case OP_LINEAR_GRADIENT: {
+          int innerPlusOne = getIntAt(itemByteOffset + GRADIENT_INNER_CLIP_INDEX_PLUS_ONE_OFFSET);
           int colorCount = getIntAt(itemByteOffset + GRADIENT_COLOR_COUNT_OFFSET);
           int stopCount = getIntAt(itemByteOffset + GRADIENT_STOP_COUNT_OFFSET);
           int tilingIndex = getIntAt(itemByteOffset + GRADIENT_TILING_INDEX_OFFSET);
@@ -798,8 +800,8 @@ public class DisplayListApplier implements Drawable.Callback {
             }
           }
 
-          drawLinearGradient(
-              canvas, angle, colors, stops, tilingIndex, clipIndex, repeatX, repeatY);
+          drawLinearGradient(canvas, angle, colors, stops, tilingIndex, clipIndex, repeatX, repeatY,
+              innerPlusOne == 0 ? null : getRoundedRectangle(innerPlusOne - 1));
           break;
         }
 
@@ -856,7 +858,7 @@ public class DisplayListApplier implements Drawable.Callback {
   }
 
   private void drawLinearGradient(Canvas canvas, float angle, int[] colors, float[] stops,
-      int tilingIndex, int clipIndex, int repeatX, int repeatY) {
+      int tilingIndex, int clipIndex, int repeatX, int repeatY, RoundedRectangle innerBox) {
     if (colors == null) {
       return;
     }
@@ -912,9 +914,27 @@ public class DisplayListApplier implements Drawable.Callback {
         canvas.clipRect(getHostBoundsRectF(false));
       }
     }
+    if (innerBox != null) {
+      canvas.save();
+      mReusablePath2.reset();
+      if (innerBox.hasBorderRadius()) {
+        mReusablePath2.addRoundRect(
+            innerBox.getRectF(), innerBox.getBorderRadii(), Path.Direction.CW);
+      } else {
+        mReusablePath2.addRect(innerBox.getRectF(), Path.Direction.CW);
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        canvas.clipOutPath(mReusablePath2);
+      } else {
+        canvas.clipPath(mReusablePath2, Region.Op.DIFFERENCE);
+      }
+    }
     drawGradient(canvas,
         new LinearGradient(startX, startY, endX, endY, colors, stops, Shader.TileMode.CLAMP),
         tilingBox, clipBox, repeatX, repeatY);
+    if (innerBox != null) {
+      canvas.restore();
+    }
     if (normalizeRoot)
       canvas.restore();
   }
