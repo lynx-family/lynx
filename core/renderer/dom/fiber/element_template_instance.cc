@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <future>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -1590,6 +1591,13 @@ bool ElementTemplateInstance::ReuseElementsFrom(
 bool ElementTemplateInstance::HydrateImpl(
     ElementTemplateInstance& before_instance,
     ElementTemplateInstance& after_instance) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, ELEMENT_TEMPLATE_INSTANCE_HYDRATE_IMPL,
+      [&before_instance, &after_instance](lynx::perfetto::EventContext ctx) {
+        // Record both instances before hydration changes physical bindings.
+        UpdateTraceDebugInfo(ctx.event(), before_instance, "before_instance_");
+        UpdateTraceDebugInfo(ctx.event(), after_instance, "after_instance_");
+      });
   // 1. Complete eligibility checks before changing the source's physical state.
   if (&before_instance == &after_instance) {
     // For the same instance, only report whether it has a physical root.
@@ -1687,6 +1695,8 @@ bool ElementTemplateInstance::HydrateImpl(
     base::Vector<SlotDiff> slot_diffs;
     slot_diffs.reserve(slot_count);
 
+    TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
+                      ELEMENT_TEMPLATE_INSTANCE_HYDRATE_SLOT_CHILDREN);
     for (int32_t slot_index = 0; slot_index < slot_count; ++slot_index) {
       // CollectSlotChildren filters empty entries:
       // [null, oldA, undefined, oldB, oldC] -> [oldA, oldB, oldC].
@@ -1807,9 +1817,13 @@ bool ElementTemplateInstance::HydrateImpl(
                    .before_children = std::move(before_children),
                    .result = std::move(diff_result)});
     }
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
     // 5. Apply the insertions, removals, and moves from DiffSlotChildren.
     // Process slots in reverse so later slots establish physical anchors for
     // appending children to the current slot.
+    TRACE_EVENT_BEGIN(
+        LYNX_TRACE_CATEGORY,
+        ELEMENT_TEMPLATE_INSTANCE_HYDRATE_APPLY_SLOT_CHILDREN_DIFF);
     for (size_t slot_diff_index = slot_diffs.size(); slot_diff_index > 0;
          --slot_diff_index) {
       const auto& slot_diff = slot_diffs[slot_diff_index - 1];
@@ -1930,6 +1944,7 @@ bool ElementTemplateInstance::HydrateImpl(
             });
           });
     }
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
   }
   // 6. Queue any remaining child mounts for a later flush.
   after_instance.SchedulePendingChildMounts();
@@ -1997,30 +2012,30 @@ void ElementTemplateInstance::ResetMaterializedElements() {
 }
 
 #if ENABLE_TRACE_PERFETTO
-void ElementTemplateInstance::UpdateTraceDebugInfo(TraceEvent* event) const {
-  auto* bundle_url_info = event->add_debug_annotations();
-  bundle_url_info->set_name("bundle_url");
-  bundle_url_info->set_string_value(bundle_url_.str());
-
-  auto* template_key_info = event->add_debug_annotations();
-  template_key_info->set_name("template_key");
-  template_key_info->set_string_value(
-      template_key_.empty() ? "null" : template_key_.str());
-
-  auto* typed_tag_info = event->add_debug_annotations();
-  typed_tag_info->set_name("typed_tag");
-  typed_tag_info->set_string_value(typed_tag_.empty() ? "null"
-                                                      : typed_tag_.str());
-
-  if (uid_.IsNumber()) {
-    auto* uid_info = event->add_debug_annotations();
-    uid_info->set_name("uid");
-    uid_info->set_double_value(uid_.Number());
+void ElementTemplateInstance::UpdateTraceDebugInfo(
+    TraceEvent* event, const ElementTemplateInstance& instance,
+    const char* prefix) {
+  const auto add_annotation = [event, prefix](const char* name) {
+    auto* info = event->add_debug_annotations();
+    info->set_name(std::string(prefix) + name);
+    return info;
+  };
+  add_annotation("bundle_url")->set_string_value(instance.bundle_url_.str());
+  add_annotation("template_key")
+      ->set_string_value(instance.template_key_.empty()
+                             ? "null"
+                             : instance.template_key_.str());
+  add_annotation("typed_tag")
+      ->set_string_value(
+          instance.typed_tag_.empty() ? "null" : instance.typed_tag_.str());
+  if (instance.uid_.IsNumber()) {
+    add_annotation("uid")->set_double_value(instance.uid_.Number());
   }
+  add_annotation("materialized")->set_bool_value(instance.IsMaterialized());
+}
 
-  auto* materialized_info = event->add_debug_annotations();
-  materialized_info->set_name("materialized");
-  materialized_info->set_bool_value(IsMaterialized());
+void ElementTemplateInstance::UpdateTraceDebugInfo(TraceEvent* event) const {
+  UpdateTraceDebugInfo(event, *this, "");
 
   auto* pending_slots_info = event->add_debug_annotations();
   pending_slots_info->set_name("pending_child_mount_slot_count");
