@@ -10,6 +10,7 @@
 #include "base/include/fml/message_loop_impl.h"
 
 #include <algorithm>
+#include <limits>
 #include <vector>
 
 #include "base/include/fml/fml_trace_event_def.h"
@@ -187,40 +188,102 @@ void MessageLoopImpl::WakeUp(fml::TimePoint time_point,
 }
 
 void MessageLoopImpl::WakeUpByVSync(fml::TimePoint time_point) {
-  if (fml::TimePoint::Now() < time_point || WaitForVSyncTimeOut()) {
-    // Scenario 1: The execution time of the task has not yet arrived. Use the
-    // epoll to wake up the looper at the specified time.
-    // Scenario 2: When app goes into the background, the platform layer may no
-    // longer provides VSync callbacks to the application. In this case, we need
-    // to use epoll to wake up the looper to flush tasks.
+  if (fml::TimePoint::Now() < time_point) {
+    // The execution time of the task has not yet arrived. Use platform timer to
+    // wake up the looper at the specified time.
+    UpdateNextVSyncAlignedWakeTime(time_point);
     WakeUp(time_point);
-  } else if (!HasPendingVSyncRequest()) {
-    // No pending VSync request, a new VSync request should be sent.
-    request_vsync_time_millis_ = base::CurrentSystemTimeMilliseconds();
-    vsync_request_([this](int64_t frame_start_time_ns,
-                          int64_t frame_target_time_ns) {
-      request_vsync_time_millis_ = 0;
-      max_execute_time_ms_ =
-          static_cast<int64_t>((frame_target_time_ns - frame_start_time_ns) *
-                               kTraversalProportion / kNSecPerMSec);
-      FlushVSyncAlignedTasks(FlushType::kAll);
-    });
+    return;
   }
+
+  if (WaitForVSyncTimeOut()) {
+    // When app goes into the background, the platform layer may no longer
+    // provides VSync callbacks to the application. In this case, we fall back
+    // to waking up the looper via platform timer and flush vsync-aligned tasks
+    // in RunExpiredTasksNow().
+    WakeUp(time_point);
+    return;
+  }
+
+  if (HasPendingVSyncRequest()) {
+    return;
+  }
+
+  // No pending VSync request, a new VSync request should be sent.
+  request_vsync_time_millis_.store(base::CurrentSystemTimeMilliseconds());
+  next_vsync_aligned_wake_ticks_.store(std::numeric_limits<int64_t>::max());
+
+  vsync_request_([this](int64_t frame_start_time_ns,
+                        int64_t frame_target_time_ns) {
+    request_vsync_time_millis_.store(0);
+    next_vsync_aligned_wake_ticks_.store(std::numeric_limits<int64_t>::max());
+    max_execute_time_ms_ =
+        static_cast<int64_t>((frame_target_time_ns - frame_start_time_ns) *
+                             kTraversalProportion / kNSecPerMSec);
+    FlushVSyncAlignedTasks(FlushType::kAll);
+  });
 }
 
 bool MessageLoopImpl::WaitForVSyncTimeOut() {
+  auto request_time = request_vsync_time_millis_.load();
+  if (request_time <= 0) {
+    return false;
+  }
   auto now = base::CurrentSystemTimeMilliseconds();
   // There is a pending VSync request, and the waiting time has already exceeded
   // the threshold.
-  return HasPendingVSyncRequest() &&
-         (now - request_vsync_time_millis_ >= kWaitingVSyncTimeoutMillis);
+  return now - request_time >= kWaitingVSyncTimeoutMillis;
 }
 
 bool MessageLoopImpl::HasPendingVSyncRequest() {
-  return request_vsync_time_millis_ > 0;
+  return request_vsync_time_millis_.load() > 0;
 }
 
-void MessageLoopImpl::RunExpiredTasksNow() { FlushTasks(FlushType::kAll); }
+bool MessageLoopImpl::HasPendingVSyncAlignedTasks() const {
+  for (const auto& queue_id : vsync_aligned_task_queue_ids_) {
+    if (task_queue_->HasPendingTasks(queue_id)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void MessageLoopImpl::UpdateNextVSyncAlignedWakeTime(
+    fml::TimePoint time_point) {
+  const auto ticks = time_point.ToEpochDelta().ToNanoseconds();
+  auto current = next_vsync_aligned_wake_ticks_.load();
+  while (
+      ticks < current &&
+      !next_vsync_aligned_wake_ticks_.compare_exchange_weak(current, ticks)) {
+  }
+}
+
+void MessageLoopImpl::RunExpiredTasksNow() {
+  // If there are vsync-aligned queues bound to this loop, a delayed task will
+  // first wake up the platform looper at its target time. At that wake-up we
+  // need to ensure a VSync has been requested so that tasks in those queues can
+  // be flushed; otherwise, tasks such as MTS/worklet setTimeout can be starved.
+  const auto now = fml::TimePoint::Now();
+  if (vsync_request_ && !vsync_aligned_task_queue_ids_.empty()) {
+    if (!HasPendingVSyncAlignedTasks()) {
+      next_vsync_aligned_wake_ticks_.store(std::numeric_limits<int64_t>::max());
+    } else if (WaitForVSyncTimeOut()) {
+      request_vsync_time_millis_.store(0);
+      next_vsync_aligned_wake_ticks_.store(std::numeric_limits<int64_t>::max());
+      FlushVSyncAlignedTasks(FlushType::kAll);
+    } else if (!HasPendingVSyncRequest()) {
+      const auto next_wake_ticks = next_vsync_aligned_wake_ticks_.load();
+      if (next_wake_ticks == std::numeric_limits<int64_t>::max() ||
+          now >= fml::TimePoint::FromTicks(next_wake_ticks)) {
+        next_vsync_aligned_wake_ticks_.store(
+            std::numeric_limits<int64_t>::max());
+        WakeUpByVSync(now);
+      }
+    }
+  }
+
+  FlushTasks(FlushType::kAll);
+}
 
 void MessageLoopImpl::RunSingleExpiredTaskNow() {
   FlushTasks(FlushType::kSingle);
