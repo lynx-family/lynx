@@ -240,7 +240,11 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
                                 eventParams:HasElapsedTime(5.0)]);
   Apply(self.ui, std::move(command));
   CAAnimation* animation = [self animationForKeyPath:@"opacity"];
+  XCTAssertNotNil(animation);
+  [animation.delegate animationDidStart:animation];
+  XCTAssertTrue(playback->event_state() == EventState::kStarted);
   [animation.delegate animationDidStop:animation finished:YES];
+  XCTAssertTrue(playback->event_state() == EventState::kFinished);
   OCMVerifyAll(self.events);
 }
 
