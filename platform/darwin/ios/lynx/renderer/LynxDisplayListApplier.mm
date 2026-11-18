@@ -17,8 +17,11 @@
 #import "LynxDisplayListApplier+Internal.h"
 #import "LynxTextraLayer.h"
 
+#include <cmath>
+#include <limits>
 #include <stack>
 #include "base/include/vector.h"
+#include "core/renderer/ui_wrapper/painting/ios/path_darwin.h"
 #include "gfx/public/display_list_reader.h"
 #include "gfx/public/rounded_rectangle.h"
 
@@ -27,6 +30,13 @@
 @end
 
 @implementation LynxHostDrawingContainerLayer
+@end
+
+@interface LynxAppliedClipMask : NSObject
+@property(nonatomic, strong) CALayer *original;
+@property(nonatomic, strong) CALayer *applied;
+@end
+@implementation LynxAppliedClipMask
 @end
 
 @interface LynxRendererContext (TextContentReuse)
@@ -38,6 +48,139 @@ using namespace lynx;
 using namespace lynx::tasm;
 
 namespace {
+
+CATransform3D LayerToRootTransform(CALayer *layer) {
+  CATransform3D result = CATransform3DIdentity;
+  while (layer.superlayer != nil) {
+    CALayer *parent = layer.superlayer;
+    CGRect bounds = layer.bounds;
+    CATransform3D local = CATransform3DMakeTranslation(
+        -bounds.origin.x - layer.anchorPoint.x * bounds.size.width,
+        -bounds.origin.y - layer.anchorPoint.y * bounds.size.height, -layer.anchorPointZ);
+    local = CATransform3DConcat(local, layer.transform);
+    local = CATransform3DConcat(
+        local, CATransform3DMakeTranslation(layer.position.x, layer.position.y, layer.zPosition));
+    CGPoint center =
+        CGPointMake(parent.bounds.origin.x + parent.anchorPoint.x * parent.bounds.size.width,
+                    parent.bounds.origin.y + parent.anchorPoint.y * parent.bounds.size.height);
+    CATransform3D children = CATransform3DMakeTranslation(-center.x, -center.y, 0);
+    children = CATransform3DConcat(children, parent.sublayerTransform);
+    children = CATransform3DConcat(children, CATransform3DMakeTranslation(center.x, center.y, 0));
+    result = CATransform3DConcat(result, CATransform3DConcat(local, children));
+    layer = parent;
+  }
+  return result;
+}
+
+CATransform3D PlanarTransform(CATransform3D transform) {
+  CATransform3D planar = CATransform3DIdentity;
+  planar.m11 = transform.m11;
+  planar.m12 = transform.m12;
+  planar.m14 = transform.m14;
+  planar.m21 = transform.m21;
+  planar.m22 = transform.m22;
+  planar.m24 = transform.m24;
+  planar.m41 = transform.m41;
+  planar.m42 = transform.m42;
+  planar.m44 = transform.m44;
+  CGFloat magnitude = 0;
+  for (CGFloat value : {planar.m11, planar.m12, planar.m14, planar.m21, planar.m22, planar.m24,
+                        planar.m41, planar.m42, planar.m44}) {
+    if (!std::isfinite(value)) return planar;
+    magnitude = MAX(magnitude, ABS(value));
+  }
+  if (magnitude != 0) {
+    planar.m11 /= magnitude;
+    planar.m12 /= magnitude;
+    planar.m14 /= magnitude;
+    planar.m21 /= magnitude;
+    planar.m22 /= magnitude;
+    planar.m24 /= magnitude;
+    planar.m41 /= magnitude;
+    planar.m42 /= magnitude;
+    planar.m44 /= magnitude;
+  }
+  return planar;
+}
+
+bool PlanarCoefficientsAreValid(CATransform3D transform) {
+  bool nonzero = false;
+  for (CGFloat value : {transform.m11, transform.m12, transform.m14, transform.m21, transform.m22,
+                        transform.m24, transform.m41, transform.m42, transform.m44}) {
+    if (!std::isfinite(value)) return false;
+    nonzero |= value != 0;
+  }
+  return nonzero;
+}
+
+bool InvertPlanarTransform(CATransform3D transform, CATransform3D *inverse) {
+  transform = PlanarTransform(transform);
+  if (!PlanarCoefficientsAreValid(transform)) return false;
+  CGFloat first = transform.m11 * (transform.m22 * transform.m44 - transform.m24 * transform.m42);
+  CGFloat second = transform.m12 * (transform.m21 * transform.m44 - transform.m24 * transform.m41);
+  CGFloat third = transform.m14 * (transform.m21 * transform.m42 - transform.m22 * transform.m41);
+  CGFloat determinant = first - second + third;
+  CGFloat cancellation = ABS(transform.m11 * transform.m22 * transform.m44) +
+                         ABS(transform.m11 * transform.m24 * transform.m42) +
+                         ABS(transform.m12 * transform.m21 * transform.m44) +
+                         ABS(transform.m12 * transform.m24 * transform.m41) +
+                         ABS(transform.m14 * transform.m21 * transform.m42) +
+                         ABS(transform.m14 * transform.m22 * transform.m41);
+  if (!std::isfinite(determinant) || determinant == 0 ||
+      ABS(determinant) <= std::numeric_limits<CGFloat>::epsilon() * 8 * cancellation)
+    return false;
+  *inverse = PlanarTransform(CATransform3DInvert(transform));
+  return PlanarCoefficientsAreValid(*inverse);
+}
+
+bool LayerCoordinateTransform(CALayer *source, CALayer *target, CATransform3D *transform) {
+  CATransform3D targetInverse;
+  if (!InvertPlanarTransform(PlanarTransform(LayerToRootTransform(target)), &targetInverse)) {
+    return false;
+  }
+  *transform = PlanarTransform(
+      CATransform3DConcat(PlanarTransform(LayerToRootTransform(source)), targetInverse));
+  return PlanarCoefficientsAreValid(*transform);
+}
+
+bool MaskProjectionIsFinite(CGRect bounds, CATransform3D transform) {
+  for (CGFloat x : {CGRectGetMinX(bounds), CGRectGetMaxX(bounds)}) {
+    for (CGFloat y : {CGRectGetMinY(bounds), CGRectGetMaxY(bounds)}) {
+      CGFloat w = x * transform.m14 + y * transform.m24 + transform.m44;
+      CGFloat projectedX = x * transform.m11 + y * transform.m21 + transform.m41;
+      CGFloat projectedY = x * transform.m12 + y * transform.m22 + transform.m42;
+      if (!std::isfinite(w) || w <= 0 || !std::isfinite(projectedX / w) ||
+          !std::isfinite(projectedY / w))
+        return false;
+    }
+  }
+  return true;
+}
+
+void SetMaskCoordinateSystem(CALayer *mask, CGRect bounds, CATransform3D transform) {
+  if (CGRectIsEmpty(bounds) || CGRectIsNull(bounds) || CGRectIsInfinite(bounds)) {
+    bounds = CGRectMake(0, 0, 1, 1);
+  }
+  // The anchor is coordinate zero, so transform maps the mask's original coordinates directly.
+  mask.bounds = bounds;
+  mask.anchorPoint =
+      CGPointMake(-bounds.origin.x / bounds.size.width, -bounds.origin.y / bounds.size.height);
+  mask.position = CGPointZero;
+  if (transform.m44 > 0) {
+    CATransform3D native = transform;
+    native.m11 /= transform.m44;
+    native.m12 /= transform.m44;
+    native.m14 /= transform.m44;
+    native.m21 /= transform.m44;
+    native.m22 /= transform.m44;
+    native.m24 /= transform.m44;
+    native.m41 /= transform.m44;
+    native.m42 /= transform.m44;
+    native.m44 = 1;
+    if (PlanarCoefficientsAreValid(native)) transform = native;
+  }
+  mask.transform = transform;
+}
 
 bool BorderValuesAreApproximatelyEqual(CGFloat lhs, CGFloat rhs) {
   constexpr CGFloat kBorderThreshold = 0.001f;
@@ -88,6 +231,13 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
 @interface LynxDisplayListApplier ()
 
+- (CAShapeLayer *)clipShapeForPath:(const gfx::Path *)path
+                          fillRule:(gfx::PathFillRule)fillRule
+                                 x:(CGFloat)x
+                                 y:(CGFloat)y;
+- (void)recordActiveClipsForLayer:(CALayer *)layer;
+- (void)restoreClipMaskForLayer:(CALayer *)layer;
+- (void)updateClipMaskForLayer:(CALayer *)layer hostScope:(BOOL)hostScope;
 - (void)insertHostDecorationLayer:(CALayer *)layer;
 - (void)positionImageLayer:(CALayer *)layer reused:(BOOL)reused;
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op;
@@ -126,6 +276,16 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   __weak UIView<LynxRendererHost> *_view;
   LynxRendererContext *_renderer_context;
   DisplayListReader reader_;
+  const DisplayList *applying_list_;
+  CAShapeLayer *_ownerClip;
+  NSArray<CAShapeLayer *> *_parentClips;
+  __weak CALayer *_parentClipSource;
+  NSMutableArray<CAShapeLayer *> *_activeClips;
+  std::stack<NSUInteger> clip_count_stack_;
+  NSMapTable<CALayer *, LynxAppliedClipMask *> *_clipMasks;
+  NSMapTable<CALayer *, NSArray<CAShapeLayer *> *> *_layerClips;
+  NSHashTable<LynxRenderer *> *_clippedRenderers;
+  CALayer *_rootOverflowMask;
 
   std::stack<float> x_stack_;
   float left_offset_;
@@ -164,6 +324,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     left_offset_ = 0;
     top_offset_ = 0;
 
+    _activeClips = [NSMutableArray new];
+    _clipMasks = [NSMapTable weakToStrongObjectsMapTable];
+    _layerClips = [NSMapTable weakToStrongObjectsMapTable];
+    _clippedRenderers = [NSHashTable weakObjectsHashTable];
     _refLayer = nil;
     _hostDecorationRefLayer = nil;
     _contentImageViews = [NSMutableArray new];
@@ -171,6 +335,142 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     _hostDecorationLayers = [NSMutableArray new];
   }
   return self;
+}
+
+- (CAShapeLayer *)clipShapeForPath:(const gfx::Path *)path
+                          fillRule:(gfx::PathFillRule)fillRule
+                                 x:(CGFloat)x
+                                 y:(CGFloat)y {
+  CAShapeLayer *shape = [CAShapeLayer layer];
+  shape.fillRule =
+      fillRule == gfx::PathFillRule::kEvenOdd ? kCAFillRuleEvenOdd : kCAFillRuleNonZero;
+  // The Darwin painting context supplies a fixed PathDarwin factory.
+  CGPathRef nativePath =
+      path ? static_cast<const PathDarwin &>(path->GetImpl()).GetCGPath() : nullptr;
+  CGAffineTransform translation = CGAffineTransformMakeTranslation(x, y);
+  CGPathRef placed = nativePath ? CGPathCreateCopyByTransformingPath(nativePath, &translation)
+                                : CGPathCreateMutable();
+  shape.path = placed;
+  CGPathRelease(placed);
+  return shape;
+}
+
+- (void)applyClipPathProperty:(const SubtreeProperty &)property fromList:(const DisplayList *)list {
+  const auto &clip = property.data.clip_path;
+  _ownerClip = clip.path_index == UINT32_MAX
+                   ? nil
+                   : [self clipShapeForPath:list ? list->GetPath(clip.path_index) : nullptr
+                                   fillRule:clip.fill_rule
+                                          x:clip.x
+                                          y:clip.y];
+  [self syncHostDecorationLayers];
+}
+
+- (void)applyParentClips:(NSArray<CAShapeLayer *> *)clips fromLayer:(CALayer *)sourceLayer {
+  _parentClips = [clips copy];
+  _parentClipSource = sourceLayer;
+  [self syncHostDecorationLayers];
+}
+
+- (void)clearParentClipsFromLayer:(CALayer *)sourceLayer {
+  if (_parentClipSource != sourceLayer) return;
+  [self applyParentClips:@[] fromLayer:nil];
+}
+
+- (void)recordActiveClipsForLayer:(CALayer *)layer {
+  if (_activeClips.count != 0) [_layerClips setObject:[_activeClips copy] forKey:layer];
+}
+
+- (void)restoreClipMaskForLayer:(CALayer *)layer {
+  LynxAppliedClipMask *record = [_clipMasks objectForKey:layer];
+  if (record == nil || layer.mask != record.applied) return;
+  CALayer *last = record.applied;
+  while (last.mask != nil && last.mask != record.original) last = last.mask;
+  last.mask = nil;
+  layer.mask = record.original;
+}
+
+- (void)updateClipMaskForLayer:(CALayer *)layer hostScope:(BOOL)hostScope {
+  [self restoreClipMaskForLayer:layer];
+  [_clipMasks removeObjectForKey:layer];
+  NSArray<CAShapeLayer *> *localClips = [_layerClips objectForKey:layer] ?: @[];
+  NSMutableArray<CAShapeLayer *> *clips = [localClips mutableCopy];
+  if (hostScope && _ownerClip != nil) [clips addObject:_ownerClip];
+  if (hostScope) [clips addObjectsFromArray:_parentClips ?: @[]];
+  if (clips.count == 0) return;
+
+  LynxAppliedClipMask *record = [LynxAppliedClipMask new];
+  record.original = layer.mask;
+  CALayer *last = nil;
+  CATransform3D previousToTarget = CATransform3DIdentity;
+  for (CAShapeLayer *clip in clips) {
+    BOOL owner = clip == _ownerClip;
+    BOOL parent = hostScope && [_parentClips containsObject:clip];
+    CALayer *source = parent ? _parentClipSource : _view.layer;
+    CATransform3D sourceToTarget = CATransform3DIdentity;
+    BOOL valid = source != nil;
+    if (source != nil) {
+      if (!parent && [_hostDecorationLayers containsObject:layer] && layer.superlayer == nil) {
+        sourceToTarget =
+            CATransform3DMakeTranslation(layer.bounds.origin.x - source.bounds.origin.x,
+                                         layer.bounds.origin.y - source.bounds.origin.y, 0);
+      } else {
+        valid = LayerCoordinateTransform(source, layer, &sourceToTarget);
+      }
+      if (owner) {
+        sourceToTarget = PlanarTransform(CATransform3DConcat(
+            CATransform3DMakeTranslation(source.bounds.origin.x, source.bounds.origin.y, 0),
+            sourceToTarget));
+      }
+    }
+    CAShapeLayer *mask = [CAShapeLayer layer];
+    CGRect pathBounds = CGPathGetPathBoundingBox(clip.path);
+    if (!CGRectIsNull(pathBounds) && !CGRectIsEmpty(pathBounds)) {
+      if (!MaskProjectionIsFinite(CGRectInset(pathBounds, -1, -1), sourceToTarget)) valid = NO;
+    }
+    if (!valid) sourceToTarget = CATransform3DIdentity;
+    CGPathRef path = valid ? clip.path : nullptr;
+    CGPathRef empty = path == nullptr ? CGPathCreateMutable() : nullptr;
+    mask.path = path ?: empty;
+    if (empty != nullptr) CGPathRelease(empty);
+    mask.fillRule = clip.fillRule;
+    mask.fillColor = UIColor.blackColor.CGColor;
+    CATransform3D previousInverse;
+    if (!InvertPlanarTransform(previousToTarget, &previousInverse))
+      previousInverse = CATransform3DIdentity;
+    CATransform3D relative = PlanarTransform(CATransform3DConcat(sourceToTarget, previousInverse));
+    CGRect bounds = CGPathGetPathBoundingBox(mask.path);
+    if (!CGRectIsNull(bounds) && !CGRectIsEmpty(bounds)) bounds = CGRectInset(bounds, -1, -1);
+    SetMaskCoordinateSystem(mask, bounds, relative);
+    if (last == nil)
+      record.applied = mask;
+    else
+      last.mask = mask;
+    last = mask;
+    previousToTarget = sourceToTarget;
+  }
+  layer.mask = nil;
+  if (record.original != nil) {
+    // Return to target coordinates before applying its existing intrinsic mask.
+    CALayer *intrinsic = [CALayer layer];
+    intrinsic.backgroundColor = UIColor.blackColor.CGColor;
+    CGRect bounds = CGRectUnion(layer.bounds, record.original.frame);
+    CATransform3D targetToPrevious = CATransform3DInvert(previousToTarget);
+    if (!MaskProjectionIsFinite(bounds, targetToPrevious)) {
+      intrinsic.backgroundColor = UIColor.clearColor.CGColor;
+      bounds = CGRectMake(0, 0, 1, 1);
+      targetToPrevious = CATransform3DIdentity;
+    }
+    SetMaskCoordinateSystem(intrinsic, bounds, targetToPrevious);
+    intrinsic.mask = record.original;
+    last.mask = intrinsic;
+  }
+  layer.mask = record.applied;
+  [_clipMasks setObject:record forKey:layer];
+}
+
+- (void)dealloc {
+  [self reset];
 }
 
 - (BOOL)isTextServiceModeOn {
@@ -205,6 +505,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         // already represented by the host UIView. Every nested Begin is in
         // the host's local coordinate space and must be applied, including a
         // text content Begin that intentionally reuses the host text sign.
+        clip_count_stack_.push(_activeClips.count);
         bool record_offset = !sign_stack_.empty();
         sign_stack_.emplace(item.payload.begin.id);
 
@@ -216,9 +517,15 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kEnd: {
+        if (!clip_count_stack_.empty()) {
+          NSUInteger count = clip_count_stack_.top();
+          clip_count_stack_.pop();
+          [_activeClips removeObjectsInRange:NSMakeRange(count, _activeClips.count - count)];
+        }
         if (!sign_stack_.empty()) {
           sign_stack_.pop();
         }
+        if (x_stack_.empty() || y_stack_.empty()) break;
         left_offset_ -= x_stack_.top();
         x_stack_.pop();
 
@@ -257,7 +564,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           _refLayer = nil;
         }
         LynxRenderer *renderer = nil;
-        if ([refView conformsToProtocol:@protocol(LynxRendererHost)]) {
+        if ([refView respondsToSelector:@selector(renderer)]) {
           renderer = ((UIView<LynxRendererHost> *)refView).renderer;
         }
         NSNumber *refViewSign = refView.lynxSign;
@@ -268,6 +575,12 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           [renderer updateLayoutOffsetIfNeeded:CGPointMake(offset_x, offset_y)];
         } else if (legacyViewSignMatches) {
           UpdateLegacyViewLayoutOffsetIfNeeded(refView, CGPointMake(offset_x, offset_y));
+        }
+        if (renderer != nil && _activeClips.count != 0) {
+          [renderer applyParentClips:[_activeClips copy] fromLayer:_view.layer];
+          [_clippedRenderers addObject:renderer];
+        } else if (refView != nil) {
+          [self recordActiveClipsForLayer:refView.layer];
         }
         break;
       }
@@ -612,11 +925,47 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         }
         break;
       }
+      case DisplayListOpType::kClipPath: {
+        _hasDrawnContent = YES;
+        const auto &clip = item.payload.clip_path;
+        [_activeClips addObject:[self clipShapeForPath:applying_list_->GetPath(clip.path_index)
+                                              fillRule:clip.fill_rule
+                                                     x:clip.x + left_offset_
+                                                     y:clip.y + top_offset_]];
+        break;
+      }
       case DisplayListOpType::kClipRect: {
         // Following decorations belong inside the clipped host, not in below-host siblings.
         // Leave decorations emitted before this clip (such as outset shadows) outside it.
         _hasDrawnContent = YES;
+        if (sign_stack_.size() > 1) {
+          RoundedRectangle box;
+          box.SetWidth(item.payload.clip_rect.w);
+          box.SetHeight(item.payload.clip_rect.h);
+          if (item.payload.clip_rect.has_radii) {
+            box.SetRadiusXTopLeft(item.payload.clip_rect.radii[0]);
+            box.SetRadiusYTopLeft(item.payload.clip_rect.radii[1]);
+            box.SetRadiusXTopRight(item.payload.clip_rect.radii[2]);
+            box.SetRadiusYTopRight(item.payload.clip_rect.radii[3]);
+            box.SetRadiusXBottomRight(item.payload.clip_rect.radii[4]);
+            box.SetRadiusYBottomRight(item.payload.clip_rect.radii[5]);
+            box.SetRadiusXBottomLeft(item.payload.clip_rect.radii[6]);
+            box.SetRadiusYBottomLeft(item.payload.clip_rect.radii[7]);
+          }
+          CGRect rect =
+              CGRectMake(item.payload.clip_rect.x + left_offset_,
+                         item.payload.clip_rect.y + top_offset_, box.GetWidth(), box.GetHeight());
+          CAShapeLayer *clip = [CAShapeLayer layer];
+          CGPathRef path = [LynxBackgroundUtils
+              createBezierPathWithRoundedRect:rect
+                                  borderRadii:[self borderRadiiWithRoundedRectangle:box]];
+          clip.path = path;
+          CGPathRelease(path);
+          [_activeClips addObject:clip];
+          break;
+        }
         // Clear previous clip state to avoid state leakage when multiple kClipRect in same frame
+        _rootOverflowMask = nil;
         _view.layer.mask = nil;
         _view.layer.cornerRadius = 0;
         _view.layer.masksToBounds = NO;
@@ -663,6 +1012,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
             _view.layer.mask = maskLayer;
           }
         }
+        _rootOverflowMask = _view.layer.mask;
         break;
       }
       case DisplayListOpType::kRecordBox: {
@@ -831,13 +1181,22 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     previousImages = [NSMutableSet setWithArray:_contentImageViews];
     [_contentImageViews removeAllObjects];
   }
+  CAShapeLayer *ownerClip = _ownerClip;
+  NSArray<CAShapeLayer *> *parentClips = _parentClips;
+  CALayer *parentSource = _parentClipSource;
   [self reset];
+  _ownerClip = ownerClip;
+  _parentClips = parentClips;
+  _parentClipSource = parentSource;
   _previousContent = previousContent;
   _previousImageViews = previousImages;
 
+  applying_list_ = list;
   reader_ = DisplayListReader(*list);
 
   [self processContentOperations];
+  applying_list_ = nullptr;
+  [self syncHostDecorationLayers];
   [_previousImageViews makeObjectsPerformSelector:@selector(removeFromSuperview)];
   _previousImageViews = nil;
   _previousContent = nil;
@@ -855,6 +1214,22 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)reset {
+  for (LynxRenderer *renderer in _clippedRenderers) {
+    [renderer clearParentClipsFromLayer:_view.layer];
+  }
+  [_clippedRenderers removeAllObjects];
+  for (CALayer *layer in _clipMasks) {
+    [self restoreClipMaskForLayer:layer];
+  }
+  [_clipMasks removeAllObjects];
+  [_layerClips removeAllObjects];
+  [_activeClips removeAllObjects];
+  _rootOverflowMask = nil;
+  clip_count_stack_ = std::stack<NSUInteger>();
+  _ownerClip = nil;
+  _parentClips = nil;
+  _parentClipSource = nil;
+  applying_list_ = nullptr;
   _reusableContent = nil;
   _previousContent = nil;
   _previousImageViews = nil;
@@ -893,6 +1268,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)detachHostDecorationLayers {
+  [self applyParentClips:@[] fromLayer:nil];
   _hostDecorationRefLayer = nil;
   for (CALayer *layer in _hostDecorationLayers) {
     [layer removeFromSuperlayer];
@@ -919,7 +1295,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)syncHostDecorationLayers {
-  if (_view == nil || _hostDecorationLayers.count == 0) {
+  if (_view == nil) {
     return;
   }
 
@@ -929,6 +1305,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
+
+  if (_rootOverflowMask != nil && [_view isKindOfClass:[UIScrollView class]]) {
+    _rootOverflowMask.frame = hostLayer.bounds;
+  }
 
   for (CALayer *layer in _hostDecorationLayers) {
     layer.transform = CATransform3DIdentity;
@@ -945,6 +1325,15 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
     layer.filters = hostLayer.filters;
   }
 
+  [self updateClipMaskForLayer:hostLayer hostScope:YES];
+  for (CALayer *layer in _hostDecorationLayers) {
+    [self updateClipMaskForLayer:layer hostScope:YES];
+  }
+  for (CALayer *layer in _layerClips) {
+    if (layer != hostLayer && ![_hostDecorationLayers containsObject:layer]) {
+      [self updateClipMaskForLayer:layer hostScope:NO];
+    }
+  }
   [CATransaction commit];
 }
 
@@ -1191,6 +1580,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)positionImageLayer:(CALayer *)layer reused:(BOOL)reused {
+  [self recordActiveClipsForLayer:layer];
   if (reused && layer.superlayer == _view.layer) {
     NSArray<CALayer *> *layers = _view.layer.sublayers;
     NSUInteger index = _refLayer == nil ? 0 : [layers indexOfObjectIdenticalTo:_refLayer] + 1;
@@ -1214,6 +1604,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   } else {
     [_view.layer insertSublayer:layer above:_refLayer];
   }
+  [self recordActiveClipsForLayer:layer];
   [_contentLayers addObject:layer];
   _refLayer = layer;
 }
@@ -1230,6 +1621,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         [self insertHostDecorationLayer:_hostBackgroundLayer];
       }
       [_hostBackgroundLayer addSublayer:layer];
+      [self recordActiveClipsForLayer:layer];
       return;
     }
     if (op == DisplayListOpType::kFill &&
@@ -1247,6 +1639,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 }
 
 - (void)insertHostDecorationLayer:(CALayer *)layer {
+  // Shared background groups may span clip changes; their drawing children own those scopes.
+  if (layer != _hostBackgroundLayer) [self recordActiveClipsForLayer:layer];
   CALayer *hostLayer = _view.layer;
   CALayer *superLayer = hostLayer.superlayer;
   if (superLayer == nil) {
