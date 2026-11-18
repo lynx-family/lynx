@@ -2800,7 +2800,10 @@ void TemplateAssembler::FetchBundle(
         {.url = bundle_url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
   } else {
     component_loader_->FetchBundle(lazy_bundle::LynxLazyBundleRequest{
-        .url = bundle_url, .response_promise = response_promise});
+        .url = bundle_url,
+        .response_promise = response_promise,
+        .request_in_current_thread =
+            page_config_ && page_config_->GetFetchBundleInCurrentThread()});
   }
 }
 
