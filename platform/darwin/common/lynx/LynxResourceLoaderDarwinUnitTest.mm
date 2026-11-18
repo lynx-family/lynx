@@ -41,6 +41,37 @@
 
 @end
 
+@interface MockDynamicComponentFetcher : NSObject <LynxDynamicComponentFetcher>
+
+@property(nonatomic, assign) BOOL fetchedOnMainThread;
+@property(nonatomic, assign) BOOL waitForContinueSignal;
+@property(nonatomic, strong) dispatch_semaphore_t fetchStartedSemaphore;
+@property(nonatomic, strong) dispatch_semaphore_t continueSemaphore;
+
+@end
+
+@implementation MockDynamicComponentFetcher
+
+- (instancetype)init {
+  if (self = [super init]) {
+    _fetchStartedSemaphore = dispatch_semaphore_create(0);
+    _continueSemaphore = dispatch_semaphore_create(0);
+  }
+  return self;
+}
+
+- (void)loadDynamicComponent:(NSString*)url withLoadedBlock:(onComponentLoaded)block {
+  self.fetchedOnMainThread = [NSThread isMainThread];
+  dispatch_semaphore_signal(self.fetchStartedSemaphore);
+  if (self.waitForContinueSignal) {
+    dispatch_semaphore_wait(self.continueSemaphore, DISPATCH_TIME_FOREVER);
+  }
+  NSData* data = [@"unit_test_bundle" dataUsingEncoding:NSUTF8StringEncoding];
+  block(data, nil);
+}
+
+@end
+
 @interface MockLynxViewClient : NSObject <LynxViewLifecycle, LynxBackgroundRuntimeLifecycle>
 
 - (instancetype)init:(XCTestExpectation*)expectation;
@@ -119,6 +150,66 @@
     XCTAssertTrue(false);
   }
   XCTAssertTrue(future.get().length() > 0);
+}
+
+- (void)testLoadLazyBundleOffCurrentThreadWhenRequested {
+  MockDynamicComponentFetcher* fetcher = [[MockDynamicComponentFetcher alloc] init];
+  auto loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, fetcher, nil, nil);
+  auto request = lynx::pub::LynxResourceRequest{"unit_test_url",
+                                                lynx::pub::LynxResourceType::kLazyBundle, false};
+
+  std::promise<std::tuple<bool, bool, size_t>> promise;
+  std::future<std::tuple<bool, bool, size_t>> future = promise.get_future();
+  loader->LoadResource(request, [fetcher, promise = std::move(promise)](
+                                    lynx::pub::LynxResourceResponse& response) mutable {
+    promise.set_value(std::make_tuple(fetcher.fetchedOnMainThread, [NSThread isMainThread],
+                                      response.data.size()));
+  });
+
+  XCTAssertEqual(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+  auto [fetch_on_main_thread, callback_on_main_thread, response_size] = future.get();
+  XCTAssertFalse(fetch_on_main_thread);
+  XCTAssertFalse(callback_on_main_thread);
+  XCTAssertTrue(response_size > 0);
+}
+
+- (void)testOffThreadLoadKeepsLoaderAliveUntilQueuedWorkCompletes {
+  MockDynamicComponentFetcher* fetcher = [[MockDynamicComponentFetcher alloc] init];
+  fetcher.waitForContinueSignal = YES;
+  auto loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(nil, fetcher, nil, nil);
+  std::weak_ptr<lynx::shell::LynxResourceLoaderDarwin> weak_loader = loader;
+  auto request = lynx::pub::LynxResourceRequest{"unit_test_url",
+                                                lynx::pub::LynxResourceType::kLazyBundle, false};
+
+  std::promise<size_t> promise;
+  std::future<size_t> future = promise.get_future();
+  loader->LoadResource(
+      request, [promise = std::move(promise)](lynx::pub::LynxResourceResponse& response) mutable {
+        promise.set_value(response.data.size());
+      });
+
+  XCTAssertEqual(dispatch_semaphore_wait(fetcher.fetchStartedSemaphore,
+                                         dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC)),
+                 0);
+
+  loader.reset();
+  XCTAssertFalse(weak_loader.expired());
+
+  dispatch_semaphore_signal(fetcher.continueSemaphore);
+
+  XCTAssertEqual(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+  XCTAssertTrue(future.get() > 0);
+
+  // The callback can finish before the queued work releases its strong reference.
+  NSPredicate* loaderReleased =
+      [NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary* bindings) {
+        (void)evaluatedObject;
+        (void)bindings;
+        return weak_loader.expired();
+      }];
+  [self expectationForPredicate:loaderReleased evaluatedWithObject:nil handler:nil];
+  [self waitForExpectationsWithTimeout:2 handler:nil];
+  XCTAssertTrue(weak_loader.expired());
 }
 
 - (void)testReportErrorToLynxView {
