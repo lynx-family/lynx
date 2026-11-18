@@ -126,17 +126,16 @@ class PlatformEventTarget
   int32_t RootId() const { return root_id_; }
   int32_t Sign() const { return sign_; }
   int32_t RendererHostSign() const { return renderer_host_sign_; }
-  float Left() const { return left_; }
-  float Top() const { return top_; }
+  float Left() const { return Position(0, left_); }
+  float Top() const { return Position(1, top_); }
   float Width() const { return width_; }
   float Height() const { return height_; }
   PlatformRendererType GetPlatformRendererType() const {
     return platform_renderer_type_;
   }
-  bool IsScrollContainer() const { return is_scroll_container_; }
-  float ScrollOffsetX();
-  float ScrollOffsetY();
-  void RefreshScrollOffset();
+  bool IsScrollContainer() const;
+  float ScrollOffsetX() const;
+  float ScrollOffsetY() const;
   float OffsetXForCalcPosition() const { return offset_x_for_calc_position_; }
   float OffsetYForCalcPosition() const { return offset_y_for_calc_position_; }
   bool IsVisible() const { return true; }
@@ -311,8 +310,8 @@ class PlatformEventTarget
     platform_renderer_type_ = type;
   }
   void SetRendererHostSign(int32_t sign) { renderer_host_sign_ = sign; }
-  void SetScrollContainer(bool is_scroll_container) {
-    is_scroll_container_ = is_scroll_container;
+  void SetPlatformRenderer(fml::WeakPtr<PlatformRendererImpl> renderer) {
+    platform_renderer_ = std::move(renderer);
   }
   void SetOverflow(bool overflow_x, bool overflow_y) {
     overflow_x_ = overflow_x;
@@ -369,7 +368,8 @@ class PlatformEventTarget
     return *empty;
   }
 
-  void UpdateScrollOffsetIfNeeded();
+  float Position(int axis, float layout_position) const;
+  void GetScrollOffset(float offset[2]) const;
   void NormalizeEventRegionUnits(EventRegion* regions, size_t region_count);
   bool EventThroughInternal(float point[2],
                             const PlatformEventThroughConfig& config) const;
@@ -387,19 +387,18 @@ class PlatformEventTarget
   int32_t root_id_;
   int32_t sign_;
   int32_t renderer_host_sign_{-1};
+  // Display-list geometry remains the fallback when native state is absent.
   float left_{0.f};
   float top_{0.f};
   float width_{0.f};
   float height_{0.f};
   PlatformRendererType platform_renderer_type_{PlatformRendererType::kUnknown};
-  bool is_scroll_container_{false};
   bool overflow_x_{false};
   bool overflow_y_{false};
   bool is_layout_only_{false};
   base::auto_create_optional<gfx::Matrix44> transform_;
-  bool scroll_offset_updated_{false};
-  float scroll_offset_x_{0.f};
-  float scroll_offset_y_{0.f};
+  // Only targets representing their own renderer host bind this reference.
+  fml::WeakPtr<PlatformRendererImpl> platform_renderer_;
   float offset_x_for_calc_position_{0.f};
   float offset_y_for_calc_position_{0.f};
   base::auto_create_optional<base::Vector<PlatformEventName>> event_set_;

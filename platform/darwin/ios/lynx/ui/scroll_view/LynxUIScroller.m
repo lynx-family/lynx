@@ -912,6 +912,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 #pragma mark - UIScrollViewDelegate
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  [self notifyRendererPlatformStateChanged];
   if (scrollView == self.view &&
       ![scrollView respondToScrollViewDidScroll:((LynxScrollView *)scrollView).gestureConsumer]) {
     return;

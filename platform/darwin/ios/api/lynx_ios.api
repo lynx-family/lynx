@@ -3334,6 +3334,7 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer::updatePlatformExtraBundle:(id data);
   public void LynxRenderer::onRebuildSubRenderers();
   public void LynxRenderer::onSetFrame:(CGRect frame);
+  public void LynxRenderer::notifyPlatformStateChanged();
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
   public void LynxRenderer()::detachHostDecorationLayers();
@@ -3348,6 +3349,7 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer()::applyTransform:(const float *transform);
   public void LynxRenderer()::applyOpacity:(float opacity);
   public void LynxRenderer()::applyFilter:amount:(int32_t type, [amount] float amount);
+  public dispatch_block_t LynxRenderer()::platformStateChanged platformStateChanged;
 }
 
 public class LynxRendererContext : NSObject {
@@ -4648,6 +4650,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI::attachManagedLayersToView();
   public void LynxUI::detachManagedLayersFromView();
   public void LynxUI::detachView();
+  public void LynxUI()::notifyRendererPlatformStateChanged();
   public void LynxUI()::dispatchMoveToWindow:(UIWindow *window);
   public BOOL LynxUI()::containsPoint:(CGPoint point);
   public BOOL LynxUI()::containsPoint:inHitTestFrame:(CGPoint point, [inHitTestFrame] CGRect frame);

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxWeakProxy.h>
@@ -200,6 +201,7 @@ typedef NS_ENUM(NSUInteger, LynxUIRefreshState) {
     self.scrollView.frame = self.view.bounds;
     [self loadHeaderAndFooter];
   }
+  [self notifyRendererPlatformStateChanged];
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
@@ -340,6 +342,7 @@ typedef NS_ENUM(NSUInteger, LynxUIRefreshState) {
 
 - (void)refreshview:(MJRefreshComponent *)refreshview
     didUpdateShowingPrecent:(CGFloat)showingPercent {
+  [self notifyRendererPlatformStateChanged];
   // legacy API
   if (refreshview == self.scrollView.mj_header) {
     LynxCustomEvent *event =

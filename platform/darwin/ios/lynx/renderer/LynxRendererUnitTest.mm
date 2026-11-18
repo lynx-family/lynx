@@ -10,6 +10,7 @@
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
@@ -37,6 +38,27 @@
 @implementation LynxScopedRendererHost
 @end
 
+@interface LynxScopedScrollRendererHost : UIScrollView <LynxRendererHost>
+@property(nonatomic, strong) LynxRenderer* renderer;
+@property(nonatomic, strong) LynxRendererContext* rendererContext;
+@end
+
+@implementation LynxScopedScrollRendererHost
+- (instancetype)initWithRendererContext:(LynxRendererContext*)context {
+  self = [super init];
+  if (self) {
+    self.rendererContext = context;
+  }
+  return self;
+}
+- (LynxRenderer*)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext*)context {
+  return [[LynxRenderer alloc] initWithRenderHost:self andSign:sign andContext:context];
+}
+- (UIView*)view {
+  return self;
+}
+@end
+
 @implementation LynxRendererUnitTest
 
 - (void)setUp {
@@ -47,6 +69,64 @@
 - (void)tearDown {
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
+}
+
+- (void)testPlatformStateNotificationForBorrowedViews {
+  for (UIView* view in @[ [UIView new], [UIScrollView new] ]) {
+    LynxUI* ui = [[LynxUI alloc] initWithView:view];
+    id<LynxRendererHost> host = (id<LynxRendererHost>)view;
+    LynxRenderer* renderer = [[LynxRenderer alloc] initWithRenderHost:(id)view
+                                                              andSign:7
+                                                           andContext:nil];
+    host.renderer = renderer;
+    __block NSUInteger publications = 0;
+    renderer.platformStateChanged = ^{
+      ++publications;
+    };
+    [ui notifyRendererPlatformStateChanged];
+    XCTAssertEqual(publications, 1U);
+
+    host.renderer = nil;
+    [ui notifyRendererPlatformStateChanged];
+    XCTAssertEqual(publications, 1U);
+  }
+}
+
+- (void)testPlatformStatePublicationResetsScrollAndClearsCallbackOnDestruction {
+  using namespace lynx::tasm;
+  LynxComponentScopeRegistry* registry = [[LynxComponentScopeRegistry alloc] init];
+  [registry registerRendererHost:LynxScopedScrollRendererHost.class
+                        withName:@"native-state-scroll"];
+  PlatformRendererContextDarwin context(nil, nil, registry);
+  auto renderer = fml::MakeRefCounted<PlatformRendererDarwin>(
+      &context, 7, lynx::base::String("native-state-scroll"));
+  UIScrollView<LynxRendererHost>* view = (UIScrollView<LynxRendererHost>*)renderer->GetUIView();
+  auto parent =
+      fml::MakeRefCounted<PlatformRendererDarwin>(&context, 1, PlatformRendererType::kView);
+  parent->AddChild(renderer);
+  view.contentOffset = CGPointMake(12, 64);
+  [parent->GetUIView().renderer notifyPlatformStateChanged];
+  float unchanged[2];
+  renderer->GetScrollOffset(unchanged);
+  XCTAssertEqual(unchanged[1], 0);
+  [view.renderer notifyPlatformStateChanged];
+  float offset[2];
+  renderer->GetScrollOffset(offset);
+  XCTAssertEqual(offset[0], 12);
+  XCTAssertEqual(offset[1], 64);
+  XCTAssertTrue(renderer->IsScrollable());
+
+  // The final zero offset must be published, without a draw or RunLoop scan.
+  view.contentOffset = CGPointZero;
+  parent->SetTagInfo(kTagInfoPlatformPositionChildren);
+  [parent->GetUIView().renderer notifyPlatformStateChanged];
+  renderer->GetScrollOffset(offset);
+  XCTAssertEqual(offset[0], 0);
+  XCTAssertEqual(offset[1], 0);
+
+  renderer->RemoveFromParent();
+  renderer = nullptr;
+  XCTAssertNil(view.renderer.platformStateChanged);
 }
 
 - (void)testUpdateDisplayList {

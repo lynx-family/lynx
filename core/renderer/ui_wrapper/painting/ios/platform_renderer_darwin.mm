@@ -25,6 +25,34 @@ namespace tasm {
 
 namespace {
 
+UIScrollView* FindRendererScrollView(UIView* view, LynxUI* ui) {
+  if ([view isKindOfClass:[UIScrollView class]]) {
+    return (UIScrollView*)view;
+  }
+  NSString* tag = ui.tagName;
+  if ([tag isEqualToString:@"swiper"] || [tag isEqualToString:@"x-swiper"]) {
+    // Swiper wraps its collection view in an intermediate paging view.
+    for (UIView* pager in view.subviews) {
+      for (UIView* child in pager.subviews) {
+        if ([child isKindOfClass:[UICollectionView class]]) {
+          return (UIScrollView*)child;
+        }
+      }
+    }
+    return nil;
+  }
+  if (![tag isEqualToString:@"viewpager"] && ![tag isEqualToString:@"x-viewpager-ng"] &&
+      ![tag isEqualToString:@"scroll-coordinator"] && ![tag isEqualToString:@"x-foldview-ng"]) {
+    return nil;
+  }
+  for (UIView* child in view.subviews) {
+    if ([child isKindOfClass:[UIScrollView class]]) {
+      return (UIScrollView*)child;
+    }
+  }
+  return nil;
+}
+
 bool IsOverlayRendererTag(const base::String& tag) {
   return tag.IsEqual("overlay") || tag.IsEqual("x-overlay-ng");
 }
@@ -121,7 +149,90 @@ PlatformRendererDarwin::PlatformRendererDarwin(PlatformRendererContextDarwin* co
   InitializeUIView(init_data);
 }
 
-PlatformRendererDarwin::~PlatformRendererDarwin() { CleanupUIView(); }
+PlatformRendererDarwin::~PlatformRendererDarwin() {
+  GetUIView().renderer.platformStateChanged = nil;
+  CleanupUIView();
+}
+
+void PlatformRendererDarwin::SyncPlatformState() {
+  PlatformRendererState state;
+  LynxUI* ui = context_ ? [context_->GetUIOwner() findUIBySign:id_] : nil;
+  if (NeedsPlatformPosition()) {
+    state.has_position = ReadPlatformPosition(ui, state.position);
+  }
+  UIScrollView* scroll_view = FindRendererScrollView(GetUIView(), ui);
+  if (scroll_view != nil) {
+    state.scroll_offset[0] = scroll_view.contentOffset.x;
+    state.scroll_offset[1] = scroll_view.contentOffset.y;
+  }
+  state.scrollable = ui != nil ? [ui isScrollContainer] : scroll_view != nil;
+  UpdatePlatformState(state);
+}
+
+bool PlatformRendererDarwin::ReadPlatformPosition(LynxUI* ui, float position[2]) {
+  LynxUI* parent = ui.parent;
+  NSString* tag = ui.tagName;
+  NSString* parent_tag = parent.tagName;
+  const bool is_coordinator = [parent_tag isEqualToString:@"scroll-coordinator"] ||
+                              [parent_tag isEqualToString:@"x-foldview-ng"];
+  const bool is_pager_item =
+      ([tag isEqualToString:@"viewpager-item"] || [tag isEqualToString:@"x-viewpager-item-ng"]) &&
+      ([parent_tag isEqualToString:@"viewpager"] || [parent_tag isEqualToString:@"x-viewpager-ng"]);
+  const bool is_swiper_item =
+      ([tag isEqualToString:@"swiper-item"] || [tag isEqualToString:@"x-swiper-item"]) &&
+      ([parent_tag isEqualToString:@"swiper"] || [parent_tag isEqualToString:@"x-swiper"]);
+  const bool is_refresh_child =
+      [parent_tag isEqualToString:@"refresh"] || [parent_tag isEqualToString:@"x-refresh-view"];
+  if (!is_coordinator && !is_pager_item && !is_swiper_item && !is_refresh_child) {
+    return false;
+  }
+  UIView* parent_view = parent.view;
+  UIView* view = GetUIView();
+  if (parent_view == nil || view == nil) {
+    return false;
+  }
+  UIView* host_view = view;
+  CGPoint origin = CGPointZero;
+  UIScrollView* scroll_view = FindRendererScrollView(parent_view, parent);
+  bool inside_scroll_view = false;
+  // Include native wrappers, leaving contentOffset to the event tree's scroll
+  // compensation. CUI applies host transforms separately.
+  while (view != nil && view != parent_view) {
+    inside_scroll_view |= view == scroll_view;
+    CALayer* layer = view.layer;
+    CGPoint layer_position = layer.position;
+    CGPoint anchor = layer.anchorPoint;
+    CGRect bounds = view.bounds;
+    origin.x += layer_position.x - anchor.x * bounds.size.width;
+    origin.y += layer_position.y - anchor.y * bounds.size.height;
+    if (is_refresh_child && view != host_view) {
+      // Refresh reparents its header into the content scroll view. Its native
+      // scroll ancestors are not ancestors in the event tree, so include their
+      // bounds offsets here. The content host's own scrolling stays in CUI.
+      origin.x -= bounds.origin.x;
+      origin.y -= bounds.origin.y;
+    }
+    view = view.superview;
+  }
+  if (view == nil) {
+    return false;
+  }
+  if ((is_coordinator || is_swiper_item) && scroll_view == nil) {
+    return false;
+  }
+  if (is_swiper_item && !inside_scroll_view) {
+    return false;
+  }
+  if (is_coordinator && !inside_scroll_view) {
+    // Fixed children live outside the scroll view. Express their position in
+    // content coordinates so the parent's scroll compensation keeps them fixed.
+    origin.x += scroll_view.contentOffset.x;
+    origin.y += scroll_view.contentOffset.y;
+  }
+  position[0] = origin.x;
+  position[1] = origin.y;
+  return true;
+}
 
 void PlatformRendererDarwin::OnUpdateDisplayList(DisplayList display_list) {
   if (display_list.GetContentItemsSize() > 0) {
@@ -187,6 +298,7 @@ void PlatformRendererDarwin::OnUpdateAttributes(const fml::RefPtr<PropBundle>& a
     UIView<LynxRendererHost>* update_view = GetUIView();
     ApplyNativeInteractionEnabled(update_view, props);
     [[update_view renderer] updateAttributes:props];
+    [[update_view renderer] notifyPlatformStateChanged];
   }
 }
 
@@ -212,6 +324,7 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
       child_renderer->HasUIOwnerNode(child->GetId())) {
     [owner insertNode:child->GetId() toParent:GetId() atIndex:index];
     [[child_view renderer] reattachHostDecorationLayers];
+    [[child_view renderer] notifyPlatformStateChanged];
     return;
   }
 
@@ -220,6 +333,7 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
     // rendererhost parent can be a plain host view, so never attach the overlay
     // view through the normal UIKit subview path.
     [[child_view renderer] reattachHostDecorationLayers];
+    [[child_view renderer] notifyPlatformStateChanged];
     return;
   }
 
@@ -276,6 +390,7 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
     }
   }
   [[child_view renderer] reattachHostDecorationLayers];
+  [[child_view renderer] notifyPlatformStateChanged];
 }
 
 void PlatformRendererDarwin::OnRemoveFromParent(bool should_update_ui_owner) {
@@ -477,6 +592,19 @@ void PlatformRendererDarwin::InitializeRendererForView(UIView<LynxRendererHost>*
   LynxRenderer* renderer = [view createRendererWithSign:GetId()
                                              andContext:context_->GetRendererContext()];
   [view setRenderer:renderer];
+  auto weak_renderer = WeakFromThis();
+  renderer.platformStateChanged = ^{
+    if (auto* current = static_cast<PlatformRendererDarwin*>(weak_renderer.get())) {
+      fml::RefPtr<PlatformRendererDarwin> renderer(current);
+      renderer->SyncPlatformState();
+      for (const auto& child : renderer->Children()) {
+        auto* child_renderer = static_cast<PlatformRendererDarwin*>(child.get());
+        if (child_renderer->NeedsPlatformPosition()) {
+          child_renderer->SyncPlatformState();
+        }
+      }
+    }
+  };
   if (initial_props != nil) {
     ApplyNativeInteractionEnabled(view, initial_props);
     [renderer updateAttributes:initial_props];

@@ -28,7 +28,10 @@ class PlatformRendererHarmony : public PlatformRendererImpl {
                           const PlatformRendererInitConfig& init_config);
   ~PlatformRendererHarmony() override;
 
+  void SyncPlatformState();
+
  private:
+  bool ReadPlatformPosition(harmony::UIBase* ui, float position[2]);
   PlatformRendererHarmony(std::shared_ptr<harmony::LynxRendererContext> context,
                           int id, PlatformRendererType type,
                           const base::String& tag_name,

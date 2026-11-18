@@ -15,22 +15,52 @@
 namespace lynx {
 namespace tasm {
 
-float PlatformEventTarget::ScrollOffsetX() {
-  UpdateScrollOffsetIfNeeded();
-  return scroll_offset_x_;
-}
-
-float PlatformEventTarget::ScrollOffsetY() {
-  UpdateScrollOffsetIfNeeded();
-  return scroll_offset_y_;
-}
-
-void PlatformEventTarget::RefreshScrollOffset() {
-  if (!is_scroll_container_) {
-    return;
+float PlatformEventTarget::Position(int axis, float layout_position) const {
+  // Event roots already use their own coordinate system. Inline targets must
+  // retain their display-list geometry instead of adopting a host's origin.
+  if (!IsRoot() && Sign() == RendererHostSign()) {
+    if (auto* renderer = platform_renderer_.get()) {
+      float position[2];
+      if (renderer->GetPlatformPosition(position)) {
+        return position[axis];
+      }
+    }
   }
-  scroll_offset_updated_ = false;
-  UpdateScrollOffsetIfNeeded();
+  return layout_position;
+}
+
+bool PlatformEventTarget::IsScrollContainer() const {
+  switch (platform_renderer_type_) {
+    case PlatformRendererType::kScroll:
+    case PlatformRendererType::kList:
+      return true;
+    case PlatformRendererType::kExtended:
+      return platform_renderer_ && platform_renderer_->IsScrollable();
+    default:
+      return false;
+  }
+}
+
+void PlatformEventTarget::GetScrollOffset(float offset[2]) const {
+  offset[0] = 0.f;
+  offset[1] = 0.f;
+  if (IsScrollContainer()) {
+    if (auto* renderer = platform_renderer_.get()) {
+      renderer->GetScrollOffset(offset);
+    }
+  }
+}
+
+float PlatformEventTarget::ScrollOffsetX() const {
+  float offset[2];
+  GetScrollOffset(offset);
+  return offset[0];
+}
+
+float PlatformEventTarget::ScrollOffsetY() const {
+  float offset[2];
+  GetScrollOffset(offset);
+  return offset[1];
 }
 
 void PlatformEventTarget::SetTransform(const float transform[16]) {
@@ -41,20 +71,6 @@ void PlatformEventTarget::SetTransform(const float transform[16]) {
   std::array<float, 16> matrix;
   std::copy_n(transform, matrix.size(), matrix.begin());
   (*transform_).Matrix(matrix);
-}
-
-void PlatformEventTarget::UpdateScrollOffsetIfNeeded() {
-  if (scroll_offset_updated_ || !is_scroll_container_) {
-    return;
-  }
-  scroll_offset_updated_ = true;
-  if (target_helper_ == nullptr) {
-    return;
-  }
-  float offset[2] = {scroll_offset_x_, scroll_offset_y_};
-  target_helper_->GetPlatformRendererScrollOffset(sign_, offset);
-  scroll_offset_x_ = offset[0];
-  scroll_offset_y_ = offset[1];
 }
 
 float PlatformEventTarget::DistanceToTouchTarget(const float point[2]) const {

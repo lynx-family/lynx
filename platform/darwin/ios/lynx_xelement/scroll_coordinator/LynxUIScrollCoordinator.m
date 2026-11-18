@@ -5,6 +5,7 @@
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <Lynx/UIScrollView+Lynx.h>
@@ -300,6 +301,7 @@ static Class LynxScrollCoordinatorLookupClass(NSString *name) { return NSClassFr
 - (void)layoutSubviews {
   [super layoutSubviews];
   [self nestedScrollView];
+  [(LynxUIScrollCoordinator *)_uiDelegate notifyRendererPlatformStateChanged];
   [((LynxUIScrollCoordinator *)_uiDelegate).context.observer notifyScroll:nil];
 }
 
@@ -857,6 +859,7 @@ LYNX_UI_METHOD(scrollBy) {
   if (scrollView == self.scrollCoordinator &&
       ![self.scrollCoordinator
           respondToScrollViewDidScroll:self.scrollCoordinator.gestureConsumer]) {
+    [self notifyRendererPlatformStateChanged];
     return;
   }
 
@@ -868,6 +871,7 @@ LYNX_UI_METHOD(scrollBy) {
     [self.toolbar.view setFrame:toolbarFrame];
   }
   CGFloat height = self.scrollCoordinator.expandHeight;
+  [self notifyRendererPlatformStateChanged];
   if (ABS(offset - self.preOffset) >= height * self.granularity ||
       (offset != self.preOffset && (offset == 0 || ABS(offset - height) < DBL_EPSILON))) {
     [self.context.eventEmitter

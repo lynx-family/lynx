@@ -11,6 +11,7 @@
 #import <Lynx/LynxRendererHost.h>
 #import <UIKit/UIKit.h>
 
+@class LynxUI;
 @class LynxUIOwner;
 
 namespace lynx {
@@ -43,6 +44,8 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
 
   ~PlatformRendererDarwin() override;
 
+  void SyncPlatformState();
+
   // PlatformRendererImpl interface
   void OnUpdateDisplayList(DisplayList display_list) override;
   void OnUpdateAttributes(const fml::RefPtr<PropBundle>& attributes) override;
@@ -59,6 +62,7 @@ class PlatformRendererDarwin : public PlatformRendererImpl {
   virtual UIView<LynxRendererHost>* GetUIView() { return _view; }
 
  private:
+  bool ReadPlatformPosition(LynxUI* ui, float position[2]);
   bool ShouldCreatePlatformExtendedRenderer(const PlatformRendererInitConfig& init_config) const;
   bool InitializeUIOwnerRenderer(const base::String& tag_name,
                                  const fml::RefPtr<PropBundle>& init_data);

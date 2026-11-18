@@ -29,4 +29,7 @@
 
 - (void)onSetFrame:(CGRect)frame;
 
+// Publish native layout and scrolling after the host has applied the change.
+- (void)notifyPlatformStateChanged;
+
 @end

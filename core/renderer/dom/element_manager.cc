@@ -1369,6 +1369,20 @@ int32_t ElementManager::GetNodeInfoByTag(const base::String &tag_name) {
   }
   // TODO: Handle need_process_direction_ for other platform later
   int32_t result = painting_context()->GetTagInfo(tag_name.str());
+  // Classify once per tag rather than comparing tag strings on each event-tree
+  // rebuild. Platforms still decide whether a native position is available.
+  if (tag_name.IsEquals("scroll-coordinator") ||
+      tag_name.IsEquals("x-foldview-ng") || tag_name.IsEquals("refresh") ||
+      tag_name.IsEquals("x-refresh-view") || tag_name.IsEquals("swiper") ||
+      tag_name.IsEquals("x-swiper")) {
+    result |= kTagInfoPlatformPositionChildren;
+  } else if (tag_name.IsEquals("viewpager") ||
+             tag_name.IsEquals("x-viewpager-ng")) {
+    result |= kTagInfoPlatformPositionPager;
+  } else if (tag_name.IsEquals("viewpager-item") ||
+             tag_name.IsEquals("x-viewpager-item-ng")) {
+    result |= kTagInfoPlatformPositionPagerItem;
+  }
   node_info_recorder_.emplace(tag_name, result);
   return result;
 }

@@ -135,32 +135,6 @@ void NativePaintingCtxPlatformHarmonyRef::UpdateContentOffsetForListContainer(
       from_layout);
 }
 
-void NativePaintingCtxPlatformHarmonyRef::GetPlatformRendererScrollOffset(
-    int32_t sign, float offset[2]) {
-  offset[0] = 0.f;
-  offset[1] = 0.f;
-  auto renderer_context = renderer_context_.lock();
-  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
-  if (ui_owner == nullptr || ui_owner->Destroyed()) {
-    return;
-  }
-  if (auto* ui = ui_owner->FindUIBySign(sign)) {
-    offset[0] = ui->ScrollX();
-    offset[1] = ui->ScrollY();
-  }
-}
-
-bool NativePaintingCtxPlatformHarmonyRef::IsPlatformRendererScrollable(
-    int32_t sign) {
-  auto renderer_context = renderer_context_.lock();
-  auto* ui_owner = renderer_context ? renderer_context->GetUIOwner() : nullptr;
-  if (ui_owner == nullptr || ui_owner->Destroyed()) {
-    return false;
-  }
-  auto* ui = ui_owner->FindUIBySign(sign);
-  return ui != nullptr && ui->IsScrollable();
-}
-
 PlatformTextEventTargetRegions
 NativePaintingCtxPlatformHarmonyRef::GetTextEventTargetRegions(
     int32_t text_id) {

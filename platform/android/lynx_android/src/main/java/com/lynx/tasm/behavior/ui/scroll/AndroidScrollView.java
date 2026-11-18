@@ -1523,6 +1523,7 @@ public class AndroidScrollView
   }
 
   private void triggerOnScrollChanged(int l, int t, int oldl, int oldt) {
+    Renderer.notifyPlatformStateChanged(this);
     if (mOnScrollListenerList != null) {
       for (OnScrollListener listener : mOnScrollListenerList) {
         if (listener != null) {

@@ -29,6 +29,8 @@
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
+#include "core/renderer/ui_wrapper/painting/harmony/platform_renderer_harmony.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/runtime/lepus/lepus_date.h"
 #include "gfx/public/display_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/animation_info.h"
@@ -54,6 +56,36 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
+namespace {
+void SyncRendererPlatformState(PlatformRenderer* renderer) {
+  if (renderer == nullptr) {
+    return;
+  }
+  static_cast<PlatformRendererHarmony*>(renderer)->SyncPlatformState();
+  for (const auto& child : renderer->Children()) {
+    auto* child_renderer = static_cast<PlatformRendererHarmony*>(child.get());
+    if (child_renderer->NeedsPlatformPosition()) {
+      child_renderer->SyncPlatformState();
+    }
+  }
+}
+
+void SyncRendererPlatformState(UIBase* ui) {
+  static thread_local bool syncing = false;
+  if (syncing) {
+    return;
+  }
+  if (auto* context = ui->GetContext();
+      context && context->IsFragmentLayerRenderOn()) {
+    if (auto painting = context->GetNativePaintingContext()) {
+      syncing = true;
+      SyncRendererPlatformState(painting->GetPlatformRenderer(ui->Sign()));
+      syncing = false;
+    }
+  }
+}
+}  // namespace
 
 constexpr uint32_t kFlagFrameChanged = 1;
 constexpr uint32_t kFlagFrameSizeChanged = 1 << 1;
@@ -326,6 +358,15 @@ void UIBase::EventReceiver(ArkUI_NodeEvent* event) {
     return;
   }
   ui->OnNodeEvent(event);
+  const auto type = OH_ArkUI_NodeEvent_GetEventType(event);
+  if (type == NODE_EVENT_ON_AREA_CHANGE ||
+      type == NODE_SCROLL_EVENT_ON_SCROLL ||
+      type == NODE_SCROLL_EVENT_ON_DID_SCROLL ||
+      type == NODE_SWIPER_EVENT_ON_CONTENT_DID_SCROLL ||
+      type == NODE_SWIPER_EVENT_ON_CHANGE ||
+      type == NODE_REFRESH_ON_OFFSET_CHANGE) {
+    SyncRendererPlatformState(ui);
+  }
 }
 
 void UIBase::CustomEventReceiver(ArkUI_NodeCustomEvent* event) {
@@ -351,6 +392,7 @@ void UIBase::CustomEventReceiver(ArkUI_NodeCustomEvent* event) {
     ui->OnMeasure(layout_constraint);
   } else if (type == ARKUI_NODE_CUSTOM_EVENT_ON_LAYOUT) {
     ui->OnLayout();
+    if (ui->GetContext()) SyncRendererPlatformState(ui);
   } else if (type == ARKUI_NODE_CUSTOM_EVENT_ON_DRAW_BEHIND) {
     auto event_node = OH_ArkUI_NodeCustomEvent_GetNodeHandle(event);
     ArkUI_DrawContext* context =
@@ -1068,6 +1110,7 @@ void UIBase::OnNodeReady() {
   // Attribute for accessibility
   OnNodeReadyForAccessibility();
 
+  SyncRendererPlatformState(this);
   dirty_flags_ = 0;
 
   if (exposure_event_updated_) {
@@ -1459,6 +1502,12 @@ void UIBase::OnDrawBehind(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
 void UIBase::AttachFragmentLayerRenderer(
     std::shared_ptr<LynxRendererContext> context, int32_t sign) {
   fragment_clip_bounds_.reset();
+  // Native container layout can move a host without a Lynx layout update.
+  // UIRoot already owns this subscription for position-change events.
+  if (!IsRoot()) {
+    NodeManager::Instance().RegisterNodeEvent(Node(), NODE_EVENT_ON_AREA_CHANGE,
+                                              this);
+  }
   renderer_ = std::make_unique<LynxRenderer>(std::move(context), sign,
                                              weak_from_this());
   if (!CanDrawBehind() && node_type_ != ARKUI_NODE_CUSTOM) {
@@ -1468,6 +1517,10 @@ void UIBase::AttachFragmentLayerRenderer(
 }
 
 void UIBase::DetachFragmentLayerRenderer() {
+  if (renderer_ && !IsRoot()) {
+    NodeManager::Instance().UnregisterNodeEvent(Node(),
+                                                NODE_EVENT_ON_AREA_CHANGE);
+  }
   renderer_.reset();
   if (!fragment_content_clip_path_.empty()) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);

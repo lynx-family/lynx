@@ -9857,6 +9857,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public Point com.lynx.tasm.behavior.render.Renderer.getRenderOffset();
   public Rect com.lynx.tasm.behavior.render.Renderer.getLynxFrame();
   public com.lynx.tasm.behavior.render.Renderer.Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign);
+  public void com.lynx.tasm.behavior.render.Renderer.notifyPlatformStateChanged();
   public IRendererHost com.lynx.tasm.behavior.render.Renderer.getRendererHost();
   public com.lynx.tasm.behavior.LynxContext com.lynx.tasm.behavior.render.Renderer.getLynxContext();
   public LynxBaseUI com.lynx.tasm.behavior.render.Renderer.getUIHost();
@@ -9876,6 +9877,7 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public void com.lynx.tasm.behavior.render.Renderer.updateExtraData(Object extraData);
   public void com.lynx.tasm.behavior.render.Renderer.onDestroy();
   public void com.lynx.tasm.behavior.render.Renderer.applySubtreeProperties(java.nio.ByteBuffer buffer, int count);
+  public static void com.lynx.tasm.behavior.render.Renderer.notifyPlatformStateChanged(View view);
   public static Matrix com.lynx.tasm.behavior.render.Renderer.createTransformMatrix(float[] transform);
 }
 

@@ -413,8 +413,6 @@ void PlatformEventTargetExposure::DoExposureCheck() {
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY, EXPOSURE_DO_EXPOSURE_CHECK);
   auto* helper = platform_ref_->GetEventTargetHelper();
-  std::unordered_set<int32_t> refreshed_root_ids;
-  refreshed_root_ids.insert(kRootId);
   std::vector<int32_t> active_root_ids;
   for (const auto root_id : helper->GetActiveEventRootIds()) {
     active_root_ids.push_back(root_id);
@@ -423,14 +421,7 @@ void PlatformEventTargetExposure::DoExposureCheck() {
     if (helper->GetEventRootTree(root_id) == nullptr ||
         platform_ref_->IsEventTargetRootDirty(root_id)) {
       platform_ref_->EnsureEventTargetTree(root_id);
-      refreshed_root_ids.insert(root_id);
     }
-  }
-  for (const auto& it : helper->GetEventRootTrees()) {
-    if (refreshed_root_ids.count(it.first) > 0) {
-      continue;
-    }
-    helper->RefreshScrollOffsets(it.second);
   }
   float root_view_origin_on_screen[2] = {0, 0};
   helper->GetRootViewLocationOnScreen(root_view_origin_on_screen);

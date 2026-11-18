@@ -245,6 +245,7 @@ open class LynxUIRefresh(context: LynxContext?, params: Any?): UIGroup<SmartRefr
           maxDragHeight: Int
         ) {
           super.onHeaderMoving(header, isDragging, percent, offset, headerHeight, maxDragHeight)
+          Renderer.notifyPlatformStateChanged(mView)
           lynxContext?.eventEmitter?.sendCustomEvent(
             LynxDetailEvent(sign, HEADER_OFFSET).apply {
               addDetail(HEADER_OFFSET_PARAM_OFFSET_PERCENT, percent)

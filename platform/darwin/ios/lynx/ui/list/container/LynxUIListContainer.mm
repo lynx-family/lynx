@@ -741,6 +741,7 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  [self notifyRendererPlatformStateChanged];
   if (scrollView == self.view &&
       ![self.view respondToScrollViewDidScroll:self.view.gestureConsumer]) {
     return;
