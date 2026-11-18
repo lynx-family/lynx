@@ -97,10 +97,12 @@ public class CustomAccessibilityDelegateCompat extends AccessibilityDelegateComp
       final boolean isImportant = helper.isImportantForAccessibility(ui);
       final CharSequence label = ui.getAccessibilityLabel();
       final boolean isClickable = isClickableUI();
+      final boolean isSwitch = "switch".equals(ui.getAccessibilityRoleDescription());
       info.setScreenReaderFocusable(isImportant);
       info.setContentDescription(
           isImportant ? (concatA11yStatusAndLabel(ui.getAccessibilityStatus(), label)) : null);
-      info.setText(isImportant ? label : null);
+      // TalkBack reads a switch's text as its on/off state, so its label stays out of the text.
+      info.setText(isImportant && !isSwitch ? label : null);
       info.setClickable(isClickable);
       ArrayList<String> customActions = ui.getAccessibilityActions();
       if (customActions != null) {
@@ -129,6 +131,7 @@ public class CustomAccessibilityDelegateCompat extends AccessibilityDelegateComp
       setTraversalOrder(ui, info);
       setTraitsIfNeeded(ui, info);
       setRoleDescriptionIfNeeded(ui, info);
+      setTraitStatesIfNeeded(ui, info);
     }
     if (DEBUG) {
       LLog.i(TAG,
@@ -244,6 +247,25 @@ public class CustomAccessibilityDelegateCompat extends AccessibilityDelegateComp
         } else {
           info.setRoleDescription(description);
         }
+      }
+    }
+  }
+
+  /**
+   * Set the states in accessibility-traits to the node info. A switch or checkbox from
+   * accessibility-role-description is checked when its traits say "selected".
+   */
+  private void setTraitStatesIfNeeded(LynxUI ui, AccessibilityNodeInfoCompat info) {
+    if (ui != null && info != null) {
+      String description = ui.getAccessibilityRoleDescription();
+      if ("switch".equals(description) || "checkbox".equals(description)) {
+        info.setCheckable(true);
+        info.setChecked(ui.getAccessibilityTraitsSelected());
+      } else if (ui.getAccessibilityTraitsSelected()) {
+        info.setSelected(true);
+      }
+      if (ui.getAccessibilityTraitsDisabled()) {
+        info.setEnabled(false);
       }
     }
   }
