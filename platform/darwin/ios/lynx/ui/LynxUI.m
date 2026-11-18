@@ -724,6 +724,10 @@ static int64_t LynxSaturatedAddMemoryUsageBytes(int64_t lhs, int64_t rhs) {
   [self updateManagerRelated];
 }
 
+- (BOOL)asyncDisplayFromTTML {
+  return _asyncDisplayFromTTML;
+}
+
 - (void)setAsyncDisplayFromTTML:(BOOL)async {
   _asyncDisplayFromTTML = async;
 }
