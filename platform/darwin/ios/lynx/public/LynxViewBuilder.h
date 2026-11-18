@@ -11,6 +11,7 @@
 #import <Lynx/LynxCustomVsyncMonitor.h>
 #import <Lynx/LynxImageConfig.h>
 #import <Lynx/LynxViewGroup.h>
+#import <Lynx/LynxViewInsets.h>
 
 /**
  * Key for set platform config to LynxViewConfig
@@ -24,6 +25,9 @@ static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
 static NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE = @"lynx_enable_fetch_UIImage";
 
 @interface LynxViewBuilder : LynxBaseConfigurator
+
+/** Initial inset categories in screen coordinates. */
+@property(nonatomic, strong, nullable) LynxViewInsets* insets;
 
 /**
  * Disables automatic warmup of the MTS runtime pool during render setup.

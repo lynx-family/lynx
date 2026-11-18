@@ -5,6 +5,7 @@
 import { LynxTemplateRenderer } from './LynxTemplateRenderer';
 import { LynxUpdateMeta, LynxUpdateMode, MetaData, TemplateData } from './MetaData';
 import { LynxScreenMetrics } from './behavior/LynxScreenMetrics';
+import { LynxViewInsets } from './LynxViewInsets';
 import { ShadowNodeOwner } from './behavior/ShadowNodeOwner';
 import { UIOwner } from './behavior/UIOwner';
 import { TraceCategory, TraceEvent } from '../base/TraceEvent';
@@ -302,7 +303,15 @@ export class LynxContext implements IContext {
     this.lynxView?.startLynxRuntime();
   }
 
-  public updateScreenMetrics(width: number, height: number) {
+  public updateInsets(insets: LynxViewInsets): void {
+    if (this.lynxView !== undefined) {
+      this.lynxView.updateInsets(insets);
+    } else {
+      this.renderer?.updateViewInsets(insets);
+    }
+  }
+
+  public updateScreenMetrics(width: number, height: number): void {
     this.renderer?.updateScreenMetrics(width, height);
   }
 

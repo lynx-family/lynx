@@ -26,6 +26,7 @@ import com.lynx.tasm.LynxHostEnvironment;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.LynxViewClientV2.LynxResourceLoadInfo;
+import com.lynx.tasm.LynxViewInsets;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.LynxConsumer;
 import com.lynx.tasm.behavior.LynxContext;
@@ -72,6 +73,9 @@ public class LynxFrameViewTest extends TestCase {
     Field builderField = LynxTemplateRender.class.getDeclaredField("mLynxViewBuilder");
     builderField.setAccessible(true);
     builderField.set(render, builder);
+    Field insetsField = LynxTemplateRender.class.getDeclaredField("mInsets");
+    insetsField.setAccessible(true);
+    insetsField.set(render, LynxViewInsets.empty());
     Field hostEnvironmentField = LynxTemplateRender.class.getDeclaredField("mHostEnvironment");
     hostEnvironmentField.setAccessible(true);
     hostEnvironmentField.set(render,

@@ -507,6 +507,7 @@ subspec_target("UnitTests") {
     "LynxTransferManagerUnitTest.m",
     "LynxUnitTestUtils.h",
     "LynxUnitTestUtils.mm",
+    "LynxViewInsetsUnitTest.m",
     "LynxWasmFuncRegistryWasmContractUnitTest.mm",
     "base/LynxComponentStatisticUnitTest.m",
     "base/LynxFPSMonitorUnitTest.m",

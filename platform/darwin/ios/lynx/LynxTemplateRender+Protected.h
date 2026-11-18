@@ -33,6 +33,7 @@
 @class LynxSSRHelper;
 @class LynxView;
 @class LynxViewBuilder;
+@class LynxViewInsets;
 @class LynxLifecycleDispatcher;
 @class LynxLogContext;
 @class LynxViewGroup;
@@ -71,6 +72,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _isMemoryCollecting;
 
   LynxViewBuilder* _builder;
+  LynxViewInsets* _insetsSnapshot;
   LynxConfig* _config;
   LynxContext* _context;
   LynxUILayoutTick* _uilayoutTick;
@@ -136,6 +138,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (lynx::runtime::js::ModuleFactoryDarwin*)getModuleFactory;
 
 - (LynxLifecycleDispatcher*)getLifecycleDispatcher;
+
+- (void)updateNativeInsets;
 
 @end
 

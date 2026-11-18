@@ -35,6 +35,7 @@
 #import <Lynx/LynxView+Internal.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewBuilder+Internal.h>
+#import <Lynx/LynxViewInsets+Internal.h>
 #import <Lynx/LynxViewportMetrics.h>
 #import "LynxAccessibilityModule.h"
 #import "LynxBaseConfigurator+Internal.h"
@@ -172,6 +173,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       }
     }
     _builder = builder;
+    _insetsSnapshot = builder.insets ?: [LynxViewInsets empty];
     _lynxViewGroup = builder.lynxViewGroup;
     _logicExecutor = _lynxViewGroup.logicExecutor;
     if ([containerView isKindOfClass:[LynxView class]]) {
@@ -1289,6 +1291,24 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 #pragma mark - Global Props
 
+- (void)updateNativeInsets {
+  // TODO(insets): submit _insetsSnapshot to the shell and publish
+  // __InsetsChanged once the native bridge lands.
+}
+
+- (void)updateInsets:(nonnull LynxViewInsets*)insets {
+  if (![NSThread isMainThread]) {
+    NSAssert(NO, @"updateInsets must be called on the main thread.");
+    return;
+  }
+  if (!insets) {
+    [NSException raise:NSInvalidArgumentException format:@"View insets must not be nil"];
+  }
+  if (_isDestroyed || (shell_ && shell_->IsDestroyed()) || insets.categories.count == 0) return;
+  _insetsSnapshot = [(_insetsSnapshot ?: [LynxViewInsets empty]) lynx_mergingInsets:insets];
+  [self updateNativeInsets];
+}
+
 - (void)updateGlobalPropsWithDictionary:(NSDictionary<NSString*, id>*)data {
   LYNX_TRACE_SECTION_WITH_INFO(LYNX_TRACE_CATEGORY_WRAPPER, TEMPLATE_RENDER_UPDATE_GLOBAL_PROPS,
                                data);
@@ -1686,19 +1706,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     _LogE(@"Rejecting invalid Screen Metrics replacement.");
     return;
   }
-  if (shell_->IsDestroyed()) {
-    return;
-  }
-
+  if (shell_->IsDestroyed()) return;
   LynxScreenMetrics* current = [_lynxUIRenderer getScreenMetrics];
-  if (current != nil && CGSizeEqualToSize(current.screenSize, screenMetrics.screenSize) &&
-      current.scale == screenMetrics.scale) {
+  if (current && CGSizeEqualToSize(current.screenSize, screenMetrics.screenSize) &&
+      current.scale == screenMetrics.scale)
     return;
-  }
-
   shell_->UpdateScreenMetrics(screenMetrics.screenSize.width, screenMetrics.screenSize.height,
                               screenMetrics.scale);
-
   if ([_lynxUIRenderer respondsToSelector:@selector(updateScreenMetrics:)]) {
     [_lynxUIRenderer updateScreenMetrics:screenMetrics];
   } else {
@@ -2930,6 +2944,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     builder.config = self->_config;
     builder.fontScale = self->_fontScale;
     builder.colorScheme = self->_colorScheme;
+    builder.insets = self->_insetsSnapshot;
     builder.enablePreUpdateData = YES;
     builder.enableMultiAsyncThread = self->_builder.enableMultiAsyncThread;
     builder.enableLepusModule = self->_enableLepusModule;

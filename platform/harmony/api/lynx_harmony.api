@@ -187,6 +187,7 @@ export abstract class LynxNodeController extends NodeController {
 }
 
 @Component export class LynxView {
+  updateInsets(update: LynxViewInsets): void;
   initWithBuilder(builder: LynxViewBuilder): void;
   getLynxViewBuilder(): LynxViewBuilder;
   ensureTemplateRendererAndLoadTemplate(): void;
@@ -212,6 +213,7 @@ export abstract class LynxNodeController extends NodeController {
   setupExtensionModules(): void;
   public takeHeapSnapshot(outputFile: string, callback: (error?: string) => void, type: 'mts' | 'bts_page' | 'bts_vm'): void;
   public static takeBtsResidualHeapSnapshot(outputFile: string, callback: (error?: string) => void, instanceId: number): void;
+  insets?: LynxViewInsets;
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
   templateResourceFetcher?: LynxTemplateResourceFetcher;
@@ -254,6 +256,7 @@ export abstract class LynxNodeController extends NodeController {
 }
 
 export interface LynxViewBuilder {
+  insets?: LynxViewInsets;
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
   templateResourceFetcher?: LynxTemplateResourceFetcher;
@@ -343,6 +346,7 @@ export class LynxContext implements IContext {
   public pause(): void;
   public resume(): void;
   public startLynxRuntime(): void;
+  public updateInsets(insets: LynxViewInsets): void;
   public updateScreenMetrics(width: number, height: number): void;
   updateCustomData(data: Record<string, Object>): void;
   public loadTemplate(url: string, bundle: TemplateBundle, buffer: ArrayBuffer, metaData: MetaData): void;
@@ -375,6 +379,78 @@ export class LynxContext implements IContext {
   public getLynxViewClient(): LynxViewClient[] | undefined;
   aboutToDisappear(): void;
   screenMetrics(): LynxScreenMetrics;
+}
+
+export class LynxViewInsets {
+  constructor(categories: Map<LynxInsetType, LynxInsetState | null>);
+  isEmpty(): boolean;
+  get(type: LynxInsetType): LynxInsetState | undefined;
+  merge(update: LynxViewInsets): LynxViewInsets;
+  copy(): LynxViewInsets;
+  toNative(): Record<string, Object>;
+}
+
+export interface LynxInsetEdges {
+  readonly type: LynxInsetGeometryType.EDGES;
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+export interface LynxInsetRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface LynxInsetRects {
+  readonly type: LynxInsetGeometryType.RECTS;
+  readonly rects: LynxInsetRect[];
+}
+
+export interface LynxInsetCorner {
+  readonly centerX: number;
+  readonly centerY: number;
+  readonly radius: number;
+}
+
+export interface LynxInsetCorners {
+  readonly type: LynxInsetGeometryType.CORNERS;
+  readonly topLeft?: LynxInsetCorner;
+  readonly topRight?: LynxInsetCorner;
+  readonly bottomRight?: LynxInsetCorner;
+  readonly bottomLeft?: LynxInsetCorner;
+}
+
+export interface LynxInsetState {
+  readonly geometry: LynxInsetGeometry;
+  readonly visible?: boolean;
+}
+
+export enum LynxInsetType {
+  STATUS_BARS = 'statusBars'
+  NAVIGATION_BARS = 'navigationBars'
+  CAPTION_BAR = 'captionBar'
+  SYSTEM_BARS = 'systemBars'
+  SYSTEM_OVERLAYS = 'systemOverlays'
+  IME = 'ime'
+  DISPLAY_CUTOUT = 'displayCutout'
+  WATERFALL = 'waterfall'
+  ROUNDED_CORNERS = 'roundedCorners'
+  SYSTEM_GESTURES = 'systemGestures'
+  MANDATORY_SYSTEM_GESTURES = 'mandatorySystemGestures'
+  TAPPABLE_ELEMENT = 'tappableElement'
+}
+
+export enum LynxInsetGeometryType {
+  EDGES = 'edges'
+  RECTS = 'rects'
+  CORNERS = 'corners'
+}
+
+export type LynxInsetGeometry = LynxInsetEdges | LynxInsetRects | LynxInsetCorners {
 }
 
 export type SessionStorageCallback = (value: Object | undefined) => void {
