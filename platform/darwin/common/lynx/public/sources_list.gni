@@ -50,6 +50,7 @@ common_lynx_public_headers =
                     "devtool_wrapper/CustomizedMessage.h",
                     "devtool_wrapper/LynxDebugger.h",
                     "LynxScreenMetrics.h",
+                    "LynxViewInsets.h",
                     "event_report/LynxEventReporter.h",
                     "LynxUpdateMeta.h",
                     "LynxViewClientV2.h",
