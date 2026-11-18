@@ -1432,32 +1432,78 @@ void Fragment::ResetLayerProperties() {
 }
 
 void Fragment::DrawBehind(DisplayListBuilder& builder) {
-  if (custom_draw_functions_ && custom_draw_functions_->draw_behind) {
-    custom_draw_functions_->draw_behind(*this, builder);
+  const auto functions = custom_draw_functions_;
+  if (functions && functions->draw_behind) {
+    functions->draw_behind(*this, builder);
   }
 }
 
-void Fragment::DrawCustomOutsetShadow(DisplayListBuilder& builder,
-                                      const RoundedRectangle& shape,
-                                      float offset_x, float offset_y,
-                                      float blur, float spread,
-                                      uint32_t color) {
-  // The shape is also the exclusion: an outset shadow is not painted below its
-  // caster, matching DrawBoxShadow for CSS outset shadows.
-  int32_t clip_box_index = -1;
-  builder.RecordBoxModel(shape, clip_box_index);
-  int32_t shadow_box_index = -1;
-  builder.RecordBoxModel(
-      ComputeShadowBox(shape, spread, offset_x, offset_y, false),
-      shadow_box_index);
-  builder.BoxShadow(shadow_box_index, clip_box_index, color, blur,
-                    DisplayListBuilder::BoxShadowClipMode::kOutset);
-  custom_outset_shadow_drawn_ = true;
+bool Fragment::PrepareCustomOutsetShadow(const RoundedRectangle& shape,
+                                         float offset_x, float offset_y,
+                                         float spread,
+                                         RoundedRectangle* output) {
+  // Match ComputeShadowBox's float arithmetic order, including intermediates.
+  const float x = shape.GetX(), y = shape.GetY();
+  const float w = shape.GetWidth(), h = shape.GetHeight();
+  const float values[] = {x + offset_x,
+                          y + offset_y,
+                          x + w,
+                          y + h,
+                          x + w + offset_x,
+                          y + h + offset_y,
+                          x + offset_x - spread,
+                          y + offset_y - spread,
+                          x + w + offset_x + spread,
+                          y + h + offset_y + spread};
+  for (float value : values)
+    if (!std::isfinite(value)) return false;
+  const float radii[] = {
+      shape.GetRadiusXTopLeft(),     shape.GetRadiusYTopLeft(),
+      shape.GetRadiusXTopRight(),    shape.GetRadiusYTopRight(),
+      shape.GetRadiusXBottomRight(), shape.GetRadiusYBottomRight(),
+      shape.GetRadiusXBottomLeft(),  shape.GetRadiusYBottomLeft()};
+  for (float radius : radii)
+    if (!std::isfinite(radius + spread)) return false;
+  // Check the divisions and doubled minimum ComputeShadowBox actually executes.
+  // Its CSS fallback can hide overflow; custom batch preparation must reject
+  // it.
+  if (shape.HasRadius() && w > 0.f && h > 0.f) {
+    for (size_t i = 0; i < 8; i += 2) {
+      const float horizontal = radii[i] / w;
+      const float vertical = radii[i + 1] / h;
+      const float minimum = std::min(horizontal, vertical);
+      const float coverage = 2.f * minimum;
+      if (!std::isfinite(horizontal) || !std::isfinite(vertical) ||
+          !std::isfinite(minimum) || !std::isfinite(coverage))
+        return false;
+    }
+  }
+  if (!std::isfinite(values[8] - values[6]) ||
+      !std::isfinite(values[9] - values[7]))
+    return false;
+  auto shadow = ComputeShadowBox(shape, spread, offset_x, offset_y, false);
+  const float derived[] = {shadow.GetX(),
+                           shadow.GetY(),
+                           shadow.GetWidth(),
+                           shadow.GetHeight(),
+                           shadow.GetRadiusXTopLeft(),
+                           shadow.GetRadiusYTopLeft(),
+                           shadow.GetRadiusXTopRight(),
+                           shadow.GetRadiusYTopRight(),
+                           shadow.GetRadiusXBottomRight(),
+                           shadow.GetRadiusYBottomRight(),
+                           shadow.GetRadiusXBottomLeft(),
+                           shadow.GetRadiusYBottomLeft()};
+  for (float value : derived)
+    if (!std::isfinite(value)) return false;
+  *output = std::move(shadow);
+  return true;
 }
 
 void Fragment::DrawForeground(DisplayListBuilder& builder) {
-  if (custom_draw_functions_ && custom_draw_functions_->draw_foreground) {
-    custom_draw_functions_->draw_foreground(*this, builder);
+  const auto functions = custom_draw_functions_;
+  if (functions && functions->draw_foreground) {
+    functions->draw_foreground(*this, builder);
   }
 }
 
@@ -1469,8 +1515,9 @@ void Fragment::DrawLayerProperties(DisplayListBuilder& builder) {
   DrawTransform(builder);
   DrawOpacity(builder);
   DrawFilter(builder);
-  if (HasCustomLayerProperties()) {
-    custom_draw_functions_->draw_layer_properties(*this, builder);
+  const auto functions = custom_draw_functions_;
+  if (functions && functions->draw_layer_properties) {
+    functions->draw_layer_properties(*this, builder);
   }
   element()->EndCustomLayerTransformUpdate();
 }
