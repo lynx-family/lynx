@@ -19,7 +19,9 @@ import android.widget.LinearLayout;
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.AccessibilityDelegateCompat;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.JavaOnlyArray;
@@ -174,6 +176,22 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public boolean isScrollContainer() {
     return true;
+  }
+
+  @Override
+  protected void initAccessibilityDelegate() {
+    super.initAccessibilityDelegate();
+    if (mView != null) {
+      ViewCompat.setAccessibilityDelegate(mView, new AccessibilityDelegateCompat() {
+        @Override
+        public void onInitializeAccessibilityNodeInfo(View host, AccessibilityNodeInfoCompat info) {
+          super.onInitializeAccessibilityNodeInfo(host, info);
+          // Lets screen readers say "in list, 5 items".
+          info.setCollectionInfo(
+              AccessibilityNodeInfoCompat.CollectionInfoCompat.obtain(mItemKeys.size(), 1, false));
+        }
+      });
+    }
   }
 
   @Override
@@ -1375,7 +1393,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
-  private int getIndexFromItemKey(String itemKey) {
+  public int getIndexFromItemKey(String itemKey) {
     if (TextUtils.isEmpty(itemKey) || !mItemKeyMap.containsKey(itemKey)) {
       return -1;
     }
