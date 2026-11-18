@@ -17,6 +17,8 @@ fiber_shared_sources = [
   "compose_graphics_layer.cc",
   "compose_graphics_layer.h",
   "compose_modifier_applicator.h",
+  "compose_offset_placement.cc",
+  "compose_offset_placement.h",
   "custom_layout.cc",
   "custom_layout.h",
   "element_template_instance.cc",

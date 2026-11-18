@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/compose_offset_placement.h"
 #include "core/renderer/dom/fiber/custom_layout.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -168,7 +169,15 @@ std::optional<LayoutResult> ComposeElementHandle::MeasureText(
       static_cast<float>(css_baseline)};
 }
 
-ComposeElementHandle::~ComposeElementHandle() { ClearCustomLayout(); }
+ComposeElementHandle::~ComposeElementHandle() {
+  ClearPlacementOffsets();
+  ClearCustomLayout();
+}
+
+void ComposeElementHandle::ClearPlacementOffsets() {
+  for (const auto& placement : placement_offsets_) placement->Detach();
+  placement_offsets_.clear();
+}
 
 void ComposeElementHandle::ClearCustomLayout() {
   if (!custom_layout_) return;
@@ -192,6 +201,8 @@ void ComposeElementHandle::ClearCustomLayout() {
 }
 
 void ComposeElementHandle::visitor(void* rt, void* func, uint64_t trace_tool) {
+  for (const auto& placement : placement_offsets_)
+    placement->visitor(rt, func, trace_tool);
   if (custom_layout_) custom_layout_->visitor(rt, func, trace_tool);
   content_element_->visitor(rt, func, trace_tool);
 }

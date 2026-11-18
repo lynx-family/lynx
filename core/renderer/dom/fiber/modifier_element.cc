@@ -23,6 +23,7 @@
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_graphics_layer.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/dom/fiber/compose_offset_placement.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/events/closure_event_listener.h"
@@ -150,6 +151,7 @@ struct ModifierFramePlan {
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
   bool has_offset{false};
+  bool has_placement_offsets{false};
   bool has_size_range{false};
   bool has_wrap_content{false};
   base::flex_optional<bool> weight_fill;
@@ -301,6 +303,15 @@ bool ParseLayoutOperation(const lepus::Value& node,
       }
       return true;
     case kModifierOpOffset:
+      if (auto resolve = node.GetProperty(kResolve).ToLepusValue();
+          !resolve.IsEmpty() && !resolve.IsNil() && !resolve.IsUndefined()) {
+        if (!resolve.IsCallable()) {
+          *error = "offset resolve should be callable";
+          return false;
+        }
+        operation->callback = resolve;
+        return true;
+      }
       if (!ReadFiniteNumberProperty(node, kX, &values[0]) ||
           !ReadFiniteNumberProperty(node, kY, &values[1]) ||
           std::abs(values[0]) > std::numeric_limits<float>::max() ||
@@ -635,6 +646,8 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
                operation.op == kModifierOpSizeRange) {
       plan->has_size_range |= operation.op == kModifierOpSizeRange;
       plan->has_offset |= operation.op == kModifierOpOffset;
+      plan->has_placement_offsets |=
+          operation.op == kModifierOpOffset && operation.callback.IsCallable();
       ++plan->frame_count;
       sizing_prefix_axes = 0;
     }
@@ -858,6 +871,7 @@ void ApplyLayoutOperation(const ModifierOperation& operation,
       break;
     }
     case kModifierOpOffset: {
+      if (operation.callback.IsCallable()) break;
       const auto& env = carrier->element_manager()->GetLynxEnvConfig();
       const auto offset_value = [&env](double value) {
         // Round Dp in device pixels before CSS resolves the logical inset.
@@ -1461,6 +1475,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     }
   }
   // Reject unsupported plans before changing any active callbacks or nodes.
+  if (plan.has_placement_offsets && !registration_context) {
+    return {false, 0, "offset resolve requires a registering runtime"};
+  }
   if (plan.has_attachments && !registration_context) {
     return {false, 0, "Modifier attachment requires a registering runtime"};
   }
@@ -1476,11 +1493,31 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   // Remove old bindings before updating the chain, including any binding on
   // the content Element that will be reused by the new plan.
   ClearModifierDrawCallbacks(previous_mount_root.get(), content_element.get());
+  handle->ClearPlacementOffsets();
 
   auto mount_root = InstallModifierFramePlan(
       plan, content_element.get(), previous_mount_root.get(),
       registration_context, manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
+  if (plan.has_placement_offsets) {
+    base::Vector<fml::RefPtr<ModifierElement>> placement_frames;
+    for (auto* target = handle->mount_root().get();
+         target != content_element.get(); target = target->GetChildAt(0)) {
+      placement_frames.emplace_back(static_cast<ModifierElement*>(target));
+    }
+    for (const auto& operation : plan.operations) {
+      if (operation.op == kModifierOpOffset &&
+          operation.callback.IsCallable()) {
+        auto* carrier =
+            LayoutCarrierAt(operation.carrier_index + 1, content_element.get(),
+                            placement_frames);
+        auto placement = std::make_shared<ComposeOffsetPlacement>(
+            *carrier, *registration_context, operation.callback);
+        placement->Attach();
+        handle->placement_offsets_.push_back(std::move(placement));
+      }
+    }
+  }
   if (plan.has_attachments) {
     BindModifierAttachments(plan, handle->mount_root().get(),
                             content_element.get(), registration_context);
