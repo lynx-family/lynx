@@ -7389,10 +7389,35 @@ public class com::lynx::tasm::service::ILynxTrailService::LynxTrailValueLayer : 
   public Map< String, String > com.lynx.tasm.service.ILynxTrailService.LynxTrailValueLayer.getValues();
 }
 
-public interface com::lynx::tasm::LynxTransferListener {
-  public boolean com.lynx.tasm.LynxTransferListener.onCreate(@NonNull String id, @NonNull View view, @Nullable ReadableMap dataset);
-  public void com.lynx.tasm.LynxTransferListener.onDatasetUpdate(@NonNull String id, @Nullable ReadableMap dataset);
-  public void com.lynx.tasm.LynxTransferListener.onRemove(@NonNull String id, @NonNull View view);
+public class abstract com::lynx::tasm::transfer::LynxTransferClient :  {
+  public void com.lynx.tasm.transfer.LynxTransferClient.onLoadStart(@NonNull LynxTransferredView view);
+  public void com.lynx.tasm.transfer.LynxTransferClient.onLoadSuccess(@NonNull LynxTransferredView view);
+  public void com.lynx.tasm.transfer.LynxTransferClient.onFirstScreen(@NonNull LynxTransferredView view);
+  public void com.lynx.tasm.transfer.LynxTransferClient.onReleased(@NonNull LynxTransferredView view, @NonNull TransferReleaseReason reason);
+}
+
+public interface com::lynx::tasm::transfer::LynxTransferListener {
+  public boolean com.lynx.tasm.transfer.LynxTransferListener.onCreate(@NonNull String id, @NonNull View view, @Nullable ReadableMap dataset);
+  public void com.lynx.tasm.transfer.LynxTransferListener.onDatasetUpdate(@NonNull String id, @Nullable ReadableMap dataset);
+  public void com.lynx.tasm.transfer.LynxTransferListener.onRemove(@NonNull String id, @NonNull View view);
+}
+
+public class com::lynx::tasm::transfer::LynxTransferManager :  {
+  public LynxTransferredView com.lynx.tasm.transfer.LynxTransferManager.loadTransfer(LynxView owner, String componentName, ReadableMap initialProps);
+  public LynxTransferredView com.lynx.tasm.transfer.LynxTransferManager.loadTransfer(LynxView owner, String componentName, ReadableMap initialProps, @Nullable LynxTransferClient client);
+  public void com.lynx.tasm.transfer.LynxTransferManager.releaseTransferredView(String id);
+  public void com.lynx.tasm.transfer.LynxTransferManager.clearTransferredViews();
+  public void com.lynx.tasm.transfer.LynxTransferManager.registerTransferListener(@NonNull LynxTransferListener listener);
+  public void com.lynx.tasm.transfer.LynxTransferManager.unregisterTransferListener(@NonNull LynxTransferListener listener);
+  public boolean com.lynx.tasm.transfer.LynxTransferManager.dispatchTransferCreate( @NonNull String id, @NonNull UITransfer owner, @NonNull View view);
+  public void com.lynx.tasm.transfer.LynxTransferManager.dispatchTransferDatasetUpdate(@NonNull View view, @Nullable ReadableMap dataset);
+  public void com.lynx.tasm.transfer.LynxTransferManager.dispatchTransferRemove(@NonNull String id, @NonNull View view);
+  public void com.lynx.tasm.transfer.LynxTransferManager.clearTransfers();
+}
+
+public class com::lynx::tasm::transfer::LynxTransferredView : FrameLayout {
+  public void com.lynx.tasm.transfer.LynxTransferredView.setProps(@NonNull ReadableMap nextProps);
+  public void com.lynx.tasm.transfer.LynxTransferredView.release();
 }
 
 public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.behavior.ui.LynxBaseUI, com.lynx.tasm.behavior.ui.IProcessViewInfoHook {
@@ -7789,6 +7814,10 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public int com.lynx.tasm.LynxView.getLynxViewId();
   public void com.lynx.tasm.LynxView.initWithLynxViewBuilder(LynxViewBuilder builder);
   public LynxContext com.lynx.tasm.LynxView.getLynxContext();
+  public LynxTransferredView com.lynx.tasm.LynxView.loadTransfer( @NonNull String componentName, @NonNull ReadableMap initialProps);
+  public LynxTransferredView com.lynx.tasm.LynxView.loadTransfer(@NonNull String componentName, @NonNull ReadableMap initialProps, @Nullable LynxTransferClient client);
+  public void com.lynx.tasm.LynxView.dispatchTransferEvent(String type, JavaOnlyMap data);
+  public void com.lynx.tasm.LynxView.releaseTransferredView(String id);
   public void com.lynx.tasm.LynxView.registerTransferListener(@NonNull LynxTransferListener listener);
   public void com.lynx.tasm.LynxView.unregisterTransferListener(@NonNull LynxTransferListener listener);
   public boolean com.lynx.tasm.LynxView.dispatchTransferCreate( @NonNull String id, @NonNull UITransfer owner, @NonNull View view);
@@ -11040,6 +11069,16 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
 }
 
 public class com::lynx::tasm::base::trace::TraceEventDef :  {
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_LOAD TRANSFER_LOAD;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_SET_PROPS TRANSFER_SET_PROPS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_CREATE TRANSFER_CREATE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_DISPOSE TRANSFER_DISPOSE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_REMOVE TRANSFER_REMOVE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_CONSTRAINTS_APPLY TRANSFER_CONSTRAINTS_APPLY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_MEASURE TRANSFER_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_ALIGN TRANSFER_ALIGN;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_RESOLVE_SIZE TRANSFER_RESOLVE_SIZE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_LAYOUT TRANSFER_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_MEASURE LYNX_VIEW_ON_MEASURE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_LAYOUT LYNX_VIEW_ON_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_DRAW LYNX_VIEW_ON_DRAW;
@@ -11219,11 +11258,22 @@ public class com::lynx::tasm::behavior::ui::transfer::TransferHostView : com.lyn
   public void com.lynx.tasm.behavior.ui.transfer.TransferHostView.removeAllViews();
 }
 
+public enum com::lynx::tasm::transfer::TransferReleaseReason {
+  public com.lynx.tasm.transfer.TransferReleaseReason.EXPLICIT_RELEASE EXPLICIT_RELEASE;
+  public com.lynx.tasm.transfer.TransferReleaseReason.OWNER_DESTROY OWNER_DESTROY;
+  public com.lynx.tasm.transfer.TransferReleaseReason.LOAD_FAILED LOAD_FAILED;
+}
+
 public class com::lynx::tasm::behavior::ui::transfer::TransferShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
   public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.attachNativePtr(long ptr);
   public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.updateHostConstraints(float width, MeasureMode widthMode, float height, MeasureMode heightMode);
   public MeasureResult com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.measure(MeasureParam param, MeasureContext context);
   public void com.lynx.tasm.behavior.ui.transfer.TransferShadowNode.align(AlignParam param, AlignContext context);
+}
+
+public class com::lynx::tasm::base::trace::TransferTrace :  {
+  public static void com.lynx.tasm.base.trace.TransferTrace.begin(String stage, int instanceId, @Nullable String transferId, int nodeId);
+  public static void com.lynx.tasm.base.trace.TransferTrace.end(String stage);
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {

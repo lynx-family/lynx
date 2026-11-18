@@ -184,6 +184,10 @@
   [self.transferManager dispatchTransferDatasetUpdate:view dataset:dataset];
 }
 
+- (void)dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView*)view {
+  [self.transferManager dispatchTransferIntrinsicContentSizeChange:view];
+}
+
 - (void)dispatchTransferRemove:(NSString*)transferId view:(UIView*)view {
   [self.transferManager dispatchTransferRemove:transferId view:view];
 }

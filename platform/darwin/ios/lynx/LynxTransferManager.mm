@@ -5,6 +5,7 @@
 #import "LynxTransferManager.h"
 
 #import <Lynx/LynxTransferListener.h>
+#import <Lynx/LynxTransferWrapperView.h>
 
 @interface LynxTransferRecord : NSObject
 
@@ -115,6 +116,14 @@
   record.dataset = dataset;
   if (record.listener != nil && [self.transferListeners containsObject:record.listener]) {
     [record.listener onDatasetUpdate:record.transferId dataset:dataset];
+  }
+}
+
+- (void)dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView*)view {
+  LynxTransferRecord* record = self.activeTransfers[[self transferKeyForView:view]];
+  if (record.listener != nil && [self.transferListeners containsObject:record.listener] &&
+      [record.listener respondsToSelector:@selector(transferViewDidChangeIntrinsicContentSize:)]) {
+    [record.listener transferViewDidChangeIntrinsicContentSize:view];
   }
 }
 
