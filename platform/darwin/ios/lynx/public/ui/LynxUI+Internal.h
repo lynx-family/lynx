@@ -111,6 +111,7 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
                         callback:(LynxUIMethodCallbackBlock)callback;
 
 /// Fixme: give internal LynxUI subclass a way to disable async-display
+- (BOOL)asyncDisplayFromTTML;
 - (void)setAsyncDisplayFromTTML:(BOOL)async;
 
 - (void)updateFrameWithoutLayoutAnimation:(CGRect)frame

@@ -4659,6 +4659,7 @@ public class LynxUI : <__covariant V UIView> {
   public BOOL LynxUI()::enableExposureUIMargin();
   public void LynxUI()::setImplicitAnimation();
   public void LynxUI()::scrollIntoViewWithSmooth:blockType:inlineType:callback:(BOOL isSmooth, [blockType] NSString *blockType, [inlineType] NSString *inlineType, [callback] LynxUIMethodCallbackBlock callback);
+  public BOOL LynxUI()::asyncDisplayFromTTML();
   public void LynxUI()::setAsyncDisplayFromTTML:(BOOL async);
   public void LynxUI()::updateFrameWithoutLayoutAnimation:withPadding:border:margin:(CGRect frame, [withPadding] UIEdgeInsets padding, [border] UIEdgeInsets border, [margin] UIEdgeInsets margin);
   public void LynxUI()::onLayoutAnimationStart:(CGRect frame);
