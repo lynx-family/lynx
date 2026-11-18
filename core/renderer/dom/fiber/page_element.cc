@@ -64,6 +64,7 @@ void PageElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
+  screen_origin_ = {0.f, 0.f};
   /** CAUTION: SetFiberPageElement must be called before the
    * base class's AttachToElementManager because AttachToElementManager calls
    * element_manager_->node_manager()->Record(id_, this), while
