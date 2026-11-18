@@ -4,6 +4,8 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_GENERIC_RESOURCE_FETCHER_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_GENERIC_RESOURCE_FETCHER_CAPI_H_
 
+#include <stdbool.h>
+
 #include "lynx_export.h"
 #include "lynx_resource_request_capi.h"
 #include "lynx_resource_response_capi.h"

@@ -12,6 +12,8 @@
 #ifndef BASE_INCLUDE_VALUE_LYNX_VALUE_TYPES_H_
 #define BASE_INCLUDE_VALUE_LYNX_VALUE_TYPES_H_
 
+#include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -19,7 +21,12 @@
 
 typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_ref) * lynx_value_ref;
 
+#ifdef __cplusplus
 typedef enum : uint8_t {
+#else
+typedef uint8_t lynx_value_type;
+enum {
+#endif
   lynx_value_null,
   lynx_value_undefined,
   lynx_value_bool,
@@ -38,7 +45,11 @@ typedef enum : uint8_t {
   lynx_value_function_table,
   lynx_value_external,  // external raw pointer
   lynx_value_extended,
+#ifdef __cplusplus
 } lynx_value_type;
+#else
+};
+#endif
 
 #define LYNX_VALUE_BASE_STORAGE_DEFINITION \
   union {                                  \
@@ -50,6 +61,8 @@ typedef enum : uint8_t {
     uint64_t val_uint64;                   \
     lynx_value_ptr val_ptr;                \
   };
+
+typedef struct lynx_value lynx_value;
 
 struct lynx_value {
   LYNX_VALUE_BASE_STORAGE_DEFINITION

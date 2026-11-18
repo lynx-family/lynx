@@ -20,6 +20,28 @@ TEST(LynxTemplateData, Null) {
   lynx_template_data_release(template_data);
 }
 
+TEST(LynxTemplateData, CreateFromValueRetainsInput) {
+  auto value = lynx::lepus::Dictionary::Create();
+  value->SetValue("key", lynx::lepus::Value("value"));
+  lynx::lepus::Value input(std::move(value));
+  lynx_template_data_t* template_data =
+      lynx_template_data_create_from_value(input.value());
+  input = lynx::lepus::Value();
+
+  ASSERT_NE(template_data, nullptr);
+  EXPECT_EQ(template_data->template_data->GetValue()
+                .GetProperty(lynx::base::String("key"))
+                .StdString(),
+            "value");
+  lynx_template_data_release(template_data);
+}
+
+TEST(LynxTemplateData, RejectsExtendedValueWithoutEnvironment) {
+  lynx_value value{};
+  value.type = lynx_value_extended;
+  EXPECT_EQ(lynx_template_data_create_from_value(value), nullptr);
+}
+
 TEST(LynxTemplateData, ProcessorName) {
   lynx_template_data_t* template_data =
       lynx_template_data_create_from_json(nullptr);
