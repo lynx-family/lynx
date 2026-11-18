@@ -10,6 +10,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -1795,6 +1796,8 @@ class Element : public lepus::RefCounted,
 
   void ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
                                    const tasm::CSSValue& value);
+  void RecordSimpleStyleDirection(const tasm::CSSValue& value);
+  void CommitSimpleStyleDirection();
   void ApplySimpleStylesWithoutTail(const tasm::StyleMap& style_map);
   void ApplyDynamicSimpleStylesWithoutTail(
       const tasm::StyleMap& dynamic_style_map,
@@ -2222,6 +2225,7 @@ class Element : public lepus::RefCounted,
   // Should be set to true if related platform node need process direction to
   // work properly in RTL mode
   bool need_process_direction_{false};
+  std::optional<starlight::DirectionType> simple_style_direction_;
 
   // enable_component_layout_only_ & enable_extended_layout_only_opt_
   // optimization is enabled by default in Fiber Arch.

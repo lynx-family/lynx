@@ -20,6 +20,10 @@ using DynamicStyleObjectRef = fml::RefPtr<DynamicStyleObject>;
 
 class SimpleStyleNode {
  public:
+  // Declare direction when the node is created. Later updates may change its
+  // effective value, including dynamic overrides, but cannot add or remove it.
+  // Direction changes are applied after the complete style batch is resolved.
+  // Nodes without the declaration use original property IDs without conversion.
   SimpleStyleNode() = default;
   virtual ~SimpleStyleNode() = default;
   virtual void SetStyleObjects(
