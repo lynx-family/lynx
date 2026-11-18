@@ -9,6 +9,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxView;
+import com.lynx.tasm.base.trace.TraceEventDef;
+import com.lynx.tasm.base.trace.TransferTrace;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
@@ -152,11 +154,20 @@ public class UITransfer extends UIGroup<TransferHostView> {
     mHostWidthMode = widthMode;
     mHostHeight = height;
     mHostHeightMode = heightMode;
+    final String transferId = mTransferId;
     mContext.findShadowNodeAndRunTask(getSign(), (ShadowNode node) -> {
+      TransferTrace.begin(TraceEventDef.TRANSFER_CONSTRAINTS_APPLY, mContext.getInstanceId(),
+          transferId, getSign());
       if (node instanceof TransferShadowNode) {
-        ((TransferShadowNode) node)
-            .updateHostConstraints(mHostWidth, mHostWidthMode, mHostHeight, mHostHeightMode);
+        ((TransferShadowNode) node).updateHostConstraints(width, widthMode, height, heightMode);
+        // External onMeasure can run after LynxView was measured in the same traversal.
+        // Schedule its normal measure pass after that traversal to consume the new input.
+        LynxView lynxView = mContext.getLynxView();
+        if (lynxView != null) {
+          lynxView.post(lynxView::requestLayout);
+        }
       }
+      TransferTrace.end(TraceEventDef.TRANSFER_CONSTRAINTS_APPLY);
     });
   }
 }

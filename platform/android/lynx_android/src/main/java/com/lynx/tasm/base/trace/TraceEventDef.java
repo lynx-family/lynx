@@ -7,6 +7,36 @@ import androidx.annotation.RestrictTo;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class TraceEventDef {
+  /** @trace_description: Notify load start and dispatch the managed transfer's create command. */
+  public static final String TRANSFER_LOAD = "LynxTransfer.Load";
+  /** @trace_description: Dispatch a managed-transfer props update. */
+  public static final String TRANSFER_SET_PROPS = "LynxTransfer.SetProps";
+  /** @trace_description: Dispatch a props update that keeps the frontend instance state. */
+  public static final String TRANSFER_UPDATE = "LynxTransfer.Update";
+  /** @trace_description: Dispatch a props update that asks the frontend to drop its state. */
+  public static final String TRANSFER_RELOAD = "LynxTransfer.Reload";
+  /** @trace_description: Route a native transfer to its managed container or accepting listener. */
+  public static final String TRANSFER_CREATE = "LynxTransfer.Create";
+  /**
+   * @trace_description: Invalidate a managed handle and clear its content on release or cleanup.
+   */
+  public static final String TRANSFER_DISPOSE = "LynxTransfer.Dispose";
+  /** @trace_description: Detach native content when the frontend transfer node is removed. */
+  public static final String TRANSFER_REMOVE = "LynxTransfer.Remove";
+  /** @trace_description: Apply host constraints to the shadow node on the layout thread. */
+  public static final String TRANSFER_CONSTRAINTS_APPLY = "LynxTransfer.HostConstraints.Apply";
+  /** @trace_description: Measure shadow children using the external host's constraints. */
+  public static final String TRANSFER_MEASURE = "LynxTransfer.Measure";
+  /**
+   * @trace_description: Compute shadow child positions independently of the zero-sized placeholder.
+   */
+  public static final String TRANSFER_ALIGN = "LynxTransfer.Align";
+  /** @trace_description: Measure Android child views and resolve the external wrapper's size. */
+  public static final String TRANSFER_RESOLVE_SIZE = "LynxTransfer.ResolveSize";
+  /**
+   * @trace_description: Apply child frames within the external Android wrapper on the UI thread.
+   */
+  public static final String TRANSFER_LAYOUT = "LynxTransfer.Layout";
   /**
    * @trace_description: LynxView's onMeasure function, it is triggered by the Android system.
    */
