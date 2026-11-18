@@ -208,8 +208,13 @@ class PlatformEventTarget
   fml::RefPtr<PlatformEventTarget> HitTest(
       float point[2], HitTestMode mode = HitTestMode::kDefault,
       HitTestTargets* targets = nullptr);
+  // Minimum dimensions are physical pixels. Scalar callers expand both axes.
   void SetMinimumTouchTargetSize(float size_px) {
-    minimum_touch_target_px_ = size_px;
+    SetMinimumTouchTargetSize(size_px, size_px);
+  }
+  void SetMinimumTouchTargetSize(float width_px, float height_px) {
+    minimum_touch_target_px_ = width_px;
+    minimum_touch_target_height_px_ = height_px;
   }
   void SetShareTouchTarget(bool share) { share_touch_target_ = share; }
   bool ShouldHitTest() const;
@@ -434,8 +439,9 @@ class PlatformEventTarget
   base::auto_create_optional<std::string> exposure_id_;
   base::auto_create_optional<std::string> exposure_scene_;
   base::auto_create_optional<lepus::Value> dataset_;
-  // A negative size leaves this Element out of registered-target hit testing.
+  // A negative dimension excludes this Element from registered-target hits.
   float minimum_touch_target_px_{-1.f};
+  float minimum_touch_target_height_px_{-1.f};
   bool share_touch_target_{false};
 
   // event/expose target tree

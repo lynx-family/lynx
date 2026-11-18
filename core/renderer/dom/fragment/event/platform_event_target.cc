@@ -58,15 +58,16 @@ void PlatformEventTarget::UpdateScrollOffsetIfNeeded() {
 }
 
 float PlatformEventTarget::DistanceToTouchTarget(const float point[2]) const {
-  if (minimum_touch_target_px_ < 0.f || !ShouldHitTest() ||
-      PointerEvents() == LynxPointerEventsValue::kNone) {
+  if (minimum_touch_target_px_ < 0.f || minimum_touch_target_height_px_ < 0.f ||
+      !ShouldHitTest() || PointerEvents() == LynxPointerEventsValue::kNone) {
     return std::numeric_limits<float>::infinity();
   }
   // Minimum target sizes are physical pixels; geometry uses platform units.
-  const float minimum = minimum_touch_target_px_ /
-                        target_helper_->GetPhysicalPixelsPerLayoutUnit();
-  const float padding_x = std::max(0.f, minimum - Width()) / 2;
-  const float padding_y = std::max(0.f, minimum - Height()) / 2;
+  const float scale = target_helper_->GetPhysicalPixelsPerLayoutUnit();
+  const float padding_x =
+      std::max(0.f, minimum_touch_target_px_ / scale - Width()) / 2;
+  const float padding_y =
+      std::max(0.f, minimum_touch_target_height_px_ / scale - Height()) / 2;
   if (point[0] < -padding_x || point[0] >= Width() + padding_x ||
       point[1] < -padding_y || point[1] >= Height() + padding_y) {
     return std::numeric_limits<float>::infinity();
