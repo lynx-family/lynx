@@ -42,17 +42,17 @@ LYNX_REGISTER_SHADOW_NODE("transfer-view")
   _hostWidthMode = widthMode;
   _hostHeight = height;
   _hostHeightMode = heightMode;
-  [self setNeedsLayout];
+  // A new host input must invalidate cached measurement even during an in-flight layout.
+  [self internalSetNeedsLayoutForce];
 }
 
 - (MeasureResult)customMeasureLayoutNode:(MeasureParam*)param
                           measureContext:(MeasureContext*)context {
-  MeasureParam* childParam = [[MeasureParam alloc]
-      initWithWidth:(_hostWidthMode == LynxMeasureModeIndefinite ? param.width : _hostWidth)
-          WidthMode:(_hostWidthMode == LynxMeasureModeIndefinite ? param.widthMode : _hostWidthMode)
-             Height:(_hostHeightMode == LynxMeasureModeIndefinite ? param.height : _hostHeight)
-         HeightMode:(_hostHeightMode == LynxMeasureModeIndefinite ? param.heightMode
-                                                                  : _hostHeightMode)];
+  // Undefined remains undefined; the owning tree supplies no percentage reference.
+  MeasureParam* childParam = [[MeasureParam alloc] initWithWidth:_hostWidth
+                                                       WidthMode:_hostWidthMode
+                                                          Height:_hostHeight
+                                                      HeightMode:_hostHeightMode];
   for (LynxShadowNode* child in self.children) {
     if (![child isVirtual]) {
       [self.layoutNodeManager measureWithSign:child.sign

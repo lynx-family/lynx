@@ -288,6 +288,7 @@ subspec_target("lynx") {
     "public/LynxViewGroup+Internal.h",
     "public/LynxViewGroup.h",
     "public/ui/LynxTransferListener.h",
+    "public/ui/LynxTransferWrapperView.h",
     "renderer/LynxContainerView.h",
     "renderer/LynxContainerView.mm",
     "renderer/LynxDisplayListApplier+Internal.h",
@@ -430,7 +431,6 @@ subspec_target("lynx") {
     "ui/text/LynxUIText.m",
     "ui/transfer/LynxTransferHostView.h",
     "ui/transfer/LynxTransferHostView.m",
-    "ui/transfer/LynxTransferWrapperView.h",
     "ui/transfer/LynxTransferWrapperView.m",
     "ui/transfer/LynxUITransfer.h",
     "ui/transfer/LynxUITransfer.mm",
@@ -441,6 +441,7 @@ subspec_target("lynx") {
   ]
   public_header_files = [
     "public/LynxCustomVsyncMonitor.h",
+    "public/ui/LynxTransferWrapperView.h",
     "public/LynxViewBuilder.h",
     "public/LynxViewGroup.h",
     "public/LynxBaseConfigurator.h",

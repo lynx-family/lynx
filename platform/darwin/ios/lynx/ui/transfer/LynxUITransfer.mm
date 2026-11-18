@@ -7,13 +7,13 @@
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxShadowNode.h>
+#import <Lynx/LynxTransferWrapperView.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxView.h>
 
 #import "../../shadow_node/transfer/LynxTransferShadowNode.h"
 #import "LynxTransferHostView.h"
-#import "LynxTransferWrapperView.h"
 #import "LynxUITransfer.h"
 
 @interface LynxView ()
@@ -23,7 +23,13 @@
                        dataset:(NSDictionary*)dataset;
 - (void)dispatchTransferDatasetUpdate:(UIView*)view dataset:(NSDictionary*)dataset;
 - (void)dispatchTransferRemove:(NSString*)transferId view:(UIView*)view;
+- (void)dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView*)view;
 
+@end
+
+@interface LynxTransferWrapperView (Layout)
+- (instancetype)initWithTransfer:(LynxUITransfer*)transfer;
+- (void)layoutDidFinished;
 @end
 
 @interface LynxUITransfer ()
@@ -129,12 +135,14 @@ LYNX_PROP_SETTER("transfer-id", setTransferId, NSString*) {
 }
 
 - (void)syncHostConstraintsFromWrapper:(LynxTransferWrapperView*)wrapperView {
-  BOOL hasExternalHost = wrapperView.superview != nil && wrapperView.superview != self.view;
-  CGFloat width = CGRectGetWidth(wrapperView.bounds);
-  CGFloat height = CGRectGetHeight(wrapperView.bounds);
-  LynxMeasureMode widthMode = hasExternalHost ? LynxMeasureModeDefinite : LynxMeasureModeIndefinite;
-  LynxMeasureMode heightMode =
-      hasExternalHost ? LynxMeasureModeDefinite : LynxMeasureModeIndefinite;
+  CGFloat width = wrapperView.layoutWidthMode == LynxViewSizeModeMax
+                      ? wrapperView.preferredMaxLayoutWidth
+                      : wrapperView.preferredLayoutWidth;
+  CGFloat height = wrapperView.layoutHeightMode == LynxViewSizeModeMax
+                       ? wrapperView.preferredMaxLayoutHeight
+                       : wrapperView.preferredLayoutHeight;
+  LynxMeasureMode widthMode = (LynxMeasureMode)wrapperView.layoutWidthMode;
+  LynxMeasureMode heightMode = (LynxMeasureMode)wrapperView.layoutHeightMode;
   [self.context findShadowNodeAndRunTask:self.sign
                                     task:^(LynxShadowNode* node) {
                                       if ([node isKindOfClass:[LynxTransferShadowNode class]]) {
@@ -145,6 +153,30 @@ LYNX_PROP_SETTER("transfer-id", setTransferId, NSString*) {
                                                                 heightMode:heightMode];
                                       }
                                     }];
+}
+
+- (CGSize)transferContentSize {
+  CGSize size = CGSizeZero;
+  for (LynxUI* child in self.children) {
+    size.width = MAX(size.width, CGRectGetMaxX(child.frame) + child.margin.right);
+    size.height = MAX(size.height, CGRectGetMaxY(child.frame) + child.margin.bottom);
+  }
+  return size;
+}
+
+- (void)layoutDidFinished {
+  [super layoutDidFinished];
+  [self.wrapperView layoutDidFinished];
+}
+
+- (void)finishLayoutOperation {
+  [super finishLayoutOperation];
+  // Removing the final child may not produce a changed layout frame.
+  [self.wrapperView layoutDidFinished];
+}
+
+- (void)dispatchIntrinsicContentSizeChange {
+  [[self lynxView] dispatchTransferIntrinsicContentSizeChange:self.wrapperView];
 }
 
 - (void)configureTransferEventHandlerIfNeeded {
