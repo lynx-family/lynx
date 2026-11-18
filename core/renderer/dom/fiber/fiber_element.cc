@@ -1342,6 +1342,62 @@ void Element::AddDynamicSimpleStyleKV(tasm::CSSPropertyID id,
   MarkSimpleStyleDirty(kDirtyDynamicStyleObjects);
 }
 
+void Element::RecordSimpleStyleDirection(const CSSValue &value) {
+  if (value.IsEmpty()) return;
+  if (simple_style_direction_ || (dirty_ & kDirtyCreated)) {
+    simple_style_direction_ = value.GetEnum<starlight::DirectionType>();
+  } else {
+    LOGE("SimpleStyle direction must be declared at creation.");
+  }
+}
+
+void Element::CommitSimpleStyleDirection() {
+  const auto old_direction = computed_css_style()->GetDirection();
+  const auto new_direction = *simple_style_direction_;
+  if (old_direction == new_direction) return;
+
+  CSSIDBitset old_positions;
+  CSSIDBitset new_positions;
+  const auto resolve = [](const DirectionMapping &mapping,
+                          starlight::DirectionType direction) {
+    const bool rtl =
+        IsLynxRTL(direction) || (mapping.is_logic_ && IsRTL(direction));
+    return rtl ? mapping.rtl_property_ : mapping.ltr_property_;
+  };
+  SetStyleInternal(kPropertyIDDirection, CSSValue(new_direction));
+
+  const auto apply = [&](const StyleMap &styles) {
+    for (const auto &[id, value] : styles) {
+      // Static values are applied first, so empty dynamic overrides already
+      // fall back to their static values.
+      if (value.IsEmpty()) continue;
+      const auto mapping = CheckDirectionMapping(id);
+      if (mapping.ltr_property_ == kPropertyStart &&
+          mapping.rtl_property_ == kPropertyStart) {
+        continue;
+      }
+      const auto old_id = resolve(mapping, old_direction);
+      const auto new_id = resolve(mapping, new_direction);
+      if (old_id != new_id) old_positions.Set(old_id);
+      new_positions.Set(new_id);
+      SetStyleInternal(new_id, value);
+    }
+  };
+  if (element_manager_->EnablePropertyBasedSimpleStyle()) {
+    apply(parsed_styles_map_);
+    if (parsed_dynamic_styles_map_) apply(*parsed_dynamic_styles_map_);
+  } else {
+    // The resolver has already decoded these objects.
+    for (auto **it = style_objects_.get(); it && *it; ++it) {
+      apply((*it)->Properties());
+    }
+  }
+  for (auto id : old_positions) {
+    if (!new_positions.Has(id)) ResetStyleInternal(id);
+  }
+  MarkDirty(kDirtyForceUpdate);
+}
+
 void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
                                           const tasm::CSSValue &value) {
   EXEC_EXPR_FOR_INSPECTOR(
@@ -1352,6 +1408,12 @@ void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
           data_model()->SetInlineStyle(id, value);
         }
       });
+  if (id == kPropertyIDDirection) {
+    RecordSimpleStyleDirection(value);
+    return;
+  }
+  const auto resolved_id =
+      simple_style_direction_ ? ConvertRtlCSSPropertyID(id).second : id;
 
   if (value.IsEmpty()) {
     if (id == kPropertyIDFontSize) {
@@ -1361,7 +1423,7 @@ void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
         MarkDirty(kDirtyForceUpdate);
       }
     }
-    ResetStyleInternal(id);
+    ResetStyleInternal(resolved_id);
     return;
   }
 
@@ -1373,7 +1435,7 @@ void Element::ApplySimpleStyleWithoutTail(const tasm::CSSPropertyID id,
     }
     dirty_ &= ~kDirtyFontSize;
   } else {
-    SetStyleInternal(id, value);
+    SetStyleInternal(resolved_id, value);
   }
 }
 
@@ -1407,6 +1469,10 @@ void Element::ApplyDynamicSimpleStylesWithoutTail(
 }
 
 void Element::FinalizeSimpleStyleUpdate() {
+  if (simple_style_direction_ &&
+      !(dirty_ & (kDirtyStyleObjects | kDirtyDynamicStyleObjects))) {
+    CommitSimpleStyleDirection();
+  }
   if (has_keyframe_props_changed_) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
     if (!enable_new_animator()) {
@@ -2004,6 +2070,7 @@ void Element::ResolveSimpleStyles() {
         last_style_objects_ ? last_style_objects_.get() : nullptr,
         style_objects_ ? style_objects_.get() : nullptr, this);
   }
+  if (simple_style_direction_) CommitSimpleStyleDirection();
   if (has_keyframe_props_changed_) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
   }

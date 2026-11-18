@@ -1133,6 +1133,207 @@ TEST_P(FiberElementTest,
   EXPECT_NEAR(view->GetFontSize(), 24, 1e-6);
 }
 
+TEST_P(FiberElementTest, SimpleStyleDirectionRemapsAndResetsOffsets) {
+  manager->SetEnableSimpleStyle(true);
+  manager->config_->SetEnableSimpleStyleNoPatchOptimization(true);
+  manager->page_options_.embedded_mode_ = EmbeddedMode::LAYOUT_IN_ELEMENT;
+  auto make_styles = [](const char* direction, const char* edge,
+                        bool left_first = false,
+                        CSSPropertyID edge_id = kPropertyIDLeft,
+                        const char* right = nullptr) {
+    StyleMap styles;
+    for (const auto& [id, value] :
+         {std::make_pair(kPropertyIDWidth, "40px"),
+          std::make_pair(kPropertyIDHeight, "20px"),
+          std::make_pair(kPropertyIDPosition, "absolute")}) {
+      EXPECT_TRUE(UnitHandler::Process(id, lepus::Value(value), styles,
+                                       CSSParserConfigs()));
+    }
+    for (auto id : left_first ? std::array{edge_id, kPropertyIDDirection}
+                              : std::array{kPropertyIDDirection, edge_id}) {
+      if (const auto* value = id == edge_id ? edge : direction) {
+        EXPECT_TRUE(UnitHandler::Process(id, lepus::Value(value), styles,
+                                         CSSParserConfigs()));
+      }
+    }
+    if (right) {
+      EXPECT_TRUE(UnitHandler::Process(kPropertyIDRight, lepus::Value(right),
+                                       styles, CSSParserConfigs()));
+    }
+    auto* object = new style::StyleObject(std::move(styles));
+    object->AddRef();
+    auto result = style::CreateStyleObjectArray(2);
+    result.get()[0] = object;
+    result.get()[1] = nullptr;
+    return result;
+  };
+  for (bool property_based : {false, true}) {
+    manager->config_->SetEnablePropertyBasedSimpleStyle(property_based);
+    manager->SetConfig(manager->config_);
+    tasm->page_config_ = manager->config_;
+    auto page = manager->CreateFiberPage("0", 0);
+    manager->SetFiberPageElement(page);
+    auto parent = manager->CreateFiberView();
+    auto* parent_style = new style::StyleObject(
+        StyleMap{{kPropertyIDWidth, CSSValue(200, CSSValuePattern::NUMBER)},
+                 {kPropertyIDHeight, CSSValue(100, CSSValuePattern::NUMBER)}});
+    parent_style->AddRef();
+    auto parent_styles = style::CreateStyleObjectArray(2);
+    parent_styles.get()[0] = parent_style;
+    parent_styles.get()[1] = nullptr;
+    parent->SetStyleObjects(std::move(parent_styles));
+    auto child = manager->CreateFiberView();
+    parent->InsertNode(child);
+    page->InsertNode(parent);
+    auto expect_left = [&](float expected) {
+      auto options = std::make_shared<PipelineOptions>();
+      manager->OnPatchFinish(options, page.get());
+      ASSERT_NE(child->slnode(), nullptr);
+      parent->slnode()->UpdateMeasureByPlatform(
+          {starlight::OneSideConstraint::Definite(200),
+           starlight::OneSideConstraint::Definite(100)},
+          true);
+      parent->slnode()->UpdateAlignment();
+      EXPECT_FLOAT_EQ(
+          child->slnode()->GetBorderBoundLeftFromParentPaddingBound(),
+          expected);
+    };
+    child->SetStyleObjects(make_styles("lynx-rtl", "50%"));
+    expect_left(60);
+    EXPECT_FALSE(child->pending_updated_direction_related_styles_.has_value());
+    child->SetStyleObjects(make_styles("ltr", "25%"));
+    expect_left(50);
+    EXPECT_FALSE(child->pending_updated_direction_related_styles_.has_value());
+    if (property_based) {
+      child->AddDynamicSimpleStyleKV(
+          kPropertyIDDirection, CSSValue(starlight::DirectionType::kLynxRtl));
+      expect_left(110);
+      child->ReplaceDynamicSimpleStyles(nullptr);
+      expect_left(50);
+      for (bool left_first : {false, true}) {
+        SCOPED_TRACE(left_first);
+        child->SetStyleObjects(make_styles("lynx-rtl", "50%", left_first));
+        expect_left(60);
+        child->SetStyleObjects(make_styles("ltr", nullptr));
+        expect_left(0);
+        EXPECT_FALSE(
+            child->pending_updated_direction_related_styles_.has_value());
+
+        StyleMap offsets;
+        for (auto id :
+             left_first ? std::array{kPropertyIDLeft, kPropertyIDDirection}
+                        : std::array{kPropertyIDDirection, kPropertyIDLeft}) {
+          EXPECT_TRUE(UnitHandler::Process(
+              id, lepus::Value(id == kPropertyIDLeft ? "50%" : "lynx-rtl"),
+              offsets, CSSParserConfigs()));
+        }
+        child->ReplaceDynamicSimpleStyles(
+            style::CreateDynamicStyleObjectRef(std::move(offsets)));
+        expect_left(60);
+        child->ReplaceDynamicSimpleStyles(nullptr);
+        expect_left(0);
+        EXPECT_FALSE(
+            child->pending_updated_direction_related_styles_.has_value());
+      }
+    }
+    if (!property_based) {
+      auto styles = make_styles("lynx-rtl", "50%");
+      auto carrier =
+          style::CreateDynamicStyleObjectRef(styles.get()[0]->Properties());
+      auto bound_styles = style::CreateStyleObjectArray(2);
+      carrier->AddRef();
+      bound_styles.get()[0] = carrier.get();
+      bound_styles.get()[1] = nullptr;
+      child->SetStyleObjects(std::move(bound_styles));
+      expect_left(60);
+      carrier->UpdateStyleMap(StyleMap{
+          {kPropertyIDDirection, CSSValue(starlight::DirectionType::kLtr)}});
+      expect_left(100);
+
+      StyleMap offset;
+      EXPECT_TRUE(UnitHandler::Process(kPropertyIDLeft, lepus::Value("25%"),
+                                       offset, CSSParserConfigs()));
+      carrier->UpdateStyleMap(offset);
+      expect_left(50);
+      carrier->UpdateStyleMap(
+          StyleMap{{kPropertyIDDirection,
+                    CSSValue(starlight::DirectionType::kLynxRtl)}});
+      expect_left(110);
+      EXPECT_TRUE(child->parsed_styles_map_.empty());
+    }
+
+    // Neither physical edge may be reset when both remain occupied.
+    auto expect_edges = [&](float left, float right) {
+      auto options = std::make_shared<PipelineOptions>();
+      manager->OnPatchFinish(options, page.get());
+      const auto* style = child->computed_css_style()->GetLayoutComputedStyle();
+      EXPECT_FLOAT_EQ(style->GetLeft().GetRawValue(), left);
+      EXPECT_FLOAT_EQ(style->GetRight().GetRawValue(), right);
+    };
+    for (const char* direction : {"ltr", "lynx-rtl", "ltr"}) {
+      child->SetStyleObjects(
+          make_styles(direction, "10px", false, kPropertyIDLeft, "20px"));
+      const bool rtl = std::strcmp(direction, "lynx-rtl") == 0;
+      expect_edges(rtl ? 20 : 10, rtl ? 10 : 20);
+    }
+    if (property_based) {
+      child->ReplaceDynamicSimpleStyles(style::CreateDynamicStyleObjectRef(
+          StyleMap{{kPropertyIDDirection,
+                    CSSValue(starlight::DirectionType::kLynxRtl)},
+                   {kPropertyIDLeft, CSSValue(30, CSSValuePattern::PX)}}));
+      expect_edges(20, 30);
+      child->AddDynamicSimpleStyleKV(kPropertyIDLeft, CSSValue());
+      expect_edges(20, 10);
+      child->ReplaceDynamicSimpleStyles(nullptr);
+      expect_edges(10, 20);
+    }
+    child->SetStyleObjects(make_styles("ltr", nullptr));
+    expect_left(0);
+    EXPECT_EQ(child->computed_css_style()->GetDirection(),
+              starlight::DirectionType::kLtr);
+    EXPECT_TRUE(child->simple_style_direction_.has_value());
+    EXPECT_FALSE(child->pending_updated_direction_related_styles_.has_value());
+
+    // Use a fresh root for the initially direction-less node.
+    page = manager->CreateFiberPage("0", 0);
+    manager->SetFiberPageElement(page);
+    parent = manager->CreateFiberView();
+    parent->SetStyleObjects(MakeSimpleStyleObjectList(
+        kPropertyIDWidth, CSSValue(200, CSSValuePattern::PX)));
+    page->InsertNode(parent);
+    child = manager->CreateFiberView();
+    parent->InsertNode(child);
+    child->SetStyleObjects(make_styles(nullptr, "50%"));
+    expect_left(100);
+    child->SetStyleObjects(make_styles("lynx-rtl", "25%"));
+    expect_left(50);
+    EXPECT_EQ(child->computed_css_style()->GetDirection(),
+              starlight::DirectionType::kNormal);
+    EXPECT_FALSE(child->simple_style_direction_.has_value());
+
+    // A declared direction maps logical edges in either consumption order.
+    for (const auto& [direction, expected] :
+         {std::make_pair("ltr", 100.f), std::make_pair("rtl", 60.f),
+          std::make_pair("lynx-rtl", 60.f)}) {
+      SCOPED_TRACE(direction);
+      for (bool left_first : {false, true}) {
+        SCOPED_TRACE(left_first);
+        page = manager->CreateFiberPage("0", 0);
+        manager->SetFiberPageElement(page);
+        parent = manager->CreateFiberView();
+        parent->SetStyleObjects(MakeSimpleStyleObjectList(
+            kPropertyIDWidth, CSSValue(200, CSSValuePattern::PX)));
+        page->InsertNode(parent);
+        child = manager->CreateFiberView();
+        parent->InsertNode(child);
+        child->SetStyleObjects(make_styles(direction, "50%", left_first,
+                                           kPropertyIDInsetInlineStart));
+        expect_left(expected);
+      }
+    }
+  }
+}
+
 TEST_P(FiberElementTest, DynamicSimpleStyleLayer_KVOrderingAndNilRestoresBase) {
   manager->SetEnableSimpleStyle(true);
   manager->config_->SetEnablePropertyBasedSimpleStyle(true);
