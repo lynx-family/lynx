@@ -27,7 +27,6 @@ public class ImageRequestInfo {
   // TODO(chengjunnan) Perhaps better abstraction is needed here
   private final boolean mEnableGifLiteDecoder;
   private final boolean mSkipContentLengthCheck;
-  private final boolean mEnableLowMemoryDecode;
 
   private boolean mEnableDownSampling = true;
 
@@ -81,7 +80,6 @@ public class ImageRequestInfo {
     mConfig = builder.getConfig();
     mEnableGifLiteDecoder = builder.enableGifLiteDecoder();
     mSkipContentLengthCheck = builder.isSkipContentLengthCheck();
-    mEnableLowMemoryDecode = builder.isEnableLowMemoryDecode();
     mCustomParam = builder.getCustomParam();
     mCacheChoice = builder.getCacheChoice();
     mProcessors = builder.getProcessors();
@@ -123,10 +121,6 @@ public class ImageRequestInfo {
 
   public Bitmap.Config getConfig() {
     return mConfig;
-  }
-
-  public boolean isEnableLowMemoryDecode() {
-    return mEnableLowMemoryDecode;
   }
 
   public boolean isSkipContentLengthCheck() {
@@ -228,8 +222,6 @@ public class ImageRequestInfo {
       return false;
     if (mEnableDownSampling != that.mEnableDownSampling)
       return false;
-    if (mEnableLowMemoryDecode != that.mEnableLowMemoryDecode)
-      return false;
     if (mEnableAsyncRequest != that.mEnableAsyncRequest)
       return false;
     if (!Objects.equals(mUrl, that.mUrl))
@@ -254,7 +246,6 @@ public class ImageRequestInfo {
     result = 31 * result + (mEnableGifLiteDecoder ? 1 : 0);
     result = 31 * result + (mEnableDownSampling ? 1 : 0);
     result = 31 * result + (mEnableAsyncRequest ? 1 : 0);
-    result = 31 * result + (mEnableLowMemoryDecode ? 1 : 0);
     result = 31 * result + (mProcessors != null ? mProcessors.hashCode() : 0);
     result = 31 * result + (mRegionToDecode != null ? mRegionToDecode.hashCode() : 0);
     return result;

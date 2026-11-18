@@ -23,7 +23,6 @@ public class ImageRequestInfoBuilder {
 
   private boolean mEnableGifLiteDecoder;
   private boolean mSkipContentLengthCheck;
-  private boolean mEnableLowMemoryDecode;
 
   private Map<String, String> mCustomParam;
 
@@ -300,18 +299,9 @@ public class ImageRequestInfoBuilder {
     return mImageSRScale;
   }
 
-  public ImageRequestInfoBuilder setEnableLowMemoryDecode(boolean enable) {
-    mEnableLowMemoryDecode = enable;
-    return this;
-  }
-
   public ImageRequestInfoBuilder setSkipContentLengthCheck(boolean skip) {
     mSkipContentLengthCheck = skip;
     return this;
-  }
-
-  public boolean isEnableLowMemoryDecode() {
-    return mEnableLowMemoryDecode;
   }
 
   public boolean isSkipContentLengthCheck() {
