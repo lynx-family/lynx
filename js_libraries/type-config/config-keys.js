@@ -36,6 +36,7 @@ const configKeys = [
   'enableSimultaneousTap',
   'enableTextOverflow',
   'enableTransformedTouchPosition',
+  'fetchBundleInCurrentThread',
   'fontScaleEffectiveOnlyOnSp',
   'includeFontPadding',
   'keyboardCallbackPassRelativeHeight',
