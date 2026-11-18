@@ -1184,6 +1184,11 @@ public class com::lynx::tasm::LynxUpdateMeta::Builder :  {
   public LynxUpdateMeta com.lynx.tasm.LynxUpdateMeta.Builder.build();
 }
 
+public class com::lynx::tasm::LynxViewInsets::Builder :  {
+  public Builder com.lynx.tasm.LynxViewInsets.Builder.setInset(@NonNull Type type, @Nullable State state);
+  public LynxViewInsets com.lynx.tasm.LynxViewInsets.Builder.build();
+}
+
 public class com::lynx::tasm::service::LynxImageInfo::Builder :  {
   public Builder com.lynx.tasm.service.LynxImageInfo.Builder.startTimeStamp(long startTimeStamp);
   public Builder com.lynx.tasm.service.LynxImageInfo.Builder.finishTimeStamp(long finishTimeStamp);
@@ -1411,6 +1416,21 @@ public class com::lynx::tasm::behavior::ui::utils::BorderRadius::Corner :  {
   public PlatformLength com.lynx.tasm.behavior.ui.utils.BorderRadius.Corner.y y;
   public boolean com.lynx.tasm.behavior.ui.utils.BorderRadius.Corner.equals(@Nullable Object obj);
   public static Corner com.lynx.tasm.behavior.ui.utils.BorderRadius.Corner.toCorner(ReadableArray ra, int startIndex);
+}
+
+public class com::lynx::tasm::LynxViewInsets::Corner :  {
+  public final float com.lynx.tasm.LynxViewInsets.Corner.centerX centerX;
+  public final float com.lynx.tasm.LynxViewInsets.Corner.centerY centerY;
+  public final float com.lynx.tasm.LynxViewInsets.Corner.radius radius;
+  public com.lynx.tasm.LynxViewInsets.Corner.Corner(float centerX, float centerY, float radius);
+}
+
+public class com::lynx::tasm::LynxViewInsets::Corners : com.lynx.tasm.LynxViewInsets.Geometry {
+  public final Corner com.lynx.tasm.LynxViewInsets.Corners.topLeft topLeft;
+  public final Corner com.lynx.tasm.LynxViewInsets.Corners.topRight topRight;
+  public final Corner com.lynx.tasm.LynxViewInsets.Corners.bottomRight bottomRight;
+  public final Corner com.lynx.tasm.LynxViewInsets.Corners.bottomLeft bottomLeft;
+  public com.lynx.tasm.LynxViewInsets.Corners.Corners(@Nullable Corner topLeft, @Nullable Corner topRight, @Nullable Corner bottomRight, @Nullable Corner bottomLeft);
 }
 
 public class com::lynx::tasm::behavior::CSSPropertySetter :  {
@@ -1732,6 +1752,14 @@ public class com::lynx::react::bridge::mapbuffer::DynamicFromMapBuffer : com.lyn
   public byte[] com.lynx.react.bridge.mapbuffer.DynamicFromMapBuffer.asByteArray();
   public ReadableType com.lynx.react.bridge.mapbuffer.DynamicFromMapBuffer.getType();
   public void com.lynx.react.bridge.mapbuffer.DynamicFromMapBuffer.recycle();
+}
+
+public class com::lynx::tasm::LynxViewInsets::Edges : com.lynx.tasm.LynxViewInsets.Geometry {
+  public final float com.lynx.tasm.LynxViewInsets.Edges.left left;
+  public final float com.lynx.tasm.LynxViewInsets.Edges.top top;
+  public final float com.lynx.tasm.LynxViewInsets.Edges.right right;
+  public final float com.lynx.tasm.LynxViewInsets.Edges.bottom bottom;
+  public com.lynx.tasm.LynxViewInsets.Edges.Edges(float left, float top, float right, float bottom);
 }
 
 public class com::lynx::tasm::EmbeddedMode :  {
@@ -2210,6 +2238,9 @@ public class com::lynx::tasm::behavior::ui::list::GapItemDecoration : RecyclerVi
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.setColumnCount(int columnCount);
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.setMainAxisGap(int mainAxisGap);
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.setCrossAxisGap(int crossAxisGap);
+}
+
+public class abstract com::lynx::tasm::LynxViewInsets::Geometry :  {
 }
 
 public class com::lynx::tasm::gesture::arena::GestureArenaManager :  {
@@ -7184,6 +7215,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.onEnterForeground();
   public void com.lynx.tasm.LynxTemplateRender.onEnterBackground();
   public void com.lynx.tasm.LynxTemplateRender.updateScreenMetrics(int width, int height);
+  public void com.lynx.tasm.LynxTemplateRender.updateInsets(@NonNull LynxViewInsets insets);
   public void com.lynx.tasm.LynxTemplateRender.addLynxViewClient(LynxViewClient client);
   public void com.lynx.tasm.LynxTemplateRender.addLynxViewClientV2(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxTemplateRender.removeLynxViewClient(LynxViewClient client);
@@ -7831,6 +7863,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.addLynxViewClient(LynxViewClient client);
   public void com.lynx.tasm.LynxView.addLynxViewClientV2(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxView.updateScreenMetrics(int width, int height);
+  public void com.lynx.tasm.LynxView.updateInsets(@NonNull LynxViewInsets insets);
   public void com.lynx.tasm.LynxView.removeLynxViewClient(LynxViewClient client);
   public void com.lynx.tasm.LynxView.removeLynxViewClientV2(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxView.setImageInterceptor(ImageInterceptor interceptor);
@@ -7942,6 +7975,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
 }
 
 public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBuilder >, com.lynx.tasm.group.ILynxViewConfigProvider {
+  public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setInsets(@NonNull LynxViewInsets insets);
   public com.lynx.tasm.LynxViewBuilder.LynxViewBuilder();
   public com.lynx.tasm.LynxViewBuilder.LynxViewBuilder(Context context);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setTemplateProvider(@Nullable AbsTemplateProvider provider);
@@ -8165,6 +8199,11 @@ public class com::lynx::tasm::group::LynxViewGroupBuilder : LynxBaseConfigurator
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setEnableCacheEngine(boolean enableCacheEngine);
   public LynxHost com.lynx.tasm.group.LynxViewGroupBuilder.buildHost();
   public ILynxViewGroup com.lynx.tasm.group.LynxViewGroupBuilder.build();
+}
+
+public class com::lynx::tasm::LynxViewInsets :  {
+  public final Map<Type, State> com.lynx.tasm.LynxViewInsets.categories categories;
+  public static LynxViewInsets com.lynx.tasm.LynxViewInsets.empty();
 }
 
 public interface com::lynx::tasm::behavior::ui::LynxViewVisibleHelper {
@@ -9838,6 +9877,19 @@ public enum com::lynx::react::bridge::ReadableType {
   public com.lynx.react.bridge.ReadableType.TemplateData TemplateData;
 }
 
+public class com::lynx::tasm::LynxViewInsets::Rect :  {
+  public final float com.lynx.tasm.LynxViewInsets.Rect.x x;
+  public final float com.lynx.tasm.LynxViewInsets.Rect.y y;
+  public final float com.lynx.tasm.LynxViewInsets.Rect.width width;
+  public final float com.lynx.tasm.LynxViewInsets.Rect.height height;
+  public com.lynx.tasm.LynxViewInsets.Rect.Rect(float x, float y, float width, float height);
+}
+
+public class com::lynx::tasm::LynxViewInsets::Rects : com.lynx.tasm.LynxViewInsets.Geometry {
+  public final List<Rect> com.lynx.tasm.LynxViewInsets.Rects.rects rects;
+  public com.lynx.tasm.LynxViewInsets.Rects.Rects(@NonNull List< Rect > rects);
+}
+
 public interface com::lynx::tasm::image::ReleasableImage {
   public Bitmap com.lynx.tasm.image.ReleasableImage.getBitmap();
   public Drawable com.lynx.tasm.image.ReleasableImage.getDrawable();
@@ -10333,6 +10385,12 @@ public enum com::lynx::tasm::LynxSSRHelper::SSRHydrateStatus {
   public com.lynx.tasm.LynxSSRHelper.SSRHydrateStatus.EXECUTING EXECUTING;
   public com.lynx.tasm.LynxSSRHelper.SSRHydrateStatus.FAILED FAILED;
   public com.lynx.tasm.LynxSSRHelper.SSRHydrateStatus.SUCCESSFUL SUCCESSFUL;
+}
+
+public class com::lynx::tasm::LynxViewInsets::State :  {
+  public final Geometry com.lynx.tasm.LynxViewInsets.State.geometry geometry;
+  public final Boolean com.lynx.tasm.LynxViewInsets.State.visible visible;
+  public com.lynx.tasm.LynxViewInsets.State.State(@NonNull Geometry geometry, @Nullable Boolean visible);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::StaticLayoutCompat :  {
@@ -11354,6 +11412,22 @@ public enum com::lynx::tasm::fontface::FontFace::TYPE {
 public interface com::lynx::jsbridge::IModuleCreator::Type {
   public int com.lynx.jsbridge.IModuleCreator.Type.NORMAL NORMAL;
   public int com.lynx.jsbridge.IModuleCreator.Type.SHARED SHARED;
+}
+
+public enum com::lynx::tasm::LynxViewInsets::Type {
+  public com.lynx.tasm.LynxViewInsets.Type.STATUS_BARS STATUS_BARS;
+  public com.lynx.tasm.LynxViewInsets.Type.NAVIGATION_BARS NAVIGATION_BARS;
+  public com.lynx.tasm.LynxViewInsets.Type.CAPTION_BAR CAPTION_BAR;
+  public com.lynx.tasm.LynxViewInsets.Type.SYSTEM_BARS SYSTEM_BARS;
+  public com.lynx.tasm.LynxViewInsets.Type.SYSTEM_OVERLAYS SYSTEM_OVERLAYS;
+  public com.lynx.tasm.LynxViewInsets.Type.IME IME;
+  public com.lynx.tasm.LynxViewInsets.Type.DISPLAY_CUTOUT DISPLAY_CUTOUT;
+  public com.lynx.tasm.LynxViewInsets.Type.WATERFALL WATERFALL;
+  public com.lynx.tasm.LynxViewInsets.Type.ROUNDED_CORNERS ROUNDED_CORNERS;
+  public com.lynx.tasm.LynxViewInsets.Type.SYSTEM_GESTURES SYSTEM_GESTURES;
+  public com.lynx.tasm.LynxViewInsets.Type.MANDATORY_SYSTEM_GESTURES MANDATORY_SYSTEM_GESTURES;
+  public com.lynx.tasm.LynxViewInsets.Type.TAPPABLE_ELEMENT TAPPABLE_ELEMENT;
+  public com.lynx.tasm.LynxViewInsets.Type.Type(String key);
 }
 
 public enum com::lynx::tasm::utils::SizeValue::Type {

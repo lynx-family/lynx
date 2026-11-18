@@ -18,8 +18,10 @@
 @class LynxUI;
 @class LynxEngine;
 @class LynxElement;
+@class LynxViewInsets;
 
 @interface LynxTemplateRender : NSObject <LynxTemplateRenderProtocol>
+- (void)updateInsets:(nonnull LynxViewInsets*)insets;
 
 // Layout, must call invalidateIntrinsicContentSize after change layout props
 // If you use view.frame to set view frame, the layout mode will all be

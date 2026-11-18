@@ -7,6 +7,10 @@ export { TemplateData, MetaData, LynxUpdateMeta, LynxUpdateMode } from './tasm/M
 export { LynxNodeController, LynxView, LynxViewBuilder, ThreadStrategyForRendering, EmbeddedMode, MeasureMode, ColorScheme } from './tasm/LynxView'
 
 export { LynxContext } from './tasm/LynxContext'
+export {
+  LynxViewInsets, LynxInsetType, LynxInsetGeometryType, LynxInsetGeometry,
+  LynxInsetEdges, LynxInsetRect, LynxInsetRects, LynxInsetCorner, LynxInsetCorners, LynxInsetState
+} from './tasm/LynxViewInsets';
 export { SessionStorageCallback } from './tasm/SessionStorage'
 
 export { LynxElement, LynxElementCallback, LynxElementFilter, LynxElementStatus, LynxValue } from './tasm/LynxElement'

@@ -277,6 +277,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
 
   // FIXME
   shell_->SetFontScale(_fontScale);
+  [self updateNativeInsets];
   if (_colorScheme != LynxColorSchemeLight) {
     shell_->UpdateColorScheme(static_cast<int>(_colorScheme), true);
   }
