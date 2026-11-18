@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "base/include/compiler_specific.h"
 #include "base/include/debug/lynx_error.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/value/base_string.h"
@@ -217,9 +218,7 @@ class MTSRuntime : private MTSContextHolder,
   Value CallClosure(const Value& closure, Args&&... args) {
     constexpr auto n_args = sizeof...(args);
     const Value* p_args[n_args] = {&args...};
-
-    ScriptingScope scope(this);
-    return mts_context_->CallClosureArgs(closure, p_args, n_args);
+    return CallClosureWithArgs(closure, p_args, n_args);
   }
 
   lepus::Value GetTopLevelVariable(bool ignore_callable = false);
@@ -385,6 +384,11 @@ class MTSRuntime : private MTSContextHolder,
   JSErrorReporter js_error_reporter_;
 
   bool is_handling_exception_{false};
+
+ private:
+  // Share the scripting scope setup across different callback signatures.
+  NO_INLINE Value CallClosureWithArgs(const Value& closure, const Value* args[],
+                                      size_t count);
 };
 
 }  // namespace runtime

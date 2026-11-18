@@ -568,8 +568,13 @@ Value MTSRuntime::CallClosureArgs(const Value& closure,
     p_args[i] = &args[i];
   }
 
+  return CallClosureWithArgs(closure, p_args, args.size());
+}
+
+Value MTSRuntime::CallClosureWithArgs(const Value& closure, const Value* args[],
+                                      size_t count) {
   ScriptingScope scope(this);
-  return mts_context_->CallClosureArgs(closure, p_args, args.size());
+  return mts_context_->CallClosureArgs(closure, args, count);
 }
 
 bool MTSRuntime::TryExecute() {

@@ -6,9 +6,10 @@
 #define CORE_RENDERER_DOM_FIBER_CUSTOM_LAYOUT_H_
 
 #include <cstdint>
-#include <memory>
 
+#include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
 #include "core/public/layout_node_value.h"
@@ -24,11 +25,13 @@ class Element;
 
 // ComposeElementHandle owns this external policy adapter. Elements retain only
 // their existing platform measurement hooks, including for nested policies.
-class CustomLayout final : public std::enable_shared_from_this<CustomLayout> {
+class CustomLayout final : public fml::RefCountedThreadSafe<CustomLayout>,
+                           public fml::EnableWeakFromThis<CustomLayout> {
  public:
-  CustomLayout(Element& owner, runtime::MTSRuntime& runtime,
-               const lepus::Value& measure_callback,
-               const lepus::Value& place_callback);
+  static fml::RefPtr<CustomLayout> Create(Element& owner,
+                                          runtime::MTSRuntime& runtime,
+                                          const lepus::Value& measure_callback,
+                                          const lepus::Value& place_callback);
   CustomLayout(const CustomLayout&) = delete;
   CustomLayout& operator=(const CustomLayout&) = delete;
   void visitor(void* rt, void* func, uint64_t trace_tool) const;
@@ -38,13 +41,26 @@ class CustomLayout final : public std::enable_shared_from_this<CustomLayout> {
 
   bool MeasureChild(Element& child, float min_width, float max_width,
                     float min_height, float max_height, LayoutResult& result);
+  static CustomLayout* ActiveModifierMeasure(runtime::MTSRuntime& runtime);
+  Element* ModifierChild() const;
+  bool UsesRuntime(const runtime::MTSRuntime& runtime) const {
+    return &runtime_ == &runtime;
+  }
   bool PlaceChild(Element& child, float x, float y, float z);
   bool IsExecuting() const { return phase_ != Phase::kIdle; }
   void Invalidate();
   Element& owner() const { return *owner_; }
+  void Attach();
   void Detach();
 
  private:
+  FML_FRIEND_REF_COUNTED_THREAD_SAFE(CustomLayout);
+
+  CustomLayout(Element& owner, runtime::MTSRuntime& runtime,
+               const lepus::Value& measure_callback,
+               const lepus::Value& place_callback);
+  ~CustomLayout();
+
   enum class Phase { kIdle, kMeasure, kPlace };
   struct Child {
     fml::RefPtr<Element> element;
