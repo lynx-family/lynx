@@ -23,6 +23,47 @@
 namespace clay {
 namespace {
 
+bool IsIntrinsicSizeMode(FillMode mode) {
+  switch (mode) {
+    case FillMode::kCenter:
+    case FillMode::kTop:
+    case FillMode::kBottom:
+    case FillMode::kLeft:
+    case FillMode::kRight:
+    case FillMode::kTopLeft:
+    case FillMode::kTopRight:
+    case FillMode::kBottomLeft:
+    case FillMode::kBottomRight:
+      return true;
+    default:
+      return false;
+  }
+}
+
+skity::Vec2 GetImageAlignment(FillMode mode) {
+  switch (mode) {
+    case FillMode::kTop:
+      return skity::Vec2(0.5f, 0.f);
+    case FillMode::kBottom:
+      return skity::Vec2(0.5f, 1.f);
+    case FillMode::kLeft:
+      return skity::Vec2(0.f, 0.5f);
+    case FillMode::kRight:
+      return skity::Vec2(1.f, 0.5f);
+    case FillMode::kTopLeft:
+      return skity::Vec2(0.f, 0.f);
+    case FillMode::kTopRight:
+      return skity::Vec2(1.f, 0.f);
+    case FillMode::kBottomLeft:
+      return skity::Vec2(0.f, 1.f);
+    case FillMode::kBottomRight:
+      return skity::Vec2(1.f, 1.f);
+    case FillMode::kCenter:
+    default:
+      return skity::Vec2(0.5f, 0.5f);
+  }
+}
+
 void CalculateSizeByMode(FillMode mode, const skity::Vec2& input_size,
                          const skity::Vec2& output_size, skity::Vec2& src_size,
                          skity::Vec2& dest_size) {
@@ -32,6 +73,8 @@ void CalculateSizeByMode(FillMode mode, const skity::Vec2& input_size,
       dest_size = output_size;
       break;
     case FillMode::kAspectFit:  // BoxFit.contain
+    case FillMode::kWidthFix:
+    case FillMode::kHeightFix:
       src_size = input_size;
       if (output_size.x / output_size.y > src_size.x / src_size.y) {
         dest_size =
@@ -55,6 +98,14 @@ void CalculateSizeByMode(FillMode mode, const skity::Vec2& input_size,
       dest_size = output_size;
       break;
     case FillMode::kCenter:  // BoxFit.none
+    case FillMode::kTop:
+    case FillMode::kBottom:
+    case FillMode::kLeft:
+    case FillMode::kRight:
+    case FillMode::kTopLeft:
+    case FillMode::kTopRight:
+    case FillMode::kBottomLeft:
+    case FillMode::kBottomRight:
       src_size = skity::Vec2(std::min(input_size.x, output_size.x),
                              std::min(input_size.y, output_size.y));
       dest_size = src_size;
@@ -359,15 +410,24 @@ void ImagePainter::PaintImage(GraphicsContext* context,
   CalculateSizeByMode(image_data.mode, input_size, output_size, src_size,
                       dest_size);
 
+  const skity::Vec2 alignment = GetImageAlignment(image_data.mode);
   float output_x = output_rect.Left();
   float output_y = output_rect.Top();
-  float dest_x = output_x + (output_size.x - dest_size.x) * 0.5f;
-  float dest_y = output_y + (output_size.y - dest_size.y) * 0.5f;
+  float dest_x =
+      output_x +
+      (output_size.x - dest_size.x) *
+          (IsIntrinsicSizeMode(image_data.mode) ? alignment.x : 0.5f);
+  float dest_y =
+      output_y +
+      (output_size.y - dest_size.y) *
+          (IsIntrinsicSizeMode(image_data.mode) ? alignment.y : 0.5f);
   skity::Rect dst_rect =
       skity::Rect::MakeXYWH(dest_x, dest_y, dest_size.x, dest_size.y);
 
-  float src_x = (input_size.x - src_size.x) * 0.5f;
-  float src_y = (input_size.y - src_size.y) * 0.5f;
+  float src_x = (input_size.x - src_size.x) *
+                (IsIntrinsicSizeMode(image_data.mode) ? alignment.x : 0.5f);
+  float src_y = (input_size.y - src_size.y) *
+                (IsIntrinsicSizeMode(image_data.mode) ? alignment.y : 0.5f);
   skity::Rect src_rect =
       skity::Rect::MakeXYWH(src_x, src_y, src_size.x, src_size.y);
 

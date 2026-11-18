@@ -197,6 +197,7 @@ void RenderImage::SetMode(FillMode mode) {
 
   MarkNeedsPaint();
   mode_ = mode;
+  AdjustSizeIfNeeded();
 }
 
 void RenderImage::SetEffect(ImageEffect effect) {
@@ -319,7 +320,7 @@ void RenderImage::AdjustSizeIfNeeded() {
   float bitmap_height = image_resource->GetHeight();
 
   if (client_) {
-    client_->AdjustSizeIfNeeded(auto_size_, bitmap_width, bitmap_height);
+    client_->AdjustSizeIfNeeded(UsesAutoSize(), bitmap_width, bitmap_height);
   }
 }
 

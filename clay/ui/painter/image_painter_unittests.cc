@@ -138,6 +138,94 @@ TEST_F(ImagePainterTest, FillMode) {
   EXPECT_EQ(graphics_owner_.mock_canvas().draw_calls(), expected_draw_calls);
 }
 
+TEST_F(ImagePainterTest, IntrinsicSizeAlignment) {
+  ImageData image_data;
+  constexpr std::array<FillMode, 9> kModes = {
+      FillMode::kTopLeft,    FillMode::kTop,    FillMode::kTopRight,
+      FillMode::kLeft,       FillMode::kCenter, FillMode::kRight,
+      FillMode::kBottomLeft, FillMode::kBottom, FillMode::kBottomRight};
+  constexpr std::array<SkRect, 9> kDestRects = {
+      SkRect::MakeLTRB(0, 0, 32, 32),    SkRect::MakeLTRB(34, 0, 66, 32),
+      SkRect::MakeLTRB(68, 0, 100, 32),  SkRect::MakeLTRB(0, 34, 32, 66),
+      SkRect::MakeLTRB(34, 34, 66, 66),  SkRect::MakeLTRB(68, 34, 100, 66),
+      SkRect::MakeLTRB(0, 68, 32, 100),  SkRect::MakeLTRB(34, 68, 66, 100),
+      SkRect::MakeLTRB(68, 68, 100, 100)};
+
+  for (auto mode : kModes) {
+    render_image_->SetMode(mode);
+    SetImageData(image_data);
+    image_painter_->PaintImage(&graphics_owner_.mock_context(), image_data);
+  }
+
+  auto picture = graphics_owner_.mock_context().FinishRecording();
+  picture->picture()->raw()->playback(&graphics_owner_.mock_canvas());
+
+  constexpr SkRect src = SkRect::MakeLTRB(0, 0, 32, 32);
+  SkPaint paint;
+  paint.setAntiAlias(false);
+  std::vector<MockCanvas::DrawCall> expected_draw_calls;
+  for (const auto& dst : kDestRects) {
+    expected_draw_calls.push_back(
+        MockCanvas::DrawCall{0, MockCanvas::DrawImageRectData{
+                                    image_->uniqueID(), src, dst,
+                                    SkSamplingOptions(SkFilterMode::kLinear),
+                                    SkCanvas::kFast_SrcRectConstraint, paint}});
+  }
+
+  EXPECT_EQ(graphics_owner_.mock_canvas().draw_calls(), expected_draw_calls);
+}
+
+TEST_F(ImagePainterTest, IntrinsicSizeAlignmentCropsSourceAtAlignedEdge) {
+  render_image_->SetWidth(16);
+  render_image_->SetHeight(16);
+  ImageData image_data;
+  constexpr std::array<FillMode, 3> kModes = {
+      FillMode::kTopLeft, FillMode::kCenter, FillMode::kBottomRight};
+  for (auto mode : kModes) {
+    render_image_->SetMode(mode);
+    SetImageData(image_data);
+    image_painter_->PaintImage(&graphics_owner_.mock_context(), image_data);
+  }
+
+  auto picture = graphics_owner_.mock_context().FinishRecording();
+  picture->picture()->raw()->playback(&graphics_owner_.mock_canvas());
+
+  constexpr std::array<SkRect, 3> kSrcRects = {
+      SkRect::MakeLTRB(0, 0, 16, 16), SkRect::MakeLTRB(8, 8, 24, 24),
+      SkRect::MakeLTRB(16, 16, 32, 32)};
+  constexpr SkRect dst = SkRect::MakeLTRB(0, 0, 16, 16);
+  SkPaint paint;
+  paint.setAntiAlias(false);
+  std::vector<MockCanvas::DrawCall> expected_draw_calls;
+  for (const auto& src : kSrcRects) {
+    expected_draw_calls.push_back(
+        MockCanvas::DrawCall{0, MockCanvas::DrawImageRectData{
+                                    image_->uniqueID(), src, dst,
+                                    SkSamplingOptions(SkFilterMode::kLinear),
+                                    SkCanvas::kFast_SrcRectConstraint, paint}});
+  }
+
+  EXPECT_EQ(graphics_owner_.mock_canvas().draw_calls(), expected_draw_calls);
+}
+
+TEST_F(ImagePainterTest, FixedSizeModesUseAutoSize) {
+  EXPECT_FALSE(render_image_->UsesAutoSize());
+
+  render_image_->SetMode(FillMode::kWidthFix);
+  EXPECT_TRUE(render_image_->UsesAutoSize());
+  render_image_->SetAutoSize(false);
+  EXPECT_TRUE(render_image_->UsesAutoSize());
+
+  render_image_->SetMode(FillMode::kHeightFix);
+  EXPECT_TRUE(render_image_->UsesAutoSize());
+  render_image_->SetMode(FillMode::kAspectFit);
+  EXPECT_FALSE(render_image_->UsesAutoSize());
+
+  render_image_->SetAutoSize(true);
+  render_image_->SetMode(FillMode::kAspectFill);
+  EXPECT_TRUE(render_image_->UsesAutoSize());
+}
+
 TEST_F(ImagePainterTest, ImageRepeat) {
   ImageData image_data;
   render_image_->SetWidth(64);
