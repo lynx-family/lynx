@@ -54,6 +54,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
+import com.lynx.tasm.utils.OffscreenViewCapture;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.lang.ref.WeakReference;
@@ -607,11 +608,14 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   // draw view to given bitmap of the given canvas
-  // whether to use pixel copy or view.draw depends on android version and pixelCopy switch, default
-  // use view.draw
+  // offscreen hardware rendering is used first when LynxEnv enables it; otherwise whether to use
+  // pixel copy or view.draw depends on android version and pixelCopy switch, default use view.draw
   @Override
   public void drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas) {
     try {
+      if (OffscreenViewCapture.drawIfEnabled(view, canvas)) {
+        return;
+      }
       // pixel copy for e2e and some special circumstances, switch off by default
       // Above Android 8.0, use PixelCopy
       if (LynxEnv.inst().isPixelCopyEnabled() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
