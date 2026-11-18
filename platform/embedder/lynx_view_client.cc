@@ -53,6 +53,17 @@ LYNX_EXTERN_C void lynx_view_client_bind_on_received_error(
   client->on_received_error = on_received_error;
 }
 
+LYNX_EXTERN_C void lynx_view_client_bind_on_received_error_v2(
+    lynx_view_client_t* client, on_received_error_v2 callback) {
+  client->on_received_error_v2 = callback;
+}
+
+LYNX_EXTERN_C void lynx_view_client_bind_on_module_method_invoked(
+    lynx_view_client_t* client,
+    on_module_method_invoked on_module_method_invoked) {
+  client->on_module_method_invoked = on_module_method_invoked;
+}
+
 LYNX_EXTERN_C void lynx_view_client_bind_on_timing_setup(
     lynx_view_client_t* client, on_timing_setup on_timing_setup) {
   client->on_timing_setup = on_timing_setup;

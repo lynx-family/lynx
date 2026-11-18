@@ -37,12 +37,14 @@ void NativeFacadeImpl::ReportError(const base::LynxError& error) {
   renderer_->OnErrorOccurred(static_cast<int>(error.error_level_),
                              error.error_code_, error.error_message_,
                              error.fix_suggestion_, error.custom_info_,
-                             error.is_logbox_only_);
+                             error.is_logbox_only_, error.root_cause_);
 }
 
 void NativeFacadeImpl::OnModuleMethodInvoked(const std::string& module,
                                              const std::string& method,
-                                             int32_t code) {}
+                                             int32_t code) {
+  renderer_->OnModuleMethodInvoked(module, method, code);
+}
 
 void NativeFacadeImpl::OnFirstLoadPerfReady(
     const std::unordered_map<int32_t, double>& perf,

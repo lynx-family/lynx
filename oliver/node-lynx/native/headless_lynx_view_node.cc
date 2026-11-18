@@ -1267,7 +1267,7 @@ class HeadlessTemplateClient final : public embedder::TemplateRendererClient {
       int level, int32_t error_code, const std::string& message,
       const std::string& fix_suggestion,
       const std::unordered_map<std::string, std::string>& custom_info,
-      bool is_logbox_only) override {
+      bool is_logbox_only, const std::string&) override {
     auto state = state_.lock();
     JsDispatcher* dispatcher = nullptr;
     std::vector<napi_deferred> load_waiters;
