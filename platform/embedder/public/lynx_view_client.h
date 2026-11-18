@@ -78,6 +78,14 @@ class LynxViewClient {
             wrapper->OnReceivedError(error_code, message);
           }
         });
+    lynx_view_client_bind_on_module_method_invoked(
+        client_, [](lynx_view_client_t* client, const char* module,
+                    const char* method, int error_code) {
+          auto* wrapper = LynxViewClient::Unwrap(client);
+          if (wrapper) {
+            wrapper->OnModuleMethodInvoked(module, method, error_code);
+          }
+        });
     lynx_view_client_bind_on_timing_setup(
         client_, [](lynx_view_client_t* client, const char* timing_info) {
           auto* wrapper = LynxViewClient::Unwrap(client);
@@ -210,6 +218,16 @@ class LynxViewClient {
    */
   virtual void OnFrameTiming(int64_t frame_start_time_in_ns,
                              int64_t frame_finish_time_in_ns) {}
+
+  /**
+   * @apidoc
+   * @brief Called when a native module method invocation completed.
+   * @param module The module name.
+   * @param method The method name.
+   * @param error_code The invocation result code.
+   */
+  virtual void OnModuleMethodInvoked(const char* module, const char* method,
+                                     int error_code) {}
 
   lynx_view_client_t* Impl() { return client_; }
 

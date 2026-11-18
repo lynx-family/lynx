@@ -266,6 +266,9 @@ void LynxTemplateRenderer::LoadTemplate(
     const std::shared_ptr<tasm::TemplateData>& init_data,
     bool enable_recycle_template_bundle) {
   if (source.empty()) {
+    OnErrorOccurred(1, -1,
+                    "Failed to load template " + url + ": empty resource.", "",
+                    {}, false);
     return;
   }
   if (template_verification_) {
@@ -559,10 +562,18 @@ void LynxTemplateRenderer::OnErrorOccurred(
     int level, int32_t error_code, const std::string& message,
     const std::string& fix_suggestion,
     const std::unordered_map<std::string, std::string>& custom_info,
-    bool is_logbox_only) {
+    bool is_logbox_only, const std::string& root_cause) {
   for (auto* client : clients_) {
     client->OnErrorOccurred(level, error_code, message, fix_suggestion,
-                            custom_info, is_logbox_only);
+                            custom_info, is_logbox_only, root_cause);
+  }
+}
+
+void LynxTemplateRenderer::OnModuleMethodInvoked(const std::string& module,
+                                                 const std::string& method,
+                                                 int32_t code) {
+  for (auto* client : clients_) {
+    client->OnModuleMethodInvoked(module, method, code);
   }
 }
 
@@ -645,11 +656,14 @@ void LynxTemplateRenderer::LoadTemplateFromURL(
   const bool is_local_scheme = base::BeginsWith(url, kFileScheme) ||
                                base::BeginsWith(url, kAssetsScheme);
 
-  std::shared_ptr<lynx::tasm::PipelineOptions> pipeline_options = nullptr;
   auto resource_loader = settings_.resource_loader;
   if (!resource_loader) {
     if (is_local_scheme) {
-      LoadTemplate(url, LoadJSSource(url), pipeline_options, init_data);
+      LoadTemplate(url, LoadJSSource(url), nullptr, init_data);
+    } else {
+      OnErrorOccurred(
+          1, -1, "Failed to load template " + url + ": no resource loader.", "",
+          {}, false);
     }
     return;
   }
@@ -657,25 +671,45 @@ void LynxTemplateRenderer::LoadTemplateFromURL(
   pub::LynxResourceRequest req{.url = url,
                                .type = pub::LynxResourceType::kTemplate};
   resource_loader->LoadResource(
-      req,
-      [weak_flag = weak_flag_->weak_from_this(),
-       task_runner = shell_->GetRunners()->GetUITaskRunner(), url, init_data,
-       pipeline_options, is_local_scheme](pub::LynxResourceResponse& response) {
-        auto data_size = response.data.size();
-        LOGI("LynxTemplateRenderer LoadTemplateFromURL data_size: "
-             << data_size);
-        const bool fallback =
-            is_local_scheme && (!response.Success() || response.data.empty());
+      req, [weak_flag = weak_flag_->weak_from_this(),
+            task_runner = shell_->GetRunners()->GetUITaskRunner(), url,
+            init_data, is_local_scheme](pub::LynxResourceResponse& response) {
+        std::shared_ptr<tasm::LynxTemplateBundle> bundle;
+        if (response.Success() && response.bundle) {
+          // The provider's bundle is borrowed until this callback returns.
+          bundle = std::make_shared<tasm::LynxTemplateBundle>(
+              *static_cast<tasm::LynxTemplateBundle*>(response.bundle));
+        }
+        const bool fallback = is_local_scheme && !bundle &&
+                              (!response.Success() || response.data.empty());
         fml::TaskRunner::RunNowOrPostTask(
             task_runner,
-            [weak_flag, data = std::move(response.data), url = std::move(url),
-             init_data, pipeline_options, fallback]() mutable {
+            [weak_flag, data = std::move(response.data),
+             bundle = std::move(bundle), url, init_data, fallback,
+             error_code = response.err_code,
+             error_message = std::move(response.err_msg)]() mutable {
               if (auto self = weak_flag.lock()) {
-                if (fallback) {
-                  data = self->renderer->LoadJSSource(url);
+                auto* renderer = self->renderer;
+                if (bundle) {
+                  renderer->LoadTemplateBundle(url, std::move(*bundle), nullptr,
+                                               init_data);
+                  return;
                 }
-                self->renderer->LoadTemplate(std::move(url), std::move(data),
-                                             pipeline_options, init_data);
+                if (fallback) {
+                  data = renderer->LoadJSSource(url);
+                  if (!data.empty()) {
+                    error_code = 0;
+                  }
+                }
+                if (error_code != 0) {
+                  renderer->OnErrorOccurred(
+                      1, error_code,
+                      "Failed to load template " + url + ": " + error_message,
+                      "", {}, false, error_message);
+                  return;
+                }
+                renderer->LoadTemplate(url, std::move(data), nullptr,
+                                       init_data);
               }
             });
       });

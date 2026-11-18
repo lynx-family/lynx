@@ -16,11 +16,13 @@ struct lynx_view_client_t {
   on_destroy on_destroy = nullptr;
   on_runtime_ready on_runtime_ready = nullptr;
   on_received_error on_received_error = nullptr;
+  on_module_method_invoked on_module_method_invoked = nullptr;
   on_timing_setup on_timing_setup = nullptr;
   on_timing_update on_timing_update = nullptr;
   on_enter_foreground on_enter_foreground = nullptr;
   on_enter_background on_enter_background = nullptr;
   on_frame_timing on_frame_timing = nullptr;
+  on_received_error_v2 on_received_error_v2 = nullptr;
 };
 
 #endif  // PLATFORM_EMBEDDER_LYNX_VIEW_CLIENT_PRIV_H_

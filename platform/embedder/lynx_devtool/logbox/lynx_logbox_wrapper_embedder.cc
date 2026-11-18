@@ -42,7 +42,7 @@ void LynxLogBoxWrapperEmbedder::OnErrorOccurred(
     int level, int32_t error_code, const std::string& message,
     const std::string& fix_suggestion,
     const std::unordered_map<std::string, std::string>& custom_info,
-    bool is_logbox_only) {
+    bool is_logbox_only, const std::string&) {
   if (!bridge_) {
     return;
   }

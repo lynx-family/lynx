@@ -5,8 +5,11 @@
 #include "platform/embedder/lynx_view_clients.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
+#include "base/include/value/table.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/data/template_data.h"
 #include "core/runtime/lepus/json_parser.h"
 #include "platform/embedder/lynx_view_priv.h"
@@ -78,10 +81,70 @@ void LynxViewClients::OnErrorOccurred(
     int level, int32_t error_code, const std::string& message,
     const std::string& fix_suggestion,
     const std::unordered_map<std::string, std::string>& custom_info,
-    bool is_logbox_only) {
+    bool is_logbox_only, const std::string& root_cause) {
+  std::optional<lepus::Value> custom_fields;
+  std::shared_ptr<error::MetaData> metadata;
+  std::vector<int32_t> consumers;
+  lynx_error_t error_info{};
   for (auto* client : clients_) {
-    if (client->on_received_error) {
+    if (client->on_received_error_v2) {
+      if (!is_logbox_only) {
+        if (!custom_fields) {
+          custom_fields.emplace(lepus::Dictionary::Create());
+          for (const auto& entry : custom_info) {
+            custom_fields->SetProperty(entry.first, lepus::Value(entry.second));
+          }
+          metadata = error::GetMetaData(error_code);
+          auto category_code = error_code;
+          auto final_level = level;
+          const auto* suggestion = &fix_suggestion;
+          if (metadata) {
+            category_code = error_code / 100;
+            const auto metadata_level = static_cast<int32_t>(metadata->level_);
+            if (metadata_level >= static_cast<int32_t>(error::Level::FATAL) &&
+                metadata_level <= static_cast<int32_t>(error::Level::WARN)) {
+              final_level = metadata_level;
+            }
+            if (!metadata->fix_suggestion_.empty()) {
+              suggestion = &metadata->fix_suggestion_;
+            }
+            consumers.reserve(metadata->consumer_.size());
+            for (auto consumer : metadata->consumer_) {
+              consumers.push_back(static_cast<int32_t>(consumer));
+            }
+          }
+          error_info = {
+              sizeof(lynx_error_t),
+              category_code,
+              error_code,
+              final_level,
+              -1,
+              message.c_str(),
+              message.size(),
+              suggestion->c_str(),
+              suggestion->size(),
+              root_cause.c_str(),
+              root_cause.size(),
+              &custom_fields->value(),
+              consumers.data(),
+              consumers.size(),
+          };
+        }
+        client->on_received_error_v2(client, &error_info);
+      }
+    } else if (client->on_received_error) {
       client->on_received_error(client, error_code, message.c_str());
+    }
+  }
+}
+
+void LynxViewClients::OnModuleMethodInvoked(const std::string& module,
+                                            const std::string& method,
+                                            int32_t code) {
+  for (auto* client : clients_) {
+    if (client->on_module_method_invoked) {
+      client->on_module_method_invoked(client, module.c_str(), method.c_str(),
+                                       code);
     }
   }
 }
