@@ -6,12 +6,14 @@
 
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <thread>
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/custom_layout.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
+#include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/lynx_env_config.h"
@@ -168,31 +170,47 @@ std::optional<LayoutResult> ComposeElementHandle::MeasureText(
       static_cast<float>(css_baseline)};
 }
 
-ComposeElementHandle::~ComposeElementHandle() { ClearCustomLayout(); }
+ComposeElementHandle::~ComposeElementHandle() {
+  ClearModifierLayouts();
+  ClearCustomLayout();
+}
 
 void ComposeElementHandle::ClearCustomLayout() {
   if (!custom_layout_) return;
-  // Page teardown can precede the runtime's release of retained handles.
-  if (!content_element_->will_destroy()) {
-    content_element_->SetCustomLayoutFunctions({});
-    // The pending flush still owns layout invalidation, but another policy can
-    // measure this live node before that flush. Remove its raw adapter context
-    // before releasing the adapter, including during a reentrant callback.
-    if (auto* node = content_element_->slnode()) {
-      node->SetContext(nullptr);
-      node->SetSLMeasureFunc(nullptr);
-      node->SetSLComposeMeasureFunc(nullptr);
-      node->SetSLAlignmentFunc(nullptr);
-      node->SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(nullptr);
-      node->MarkDirty();
-    }
-  }
   custom_layout_->Detach();
   custom_layout_.reset();
 }
 
+void ComposeElementHandle::ClearModifierLayouts() {
+  for (const auto& layout : modifier_layouts_) {
+    layout->Detach();
+  }
+  modifier_layouts_.clear();
+}
+
+bool ComposeElementHandle::HasExecutingModifierLayout() const {
+  for (const auto& layout : modifier_layouts_) {
+    if (layout->IsExecuting()) return true;
+  }
+  return false;
+}
+
+void ComposeElementHandle::AddModifierLayout(ModifierElement& frame,
+                                             runtime::MTSRuntime& runtime,
+                                             const lepus::Value& measure,
+                                             const lepus::Value& on_placed) {
+  modifier_layouts_.push_back(
+      std::make_shared<CustomLayout>(frame, runtime, measure, on_placed));
+  auto& layout = *modifier_layouts_.back();
+  frame.BindLayout(&layout);
+  layout.Attach();
+}
+
 void ComposeElementHandle::visitor(void* rt, void* func, uint64_t trace_tool) {
   if (custom_layout_) custom_layout_->visitor(rt, func, trace_tool);
+  for (const auto& layout : modifier_layouts_) {
+    layout->visitor(rt, func, trace_tool);
+  }
   content_element_->visitor(rt, func, trace_tool);
 }
 
@@ -214,20 +232,7 @@ bool ComposeElementHandle::SetCustomLayout(
     return false;
   ClearCustomLayout();
   custom_layout_ = std::move(layout);
-  if (custom_layout_) {
-    owner.SetCustomLayoutFunctions({
-        nullptr,
-        [](void* context) { static_cast<CustomLayout*>(context)->Alignment(); },
-        nullptr,
-        custom_layout_.get(),
-        [](void* context, const starlight::ComposeConstraints& constraints,
-           bool final_measure) {
-          auto size = static_cast<CustomLayout*>(context)->Measure(
-              constraints, final_measure);
-          return FloatSize(size.width_, size.height_, size.baseline_);
-        },
-    });
-  }
+  if (custom_layout_) custom_layout_->Attach();
   return true;
 }
 

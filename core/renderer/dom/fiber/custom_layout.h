@@ -38,10 +38,16 @@ class CustomLayout final : public std::enable_shared_from_this<CustomLayout> {
 
   bool MeasureChild(Element& child, float min_width, float max_width,
                     float min_height, float max_height, LayoutResult& result);
+  static CustomLayout* ActiveModifierMeasure(runtime::MTSRuntime& runtime);
+  Element* ModifierChild() const;
+  bool UsesRuntime(const runtime::MTSRuntime& runtime) const {
+    return &runtime_ == &runtime;
+  }
   bool PlaceChild(Element& child, float x, float y, float z);
   bool IsExecuting() const { return phase_ != Phase::kIdle; }
   void Invalidate();
   Element& owner() const { return *owner_; }
+  void Attach();
   void Detach();
 
  private:

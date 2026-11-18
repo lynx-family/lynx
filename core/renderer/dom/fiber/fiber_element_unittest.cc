@@ -4893,6 +4893,104 @@ TEST_P(FiberElementTest, CustomLayoutRejectsPendingElementFunctions) {
   EXPECT_EQ(owner->slnode()->GetContext(), owner.get());
 }
 
+TEST_P(FiberElementTest,
+       ComposeLayoutModifierMeasuresAndInvalidatesOnlyItsFrame) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateLayoutInElementPage(this);
+  auto parent = CreateComposeViewHandle(manager);
+  auto handle = CreateComposeViewHandle(manager);
+  auto sibling = CreateComposeViewHandle(manager);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  auto content = handle->content_element();
+  parent->content_element()->SetStyle(kPropertyIDDisplay,
+                                      lepus::Value("linear"));
+  parent->content_element()->SetStyle(kPropertyIDLinearOrientation,
+                                      lepus::Value("column"));
+  sibling->content_element()->SetStyle(kPropertyIDHeight, lepus::Value("10px"));
+  parent->content_element()->InsertNode(content);
+  parent->content_element()->InsertNode(sibling->mount_root());
+  page->InsertNode(parent->mount_root());
+  runtime->SetGlobalData("owner", lepus::Value(handle));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.viewportHeight = 300;
+    globalThis.installModifier = () => __SetComposeModifier(owner, {
+      op: 21,
+      previous: {
+        op: 21,
+        measure() {
+          const inner = __MeasureLayoutModifierChild(100, 100, 500, 500);
+          return {width: inner.width, height: viewportHeight, x: 0, y: 0};
+        },
+        onPlaced(target, epoch) {
+          globalThis.target = target;
+          globalThis.epoch = epoch;
+        }
+      },
+      measure(minW, maxW, minH, maxH) {
+        const inner = __MeasureLayoutModifierChild(minW, maxW, minH, maxH);
+        return {width: inner.width, height: inner.height, x: 0, y: -5};
+      },
+      onPlaced(target, epoch) {
+        globalThis.innerTarget = target;
+        globalThis.innerEpoch = epoch;
+      }
+    });
+    installModifier();
+  )"));
+  auto frame = handle->mount_root();
+  ASSERT_TRUE(frame->is_modifier());
+  auto* inner_frame = frame->GetChildAt(0);
+  ASSERT_TRUE(inner_frame && inner_frame->is_modifier());
+  ASSERT_EQ(content.get(), inner_frame->GetChildAt(0));
+  auto layout = [&] {
+    page->FlushActionsAsRoot();
+    starlight::Constraints constraints{
+        starlight::OneSideConstraint::Definite(100),
+        starlight::OneSideConstraint::AtMost(600),
+    };
+    parent->content_element()->slnode()->ReLayoutWithConstraints(constraints);
+  };
+  layout();
+  EXPECT_FLOAT_EQ(500, content->slnode()->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(-5,
+                  content->slnode()->GetBorderBoundTopFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(300, frame->slnode()->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(300, sibling->content_element()
+                           ->slnode()
+                           ->GetBorderBoundTopFromParentPaddingBound());
+  EXPECT_FALSE(frame->computed_css_style()->HasZIndex());
+
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.previousEpoch = epoch;
+    globalThis.previousInnerEpoch = innerEpoch;
+    viewportHeight = 360;
+    globalThis.invalidated = __InvalidateLayoutModifier(target, epoch);
+  )"));
+  EXPECT_EQ(runtime->GetGlobalData("invalidated"), lepus::Value(true));
+  layout();
+  EXPECT_FLOAT_EQ(360, frame->slnode()->GetBorderBoundHeight());
+  EXPECT_FLOAT_EQ(360, sibling->content_element()
+                           ->slnode()
+                           ->GetBorderBoundTopFromParentPaddingBound());
+  EXPECT_FLOAT_EQ(500, content->slnode()->GetBorderBoundHeight());
+
+  ASSERT_TRUE(EvalCustomLayout(runtime, "installModifier();"));
+  EXPECT_EQ(frame, handle->mount_root());
+  layout();
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    globalThis.stale = __InvalidateLayoutModifier(target, previousEpoch);
+    globalThis.innerStale = __InvalidateLayoutModifier(innerTarget, previousInnerEpoch);
+    __SetComposeModifier(owner, null);
+    globalThis.removed = __InvalidateLayoutModifier(target, epoch);
+    globalThis.innerRemoved = __InvalidateLayoutModifier(innerTarget, innerEpoch);
+  )"));
+  EXPECT_EQ(runtime->GetGlobalData("stale"), lepus::Value(false));
+  EXPECT_EQ(runtime->GetGlobalData("innerStale"), lepus::Value(false));
+  EXPECT_EQ(runtime->GetGlobalData("removed"), lepus::Value(false));
+  EXPECT_EQ(runtime->GetGlobalData("innerRemoved"), lepus::Value(false));
+  EXPECT_EQ(content, handle->mount_root());
+}
+
 TEST_P(FiberElementTest, CustomLayoutJsBindingsResolveCurrentMountRoot) {
   PrepareLayoutInElementFirstScreenTest(this);
   auto runtime = CreateCustomLayoutRuntime(tasm.get());

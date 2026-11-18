@@ -13,6 +13,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/ref_counted_class.h"
+#include "base/include/vector.h"
 #include "core/renderer/dom/element.h"
 
 namespace lynx {
@@ -21,6 +22,7 @@ namespace tasm {
 class CustomLayout;
 class ComposeModifierApplicator;
 class ElementManager;
+class ModifierElement;
 class TemplateAssembler;
 
 enum class ComposeElementKind : int32_t {
@@ -79,10 +81,17 @@ class ComposeElementHandle final : public lepus::RefCounted {
   }
 
   void ClearCustomLayout();
+  void ClearModifierLayouts();
+  bool HasExecutingModifierLayout() const;
+  void AddModifierLayout(ModifierElement& frame, runtime::MTSRuntime& runtime,
+                         const lepus::Value& measure,
+                         const lepus::Value& on_placed);
 
   fml::RefPtr<Element> content_element_;
   fml::RefPtr<Element> mount_root_;
   std::shared_ptr<CustomLayout> custom_layout_;
+  // Each layout modifier binds to its own frame outside the content Element.
+  base::Vector<std::shared_ptr<CustomLayout>> modifier_layouts_;
 };
 
 }  // namespace tasm

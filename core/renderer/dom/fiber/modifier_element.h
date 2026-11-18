@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_FIBER_MODIFIER_ELEMENT_H_
 #define CORE_RENDERER_DOM_FIBER_MODIFIER_ELEMENT_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "core/renderer/dom/element.h"
@@ -13,6 +14,7 @@ namespace lynx {
 namespace tasm {
 
 class ElementManager;
+class CustomLayout;
 
 // A physical box boundary introduced by a Compose Modifier. It participates in
 // the normal Fiber child tree and uses view rendering in Fragment Layer mode.
@@ -22,6 +24,10 @@ class ModifierElement : public Element {
   ~ModifierElement() override = default;
 
   bool is_modifier() const override { return true; }
+  void BindLayout(CustomLayout* layout);
+  void ClearLayoutBinding() { layout_ = nullptr; }
+  CustomLayout* layout() const { return layout_; }
+  int32_t layout_epoch() const { return layout_epoch_; }
   void SetupFragmentBehavior(Fragment* fragment) override;
   void AttachToElementManager(
       ElementManager* manager,
@@ -38,6 +44,10 @@ class ModifierElement : public Element {
 
   ModifierElement(const ModifierElement& element, bool clone_resolved_props)
       : Element(element, clone_resolved_props) {}
+
+  // A pending invalidation must still refer to this binding after reuse.
+  int32_t layout_epoch_ = 0;
+  CustomLayout* layout_ = nullptr;  // Cleared before the handle releases it.
 };
 
 }  // namespace tasm
