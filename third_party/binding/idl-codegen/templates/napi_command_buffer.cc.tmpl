@@ -24,7 +24,9 @@ constexpr unsigned kDOMStringTypeId = 3102;
 {% endif %}
 
 {% macro decode_argument_struct(argument) %}
-{% if argument.is_boolean_type %}
+{% if argument.buffered_reference %}
+uint32_t {{argument.name}}Reference;
+{% elif argument.is_boolean_type %}
 uint32_t {{argument.name}};
 {% elif argument.is_numeric_type %}
 {% if argument.idl_type == 'unrestricted float' or argument.idl_type == 'float' %}
@@ -60,23 +62,40 @@ uint32_t has_{{argument.name}};
 {% endif %}
 {% endmacro %}
 
+{% macro invoke_buffered_method(method, arguments) %}
+{{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state' if method.is_raises_exception}}{{', ' if method.is_raises_exception and arguments}}{{arguments | map ('command_argument_literal') | join(', ')}});
+{% if method.is_raises_exception %}
+if (exception_state.HadException()) {
+  *success = false;
+  return Napi::Value();
+}
+{% endif %}
+{% if method.return_async %}
+FromAsyncId(command.id)->Init(std::unique_ptr<ImplBase>(result));
+{% endif %}
+{% if method.is_sync %}
+{{ update_return_value(method) | trim }}
+{% endif %}
+{% endmacro %}
+
 {% macro method_call_content(method) %}
 if (type_safe) {
-  {% if method.is_raises_exception %} 
+  {% if method.is_raises_exception %}
   binding::ExceptionState exception_state(env);
   {% endif %}
-  {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{'exception_state, ' if method.is_raises_exception}}{{method.arguments | map ('command_argument_literal') | join(', ')}});
-  {% if method.is_raises_exception %} 
-  if (exception_state.HadException()) {
-    *success = false;
-    return Napi::Value();
+  {% if method.fully_buffered and method.arguments|selectattr('is_optional')|list %}
+  {% for argument in method.arguments if argument.is_optional %}
+  if (command.argument_count <= {{argument.index}}) {
+    {{ invoke_buffered_method(method, method.arguments[:argument.index]) | trim | indent(4) }}
+  } else
+  {% endfor %}
+  {
+    {{ invoke_buffered_method(method, method.arguments) | trim | indent(4) }}
   }
-  {% endif %}
-  {% if method.return_async %}
-  FromAsyncId(command.id)->Init(std::unique_ptr<ImplBase>(result));
+  {% else %}
+  {{ invoke_buffered_method(method, method.arguments) | trim | indent(2) }}
   {% endif %}
   {% if method.is_sync %}
-  {{ update_return_value(method) | trim | indent(2) }}
   // Sync calls should be at the end of buffer.
   {{macro_prefix}}DCHECK(current == length);
   if (current != length) {
@@ -102,7 +121,9 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {% set ns.count = ns.count + 1 %}
     {% endif %}
     {% for argument in method.arguments %}
-    {% if argument.is_numeric_type or argument.is_boolean_type %}
+    {% if argument.buffered_reference %}
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument.is_numeric_type or argument.is_boolean_type %}
     {% if argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' or argument.idl_type == 'double' %}
     {% set ns.count = ns.count + 2 %}
     {% else %}
@@ -140,9 +161,20 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   current += {{ns.count}};
   {% endif %}
 {#                                                                            #}
-  {% for argument in method.arguments %}
   {% set ns.union_argument = False %}
-  {% if argument.is_typed_array %}
+  {% for argument in method.arguments %}
+  {% if argument.buffered_reference and not argument.union_types %}
+  {% if argument.is_optional %}
+  decltype(binding::NativeValueTraits<{{(argument.native_value_traits_type or argument.idl_type_name) | replace('IDL', 'binding::IDL')}}>::NativeValue(Napi::Value())) {{argument.name}};
+  if (command.argument_count > {{argument.index}}) {
+  {% endif %}
+  {{'' if argument.is_optional else 'auto '}}{{argument.name}} = binding::NativeValueTraits<{{(argument.native_value_traits_type or argument.idl_type_name) | replace('IDL', 'binding::IDL')}}>::NativeValue(objects_.Value().Get(command.{{argument.name}}Reference));
+  {% if argument.is_optional %}}
+  {% endif %}
+  if (env.IsExceptionPending()) { *success = false; return Napi::Value(); }
+  {% elif argument.buffered_reference and argument.union_types %}
+  {# Decode unions after all other arguments have been declared. #}
+  {% elif argument.is_typed_array %}
   {% if argument.idl_type == 'Float32Array' %}
   SharedVector<float> {{argument.name}}((float*)buffer + current, command.{{argument.name}}ArrayLengthGen);
   current += command.{{argument.name}}ArrayLengthGen;
@@ -228,6 +260,26 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   }
   {% endif %}
   {% endfor %}
+  {% for argument in method.arguments if argument.buffered_reference and argument.union_types %}
+  {% set ns.union_argument = True %}
+  auto value = objects_.Value().Get(command.{{argument.name}}Reference);
+  {% for union_arg in argument.union_types %}
+  {% if union_arg.is_interface_type %}
+  {{ 'if' if loop.first else 'else if' }} (auto* bridge = binding::SafeUnwrap<Napi{{union_arg.idl_type}}>(value)) {
+    auto* {{argument.name}} = bridge->ToImplUnsafe();
+  {% elif union_arg.is_string_type %}
+  {{ 'if' if loop.first else 'else if' }} (value.IsString()) {
+    auto {{argument.name}} = value.As<Napi::String>();
+  {% endif %}
+    {{ method_call_content(method) | trim | indent(4) }}
+  }
+  {% endfor %}
+  else {
+    Napi::TypeError::New(env, "Invalid buffered union argument").ThrowAsJavaScriptException();
+    *success = false;
+    return Napi::Value();
+  }
+  {% endfor %}
   {% if ns.union_argument != True %}
   {{ method_call_content(method) | trim | indent(2) }}
   {% endif %}
@@ -249,7 +301,9 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
   if (result.IsEmpty()) rv = env.Null();
   {% endif %}
   {% endif %}{# is_nullable #}
-  {% if method.is_boolean_type %}
+  {% if method.union_types %}
+  rv = ToNAPI(std::move(result), env);
+  {% elif method.is_boolean_type %}
   rv = Napi::Boolean::New(env, result);
   {% elif method.is_numeric_type %}
   rv = Napi::Number::New(env, result);
