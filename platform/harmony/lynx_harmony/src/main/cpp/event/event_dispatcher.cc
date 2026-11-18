@@ -1530,6 +1530,7 @@ void EventDispatcher::DispatchActiveTargetTouchEventToChildLynxPage(
 
 void EventDispatcher::DispatchTouchEventToChildGestureArena(
     const std::string& event_name, const ArkUI_UIInputEvent* event) {
+  auto lifetime = weak_flag_;
   auto active_target = first_active_target_.lock();
   if (!active_target) {
     return;
@@ -1541,23 +1542,30 @@ void EventDispatcher::DispatchTouchEventToChildGestureArena(
   auto* child_event_dispatcher =
       child_lynx_page_ui->GetContext()->GetUIOwner()->GetEventDispatcher();
   child_event_dispatcher->DispatchTouchEventToGestureArena(event_name, event);
-  NodeManager::Instance().SetEventDispatcher(this);
+  NodeManager::Instance().SetEventDispatcher(
+      lifetime->dispatcher.load(std::memory_order_acquire));
 }
 
 void EventDispatcher::DispatchTouchEventToGestureArena(
     const std::string& event_name, const ArkUI_UIInputEvent* event) {
-  if (!first_active_target_.expired() && ui_owner_->GetGestureArenaManager()) {
+  auto lifetime = weak_flag_;
+  auto manager = ui_owner_->GetGestureArenaManager();
+  if (manager && (manager->UsesUnifiedGestureHandler() ||
+                  !first_active_target_.expired())) {
     if (event_name == TouchEvent::START) {
       ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
     }
-    if (last_touch_event_ != nullptr &&
-        (event_name == TouchEvent::START || event_name == TouchEvent::MOVE ||
-         event_name == TouchEvent::UP || event_name == TouchEvent::CANCEL)) {
+    if (manager->UsesUnifiedGestureHandler() ||
+        (last_touch_event_ != nullptr &&
+         (event_name == TouchEvent::START || event_name == TouchEvent::MOVE ||
+          event_name == TouchEvent::UP || event_name == TouchEvent::CANCEL))) {
       ui_owner_->DispatchTouchEventToGestureArena(event_name, last_touch_event_,
                                                   event);
     }
   }
-  DispatchTouchEventToChildGestureArena(event_name, event);
+  if (lifetime->dispatcher.load(std::memory_order_acquire)) {
+    DispatchTouchEventToChildGestureArena(event_name, event);
+  }
 }
 
 void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
@@ -1570,6 +1578,7 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
     DispatchPlatformTouchEvent(event, root, from_overlay);
     return;
   }
+  auto gesture_manager = ui_owner_->GetGestureArenaManager();
   time_stamp_ = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count();
@@ -1595,6 +1604,7 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
   } else if (!first_active_target_.expired() &&
              !active_target_finger_map_.empty()) {
     if (EventThrough()) {
+      if (gesture_manager) gesture_manager->CancelUnifiedGesture();
       return;
     }
     switch (action) {
@@ -1634,8 +1644,11 @@ void EventDispatcher::OnTouchEvent(const ArkUI_UIInputEvent* event,
     }
   }
 
-  if (EventThrough() ||
-      (action == UI_TOUCH_EVENT_ACTION_MOVE && !has_touch_moved_)) {
+  if (EventThrough()) {
+    if (gesture_manager) gesture_manager->CancelUnifiedGesture();
+    return;
+  }
+  if (action == UI_TOUCH_EVENT_ACTION_MOVE && !has_touch_moved_) {
     return;
   }
 

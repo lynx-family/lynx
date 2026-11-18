@@ -250,4 +250,125 @@ gesture::GestureDirection UnifiedGestureHandler::GetScrollDirection(
   return gesture::GestureDirection::kUndetermined;
 }
 
+bool UnifiedGestureHandler::CanConsumeGesture(
+    gesture::MemberId member_id, gesture::GestureDirection direction,
+    const gesture::Point& delta) const {
+  auto view = FindMember(member_id);
+  return view && view->CanConsumeGesture(delta.x, delta.y);
+}
+
+bool UnifiedGestureHandler::ShouldConsumeGesture(
+    gesture::MemberId member_id) const {
+  auto view = FindMember(member_id);
+  return view && view->ShouldConsumeGesture() &&
+         !context_->GetUIOwner()
+              ->GetEventDispatcher()
+              ->ShouldInterceptGesture();
+}
+
+gesture::ScrollResult UnifiedGestureHandler::ScrollBy(
+    gesture::MemberId member_id, const gesture::Point& delta) {
+  if (auto view = FindMember(member_id)) {
+    const auto result = view->GestureScrollBy(delta.x, delta.y);
+    return {{result[0], result[1]}, {result[2], result[3]}};
+  }
+  return {{}, delta};
+}
+
+void UnifiedGestureHandler::OnGestureRecognized(gesture::MemberId member_id) {
+  if (auto view = FindMember(member_id)) {
+    context_->OnGestureRecognized(view.get());
+  }
+}
+
+void UnifiedGestureHandler::OnGestureStateChanged(gesture::MemberId member_id,
+                                                  uint32_t gesture_id,
+                                                  gesture::GestureState state) {
+}
+
+void UnifiedGestureHandler::DispatchGestureEvent(
+    const gesture::GestureEvent& event) {
+  auto view = FindMember(event.member_id);
+  if (!view) {
+    return;
+  }
+  const char* name = gesture::GestureCallbackName(event.callback);
+  auto params = lepus::Dictionary::Create();
+  params->SetValue("type",
+                   lepus::Value(gesture::GestureInputTypeName(event.source)));
+  params->SetValue("timestamp", lepus::Value(event.timestamp_epoch_ms));
+  params->SetValue("x", lepus::Value(event.local.x));
+  params->SetValue("y", lepus::Value(event.local.y));
+  params->SetValue("pageX", lepus::Value(event.page.x));
+  params->SetValue("pageY", lepus::Value(event.page.y));
+  params->SetValue("clientX", lepus::Value(event.client.x));
+  params->SetValue("clientY", lepus::Value(event.client.y));
+  params->SetValue("scrollX", lepus::Value(event.scroll.x));
+  params->SetValue("scrollY", lepus::Value(event.scroll.y));
+  params->SetValue("deltaX", lepus::Value(event.delta.x));
+  params->SetValue("deltaY", lepus::Value(event.delta.y));
+  params->SetValue("isAtStart", lepus::Value(event.scroll.is_at_start));
+  params->SetValue("isAtEnd", lepus::Value(event.scroll.is_at_end));
+  context_->HandleGestureEvent(
+      GestureEvent(view->Sign(), event.gesture_id, name, lepus::Value(params)));
+}
+
+void UnifiedGestureHandler::ScheduleTimer(gesture::TimerToken token,
+                                          double delay_ms) {
+  auto timer = std::make_unique<fml::OneshotTimer>(context_->GetUITaskRunner());
+  timer->Start(fml::TimeDelta::FromMicroseconds(std::max<int64_t>(
+                   1, static_cast<int64_t>(std::ceil(delay_ms * 1000)))),
+               [weak = weak_from_this(), token]() {
+                 auto self = weak.lock();
+                 if (!self) return;
+                 const auto it = self->timers_.find(token);
+                 if (it == self->timers_.end()) return;
+                 // Keep the firing timer alive while its callback can clear the
+                 // registry.
+                 auto fired_timer = std::move(it->second);
+                 self->timers_.erase(it);
+                 self->arena_.HandleTimer(token, MonotonicTimeMs(),
+                                          EpochTimeMs());
+               });
+  timers_.insert_or_assign(token, std::move(timer));
+}
+
+void UnifiedGestureHandler::CancelTimer(gesture::TimerToken token) {
+  timers_.erase(token);
+}
+
+bool UnifiedGestureHandler::StartFling(const gesture::Point& velocity) {
+  const float density = context_->ScaledDensity();
+  const float x = velocity.x * density;
+  const float y = velocity.y * density;
+  if (std::abs(x) <= GestureConstants::FLING_SPEED_THRESHOLD &&
+      std::abs(y) <= GestureConstants::FLING_SPEED_THRESHOLD) {
+    return false;
+  }
+  fling_scroller_->Start(
+      x, y,
+      [weak = weak_from_this(), density, sequence_id = last_input_.sequence_id](
+          uint8_t state, float dx, float dy) {
+        auto self = weak.lock();
+        if (!self || self->stopping_fling_ ||
+            self->last_input_.sequence_id != sequence_id)
+          return;
+        auto input = self->last_input_;
+        input.type = gesture::InputType::kFlingFrame;
+        input.monotonic_time_ms = MonotonicTimeMs();
+        input.epoch_time_ms = EpochTimeMs();
+        input.delta = {dx / density, dy / density};
+        input.fling_finished =
+            state == static_cast<uint8_t>(FlingScroller::FlingState::IDLE);
+        self->arena_.HandleInput(input);
+      });
+  return true;
+}
+
+void UnifiedGestureHandler::StopFling() {
+  // Stop may synchronously deliver an idle callback; suppress that reentry.
+  base::AutoReset<bool> resetter(&stopping_fling_, true);
+  fling_scroller_->Stop();
+}
+
 }  // namespace lynx::tasm::harmony
