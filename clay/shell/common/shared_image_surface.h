@@ -18,10 +18,14 @@ class SharedImageBacking;
 // outlives this adapter; no native window frame is acquired while rasterizing.
 class SharedImageSurface final : public Surface {
  public:
+  enum class Storage { kSharedImage, kSnapshot };
+
   static bool IsSupported(Surface* surface);
 
   explicit SharedImageSurface(Surface* display_surface,
-                              uint32_t sample_count = 1);
+                              uint32_t sample_count = 1,
+                              bool apply_root_transform = true,
+                              Storage storage = Storage::kSharedImage);
   ~SharedImageSurface() override;
 
   bool IsValid() override;
@@ -35,11 +39,19 @@ class SharedImageSurface final : public Surface {
   bool EnableRasterCache() const override;
 
   const fml::RefPtr<SharedImageBacking>& backing() const { return backing_; }
+  const GrImagePtr& image() const { return image_; }
 
  private:
+  std::unique_ptr<SurfaceFrame> AcquireSnapshotFrame(
+      const skity::Vec2& frame_size, const skity::Vec2& size,
+      std::unique_ptr<GLContextResult> current);
+
   Surface* display_surface_;
-  [[maybe_unused]] uint32_t sample_count_;
+  uint32_t sample_count_;
+  bool apply_root_transform_;
+  Storage storage_;
   fml::RefPtr<SharedImageBacking> backing_;
+  GrImagePtr image_;
 };
 
 }  // namespace clay

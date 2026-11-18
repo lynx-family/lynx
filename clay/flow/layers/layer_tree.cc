@@ -10,6 +10,7 @@
 #include <atomic>
 
 #include "base/trace/native/trace_event.h"
+#include "clay/flow/compositor/display_scene.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/cacheable_layer.h"
@@ -99,8 +100,16 @@ bool LayerTree::Preroll(CompositorContext::ScopedFrame& frame,
   LayerStateStack state_stack;
   state_stack.set_preroll_delegate(cull_rect,
                                    frame.root_surface_transformation());
-  RasterCache* cache =
-      ignore_raster_cache ? nullptr : &frame.context().raster_cache();
+  auto* compositor_state = frame.compositor_state();
+  if (compositor_state && compositor_state->RecordsDisplayScene()) {
+    compositor_state->SetRecordDisplayScene(
+        DisplayScene::CanRecord(*root_layer_));
+  }
+  const bool record_scene =
+      compositor_state && compositor_state->RecordsDisplayScene();
+  RasterCache* cache = (ignore_raster_cache || record_scene)
+                           ? nullptr
+                           : &frame.context().raster_cache();
   raster_cache_items_.clear();
 
   PrerollContext context = {
@@ -204,8 +213,16 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
 
   state_stack.set_delegate(frame.canvas());
 
-  RasterCache* cache =
-      ignore_raster_cache ? nullptr : &frame.context().raster_cache();
+  std::shared_ptr<DisplayScene> scene;
+  if (frame.compositor_state() &&
+      frame.compositor_state()->RecordsDisplayScene()) {
+    const auto root = CANVAS_GET_TOTAL_MATRIX(frame.canvas());
+    const auto bounds = root.MapRect(skity::Rect::MakeSize(frame_size_));
+    scene = std::make_shared<DisplayScene>(bounds, root);
+  }
+  RasterCache* cache = (ignore_raster_cache || scene)
+                           ? nullptr
+                           : &frame.context().raster_cache();
 
   PaintContext context = {
       // clang-format off
@@ -228,8 +245,16 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
     TryToRasterCache(raster_cache_items_, &context);
   }
 
+  if (scene) {
+    context.display_scene = scene.get();
+    scene->Begin(context);
+  }
   if (root_layer_->needs_painting(context)) {
     root_layer_->Paint(context);
+  }
+  if (scene) {
+    scene->Finish(context);
+    frame.compositor_state()->SetDisplayScene(std::move(scene));
   }
 }
 

@@ -7,17 +7,19 @@
 
 #include <unordered_map>
 
+#include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/flow/view_slicer.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+#include "third_party/skia/include/core/SkSurface.h"
 
 namespace clay {
 namespace testing {
 
 namespace {
 void AddSliceOfSize(
-    std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>& slices,
+    std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>>& slices,
     int64_t id, skity::Rect rect) {
   slices[id] = std::make_unique<SkPictureEmbedderViewSlice>(rect);
   SkPaint paint;
@@ -45,11 +47,49 @@ const OverlayData* FindOverlay(const std::vector<OverlayData>& overlays,
 }
 }  // namespace
 
+TEST(ViewSlicerTest, RetainedSlicesSurviveRepeatedPresentation) {
+  auto state = std::make_unique<CompositorState>(skity::Vec2(100, 100));
+  state->PrerollCompositeEmbeddedView(
+      1, MakeParams(skity::Rect::MakeLTRB(40, 40, 60, 60)));
+  SkPaint paint;
+  paint.setColor(SK_ColorRED);
+  state->CompositeEmbeddedView(1)->drawRect(SkRect::MakeWH(100, 100), paint);
+  auto first = state->CloneForPresentation();
+  auto second = state->CloneForPresentation();
+  EXPECT_EQ(state->CompositeEmbeddedView(1), nullptr);
+  ASSERT_NE(first->GetViewParams().at(1).get(),
+            second->GetViewParams().at(1).get());
+  state.reset();
+
+  auto surface = SkSurface::MakeRasterN32Premul(100, 100);
+  ASSERT_TRUE(surface);
+  auto draw = [&](CompositorState& frame) {
+    surface->getCanvas()->clear(SK_ColorTRANSPARENT);
+    auto overlays = SliceViews(
+        surface->getCanvas(), frame.GetCompositionOrder(), frame.GetSlices(),
+        frame.GetViewParams(), frame.HasFinishedSlices());
+    ASSERT_EQ(overlays.size(), 1u);
+    EXPECT_EQ(overlays[0].rect, skity::Rect::MakeLTRB(40, 40, 60, 60));
+    SkPixmap pixels;
+    ASSERT_TRUE(surface->peekPixels(&pixels));
+    EXPECT_EQ(pixels.getColor(10, 10), SK_ColorRED);
+    EXPECT_EQ(pixels.getColor(50, 50), SK_ColorTRANSPARENT);
+  };
+  EXPECT_TRUE(SliceViews(surface->getCanvas(), first->GetCompositionOrder(),
+                         first->GetSlices(), first->GetViewParams())
+                  .empty());
+  draw(*first);
+  first->GetCompositionOrder().clear();
+  first->GetViewParams().clear();
+  first.reset();
+  draw(*second);
+}
+
 TEST(ViewSlicerTest, CanSlicerNonOverlappingViews) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(99, 99, 100, 100));
 
   std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
@@ -65,7 +105,7 @@ TEST(ViewSlicerTest, IgnoresFractionalOverlaps) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 50.49, 50.49));
 
   std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
@@ -81,7 +121,7 @@ TEST(ViewSlicerTest, ComputesOverlapWith1PV) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 50, 50));
 
   std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
@@ -101,7 +141,7 @@ TEST(ViewSlicerTest, OverlayLayerUsesOwnBounds) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 10, 10));
 
   std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>> view_params;
@@ -121,7 +161,7 @@ TEST(ViewSlicerTest, OverlayLayerDoesNotParticipateInPlatformIntersections) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1, 2};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 10, 10));
   AddSliceOfSize(slices, 2, skity::Rect::MakeLTRB(0, 0, 40, 40));
 
@@ -142,7 +182,7 @@ TEST(ViewSlicerTest, ComputesOverlapWith2PV) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1, 2};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   AddSliceOfSize(slices, 1, skity::Rect::MakeLTRB(0, 0, 50, 50));
   AddSliceOfSize(slices, 2, skity::Rect::MakeLTRB(50, 50, 100, 100));
 
@@ -169,7 +209,7 @@ TEST(ViewSlicerTest, OverlappingTwoPVs) {
   SkPictureRecorder recorder;
   SkCanvas* canvas = recorder.beginRecording(SkRect::MakeLTRB(0, 0, 100, 100));
   std::vector<int64_t> composition_order = {1, 2};
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices;
   // This embeded view overlaps both platform views:
   //
   //   [  A  [   ]]

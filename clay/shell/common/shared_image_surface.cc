@@ -30,6 +30,55 @@ GrSurfacePtr WrapMetalWriteTexture(GrContext* context, const skity::Vec2& size,
 
 namespace {
 
+#ifdef ENABLE_SKITY
+// SurfaceFrame needs a GPUSurface interface for both GPU and software targets.
+class SnapshotSurface final : public skity::GPUSurface {
+ public:
+  SnapshotSurface(GrContext* context, skity::Vec2 size, uint32_t sample_count)
+      : context_(context), size_(size) {
+    if (context_) {
+      skity::GPURenderTargetDescriptor descriptor;
+      descriptor.width = size.x;
+      descriptor.height = size.y;
+      descriptor.sample_count = sample_count;
+      target_ = context_->CreateRenderTarget(descriptor);
+    } else {
+      bitmap_ = std::make_unique<skity::Bitmap>(
+          size.x, size.y, skity::AlphaType::kPremul_AlphaType);
+      if (bitmap_->GetPixelAddr()) {
+        canvas_ = skity::Canvas::MakeSoftwareCanvas(bitmap_.get());
+      }
+    }
+  }
+
+  bool IsValid() const { return target_ || canvas_; }
+  uint32_t GetWidth() const override { return size_.x; }
+  uint32_t GetHeight() const override { return size_.y; }
+  float ContentScale() const override { return 1.f; }
+  GrCanvas* LockCanvas(bool) override {
+    return target_ ? target_->GetCanvas() : canvas_.get();
+  }
+  void Flush() override {
+    if (canvas_) canvas_->Flush();
+  }
+  std::shared_ptr<skity::Pixmap> ReadPixels(const skity::Rect&) override {
+    return nullptr;
+  }
+  GrImagePtr Snapshot() {
+    if (target_) return context_->MakeSnapshot(std::move(target_));
+    Flush();
+    return skity::Image::MakeImage(bitmap_->GetPixmap());
+  }
+
+ private:
+  GrContext* context_;
+  skity::Vec2 size_;
+  std::unique_ptr<skity::GPURenderTarget> target_;
+  std::unique_ptr<skity::Bitmap> bitmap_;
+  std::unique_ptr<GrCanvas> canvas_;
+};
+#endif
+
 #if OS_ANDROID
 GrSurfacePtr WrapGLTarget(GrContext* context, const skity::Vec2& size,
                           uint32_t sample_count,
@@ -90,8 +139,13 @@ bool SharedImageSurface::IsSupported(Surface* surface) {
 }
 
 SharedImageSurface::SharedImageSurface(Surface* display_surface,
-                                       uint32_t sample_count)
-    : display_surface_(display_surface), sample_count_(sample_count) {}
+                                       uint32_t sample_count,
+                                       bool apply_root_transform,
+                                       Storage storage)
+    : display_surface_(display_surface),
+      sample_count_(sample_count),
+      apply_root_transform_(apply_root_transform),
+      storage_(storage) {}
 SharedImageSurface::~SharedImageSurface() = default;
 
 bool SharedImageSurface::IsValid() { return display_surface_->IsValid(); }
@@ -99,9 +153,10 @@ bool SharedImageSurface::IsValid() { return display_surface_->IsValid(); }
 std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireFrame(
     const skity::Vec2& frame_size) {
   backing_ = nullptr;
-#if OS_ANDROID || \
-    ((OS_MAC || OS_IOS) && (defined(ENABLE_SKITY) || defined(SK_METAL)))
-  if (!IsSupported(display_surface_)) return nullptr;
+  image_ = nullptr;
+  if (storage_ == Storage::kSharedImage && !IsSupported(display_surface_)) {
+    return nullptr;
+  }
   auto valid_size = [](const skity::Vec2& size) {
     return std::isfinite(size.x) && std::isfinite(size.y) && size.x > 0 &&
            size.y > 0 && size.x <= 16384 && size.y <= 16384 &&
@@ -117,7 +172,12 @@ std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireFrame(
   }
   auto current = MakeRenderContextCurrent();
   if (!current || !current->GetResult()) return nullptr;
+  if (storage_ == Storage::kSnapshot) {
+    return AcquireSnapshotFrame(frame_size, size, std::move(current));
+  }
 
+#if OS_ANDROID || \
+    ((OS_MAC || OS_IOS) && (defined(ENABLE_SKITY) || defined(SK_METAL)))
   auto* context = GetContext();
   using BackingType = SharedImageBacking::BackingType;
   using PixelFormat = SharedImageBacking::PixelFormat;
@@ -203,8 +263,43 @@ std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireFrame(
 #endif
 }
 
+std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireSnapshotFrame(
+    const skity::Vec2& frame_size, const skity::Vec2& size,
+    std::unique_ptr<GLContextResult> current) {
+  auto* context = GetContext();
+#ifndef ENABLE_SKITY
+  auto info = SkImageInfo::Make(size.x, size.y, kRGBA_8888_SkColorType,
+                                kPremul_SkAlphaType);
+  auto target = context ? SkSurface::MakeRenderTarget(
+                              context, skgpu::Budgeted::kYes, info,
+                              sample_count_, kTopLeft_GrSurfaceOrigin, nullptr)
+                        : SkSurface::MakeRaster(info);
+  if (!target) return nullptr;
+#else
+  auto target = std::make_shared<SnapshotSurface>(context, size, sample_count_);
+  if (!target->IsValid()) return nullptr;
+#endif
+  SurfaceFrame::FramebufferInfo framebuffer_info;
+  framebuffer_info.supports_readback = true;
+  auto frame = std::make_unique<SurfaceFrame>(
+      target, framebuffer_info, [](SurfaceFrame&, GrCanvas*) { return true; },
+      [this, target](const SurfaceFrame::SubmitInfo&) {
+#ifndef ENABLE_SKITY
+        image_ = target->makeImageSnapshot();
+#else
+        image_ = target->Snapshot();
+#endif
+        return static_cast<bool>(image_);
+      },
+      frame_size, std::move(current));
+  if (!frame->GetCanvas()) return nullptr;
+  CANVAS_CONCAT(frame->GetCanvas(), GetRootTransformation());
+  return frame;
+}
+
 skity::Matrix SharedImageSurface::GetRootTransformation() const {
-  return display_surface_->GetRootTransformation();
+  return apply_root_transform_ ? display_surface_->GetRootTransformation()
+                               : skity::Matrix();
 }
 GrContext* SharedImageSurface::GetContext() {
   return display_surface_->GetContext();

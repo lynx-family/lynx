@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "clay/flow/compositor/display_scene.h"
 #include "clay/flow/embedded_views.h"
 #include "clay/fml/logging.h"
 
@@ -38,6 +39,13 @@ void ExternalViewLayer::Preroll(PrerollContext* context) {
 void ExternalViewLayer::Paint(clay::PaintContext& context) const {
   FML_DCHECK(needs_painting(context));
   if (!context.compositor_state) {
+    return;
+  }
+  if (context.display_scene) {
+    auto previous =
+        context.display_scene->SwitchToView(context, element_id_.view_id());
+    PaintChildren(context);
+    context.display_scene->SwitchToView(context, previous);
     return;
   }
   auto previous_canvas = context.canvas;

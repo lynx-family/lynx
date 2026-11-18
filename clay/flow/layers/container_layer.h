@@ -18,6 +18,7 @@ namespace clay {
 
 class ContainerLayer : public Layer {
  public:
+  bool SupportsDisplayScene() const override { return true; }
   ContainerLayer();
 
   void Diff(DiffContext* context, const Layer* old_layer) override;

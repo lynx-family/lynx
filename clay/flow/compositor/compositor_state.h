@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "clay/common/service/service_manager.h"
@@ -15,11 +16,17 @@
 
 namespace clay {
 
+class DisplayScene;
+
 class CompositorState {
  public:
   explicit CompositorState(skity::Vec2 frame_size);
 
   ~CompositorState();
+
+  // Finish recording and retain the slices for subsequent display frames.
+  // Presentation consumes its own copy of the view parameters and order.
+  std::unique_ptr<CompositorState> CloneForPresentation();
 
   void PrerollCompositeEmbeddedView(int view_id,
                                     std::unique_ptr<EmbeddedViewParams> params);
@@ -29,11 +36,22 @@ class CompositorState {
       const std::shared_ptr<const clay::ImageFilter>& filter,
       const skity::Rect& filter_rect);
 
+  void SetRecordDisplayScene(bool enabled) { record_display_scene_ = enabled; }
+  bool RecordsDisplayScene() const { return record_display_scene_; }
+  void SetDisplayScene(std::shared_ptr<DisplayScene> scene) {
+    display_scene_ = std::move(scene);
+  }
+  const std::shared_ptr<DisplayScene>& GetDisplayScene() const {
+    return display_scene_;
+  }
+
+  bool HasFinishedSlices() const { return has_finished_slices_; }
+
   const skity::Vec2& GetFrameSize() const { return frame_size_; }
 
   std::vector<int64_t>& GetCompositionOrder() { return composition_order_; }
 
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>& GetSlices() {
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>>& GetSlices() {
     return slices_;
   }
 
@@ -44,6 +62,9 @@ class CompositorState {
 
  private:
   skity::Vec2 frame_size_;
+  bool has_finished_slices_ = false;
+  bool record_display_scene_ = false;
+  std::shared_ptr<DisplayScene> display_scene_;
 
   // The order of composition. Each entry contains a unique id for a composited
   // entry.
@@ -52,7 +73,7 @@ class CompositorState {
   // The |EmbedderViewSlice| implementation keyed off the platform view id,
   // which contains any subsequent operations until the next platform view or
   // the end of the last leaf node in the layer tree.
-  std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>> slices_;
+  std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>> slices_;
 
   // The params for a composited entry, including size, position, mutation
   // stack, and presentation kind.

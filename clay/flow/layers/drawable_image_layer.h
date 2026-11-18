@@ -8,6 +8,7 @@
 #ifndef CLAY_FLOW_LAYERS_DRAWABLE_IMAGE_LAYER_H_
 #define CLAY_FLOW_LAYERS_DRAWABLE_IMAGE_LAYER_H_
 
+#include <functional>
 #include <string>
 
 #include "clay/common/graphics/drawable_image.h"
@@ -17,6 +18,7 @@ namespace clay {
 
 class DrawableImageLayer : public Layer {
  public:
+  bool SupportsDisplayScene() const override { return true; }
   DrawableImageLayer(
       const skity::Vec2& offset, const skity::Vec2& size, int64_t image_id,
       bool freeze, clay::ImageSampling sampling,
@@ -31,6 +33,11 @@ class DrawableImageLayer : public Layer {
   const DrawableImageLayer* as_drawable_image_layer() const override {
     return this;
   }
+
+  using DisplayPaint = std::function<void(GrCanvas*, GrContext*)>;
+  DisplayPaint CaptureDisplayPaint(PaintContext& context) const;
+  int64_t image_id() const { return image_id_; }
+  bool frozen() const { return freeze_; }
 
   void Preroll(PrerollContext* context) override;
   void Paint(PaintContext& context) const override;

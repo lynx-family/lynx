@@ -9,10 +9,39 @@
 
 #include "clay/flow/animation/animation_host.h"
 #include "clay/flow/animation/animation_mutator.h"
+#include "clay/flow/compositor/display_scene.h"
 #include "clay/flow/paint_utils.h"
 #include "clay/gfx/rendering_backend.h"
 
 namespace clay {
+
+void PaintContext::PaintWithBlend(
+    const skity::Rect& bounds, BlendMode blend,
+    const std::function<void(PaintContext&, const GrPaint*)>& paint) {
+  // Keep destination blending in the display stage; its source can then be
+  // rasterized and transferred independently of the content underneath it.
+  auto restore = state_stack.save();
+  restore.clipRect(bounds, false);
+  restore.applyBackdropFilter(bounds, nullptr, blend);
+  paint(*this, nullptr);
+}
+
+void PaintContext::PaintWithState(
+    const skity::Rect& bounds, int can_apply_flags,
+    const std::function<void(PaintContext&)>& paint) {
+  // Filter inputs must be recorded before applying ancestor clips. Existing
+  // groups also consume any remaining attributes before isolating the input.
+  can_apply_flags =
+      state_stack.has_recorded_save_layer()
+          ? 0
+          : can_apply_flags & ~LayerStateStack::kCallerCanApplyImageFilter;
+  auto restore = state_stack.applyState(bounds, can_apply_flags);
+  if (state_stack.has_recorded_save_layer()) {
+    display_scene->RecordGroupInput(*this, bounds, paint);
+  } else {
+    paint(*this);
+  }
+}
 
 Layer::Layer()
     : paint_bounds_(skity::Rect::MakeEmpty()),

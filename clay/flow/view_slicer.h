@@ -31,10 +31,11 @@ struct OverlayData {
 std::vector<OverlayData> SliceViews(
     clay::GrCanvas* background_canvas,
     const std::vector<int64_t>& composition_order,
-    const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
+    const std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>>&
         slices,
     const std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
-        view_params);
+        view_params,
+    bool replay_finished_slices = false);
 
 }  // namespace clay
 

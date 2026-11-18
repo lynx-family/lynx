@@ -10,10 +10,57 @@
 #include "base/trace/native/trace_event.h"
 #ifndef ENABLE_SKITY
 #include "clay/gfx/skity_to_skia_utils.h"
+#include "third_party/skia/include/utils/SkNoDrawCanvas.h"
+#include "third_party/skia/include/utils/SkPaintFilterCanvas.h"
 #endif
 
 namespace clay {
 #ifndef ENABLE_SKITY
+namespace {
+// A flattened image is only equivalent to the recording if its paints do not
+// read or replace pixels in earlier scene entries. Retain those uncommon
+// operations for display playback instead of changing their blend semantics.
+class RasterCacheAnalyzer final : public SkPaintFilterCanvas {
+ public:
+  explicit RasterCacheAnalyzer(SkCanvas* canvas)
+      : SkPaintFilterCanvas(canvas) {}
+  mutable bool safe = true;
+
+ protected:
+  bool onFilter(SkPaint& paint) const override {
+    if (paint.asBlendMode() != SkBlendMode::kSrcOver) safe = false;
+    return true;
+  }
+  void onDrawPicture(const SkPicture* picture, const SkMatrix* matrix,
+                     const SkPaint* paint) override {
+    SkAutoCanvasRestore restore(this, true);
+    if (matrix) concat(*matrix);
+    if (paint) {
+      SkPaint copy = *paint;
+      onFilter(copy);
+    }
+    picture->playback(this);
+  }
+  SaveLayerStrategy getSaveLayerStrategy(const SaveLayerRec& rec) override {
+    if (rec.fBackdrop) safe = false;
+    if (rec.fPaint) {
+      SkPaint paint = *rec.fPaint;
+      onFilter(paint);
+    }
+    return SkPaintFilterCanvas::getSaveLayerStrategy(rec);
+  }
+  void onDrawDrawable(SkDrawable*, const SkMatrix*) override { safe = false; }
+  bool onDoSaveBehind(const SkRect*) override {
+    safe = false;
+    return false;
+  }
+  void onDrawEdgeAAQuad(const SkRect&, const SkPoint[4], QuadAAFlags,
+                        const SkColor4f&, SkBlendMode mode) override {
+    if (mode != SkBlendMode::kSrcOver) safe = false;
+  }
+};
+}  // namespace
+
 SkPictureEmbedderViewSlice::SkPictureEmbedderViewSlice(
     skity::Rect view_bounds) {
   auto rtree_factory = RTreeFactory();
@@ -23,11 +70,25 @@ SkPictureEmbedderViewSlice::SkPictureEmbedderViewSlice(
                             &rtree_factory);
 }
 SkCanvas* SkPictureEmbedderViewSlice::canvas() {
-  return recorder_->getRecordingCanvas();
+  return recorder_ ? recorder_->getRecordingCanvas() : nullptr;
 }
 
 void SkPictureEmbedderViewSlice::end_recording() {
-  picture_ = recorder_->finishRecordingAsPicture();
+  if (recorder_) {
+    picture_ = recorder_->finishRecordingAsPicture();
+    recorder_.reset();
+  }
+}
+
+bool SkPictureEmbedderViewSlice::can_rasterize() const {
+  if (!picture_) return false;
+  SkIRect bounds;
+  picture_->cullRect().roundOut(&bounds);
+  SkNoDrawCanvas canvas(bounds.width(), bounds.height());
+  canvas.translate(-bounds.left(), -bounds.top());
+  RasterCacheAnalyzer analyzer(&canvas);
+  picture_->playback(&analyzer);
+  return analyzer.safe;
 }
 
 std::list<skity::Rect>
@@ -47,6 +108,65 @@ void SkPictureEmbedderViewSlice::render_into(SkCanvas* canvas) {
   canvas->drawPicture(picture_);
 }
 #else
+namespace {
+// A balanced saveLayer isolates destination-dependent draws inside the
+// recording. Only operations that can affect the incoming destination prevent
+// rasterizing a static slice into a transferable image.
+class RasterCacheAnalyzer final : public skity::Canvas {
+ public:
+  explicit RasterCacheAnalyzer(const skity::Rect& bounds) : Canvas(bounds) {}
+  bool safe = true;
+
+ protected:
+  void Check(const skity::Paint& paint) {
+    if (!layers_ && paint.GetBlendMode() != skity::BlendMode::kSrcOver)
+      safe = false;
+  }
+  void OnClipPath(const skity::Path&, ClipOp) override {}
+  void OnDrawPath(const skity::Path&, const skity::Paint& paint) override {
+    Check(paint);
+  }
+  void OnDrawPaint(const skity::Paint& paint) override { Check(paint); }
+  void OnDrawBlob(const skity::TextBlob*, float, float,
+                  const skity::Paint& paint) override {
+    Check(paint);
+  }
+  void OnDrawGlyphs(uint32_t, const skity::GlyphID[], const float[],
+                    const float[], const skity::Font&,
+                    const skity::Paint& paint) override {
+    Check(paint);
+  }
+  void OnDrawImageRect(std::shared_ptr<skity::Image>, const skity::Rect&,
+                       const skity::Rect&, const skity::SamplingOptions&,
+                       const skity::Paint* paint) override {
+    if (paint) Check(*paint);
+  }
+  void OnSaveLayer(const skity::Rect&, const skity::Paint& paint) override {
+    Check(paint);
+    saves_.push_back(true);
+    ++layers_;
+  }
+  void OnSave() override { saves_.push_back(false); }
+  void OnRestore() override {
+    if (!saves_.empty()) {
+      layers_ -= saves_.back();
+      saves_.pop_back();
+    }
+  }
+  void OnRestoreToCount(int count) override {
+    while (!saves_.empty() && saves_.size() >= static_cast<size_t>(count))
+      OnRestore();
+  }
+  void OnFlush() override {}
+  uint32_t OnGetWidth() const override { return 0; }
+  uint32_t OnGetHeight() const override { return 0; }
+
+ private:
+  size_t layers_ = 0;
+  std::vector<bool> saves_;
+};
+}  // namespace
+
 SkityPictureEmbedderViewSlice::SkityPictureEmbedderViewSlice(
     skity::Rect view_bounds) {
   recorder_ = std::make_unique<skity::PictureRecorder>();
@@ -56,11 +176,21 @@ SkityPictureEmbedderViewSlice::SkityPictureEmbedderViewSlice(
 }
 
 skity::Canvas* SkityPictureEmbedderViewSlice::canvas() {
-  return recorder_->GetRecordingCanvas();
+  return recorder_ ? recorder_->GetRecordingCanvas() : nullptr;
 }
 
 void SkityPictureEmbedderViewSlice::end_recording() {
-  picture_ = recorder_->FinishRecording();
+  if (recorder_) {
+    picture_ = recorder_->FinishRecording();
+    recorder_.reset();
+  }
+}
+
+bool SkityPictureEmbedderViewSlice::can_rasterize() const {
+  if (!picture_) return false;
+  RasterCacheAnalyzer analyzer(picture_->GetBounds());
+  picture_->Draw(&analyzer);
+  return analyzer.safe;
 }
 
 std::list<skity::Rect>
