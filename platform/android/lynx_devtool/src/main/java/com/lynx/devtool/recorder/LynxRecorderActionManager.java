@@ -25,9 +25,9 @@ import com.lynx.BuildConfig;
 import com.lynx.devtoolwrapper.LynxBaseInspectorController;
 import com.lynx.recorder.LynxDebugInfoRecorder;
 import com.lynx.tasm.EmbeddedMode;
+import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
-import com.lynx.tasm.LynxGroup.LynxGroupBuilder;
 import com.lynx.tasm.LynxLoadMeta;
 import com.lynx.tasm.LynxLoadMode;
 import com.lynx.tasm.LynxUpdateMeta;
@@ -237,6 +237,7 @@ public class LynxRecorderActionManager {
   private TemplateData mGlobalPropCacheCloned;
   private TemplateData mGlobalProps;
   private LynxRecorderFetcher mDynamicFetcher;
+  private LynxRecorderTemplateFetcher mReplayTemplateFetcher;
   private TestBenchLynxViewClient mViewClient;
   private boolean mReplayGesture;
   private boolean mPreDecode;
@@ -541,6 +542,17 @@ public class LynxRecorderActionManager {
   }
 
   private void handleParsedRecordData(ParsedRecordData parsedRecordData, int replayGeneration) {
+    final Map<String, TemplateBundle> preparedBundles;
+    try {
+      preparedBundles =
+          LynxRecorderTemplateFetcher.prepare(parsedRecordData.config, parsedRecordData.actionList);
+    } catch (Exception | OutOfMemoryError error) {
+      if (parsedRecordData.fixture != null) {
+        parsedRecordData.fixture.release();
+      }
+      onRecordedFileParseFailed(error, replayGeneration);
+      return;
+    }
     UIThreadUtils.runOnUiThreadImmediately(() -> {
       if (!isReplayGenerationActive(replayGeneration)) {
         if (parsedRecordData.fixture != null)
@@ -548,6 +560,9 @@ public class LynxRecorderActionManager {
         return;
       }
       try {
+        mReplayTemplateFetcher = preparedBundles != null
+            ? new LynxRecorderTemplateFetcher(mDynamicFetcher, preparedBundles)
+            : null;
         applyParsedRecordData(parsedRecordData);
       } catch (JSONException e) {
         mStateView.setReplayState(LynxRecorderReplayStateView.INVALID_JSON_FILE);
@@ -1445,6 +1460,10 @@ public class LynxRecorderActionManager {
         }
         builder.setResourceProvider(LynxProviderRegistry.LYNX_PROVIDER_TYPE_EXTERNAL_JS, provider);
         builder.setDynamicComponentFetcher(mDynamicFetcher);
+        if (mReplayTemplateFetcher != null) {
+          builder.setEnableGenericResourceFetcher(LynxBooleanOption.TRUE);
+          builder.setTemplateResourceFetcher(mReplayTemplateFetcher);
+        }
         if (mRawFontScale != -1) {
           builder.setFontScale(mRawFontScale);
         }
@@ -1543,6 +1562,10 @@ public class LynxRecorderActionManager {
         }
         builder.setResourceProvider(LynxProviderRegistry.LYNX_PROVIDER_TYPE_EXTERNAL_JS, provider);
         builder.setDynamicComponentFetcher(mDynamicFetcher);
+        if (mReplayTemplateFetcher != null) {
+          builder.setEnableGenericResourceFetcher(LynxBooleanOption.TRUE);
+          builder.setTemplateResourceFetcher(mReplayTemplateFetcher);
+        }
         if (mRawFontScale != -1) {
           builder.setFontScale(mRawFontScale);
         }
@@ -1862,6 +1885,7 @@ public class LynxRecorderActionManager {
     if (mLynxView != null) {
       mLynxView.destroy();
     }
+    mReplayTemplateFetcher = null;
     mHandler.removeCallbacksAndMessages(null);
     if (mDataProvider != null)
       mDataProvider.setFixture(null);
