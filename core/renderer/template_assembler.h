@@ -757,7 +757,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void FetchBundle(
       const std::string& bundle_url,
       const std::shared_ptr<runtime::ResponsePromise<BundleResourceInfo>>&
-          response_promise);
+          response_promise,
+      bool request_in_current_thread = false);
 
   void OnDynamicJSSourcePrepared(const std::string& component_url);
 

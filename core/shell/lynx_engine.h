@@ -280,7 +280,8 @@ class LynxEngine {
   void FetchBundle(
       const std::string& url,
       const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-          response_promise);
+          response_promise,
+      bool request_in_current_thread = false);
 
   void SetRecordID(int64_t record_id);
 

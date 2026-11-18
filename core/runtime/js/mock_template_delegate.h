@@ -55,10 +55,14 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   void AddFont(const lepus::Value& font,
                const runtime::js::ApiCallBack& callback) override {}
 
+  bool fetch_bundle_request_in_current_thread_ = false;
+
   void FetchBundle(
       const std::string& url,
       const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-          response_promise) override {
+          response_promise,
+      bool request_in_current_thread = false) override {
+    fetch_bundle_request_in_current_thread_ = request_in_current_thread;
     tasm::BundleResourceInfo info;
     info.url = url;
     info.code = 0;

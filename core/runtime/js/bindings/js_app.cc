@@ -3857,7 +3857,8 @@ base::expected<Value, JSINativeException> App::LoadCustomSectionScript(
 void App::FetchBundle(
     const std::string& bundle_url,
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-        response_promise) {
+        response_promise,
+    bool request_in_current_thread) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FetchBundle", "bundle_url", bundle_url);
   auto rt = rt_.Lock();
   if (!rt) {
@@ -3866,7 +3867,8 @@ void App::FetchBundle(
          .code = tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED});
     return;
   }
-  delegate_->FetchBundle(bundle_url, std::move(response_promise));
+  delegate_->FetchBundle(bundle_url, std::move(response_promise),
+                         request_in_current_thread);
 }
 
 void App::SetSourceMapRelease(runtime::JSErrorInfo error_info) {
