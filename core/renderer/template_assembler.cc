@@ -2780,7 +2780,8 @@ std::string TemplateAssembler::GetTargetUrl(const std::string& current,
 void TemplateAssembler::FetchBundle(
     const std::string& bundle_url,
     const std::shared_ptr<runtime::ResponsePromise<BundleResourceInfo>>&
-        response_promise) {
+        response_promise,
+    bool request_in_current_thread) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ASSEMBLER_FETCH_BUNDLE,
               "bundle_url", bundle_url);
   // TODO(nihao.royal): replacing with bundle manager.
@@ -2798,7 +2799,9 @@ void TemplateAssembler::FetchBundle(
         {.url = bundle_url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
   } else {
     component_loader_->FetchBundle(lazy_bundle::LynxLazyBundleRequest{
-        .url = bundle_url, .response_promise = response_promise});
+        .url = bundle_url,
+        .response_promise = response_promise,
+        .request_in_current_thread = request_in_current_thread});
   }
 }
 

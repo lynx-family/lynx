@@ -53,13 +53,15 @@ class EmptyBundleProxy : public tasm::JsBundleHolderImpl::BundleProxy {
 class CountingResourceLoader : public pub::LynxResourceLoader {
  public:
   int load_resource_count_{0};
+  bool request_in_current_thread_{false};
 
  protected:
   void LoadResourceInternal(
-      const pub::LynxResourceRequest&,
+      const pub::LynxResourceRequest& request,
       base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
       override {
     ++load_resource_count_;
+    request_in_current_thread_ = request.request_in_current_thread;
     pub::LynxResourceResponse response;
     response.err_code = -1;
     response.err_msg = "test resource miss";
@@ -261,6 +263,13 @@ TEST(BTSRuntimeMediatorTest, FetchBundleStandaloneCacheMissFetchesResource) {
   EXPECT_EQ(result->url, kBundleUrl);
   EXPECT_EQ(result->code, tasm::LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED);
   EXPECT_EQ(resource_loader->load_resource_count_, 1);
+  EXPECT_FALSE(resource_loader->request_in_current_thread_);
+
+  response =
+      std::make_shared<runtime::ResponsePromise<tasm::BundleResourceInfo>>();
+  mediator.FetchBundle(kBundleUrl, response, true);
+  EXPECT_TRUE(response->Wait(0).has_value());
+  EXPECT_TRUE(resource_loader->request_in_current_thread_);
 }
 
 TEST(BTSRuntimeMediatorTest, SetPausedFromJSSkipsStandaloneRuntime) {

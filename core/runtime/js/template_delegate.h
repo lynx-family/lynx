@@ -115,7 +115,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void FetchBundle(
       const std::string& url,
       const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-          response_promise) = 0;
+          response_promise,
+      bool request_in_current_thread = false) = 0;
 
   virtual void OnRuntimeReady() = 0;
 

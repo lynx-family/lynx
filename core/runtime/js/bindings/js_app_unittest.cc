@@ -1708,10 +1708,11 @@ TEST_P(AppTest, FetchBundleTest) {
       tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
   auto lynx_proxy = std::make_shared<LynxProxy>(app->GetWeakPtr());
-  auto fetch_bundle = [this, &rt = this->rt, &lynx_proxy]() {
+  auto fetch_bundle = [this, &rt = this->rt,
+                       &lynx_proxy](const std::string& options = "") {
     Object obj = Object::createFromHostObject(rt, lynx_proxy);
     std::string get_load_script_call =
-        "function(lynx) { return lynx.fetchBundle('url'); }";
+        "function(lynx) { return lynx.fetchBundle('url'" + options + "); }";
     return function(get_load_script_call).call(rt, obj);
   };
 
@@ -1719,6 +1720,17 @@ TEST_P(AppTest, FetchBundleTest) {
   EXPECT_TRUE(res->isObject());
   EXPECT_TRUE(res->getObject(rt).hasProperty(rt, "then"));
   EXPECT_TRUE(res->getObject(rt).hasProperty(rt, "wait"));
+
+  for (const auto& options : {"", ", {}", ", { requestInCurrentThread: false }",
+                              ", { requestInCurrentThread: 1 }",
+                              ", { requestInCurrentThread: 'true' }",
+                              ", { requestInCurrentThread: true }"}) {
+    auto result = fetch_bundle(options);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(result->isObject());
+    EXPECT_EQ(delegate_.fetch_bundle_request_in_current_thread_,
+              std::string(options) == ", { requestInCurrentThread: true }");
+  }
 
   auto fetch_bundle_and_wait = [this, &rt = this->rt, &lynx_proxy]() {
     Object obj = Object::createFromHostObject(rt, lynx_proxy);

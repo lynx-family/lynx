@@ -761,8 +761,9 @@ void LynxEngine::AddFont(const lepus::Value& font,
 void LynxEngine::FetchBundle(
     const std::string& bundle_url,
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-        response_promise) {
-  tasm_->FetchBundle(bundle_url, response_promise);
+        response_promise,
+    bool request_in_current_thread) {
+  tasm_->FetchBundle(bundle_url, response_promise, request_in_current_thread);
 }
 
 void LynxEngine::InvokeUIMethod(const tasm::NodeSelectRoot& root,

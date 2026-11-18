@@ -104,7 +104,8 @@ class BTSRuntimeMediator : public runtime::TemplateDelegate {
   void FetchBundle(
       const std::string& bundle_url,
       const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-          response_promise) override;
+          response_promise,
+      bool request_in_current_thread = false) override;
 
   void OnRuntimeReady() override;
   void OnErrorOccurred(base::LynxError error) override;

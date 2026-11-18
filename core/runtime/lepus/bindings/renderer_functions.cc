@@ -785,7 +785,11 @@ RENDERER_FUNCTION_CC(FetchBundle) {
   auto* self = GET_TASM_POINTER();
   auto response_promise =
       std::make_shared<runtime::ResponsePromise<BundleResourceInfo>>();
-  self->FetchBundle(bundle_url, response_promise);
+  const auto request_in_current_thread =
+      options.GetProperty("requestInCurrentThread");
+  self->FetchBundle(
+      bundle_url, response_promise,
+      request_in_current_thread.IsBool() && request_in_current_thread.Bool());
   auto response_handler = fml::MakeRefCounted<tasm::ResponseHandlerInLepus>(
       self->GetDelegate(), bundle_url, std::move(response_promise));
   return ResponseHandlerInLepus::GetBindingObject(LEPUS_CONTEXT(),

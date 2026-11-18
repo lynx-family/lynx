@@ -203,7 +203,8 @@ void BTSRuntimeMediator::AddFont(const lepus::Value& font,
 void BTSRuntimeMediator::FetchBundle(
     const std::string& bundle_url,
     const std::shared_ptr<runtime::ResponsePromise<tasm::BundleResourceInfo>>&
-        response_promise) {
+        response_promise,
+    bool request_in_current_thread) {
   // Registered bundles are shared through the loader's thread-safe cache, so a
   // cache hit can complete on the JS thread without waiting for the engine.
   if (auto loader = lazy_bundle_loader_.lock()) {
@@ -238,7 +239,8 @@ void BTSRuntimeMediator::FetchBundle(
     loader->FetchBundle(tasm::lazy_bundle::LynxLazyBundleRequest{
         .url = bundle_url,
         .resource_type = pub::LynxResourceType::kLazyBundle,
-        .response_promise = response_promise});
+        .response_promise = response_promise,
+        .request_in_current_thread = request_in_current_thread});
     return;
   }
   if (!engine_actor_ || !engine_actor_->Impl()) {
@@ -249,9 +251,10 @@ void BTSRuntimeMediator::FetchBundle(
     return;
   }
   engine_actor_->ActAsync(
-      [bundle_url,
-       response_promise](const std::unique_ptr<LynxEngine>& engine) mutable {
-        engine->FetchBundle(std::move(bundle_url), std::move(response_promise));
+      [bundle_url, response_promise, request_in_current_thread](
+          const std::unique_ptr<LynxEngine>& engine) mutable {
+        engine->FetchBundle(std::move(bundle_url), std::move(response_promise),
+                            request_in_current_thread);
       });
 }
 

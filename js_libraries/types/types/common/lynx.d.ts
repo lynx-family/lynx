@@ -104,7 +104,16 @@ export interface CommonLynx {
   getUIContext(): ContextProxy;
   getNative(): ContextProxy;
   getEngine(): ContextProxy;
-  fetchBundle(url: string, options?: {}): ResponseHandler;
+  /**
+   * Fetch a bundle, preserving the platform's default dispatch unless
+   * requestInCurrentThread is true. This allows the resource fetcher to return
+   * a cached bundle inline without an extra I/O thread dispatch. It does not
+   * force synchronous completion or bypass cross-runtime dispatch.
+   */
+  fetchBundle(
+    url: string,
+    options?: { requestInCurrentThread?: boolean },
+  ): ResponseHandler;
   /**
    * @description Synchronously evaluate a customSection inside a bundle
    * previously fetched by {@link CommonLynx.fetchBundle}, identified by
