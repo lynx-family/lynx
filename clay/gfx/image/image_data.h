@@ -24,6 +24,18 @@ enum class FillMode {
   kAspectFill,
   // don't zoom, only show the center.
   kCenter,
+  // don't zoom, align the image to an edge or corner.
+  kTop,
+  kBottom,
+  kLeft,
+  kRight,
+  kTopLeft,
+  kTopRight,
+  kBottomLeft,
+  kBottomRight,
+  // Keep the aspect ratio and use the intrinsic image size for layout.
+  kWidthFix,
+  kHeightFix,
 };
 
 /// How to paint any portions of a box not covered by an image.

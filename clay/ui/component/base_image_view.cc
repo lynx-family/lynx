@@ -357,6 +357,26 @@ void BaseImageView::SetMode(const std::string& mode) {
     fill_mode = FillMode::kAspectFill;
   } else if (mode.compare(attr_value::kModeCenter) == 0) {
     fill_mode = FillMode::kCenter;
+  } else if (mode.compare(attr_value::kModeWidthFix) == 0) {
+    fill_mode = FillMode::kWidthFix;
+  } else if (mode.compare(attr_value::kModeHeightFix) == 0) {
+    fill_mode = FillMode::kHeightFix;
+  } else if (mode.compare(attr_value::kModeTop) == 0) {
+    fill_mode = FillMode::kTop;
+  } else if (mode.compare(attr_value::kModeBottom) == 0) {
+    fill_mode = FillMode::kBottom;
+  } else if (mode.compare(attr_value::kModeLeft) == 0) {
+    fill_mode = FillMode::kLeft;
+  } else if (mode.compare(attr_value::kModeRight) == 0) {
+    fill_mode = FillMode::kRight;
+  } else if (mode.compare(attr_value::kModeTopLeft) == 0) {
+    fill_mode = FillMode::kTopLeft;
+  } else if (mode.compare(attr_value::kModeTopRight) == 0) {
+    fill_mode = FillMode::kTopRight;
+  } else if (mode.compare(attr_value::kModeBottomLeft) == 0) {
+    fill_mode = FillMode::kBottomLeft;
+  } else if (mode.compare(attr_value::kModeBottomRight) == 0) {
+    fill_mode = FillMode::kBottomRight;
   } else {
     return;
   }

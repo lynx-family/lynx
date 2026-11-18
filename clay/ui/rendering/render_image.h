@@ -64,6 +64,7 @@ class RenderImage : public RenderBox, public ImageResourceClient {
   }
 #endif  // ENABLE_SKITY
   void SetMode(FillMode mode);
+  FillMode GetMode() const { return mode_; }
   void SetEffect(ImageEffect effect);
   void SetRepeat(ImageRepeat repeat);
   void SetDropShadow(float offset_x, float offset_y, float blur_radius,
@@ -104,7 +105,12 @@ class RenderImage : public RenderBox, public ImageResourceClient {
   void SetDownSampling(bool down_sampling) { down_sampling_ = down_sampling; }
   bool DownSampling() const { return down_sampling_; }
   bool ShouldDecodeToViewSize() const {
-    return down_sampling_ && !has_cap_insets_ && !HasTransformExpansion();
+    return down_sampling_ && !UsesAutoSize() && !has_cap_insets_ &&
+           !HasTransformExpansion();
+  }
+  bool UsesAutoSize() const {
+    return auto_size_ || mode_ == FillMode::kWidthFix ||
+           mode_ == FillMode::kHeightFix;
   }
 
   DecodePriority GetDecodePriority() override {
