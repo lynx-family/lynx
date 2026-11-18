@@ -1565,12 +1565,14 @@ class HeadlessLynxViewNode {
                        std::vector<std::string> resource_root_paths,
                        std::string group_name = "", bool windowed = false,
                        WindowedLynxViewOptions window_options = {},
-                       bool enable_js_runtime = true)
+                       bool enable_js_runtime = true,
+                       bool enable_layout_in_element = false)
       : env_(env),
         resources_path_(std::move(resources_path)),
         resource_root_paths_(std::move(resource_root_paths)),
         group_name_(std::move(group_name)),
         enable_js_runtime_(enable_js_runtime),
+        enable_layout_in_element_(enable_layout_in_element),
         width_(width),
         height_(height),
         device_pixel_ratio_(device_pixel_ratio),
@@ -1685,8 +1687,8 @@ class HeadlessLynxViewNode {
 
   static napi_value New(napi_env env, napi_callback_info info) {
     napi_value js_this = nullptr;
-    size_t argc = 8;
-    napi_value args[8] = {};
+    size_t argc = 9;
+    napi_value args[9] = {};
     napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
     if (argc < 5) {
@@ -1707,7 +1709,8 @@ class HeadlessLynxViewNode {
         env, GetString(env, args[0]), width, height, dpr, args[4],
         argc > 5 ? GetStringArray(env, args[5]) : std::vector<std::string>{},
         argc > 6 ? GetString(env, args[6]) : "", false, {},
-        argc > 7 ? GetBool(env, args[7], true) : true);
+        argc > 7 ? GetBool(env, args[7], true) : true,
+        argc > 8 ? GetBool(env, args[8]) : false);
     napi_wrap(
         env, js_this, obj,
         [](napi_env, void* data, void*) {
@@ -2363,6 +2366,7 @@ class HeadlessLynxViewNode {
 
     pub::LynxView::Builder builder;
     builder.SetEnableJSRuntime(enable_js_runtime_);
+    builder.SetEnableLayoutInElement(enable_layout_in_element_);
     builder.SetScreenSize(static_cast<float>(width_),
                           static_cast<float>(height_),
                           static_cast<float>(device_pixel_ratio_));
@@ -2490,6 +2494,7 @@ class HeadlessLynxViewNode {
   std::vector<std::string> resource_root_paths_;
   std::string group_name_;
   bool enable_js_runtime_;
+  bool enable_layout_in_element_;
   double width_ = 0;
   double height_ = 0;
   double device_pixel_ratio_ = 1;

@@ -21,6 +21,12 @@ namespace testing {
 class FiberMockPaintingContext : public PaintingContextPlatformImpl {
  public:
   FiberMockPaintingContext();
+  bool UsesShadowNodeTextLayout() const override {
+    return use_shadow_node_text_layout_;
+  }
+  bool use_shadow_node_text_layout_{false};
+  void OnFirstMeaningfulLayout() override { ++first_meaningful_layout_count_; }
+  int first_meaningful_layout_count_{0};
   void ResetFlushFlag();
 
   bool HasFlushed();

@@ -68,6 +68,11 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_custom_vsync_monitor(
 LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t*, bool enable);
 
+// Enables element-owned layout, required by custom layout callbacks. Disabled
+// by default. Set before creating the view; retained across template reloads.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_enable_layout_in_element(
+    lynx_view_builder_t* builder, bool enable);
+
 // Enables CPU software rendering for a windowed LynxView on macOS (Skia or
 // Skity) and Windows (Skia). Windows Skity builds keep hardware rendering.
 // Disabled by default. Call before lynx_view_create. Other platforms and

@@ -265,6 +265,10 @@ class PaintingCtxPlatformImpl {
   // TODO(liting.src): remove this method after ui operation queue refactor.
   virtual base::closure ExecuteOperationSafely(base::closure op) { return op; }
 
+  // Some hosts keep platform shadow nodes for text even when Starlight layout
+  // is owned by Elements. This is a backend capability, not a service lifetime.
+  virtual bool UsesShadowNodeTextLayout() const { return false; }
+
   virtual LayoutResult MeasureText(Element* element, float width,
                                    int width_mode, float height,
                                    int height_mode) {

@@ -64,6 +64,7 @@ void PageElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
+  has_first_meaningful_layout_ = false;
   /** CAUTION: SetFiberPageElement must be called before the
    * base class's AttachToElementManager because AttachToElementManager calls
    * element_manager_->node_manager()->Record(id_, this), while
@@ -210,6 +211,13 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
 
   if (!options->enable_unified_pixel_pipeline) {
     element_container()->Flush();
+  }
+
+  // LayoutContext normally sends this notification. Element-owned layout
+  // bypasses that path, but platform renderers still need it to start frames.
+  if (!has_first_meaningful_layout_) {
+    has_first_meaningful_layout_ = true;
+    painting_context()->OnFirstMeaningfulLayout();
   }
 }
 

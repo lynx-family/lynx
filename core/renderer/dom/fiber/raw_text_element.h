@@ -30,7 +30,7 @@ class RawTextElement : public Element {
   size_t content_utf16_length() const { return content_utf16_length_; }
 
   int32_t GetBuiltInNodeInfo() const override {
-    return kVirtualBuiltInNodeInfo;
+    return EnableTextLayoutInElement() ? kVirtualBuiltInNodeInfo : 0;
   }
 
   constexpr const static char kRawTextTag[] = "raw-text";

@@ -32,7 +32,7 @@ TextElement::TextElement(ElementManager* manager, const base::String& tag)
   SetDefaultOverflow(element_manager_->GetDefaultTextOverflow());
 
   if (Config::DefaultFontScale() != manager->GetLynxEnvConfig().FontScale() &&
-      EnableLayoutInElementMode()) {
+      EnableTextLayoutInElement()) {
     // if fontScale is 1.0f, force to process fontSize
     // FIXME(linxs): maybe there is a better way to set FontSize bit
     property_bits_.Set(kPropertyIDFontSize);
@@ -59,7 +59,7 @@ void TextElement::SetStyleInternal(CSSPropertyID id,
   Element::SetStyleInternal(id, value);
 
   if (id == kPropertyIDFontFamily) {
-    if (!EnableLayoutInElementMode()) {
+    if (!EnableTextLayoutInElement()) {
       EnqueueLayoutTask(
           [this, value]() { ResolveAndFlushFontFaces(value.AsString()); });
     } else {
@@ -78,7 +78,7 @@ void TextElement::OnNodeAdded(Element* child) {
 
 bool TextElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
-  if (EnableLayoutInElementMode()) {
+  if (EnableTextLayoutInElement()) {
     return ProcessAttributeForLayoutInElement(key, value);
   } else if (ProcessAttributeForNormalLayoutMode(key, value)) {
     return true;
@@ -87,10 +87,10 @@ bool TextElement::SetAttributeInternal(const base::String& key,
 }
 
 void TextElement::ResetAttribute(const base::String& key) {
-  if (!EnableLayoutInElementMode() && key.IsEqual(kTextOverflowAttr)) {
+  if (!EnableTextLayoutInElement() && key.IsEqual(kTextOverflowAttr)) {
     RemoveStyleFromAttributes(kPropertyIDTextOverflow);
   }
-  if (EnableLayoutInElementMode()) {
+  if (EnableTextLayoutInElement()) {
     ProcessAttributeForLayoutInElement(key, lepus::Value(), true);
     return;
   }
@@ -205,7 +205,7 @@ void TextElement::ConvertToInlineElement() {
 
 void TextElement::MarkLayoutInElementTextMeasurerPropertyIfNeeded(
     CSSPropertyID id) {
-  if (EnableLayoutInElementMode() && IsTextMeasurerWanted(id)) {
+  if (EnableTextLayoutInElement() && IsTextMeasurerWanted(id)) {
     property_bits_.Set(id);
   }
 }
@@ -226,7 +226,7 @@ void TextElement::ReplayElementSpecificStyleSideEffect(CSSPropertyID id) {
     return;
   }
 
-  if (!EnableLayoutInElementMode()) {
+  if (!EnableTextLayoutInElement()) {
     EnqueueLayoutTask(
         [this, font_family]() { ResolveAndFlushFontFaces(font_family); });
   } else {
@@ -255,7 +255,7 @@ bool TextElement::ResolveStyleValue(CSSPropertyID id,
                                     const tasm::CSSValue& value) {
   bool has_processed = false;
 
-  if (EnableLayoutInElementMode() && IsTextMeasurerWanted(id)) {
+  if (EnableTextLayoutInElement() && IsTextMeasurerWanted(id)) {
     if (computed_css_style()->SetValue(id, value)) {
       property_bits_.Set(id);
       has_processed = true;
@@ -269,7 +269,7 @@ bool TextElement::ResolveStyleValue(CSSPropertyID id,
 
 bool TextElement::ResetCSSValue(CSSPropertyID id) {
   bool has_processed = false;
-  if (EnableLayoutInElementMode()) {
+  if (EnableTextLayoutInElement()) {
     if (id == kPropertyIDFontSize) {
       // font-size has been reset to default value in WillResetCSSValue
       return false;
@@ -286,6 +286,11 @@ bool TextElement::ResetCSSValue(CSSPropertyID id) {
 }
 
 void TextElement::DispatchLayoutBefore() {
+  if (!EnableTextLayoutInElement()) {
+    Element::DispatchLayoutBefore();
+    return;
+  }
+
   if (is_inline_element()) {
     return;
   }
@@ -321,7 +326,7 @@ void TextElement::PrepareForDetachedMeasurement() {
 }
 
 void TextElement::DispatchLayoutAfter() {
-  if (!EnableLayoutInElementMode()) {
+  if (!EnableTextLayoutInElement()) {
     Element::DispatchLayoutAfter();
   } else if (!is_inline_element() && has_pending_layout_event_) {
     // Position-only updates must not resend an event for the same measurement.
@@ -346,7 +351,7 @@ void TextElement::UpdateLayoutEventState() {
                                 lepus_event_map().count(kLayoutEvent) > 0;
   const bool had_layout_event = has_layout_event_;
   has_layout_event_ = has_layout_event;
-  if (EnableLayoutInElementMode() && !is_inline_element() && has_layout_event &&
+  if (EnableTextLayoutInElement() && !is_inline_element() && has_layout_event &&
       !had_layout_event) {
     // A new layout handler needs a fresh measured result before UI
     // installation.
@@ -373,7 +378,7 @@ void TextElement::Align() {
 }
 
 void TextElement::OnLayoutObjectCreated() {
-  if (!is_inline_element()) {
+  if (EnableTextLayoutInElement() && !is_inline_element()) {
     SetMeasureFunc(
         this, [](void* context, const starlight::Constraints& constraints,
                  bool final_measure) {
@@ -404,7 +409,7 @@ void TextElement::OnLayoutObjectCreated() {
 
 void TextElement::UpdateLayoutNodeFontSize(double cur_node_font_size,
                                            double root_node_font_size) {
-  if (EnableLayoutInElementMode()) {
+  if (EnableTextLayoutInElement()) {
     property_bits_.Set(kPropertyIDFontSize);
     computed_css_style()->SetValue(
         kPropertyIDFontSize,
