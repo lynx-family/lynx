@@ -41,6 +41,7 @@ class Event;
 namespace tasm {
 
 class PlatformEventTargetExposure;
+class PlatformRendererImpl;
 
 class NativePaintingCtxPlatformRef
     : public PaintingCtxPlatformRef,
@@ -193,6 +194,10 @@ class NativePaintingCtxPlatformRef
 
   // Get the size of the screen.
   virtual void GetScreenSize(float size[2]) {}
+
+  // Look up only live renderer hosts; event targets may share a host or outlive
+  // it.
+  PlatformRendererImpl *GetPlatformRenderer(int32_t sign) const;
 
   // Get the scroll offset of the platform renderer host.
   virtual void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) {}

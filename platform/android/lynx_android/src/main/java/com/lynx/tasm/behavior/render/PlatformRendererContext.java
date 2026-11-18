@@ -107,6 +107,59 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private LynxContext mContext;
   private BehaviorRegistry mBehaviorRegistry;
   private long mNativePtr = 0;
+  private boolean mSyncingPlatformStates;
+  private final HashMap<Integer, Integer> mRendererParents = new HashMap<>();
+  private final HashMap<Integer, java.util.HashSet<Integer>> mRendererChildren = new HashMap<>();
+  private final HashMap<Integer, float[]> mPlatformStateSnapshots = new HashMap<>();
+
+  // Publish this host and children whose native positions depend on it.
+  void onPlatformStateChanged(int sign) {
+    if (mDestroyed || mNativePtr == 0 || mSyncingPlatformStates) {
+      return;
+    }
+    mSyncingPlatformStates = true;
+    try {
+      publishPlatformState(sign);
+      java.util.HashSet<Integer> children = mRendererChildren.get(sign);
+      if (children != null) {
+        for (int child : children) {
+          publishPlatformState(child);
+        }
+      }
+    } finally {
+      mSyncingPlatformStates = false;
+    }
+  }
+
+  private void publishPlatformState(int sign) {
+    if (!mViewHolder.containsKey(sign)) {
+      return;
+    }
+    Integer parent = mRendererParents.get(sign);
+    float[] position = getRendererHostPosition(sign, parent != null ? parent : -1);
+    float[] scroll = getRendererHostScrollOffset(sign);
+    boolean scrollable = isRendererHostScrollable(sign);
+    float[] state = {position != null ? 1f : 0f, position != null ? position[0] : 0f,
+        position != null ? position[1] : 0f, scroll[0], scroll[1], scrollable ? 1f : 0f};
+    if (!java.util.Arrays.equals(mPlatformStateSnapshots.get(sign), state)
+        && nativeUpdatePlatformState(mNativePtr, sign, position != null, state[1], state[2],
+            state[3], state[4], scrollable)) {
+      mPlatformStateSnapshots.put(sign, state);
+    }
+  }
+
+  private void removeRendererParent(int sign) {
+    Integer parent = mRendererParents.remove(sign);
+    java.util.HashSet<Integer> siblings = parent != null ? mRendererChildren.get(parent) : null;
+    if (siblings != null) {
+      siblings.remove(sign);
+      if (siblings.isEmpty()) {
+        mRendererChildren.remove(parent);
+      }
+    }
+    mPlatformStateSnapshots.remove(sign);
+  }
+
   private TextLayout mTextLayout;
   private volatile boolean mDestroyed = false;
 
@@ -220,6 +273,71 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       res[1] = host.getRendererHostScrollY();
     }
     return res;
+  }
+
+  @Nullable
+  float[] getRendererHostPosition(int sign, int parentSign) {
+    IRendererHost host = mViewHolder.get(sign);
+    Renderer renderer = host != null ? host.getRenderer() : null;
+    LynxBaseUI ui = renderer != null ? renderer.getUIHost() : null;
+    if (ui == null) {
+      return null;
+    }
+    // CUI renderer edges can exist without a matching UIOwner parent edge.
+    // Use the renderer parent for both classification and native coordinates.
+    IRendererHost parentHost = mViewHolder.get(parentSign);
+    Renderer parentRenderer = parentHost != null ? parentHost.getRenderer() : null;
+    LynxBaseUI parent = parentRenderer != null ? parentRenderer.getUIHost() : null;
+
+    boolean isFoldView = parent != null && "x-foldview-ng".equals(parent.getTagName());
+    boolean isPagerItem =
+        ("viewpager-item".equals(ui.getTagName()) || "x-viewpager-item-ng".equals(ui.getTagName()))
+        && parent != null
+        && ("viewpager".equals(parent.getTagName())
+            || "x-viewpager-ng".equals(parent.getTagName()));
+    boolean isSwiper = parent != null
+        && ("swiper".equals(parent.getTagName()) || "x-swiper".equals(parent.getTagName()));
+    boolean isRefresh = parent != null
+        && ("refresh".equals(parent.getTagName()) || "x-refresh-view".equals(parent.getTagName()));
+    if (!(parent instanceof LynxUI) || (!isFoldView && !isPagerItem && !isSwiper && !isRefresh)) {
+      return null;
+    }
+    View parentView = parentHost.getView();
+    View view = host.getView();
+    float left = 0;
+    float top = 0;
+    // Include native layout ancestors. FoldView moves its AppBar and pins its
+    // toolbar through native layout offsets and ancestor translations.
+    // Refresh also translates the content host itself. Its own scroll offset
+    // belongs to the child event target and must not be applied here.
+    while (view != null && view != parentView) {
+      left += view.getLeft();
+      top += view.getTop();
+      if (isRefresh || (isFoldView && view != host.getView())) {
+        // TODO: Separate CSS and refresh translations on API < 29. Both write the
+        // content host's translation properties, so including its CSS translation
+        // here can apply it twice during CUI hit testing.
+        left += view.getTranslationX();
+        top += view.getTranslationY();
+        if (view != host.getView()) {
+          left -= view.getScrollX();
+          top -= view.getScrollY();
+        }
+      }
+      ViewParent viewParent = view.getParent();
+      view = viewParent instanceof View ? (View) viewParent : null;
+    }
+    if (view == null) {
+      return null;
+    }
+    if (isFoldView && parentView instanceof IRendererHost) {
+      // Native positions already include folding. Add back the parent offset
+      // because CUI subtracts it separately, including for the fixed toolbar.
+      IRendererHost foldHost = (IRendererHost) parentView;
+      left += foldHost.getRendererHostScrollX();
+      top += foldHost.getRendererHostScrollY();
+    }
+    return new float[] {left, top};
   }
 
   @CalledByNative
@@ -701,6 +819,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   public void destroyPlatformRenderer(int sign) {
+    removeRendererParent(sign);
     if (mFocusedTarget != null && mFocusedTarget.containsSign(sign)) {
       mFocusedTarget = null;
     }
@@ -733,12 +852,19 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   }
 
   @CalledByNative
-  void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
+  void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner,
+      boolean needsPlatformPosition) {
+    removeRendererParent(child);
+    mRendererParents.put(child, parent);
+    if (needsPlatformPosition) {
+      mRendererChildren.computeIfAbsent(parent, key -> new java.util.HashSet<>()).add(child);
+    }
     LynxUIOwner owner = mContext.getLynxUIOwner();
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(child) : null;
     if (shouldUpdateUIOwner && parentUI != null && childUI != null) {
       owner.insert(parent, child, index);
+      onPlatformStateChanged(child);
       return;
     }
     if (!shouldUpdateUIOwner && childUI != null && childUI.isOverlay()) {
@@ -769,6 +895,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     } else {
       parentView.addView(childView, index);
     }
+    onPlatformStateChanged(child);
   }
 
   @CalledByNative
@@ -904,6 +1031,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
 
     updateRendererAttributes(host, propBundle);
+    onPlatformStateChanged(sign);
   }
 
   private void updateRendererAttributes(IRendererHost host, PropBundle propBundle) {
@@ -1234,6 +1362,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
         continue;
       }
       owner.onNodeReady(sign);
+      onPlatformStateChanged(sign);
     }
   }
 
@@ -1248,6 +1377,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   void removePlatformRendererFromParent(int parent, int sign, boolean shouldUpdateUIOwner) {
+    removeRendererParent(sign);
     LynxUIOwner owner = mContext.getLynxUIOwner();
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(sign) : null;
@@ -1344,7 +1474,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   private native void nativeInvokeUIMethodCallback(
       long nativePtr, int callbackId, int code, Object params);
 
+  private native boolean nativeUpdatePlatformState(long nativePtr, int sign, boolean hasPosition,
+      float x, float y, float scrollX, float scrollY, boolean scrollable);
+
   public void destroy() {
+    mRendererParents.clear();
+    mRendererChildren.clear();
+    mPlatformStateSnapshots.clear();
     if (mDestroyed) {
       return;
     }
@@ -1355,6 +1491,11 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     }
     mNativePtr = 0;
     mFocusedTarget = null;
+    for (IRendererHost host : mViewHolder.values()) {
+      if (host.getRenderer() != null) {
+        host.getRenderer().onDestroy();
+      }
+    }
     mViewHolder.clear();
     mImageUIMethodTargets.clear();
     mImageUIMethodSignsByKey.clear();

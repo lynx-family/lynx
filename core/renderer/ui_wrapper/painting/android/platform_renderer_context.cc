@@ -46,6 +46,26 @@ void InvokeUIMethodCallback(JNIEnv* env, jobject /*jcaller*/, jlong nativePtr,
       ->InvokeUIMethodCallback(callback, code, data);
 }
 
+jboolean UpdatePlatformState(JNIEnv* env, jobject caller, jlong native_ptr,
+                             jint sign, jboolean has_position, jfloat x,
+                             jfloat y, jfloat scroll_x, jfloat scroll_y,
+                             jboolean scrollable) {
+  auto* context =
+      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(native_ptr);
+  if (context == nullptr || context->IsDestroyed()) {
+    return false;
+  }
+  auto* renderer = context->GetPlatformRenderer(sign);
+  if (renderer == nullptr) {
+    return false;
+  }
+  renderer->UpdatePlatformState({static_cast<bool>(has_position),
+                                 {x, y},
+                                 {scroll_x, scroll_y},
+                                 static_cast<bool>(scrollable)});
+  return true;
+}
+
 namespace lynx {
 namespace jni {
 bool RegisterJNIForPlatformRendererContext(JNIEnv* env) {
@@ -157,7 +177,8 @@ PlatformRendererContext::PreparePlatformRenderer(
 }
 
 void PlatformRendererContext::InsertPlatformRenderer(
-    int32_t parent, int32_t child, int32_t index, bool should_update_ui_owner) {
+    int32_t parent, int32_t child, int32_t index, bool should_update_ui_owner,
+    bool needs_platform_position) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
   if (local_ref.IsNull()) {
     return;
@@ -172,7 +193,8 @@ void PlatformRendererContext::InsertPlatformRenderer(
   }
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_PlatformRendererContext_insertPlatformRenderer(
-      env, local_ref.Get(), parent, child, index, should_update_ui_owner);
+      env, local_ref.Get(), parent, child, index, should_update_ui_owner,
+      needs_platform_position);
 }
 
 void PlatformRendererContext::RemovePlatformRenderer(

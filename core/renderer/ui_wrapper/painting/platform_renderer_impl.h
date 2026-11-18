@@ -8,6 +8,7 @@
 #include <cstddef>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/vector.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "core/renderer/utils/base/base_def.h"
@@ -23,7 +24,9 @@ class PropBundle;
 // Platform-agnostic base implementation that provides common functionality
 // for all platform-specific renderers. Platform-specific renderers should
 // inherit from this class to share common logic.
-class PlatformRendererImpl : public PlatformRenderer {
+class PlatformRendererImpl
+    : public PlatformRenderer,
+      public fml::EnableWeakFromThis<PlatformRendererImpl> {
   using ChildVecT = base::InlineVector<fml::RefPtr<PlatformRenderer>,
                                        kChildrenInlineVectorSize>;
 
@@ -60,6 +63,9 @@ class PlatformRendererImpl : public PlatformRenderer {
   int GetId() const override { return id_; }
   const base::String& GetTagName() const { return tag_name_; }
   bool IsOverlay() const { return is_overlay_; }
+  bool NeedsPlatformPosition() const;
+  int32_t GetTagInfo() const { return tag_info_; }
+  void SetTagInfo(int32_t tag_info) { tag_info_ = tag_info; }
   PlatformRendererType GetPlatformRendererType() const { return type_; }
 
   base::String GetExtendedRendererTagName() const override;
@@ -143,6 +149,7 @@ class PlatformRendererImpl : public PlatformRenderer {
   // True when the current parent edge is mirrored through UIOwner.
   bool is_ui_owner_child_ = false;
   int32_t fragment_parent_id_ = -1;
+  int32_t tag_info_ = 0;
   bool is_overlay_ = false;
 };
 

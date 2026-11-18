@@ -7744,5 +7744,59 @@ TEST_F(FragmentDrawTest, ListAnimationFramesSubmitPaintedOpacity) {
   EXPECT_FLOAT_EQ(style->GetOpacity(), .4f);
 }
 
+TEST_F(FragmentTest,
+       PlatformPositionTagInfoPreservesPlatformBitsAndCachesClassification) {
+  auto* context = static_cast<MockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+  constexpr int32_t platform_info =
+      LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL | 0x10000 | 0x20000;
+  const std::pair<const char*, int32_t> cases[] = {
+      {"scroll-coordinator", kTagInfoPlatformPositionChildren},
+      {"x-foldview-ng", kTagInfoPlatformPositionChildren},
+      {"refresh", kTagInfoPlatformPositionChildren},
+      {"x-refresh-view", kTagInfoPlatformPositionChildren},
+      {"swiper", kTagInfoPlatformPositionChildren},
+      {"x-swiper", kTagInfoPlatformPositionChildren},
+      {"viewpager", kTagInfoPlatformPositionPager},
+      {"x-viewpager-ng", kTagInfoPlatformPositionPager},
+      {"viewpager-item", kTagInfoPlatformPositionPagerItem},
+      {"x-viewpager-item-ng", kTagInfoPlatformPositionPagerItem},
+      {"svg", 0},
+      {"view", 0}};
+  for (const auto& [tag, flag] : cases) {
+    SCOPED_TRACE(tag);
+    const base::String tag_name(tag);
+    manager->node_info_recorder_.erase(tag_name);
+    context->mock_virtuality_map[tag] = platform_info;
+    EXPECT_EQ(manager->GetNodeInfoByTag(tag_name), platform_info | flag);
+    // Changing the platform response must not affect the already cached result.
+    context->mock_virtuality_map[tag] = LayoutNodeType::COMMON;
+    EXPECT_EQ(manager->GetNodeInfoByTag(tag_name), platform_info | flag);
+  }
+}
+
+TEST_F(FragmentTest, PlatformPositionTagInfoReachesRendererThroughInitConfig) {
+  auto element = manager->CreateFiberNode(base::String("viewpager"));
+  Fragment fragment(element.get());
+  auto behavior = std::make_unique<RecordingFragmentBehavior>(&fragment);
+  auto* recording = behavior.get();
+  fragment.SetBehavior(std::move(behavior));
+  ASSERT_TRUE(fragment.CreateLayerIfNeeded(nullptr));
+  EXPECT_NE(recording->init_config_.tag_info & kTagInfoPlatformPositionPager,
+            0);
+
+  TestNativePaintingCtxPlatformRef platform_ref;
+  platform_ref.CreatePlatformExtendedRenderer(1, base::String("viewpager"),
+                                              nullptr, recording->init_config_);
+  platform_ref.CreatePlatformRenderer(2, PlatformRendererType::kView, nullptr,
+                                      recording->init_config_);
+  for (int id : {1, 2}) {
+    EXPECT_EQ(
+        static_cast<PlatformRendererImpl*>(platform_ref.renderers_[id].get())
+            ->GetTagInfo(),
+        recording->init_config_.tag_info);
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx

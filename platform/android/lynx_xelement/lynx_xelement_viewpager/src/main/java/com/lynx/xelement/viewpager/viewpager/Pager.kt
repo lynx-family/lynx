@@ -63,6 +63,10 @@ abstract class Pager<T : BaseCustomViewPager>(var mViewPager: T, context: Contex
     return mRenderer
   }
 
+  override fun getRendererHostScrollX(): Int = mViewPager.scrollX
+
+  override fun getRendererHostScrollY(): Int = mViewPager.scrollY
+
   override fun getView(): View {
     return this
   }

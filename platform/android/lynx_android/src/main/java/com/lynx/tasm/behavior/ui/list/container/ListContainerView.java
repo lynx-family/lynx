@@ -528,6 +528,7 @@ public class ListContainerView extends NestedScrollContainerView
   @Override
   protected void onScrollChanged(int l, int t, int oldl, int oldt) {
     super.onScrollChanged(l, t, oldl, oldt);
+    Renderer.notifyPlatformStateChanged(this);
     if (DEBUG) {
       LLog.i(TAG, "onScrollChanged: " + oldt + " -> " + t + ", " + oldl + " -> " + l);
     }

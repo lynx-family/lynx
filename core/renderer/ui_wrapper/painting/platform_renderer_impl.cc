@@ -36,6 +36,16 @@ PlatformRendererImpl::PlatformRendererImpl(int id, PlatformRendererType type,
   is_overlay_ = IsOverlayTag(tag_name_);
 }
 
+bool PlatformRendererImpl::NeedsPlatformPosition() const {
+  if (parent_ == nullptr) {
+    return false;
+  }
+  const int32_t parent_info = parent_->GetTagInfo();
+  return (parent_info & kTagInfoPlatformPositionChildren) != 0 ||
+         ((parent_info & kTagInfoPlatformPositionPager) != 0 &&
+          (tag_info_ & kTagInfoPlatformPositionPagerItem) != 0);
+}
+
 PlatformRendererImpl::~PlatformRendererImpl() {
   for (const auto& child : children_) {
     auto* child_impl = static_cast<PlatformRendererImpl*>(child.get());
@@ -142,6 +152,7 @@ void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,
 }
 
 void PlatformRendererImpl::RemoveFromParent() {
+  ClearPlatformState();
   if (parent_ == nullptr) {
     return;
   }

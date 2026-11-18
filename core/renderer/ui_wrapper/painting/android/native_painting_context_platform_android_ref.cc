@@ -59,6 +59,7 @@ void NativePaintingCtxAndroidRef::CreatePreparedRenderer(
   auto renderer = fml::MakeRefCounted<PlatformRendererAndroid>(
       view_manager_.get(), id, type, tag_name, init_data, init_config,
       preparation);
+  renderer->SetTagInfo(init_config.tag_info);
   renderers_.insert_or_assign(id, std::move(renderer));
 }
 
