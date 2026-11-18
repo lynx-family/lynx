@@ -40,7 +40,9 @@ class LynxViewClients : public TemplateRendererClient {
       int level, int32_t error_code, const std::string& message,
       const std::string& fix_suggestion,
       const std::unordered_map<std::string, std::string>& custom_info,
-      bool is_logbox_only) override;
+      bool is_logbox_only, const std::string& root_cause) override;
+  void OnModuleMethodInvoked(const std::string& module,
+                             const std::string& method, int32_t code) override;
   void OnThemeUpdatedByJs(
       const std::unordered_map<std::string, std::string>& theme) override;
   void OnLoadTemplate(const std::string& url,

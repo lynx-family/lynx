@@ -24,6 +24,7 @@ static lynx_resource_type_e ConvertResourceType(
     case lynx::pub::LynxResourceType::kSvg:
       return kLynxResourceTypeSVG;
     case lynx::pub::LynxResourceType::kTemplate:
+    case lynx::pub::LynxResourceType::kFrame:
       return kLynxResourceTypeTemplate;
     case lynx::pub::LynxResourceType::kLynxCoreJs:
       return kLynxResourceTypeLynxCoreJS;
@@ -31,8 +32,12 @@ static lynx_resource_type_e ConvertResourceType(
       return kLynxResourceTypeLazyBundle;
     case lynx::pub::LynxResourceType::kI18nText:
       return kLynxResourceTypeI18NText;
+    case lynx::pub::LynxResourceType::kTheme:
+      return kLynxResourceTypeTheme;
     case lynx::pub::LynxResourceType::kExternalJs:
       return kLynxResourceTypeExternalJSSource;
+    case lynx::pub::LynxResourceType::kExternalByteCode:
+      return kLynxResourceTypeExternalByteCode;
     case lynx::pub::LynxResourceType::kAssets:
       return kLynxResourceTypeAssets;
     default:
@@ -81,6 +86,7 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
             pub::LynxResourceResponse response;
             response.err_code = fetcher_response->code;
             response.err_msg = fetcher_response->error_message;
+            response.bundle = fetcher_response->template_bundle.get();
             if (fetcher_response->data.length > 0) {
               base::AssignByteArray(response.data,
                                     fetcher_response->data.content,

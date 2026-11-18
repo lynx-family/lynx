@@ -35,7 +35,7 @@ class LynxLogBoxWrapperEmbedder final : public TemplateRendererClient,
       int level, int32_t error_code, const std::string& message,
       const std::string& fix_suggestion,
       const std::unordered_map<std::string, std::string>& custom_info,
-      bool is_logbox_only) override;
+      bool is_logbox_only, const std::string& root_cause) override;
   void OnLoadTemplate(const std::string& url,
                       const std::vector<uint8_t>& source,
                       const std::shared_ptr<tasm::TemplateData>& data) override;

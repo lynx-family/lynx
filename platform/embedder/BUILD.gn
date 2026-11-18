@@ -326,6 +326,7 @@ if (enable_unittests) {
     defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
     sources = [
       "lynx_env_unittests.cc",
+      "lynx_error_unittests.cc",
       "lynx_group_unittests.cc",
       "lynx_load_meta_unittests.cc",
       "lynx_log_unittests.cc",

@@ -4,6 +4,7 @@
 #ifndef PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CLIENT_CAPI_H_
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CLIENT_CAPI_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "lynx_export.h"
@@ -34,6 +35,45 @@ typedef void (*on_runtime_ready)(lynx_view_client_t* client);
 // Error received.
 typedef void (*on_received_error)(lynx_view_client_t* client, int error_code,
                                   const char* message);
+struct lynx_value;
+// Read-only error snapshot borrowed during the callback. String sizes are in
+// bytes. error_code is the category code; sub_code preserves the original code.
+// Only codes recognized by the linked SDK metadata are categorized. level and
+// fix_suggestion contain the metadata defaults or, when unspecified, the values
+// at the call site. level: 0 fatal, 1 error, 2 warn, 3 undecided; other values
+// are unknown. type is the error source (-1 for native delivery). custom_info
+// is a lynx_value string dictionary. consumers contain integer enum values: 0
+// front-end, 1 client, 2 lynx; unknown codes have no consumers. Check
+// struct_size before reading fields. Keep existing field offsets and append
+// future fields only at the end.
+typedef struct lynx_error_t {
+  size_t struct_size;
+  int32_t error_code;
+  int32_t sub_code;
+  int32_t level;
+  int32_t type;
+  const char* summary_message;
+  size_t summary_size;
+  const char* fix_suggestion;
+  size_t suggestion_size;
+  const char* root_cause;
+  size_t cause_size;
+  const struct lynx_value* custom_info;
+  const int32_t* consumers;
+  size_t consumer_count;
+} lynx_error_t;
+
+// Business errors, excluding LogBox-only notifications.
+// Platforms assemble diagnostic text and inject their current template URL.
+// All pointers, including strings and consumers, expire when the callback
+// returns. Copy their contents before returning. custom_info can instead be
+// retained with lynx_value_add_reference. Borrowed data must not be modified.
+typedef void (*on_received_error_v2)(lynx_view_client_t* client,
+                                     const lynx_error_t* error);
+// Native module method invocation completed.
+typedef void (*on_module_method_invoked)(lynx_view_client_t* client,
+                                         const char* module, const char* method,
+                                         int error_code);
 typedef void (*on_timing_setup)(lynx_view_client_t* client,
                                 const char* timing_info);
 typedef void (*on_timing_update)(lynx_view_client_t* client,
@@ -64,6 +104,12 @@ LYNX_CAPI_EXPORT void lynx_view_client_bind_on_runtime_ready(
     lynx_view_client_t*, on_runtime_ready f);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_received_error(
     lynx_view_client_t*, on_received_error f);
+// When both callbacks are bound, only v2 is used. Binding NULL restores legacy
+// delivery, including its raw code, summary and LogBox-only notifications.
+LYNX_CAPI_EXPORT void lynx_view_client_bind_on_received_error_v2(
+    lynx_view_client_t*, on_received_error_v2 f);
+LYNX_CAPI_EXPORT void lynx_view_client_bind_on_module_method_invoked(
+    lynx_view_client_t*, on_module_method_invoked f);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_timing_setup(lynx_view_client_t*,
                                                             on_timing_setup f);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_timing_update(

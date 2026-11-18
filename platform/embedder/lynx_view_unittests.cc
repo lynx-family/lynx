@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
@@ -29,6 +30,24 @@ class InspectableTemplateRenderer
   lynx::shell::LynxShell* shell() { return shell_.get(); }
 };
 
+struct PendingTemplateFetch {
+  lynx_resource_request_t* request = nullptr;
+  lynx_resource_response_t* response = nullptr;
+
+  ~PendingTemplateFetch() {
+    if (response) lynx_resource_response_release(response);
+    if (request) lynx_resource_request_release(request);
+  }
+
+  void Complete() {
+    lynx_resource_response_callback(response);
+    lynx_resource_response_release(response);
+    lynx_resource_request_release(request);
+    response = nullptr;
+    request = nullptr;
+  }
+};
+
 class RecordingViewClient : public lynx::pub::LynxViewClient {
  public:
   void OnPageStart(const char* url) override {
@@ -38,6 +57,7 @@ class RecordingViewClient : public lynx::pub::LynxViewClient {
   void OnLoadSuccess() override { events.push_back("loaded"); }
   void OnFirstScreen() override { ++first_screen_count; }
   void OnReceivedError(int code, const char* message) override {
+    events.push_back("error");
     errors.push_back(std::to_string(code) + ": " + message);
   }
 
@@ -49,6 +69,36 @@ class RecordingViewClient : public lynx::pub::LynxViewClient {
 
 class LynxViewTest : public ::testing::Test {
  protected:
+  void BuildView(PendingTemplateFetch* pending = nullptr) {
+    lynx::pub::LynxView::Builder builder;
+    builder.SetScreenSize(320, 480, 1)
+        .SetFrame(0, 0, 320, 480)
+        .SetEnableJSRuntime(false);
+    if (pending) {
+      auto* fetcher = lynx_generic_resource_fetcher_create(pending);
+      lynx_generic_resource_fetcher_bind_fetch_resource(
+          fetcher, [](auto* fetcher, auto* request, auto* response) {
+            auto* pending = static_cast<PendingTemplateFetch*>(
+                lynx_generic_resource_fetcher_get_user_data(fetcher));
+            pending->request = request;
+            pending->response = response;
+          });
+      lynx_view_builder_set_generic_resource_fetcher(builder.Impl(), fetcher);
+      view_ = builder.Build();
+      lynx_generic_resource_fetcher_release(fetcher);
+    } else {
+      view_ = builder.Build();
+    }
+    ASSERT_NE(view_, nullptr);
+    ASSERT_NE(view_->Impl(), nullptr);
+  }
+
+  void LoadUrl(const char* url = "test://template") {
+    auto meta = std::make_shared<lynx::pub::LynxLoadMeta>();
+    meta->SetUrl(url);
+    view_->LoadTemplate(meta);
+  }
+
   void SetUp() override {
     lynx::base::UIThread::Init();
     auto& env = lynx::pub::LynxEnv::GetInstance();
@@ -354,7 +404,7 @@ TEST_F(LynxViewTest, CustomVSyncSurvivesBuilderReplacementAndViewSharing) {
   EXPECT_EQ(replacement.finalized, 1);
 }
 
-TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
+std::vector<uint8_t> EncodeTestTemplate() {
   // Encode with the current build's codec instead of storing a binary fixture.
   Json::Value input;
   auto& options = input["compilerOptions"];
@@ -389,10 +439,15 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
     function updateGlobalProps() {}
   )";
   auto encoded = lynx::tasm::encode(Json::FastWriter().write(input));
-  ASSERT_EQ(encoded.status, 0) << encoded.error_msg;
-  ASSERT_FALSE(encoded.buffer.empty());
-  auto bundle = std::make_shared<lynx::pub::LynxTemplateBundle>(
-      encoded.buffer.data(), encoded.buffer.size());
+  EXPECT_EQ(encoded.status, 0) << encoded.error_msg;
+  return std::move(encoded.buffer);
+}
+
+TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
+  auto binary = EncodeTestTemplate();
+  ASSERT_FALSE(binary.empty());
+  auto bundle = std::make_shared<lynx::pub::LynxTemplateBundle>(binary.data(),
+                                                                binary.size());
   ASSERT_TRUE(bundle->IsValid()) << bundle->GetErrorMessage();
 
   lynx::pub::LynxView::Builder builder;
@@ -474,8 +529,7 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
 
   lynx_view_update_screen_metrics_v2(view, 360, 640, 2);
   lynx_view_set_viewport(view, 240, 2, 400, 0);
-  view->lynx_view_clients->OnReloadTemplate(meta->GetUrl(), encoded.buffer,
-                                            nullptr);
+  view->lynx_view_clients->OnReloadTemplate(meta->GetUrl(), binary, nullptr);
   lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
   const auto& settings = view->lynx_template_renderer->GetSettings();
   EXPECT_FLOAT_EQ(settings.screen_size.cx, 360);
@@ -488,6 +542,143 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
 
   EXPECT_TRUE(client->errors.empty())
       << (client->errors.empty() ? "" : client->errors.front());
+}
+
+TEST_F(LynxViewTest, FrameResourceUsesTemplateRequestType) {
+  PendingTemplateFetch pending;
+  BuildView(&pending);
+  auto resource_loader =
+      view_->Impl()->lynx_template_renderer->GetSettings().resource_loader;
+  ASSERT_NE(resource_loader, nullptr);
+  bool completed = false;
+  resource_loader->LoadResource(
+      {.url = "test://frame", .type = lynx::pub::LynxResourceType::kFrame},
+      [&completed](lynx::pub::LynxResourceResponse& response) {
+        completed = true;
+        EXPECT_EQ(response.err_code, 0);
+      });
+  EXPECT_FALSE(completed);
+  ASSERT_NE(pending.request, nullptr);
+  EXPECT_EQ(lynx_resource_request_get_type(pending.request),
+            kLynxResourceTypeTemplate);
+  lynx_resource_response_set_code(pending.response, 0);
+  pending.Complete();
+  EXPECT_TRUE(completed);
+}
+
+TEST_F(LynxViewTest, UrlFailureReportsOriginalErrorWithoutPageStart) {
+  PendingTemplateFetch pending;
+  BuildView(&pending);
+  auto client = std::make_shared<RecordingViewClient>();
+  view_->AddClient(client);
+  std::pair<int32_t, std::string> error;
+  auto* structured_client = lynx_view_client_create(&error);
+  lynx_view_client_bind_on_received_error_v2(
+      structured_client,
+      [](lynx_view_client_t* client, const lynx_error_t* fields) {
+        ASSERT_NE(fields, nullptr);
+        ASSERT_GE(fields->struct_size, sizeof(lynx_error_t));
+        auto* error = static_cast<std::pair<int32_t, std::string>*>(
+            lynx_view_client_get_user_data(client));
+        error->first = fields->error_code;
+        error->second.assign(fields->root_cause, fields->cause_size);
+      });
+  lynx_view_add_client(view_->Impl(), structured_client);
+  LoadUrl();
+  EXPECT_TRUE(client->events.empty());
+  ASSERT_NE(pending.response, nullptr);
+  EXPECT_EQ(lynx_resource_request_get_type(pending.request),
+            kLynxResourceTypeTemplate);
+  std::thread worker([&] {
+    lynx_resource_response_set_code(pending.response, -42);
+    lynx_resource_response_set_error_message(pending.response,
+                                             "network failed");
+    pending.Complete();
+  });
+  worker.join();
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(client->events, (std::vector<std::string>{"error"}));
+  ASSERT_EQ(client->errors.size(), 1u);
+  EXPECT_EQ(client->errors[0],
+            "-42: Failed to load template test://template: network failed");
+  EXPECT_EQ(client->first_screen_count, 0);
+  EXPECT_EQ(error.first, -42);
+  EXPECT_EQ(error.second, "network failed");
+  lynx_view_remove_client(view_->Impl(), structured_client);
+  lynx_view_client_release(structured_client);
+}
+
+TEST_F(LynxViewTest, EmptyUrlResourceReportsErrorOnce) {
+  PendingTemplateFetch pending;
+  BuildView(&pending);
+  auto client = std::make_shared<RecordingViewClient>();
+  view_->AddClient(client);
+  LoadUrl();
+  ASSERT_NE(pending.response, nullptr);
+  lynx_resource_response_set_code(pending.response, 0);
+  pending.Complete();
+  EXPECT_EQ(client->events, (std::vector<std::string>{"error"}));
+  ASSERT_EQ(client->errors.size(), 1u);
+  EXPECT_NE(client->errors[0].find("empty resource"), std::string::npos);
+}
+
+TEST_F(LynxViewTest, UrlWithoutFetcherReportsErrorOnce) {
+  BuildView();
+  auto client = std::make_shared<RecordingViewClient>();
+  view_->AddClient(client);
+  LoadUrl();
+  EXPECT_EQ(client->events, (std::vector<std::string>{"error"}));
+  ASSERT_EQ(client->errors.size(), 1u);
+  EXPECT_NE(client->errors[0].find("unimplemented"), std::string::npos);
+}
+
+TEST_F(LynxViewTest, UrlSuccessStartsOnceForBinaryAndBundle) {
+  auto binary = EncodeTestTemplate();
+  ASSERT_FALSE(binary.empty());
+  auto bundle = std::make_shared<lynx::pub::LynxTemplateBundle>(binary.data(),
+                                                                binary.size());
+  ASSERT_TRUE(bundle->IsValid());
+  for (bool use_bundle : {false, true}) {
+    SCOPED_TRACE(use_bundle);
+    PendingTemplateFetch pending;
+    BuildView(&pending);
+    auto client = std::make_shared<RecordingViewClient>();
+    view_->AddClient(client);
+    LoadUrl();
+    EXPECT_TRUE(client->events.empty());
+    ASSERT_NE(pending.response, nullptr);
+    lynx_resource_response_set_code(pending.response, 0);
+    if (use_bundle) {
+      lynx_resource_response_set_template_bundle(pending.response,
+                                                 bundle->Impl());
+    } else {
+      lynx_resource_response_set_data(pending.response, binary.data(),
+                                      binary.size(), nullptr, nullptr);
+    }
+    pending.Complete();
+    lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+    EXPECT_EQ(client->events, (std::vector<std::string>{"start", "loaded"}));
+    EXPECT_EQ(client->first_screen_count, 1);
+    EXPECT_TRUE(client->errors.empty());
+    view_.reset();
+    lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  }
+}
+
+TEST_F(LynxViewTest, ReleasedViewIgnoresLateUrlFailure) {
+  PendingTemplateFetch pending;
+  BuildView(&pending);
+  auto client = std::make_shared<RecordingViewClient>();
+  view_->AddClient(client);
+  LoadUrl();
+  ASSERT_NE(pending.response, nullptr);
+  view_.reset();
+  lynx_resource_response_set_code(pending.response, -42);
+  lynx_resource_response_set_error_message(pending.response, "late failure");
+  pending.Complete();
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_TRUE(client->events.empty());
+  EXPECT_TRUE(client->errors.empty());
 }
 
 }  // namespace

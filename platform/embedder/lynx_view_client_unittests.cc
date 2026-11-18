@@ -25,6 +25,13 @@ class TestLynxViewClient : public lynx::pub::LynxViewClient {
     error_code_ = error_code;
     error_message_ = message;
   }
+  void OnModuleMethodInvoked(const char* module, const char* method,
+                             int error_code) override {
+    module_method_invoked_count_++;
+    module_ = module;
+    method_ = method;
+    module_error_code_ = error_code;
+  }
   void OnTimingSetup(const char* timing_info) override {
     timing_setup_count_++;
     timing_info_ = timing_info;
@@ -50,6 +57,10 @@ class TestLynxViewClient : public lynx::pub::LynxViewClient {
   int received_error_count_ = 0;
   int error_code_ = 0;
   const char* error_message_ = nullptr;
+  int module_method_invoked_count_ = 0;
+  const char* module_ = nullptr;
+  const char* method_ = nullptr;
+  int module_error_code_ = 0;
   int timing_setup_count_ = 0;
   const char* timing_info_ = nullptr;
   int timing_update_count_ = 0;
@@ -99,6 +110,13 @@ TEST(LynxViewClientTest, TestLynxViewClient) {
   EXPECT_EQ(client->received_error_count_, 1);
   EXPECT_EQ(client->error_code_, 1);
   EXPECT_STREQ(client->error_message_, "test");
+
+  EXPECT_EQ(client->module_method_invoked_count_, 0);
+  c_client->on_module_method_invoked(c_client, "storage", "getItem", 2);
+  EXPECT_EQ(client->module_method_invoked_count_, 1);
+  EXPECT_STREQ(client->module_, "storage");
+  EXPECT_STREQ(client->method_, "getItem");
+  EXPECT_EQ(client->module_error_code_, 2);
 
   EXPECT_EQ(client->timing_setup_count_, 0);
   c_client->on_timing_setup(c_client, "test");
