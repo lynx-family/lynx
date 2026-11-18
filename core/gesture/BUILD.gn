@@ -24,3 +24,23 @@ lynx_core_source_set("gesture") {
   ]
   public_deps = [ "../public" ]
 }
+
+if (is_android) {
+  lynx_core_source_set("gesture_android") {
+    sources = [
+      "android/gesture_arena_android.cc",
+      "android/gesture_arena_android.h",
+      "android/gesture_arena_android_codec.cc",
+      "android/gesture_arena_android_codec.h",
+    ]
+    public_deps = [
+      ":gesture",
+      "../../base/src:base_public_headers",
+    ]
+    deps = [
+      "../renderer/utils:renderer_utils",
+      rebase_path("//", ".") +
+          "/platform/android/lynx_android/src/main/jni:build",
+    ]
+  }
+}

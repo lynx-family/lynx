@@ -335,10 +335,14 @@ public class LynxUIOwner {
   }
 
   public void initGestureArenaManager(LynxContext context) {
+    initGestureArenaManager(context, false);
+  }
+
+  public void initGestureArenaManager(LynxContext context, boolean enableUnifiedGestureHandler) {
     if (mGestureArenaManager == null) {
       mGestureArenaManager = new GestureArenaManager();
     }
-    mGestureArenaManager.init(true, context);
+    mGestureArenaManager.init(true, enableUnifiedGestureHandler, context);
   }
 
   private void addShadowProxy(LynxBaseUI ui) {
