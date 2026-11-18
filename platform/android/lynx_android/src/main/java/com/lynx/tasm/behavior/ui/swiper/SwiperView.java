@@ -75,6 +75,16 @@ class SwiperView
     return this;
   }
 
+  @Override
+  public int getRendererHostScrollX() {
+    return mViewPager.getScrollX();
+  }
+
+  @Override
+  public int getRendererHostScrollY() {
+    return mViewPager.getScrollY();
+  }
+
   private void updateIndicators(int orientation) {
     LayoutParams params;
     if (orientation == ORIENTATION_VERTICAL) {

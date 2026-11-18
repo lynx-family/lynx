@@ -27,10 +27,27 @@ class DisplayList;
 class PropBundle;
 class PlatformExtraBundle;
 
+// Engine-side classification cached alongside platform tagInfo. Bits 0-15
+// retain LayoutNodeType; bits 16-17 describe async creation and direction.
+enum TagInfoFlag : int32_t {
+  kTagInfoPlatformPositionChildren = 1 << 18,
+  kTagInfoPlatformPositionPager = 1 << 19,
+  kTagInfoPlatformPositionPagerItem = 1 << 20,
+};
+
+// Published on the platform thread after native layout or scrolling updates.
+struct PlatformRendererState {
+  bool has_position = false;
+  float position[2] = {0.f, 0.f};
+  float scroll_offset[2] = {0.f, 0.f};
+  bool scrollable = false;
+};
+
 // Initialization metadata consumed only by the C++ PlatformRenderer creation
 // path. Platform-specific props should still be passed through PropBundle.
 struct PlatformRendererInitConfig {
   int32_t fragment_parent_id = -1;
+  int32_t tag_info = 0;
   bool is_direct_child_of_compatible_component = false;
 };
 
@@ -63,6 +80,26 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
 
   virtual base::String GetExtendedRendererTagName() const = 0;
 
+  // Queries only read the last state published by the platform. The origin is
+  // in parent content coordinates, before CSS transforms and parent scrolling.
+  void UpdatePlatformState(const PlatformRendererState& state) {
+    platform_state_ = state;
+  }
+  void ClearPlatformState() { platform_state_ = {}; }
+  virtual bool GetPlatformPosition(float position[2]) {
+    if (!platform_state_.has_position) {
+      return false;
+    }
+    position[0] = platform_state_.position[0];
+    position[1] = platform_state_.position[1];
+    return true;
+  }
+  virtual void GetScrollOffset(float offset[2]) {
+    offset[0] = platform_state_.scroll_offset[0];
+    offset[1] = platform_state_.scroll_offset[1];
+  }
+  virtual bool IsScrollable() { return platform_state_.scrollable; }
+
   // Invoke a UI method on the platform renderer host. Return true only when the
   // renderer handled the method and will own the callback; return false to let
   // the caller fall back to the platform UI implementation.
@@ -73,6 +110,9 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   }
 
   void ReleaseSelf() const override = 0;
+
+ private:
+  PlatformRendererState platform_state_;
 };
 
 // Factory interface for creating platform-specific renderers

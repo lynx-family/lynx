@@ -113,9 +113,10 @@ void PlatformRendererAndroid::OnUpdateLayoutMetrics() {
 void PlatformRendererAndroid::OnAddChild(PlatformRenderer* child, int index,
                                          bool should_update_ui_owner) {
   if (context_ && child) {
-    context_->InsertPlatformRenderer(PlatformRendererImpl::GetId(),
-                                     child->GetId(), index,
-                                     should_update_ui_owner);
+    context_->InsertPlatformRenderer(
+        PlatformRendererImpl::GetId(), child->GetId(), index,
+        should_update_ui_owner,
+        static_cast<PlatformRendererImpl*>(child)->NeedsPlatformPosition());
   }
 }
 

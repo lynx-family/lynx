@@ -45,14 +45,27 @@ NativePaintingCtxPlatformRef::NativePaintingCtxPlatformRef(
       this, event_target_task_runner_);
 }
 
+PlatformRendererImpl *NativePaintingCtxPlatformRef::GetPlatformRenderer(
+    int32_t sign) const {
+  auto it = renderers_.find(sign);
+  return it != renderers_.end()
+             ? static_cast<PlatformRendererImpl *>(it->second.get())
+             : nullptr;
+}
+
 void NativePaintingCtxPlatformRef::CreatePlatformRenderer(
     int id, PlatformRendererType type, const fml::RefPtr<PropBundle> &init_data,
     const PlatformRendererInitConfig &init_config) {
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
-  renderers_.insert_or_assign(
-      id, view_factory_->CreateRenderer(id, type, init_data, init_config));
+  auto renderer =
+      view_factory_->CreateRenderer(id, type, init_data, init_config);
+  if (renderer) {
+    static_cast<PlatformRendererImpl *>(renderer.get())
+        ->SetTagInfo(init_config.tag_info);
+  }
+  renderers_.insert_or_assign(id, std::move(renderer));
 }
 
 void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
@@ -62,8 +75,13 @@ void NativePaintingCtxPlatformRef::CreatePlatformExtendedRenderer(
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
   }
-  renderers_.insert_or_assign(id, view_factory_->CreateExtendedRenderer(
-                                      id, tag_name, init_data, init_config));
+  auto renderer = view_factory_->CreateExtendedRenderer(id, tag_name, init_data,
+                                                        init_config);
+  if (renderer) {
+    static_cast<PlatformRendererImpl *>(renderer.get())
+        ->SetTagInfo(init_config.tag_info);
+  }
+  renderers_.insert_or_assign(id, std::move(renderer));
 }
 
 void NativePaintingCtxPlatformRef::UpdateDisplayList(

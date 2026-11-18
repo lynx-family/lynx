@@ -154,10 +154,17 @@ Java_com_lynx_tasm_behavior_render_DeferredRendererPreparationTest_nativeCheckFl
       base::ThreadStrategyForRendering::ALL_ON_UI, nullptr);
   painting.SetUIOperationQueue(queue);
   queue->SetEnableFlush(false);
+  bool tag_info_preserved = true;
   auto register_renderer = [&](int id, Scheduler::TaskRef task) {
+    tasm::PlatformRendererInitConfig config;
+    config.tag_info = tasm::kTagInfoPlatformPositionChildren;
     ref->CreatePreparedRenderer(id, PlatformRendererType::kUnknown,
-                                base::String("deferred-test"), nullptr,
-                                tasm::PlatformRendererInitConfig(), task);
+                                base::String("deferred-test"), nullptr, config,
+                                task);
+    // Android creates renderers directly rather than through the base factory.
+    auto* renderer = context->GetPlatformRenderer(id);
+    tag_info_preserved = tag_info_preserved && renderer != nullptr &&
+                         renderer->GetTagInfo() == config.tag_info;
   };
   auto enqueue_host = [&](int id) {
     tasm::DisplayListBuilder builder;
@@ -211,7 +218,7 @@ Java_com_lynx_tasm_behavior_render_DeferredRendererPreparationTest_nativeCheckFl
   context->GetPlatformRenderer(103)->EnsureAndroidViewCreated();
   const bool drained = !scheduler->TakeBatch();
   ref->Destroy();
-  return assisted && correct_order && drained;
+  return assisted && correct_order && drained && tag_info_preserved;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.xelement.viewpager.viewpager
 
+import com.lynx.tasm.behavior.render.Renderer
 import android.content.Context
 import androidx.viewpager.widget.PagerAdapter
 import androidx.viewpager.widget.ViewPager
@@ -35,6 +36,11 @@ open class BaseCustomViewPager(context: Context) : androidx.viewpager.widget.Vie
       LLog.e(Pager.TAG, "no such field mIsUnableToDrag")
       null
     }
+  }
+
+  override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+    super.onScrollChanged(l, t, oldl, oldt)
+    Renderer.notifyPlatformStateChanged(this)
   }
 
   override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
