@@ -4,6 +4,7 @@
 
 #include "core/renderer/starlight/layout/grid_item_info.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "core/renderer/starlight/layout/layout_object.h"
@@ -18,6 +19,21 @@ GridItemInfo::~GridItemInfo() = default;
 void GridItemInfo::InitSpanInfo(Dimension dimension, int32_t explicit_end,
                                 int32_t axis_offset,
                                 bool if_absolutely_positioned) {
+  InitSpanInfo(dimension, explicit_end, axis_offset, if_absolutely_positioned,
+               false);
+}
+
+void GridItemInfo::InitComposeSpanInfo(Dimension dimension,
+                                       int32_t explicit_track_count,
+                                       bool is_auto_placement_main_axis) {
+  InitSpanInfo(dimension, explicit_track_count + 1, 0, false,
+               is_auto_placement_main_axis && explicit_track_count > 0);
+}
+
+void GridItemInfo::InitSpanInfo(Dimension dimension, int32_t explicit_end,
+                                int32_t axis_offset,
+                                bool if_absolutely_positioned,
+                                bool clamp_auto_span) {
   const auto* style = Item()->GetCSSStyle();
 
   int32_t start = dimension == kHorizontal ? style->GetGridColumnStart()
@@ -26,6 +42,16 @@ void GridItemInfo::InitSpanInfo(Dimension dimension, int32_t explicit_end,
                                          : style->GetGridRowEnd();
   int32_t span = dimension == kHorizontal ? style->GetGridColumnSpan()
                                           : style->GetGridRowSpan();
+
+  // Clamp only originally automatic starts. A negative Compose index that
+  // falls back to auto after resizing keeps its authored span.
+  if (clamp_auto_span && start == kGridLineUnDefine) {
+    span = std::min(span, explicit_end - 1);
+  }
+  if (Item()->IsComposeLayout() && start < 0 &&
+      start + explicit_end + 1 < kGridLineStart) {
+    start = kGridLineUnDefine;
+  }
 
   const bool is_start_definite = (start == kGridLineUnDefine) ? false : true;
   // If the start line is equal to the end line, remove the end line.

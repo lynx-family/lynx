@@ -357,18 +357,16 @@ void GridLayoutAlgorithm::PrePlaceGridItems(PlaceItemCache& place_item) {
 }
 
 void GridLayoutAlgorithm::PrePlaceComposeGridItems() {
-  const auto row_end =
-      static_cast<int32_t>(
-          ExplicitTrackMinTrackSizingFunction(kVertical).size()) +
-      1;
-  const auto column_end =
-      static_cast<int32_t>(
-          ExplicitTrackMinTrackSizingFunction(kHorizontal).size()) +
-      1;
+  const auto row_count = static_cast<int32_t>(
+      ExplicitTrackMinTrackSizingFunction(kVertical).size());
+  const auto column_count = static_cast<int32_t>(
+      ExplicitTrackMinTrackSizingFunction(kHorizontal).size());
   for (auto* item : inflow_items_) {
     GridItemInfo info(item);
-    info.InitSpanInfo(kVertical, row_end, 0);
-    info.InitSpanInfo(kHorizontal, column_end, 0);
+    info.InitComposeSpanInfo(kVertical, row_count,
+                             auto_placement_main_axis_ == kVertical);
+    info.InitComposeSpanInfo(kHorizontal, column_count,
+                             auto_placement_main_axis_ == kHorizontal);
     grid_item_infos_.emplace_back(info);
   }
 }

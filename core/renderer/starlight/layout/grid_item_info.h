@@ -28,6 +28,8 @@ class GridItemInfo {
   // positive integer.
   void InitSpanInfo(Dimension dimension, int32_t explicit_end,
                     int32_t axis_offset, bool if_absolutely_positioned = false);
+  void InitComposeSpanInfo(Dimension dimension, int32_t explicit_track_count,
+                           bool is_auto_placement_main_axis);
   void SetSpanPosition(Dimension dimension, int32_t start, int32_t end);
   void SetSpanSize(Dimension dimension, int32_t span);
 
@@ -77,6 +79,10 @@ class GridItemInfo {
   }
 
  private:
+  void InitSpanInfo(Dimension dimension, int32_t explicit_end,
+                    int32_t axis_offset, bool if_absolutely_positioned,
+                    bool clamp_auto_span);
+
   Constraints containing_block_;
   bool cross_flexible_column_ = false;
   bool cross_flexible_row_ = false;
