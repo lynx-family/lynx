@@ -12,6 +12,8 @@ fiber_shared_sources = [
   "component_element.h",
   "compose_draw_behind.cc",
   "compose_draw_behind.h",
+  "compose_draw_recording_decoder.cc",
+  "compose_draw_recording_decoder.h",
   "compose_element_handle.cc",
   "compose_element_handle.h",
   "compose_graphics_layer.cc",
