@@ -169,9 +169,12 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       std::make_shared<tasm::LazyBundleLoader>(settings_.resource_loader);
   shell::ShellOption shell_option;
   shell_option.view_id_ = GetViewId();
-  shell_option.js_group_thread_name_ =
-      settings_.enable_js_group_thread ? settings_.group_id : "";
   shell_option.enable_js_group_thread_ = settings_.enable_js_group_thread;
+  if (settings_.enable_js_group_thread) {
+    shell_option.js_group_thread_name_ = settings_.js_group_thread_name.empty()
+                                             ? settings_.group_id
+                                             : settings_.js_group_thread_name;
+  }
   shell_option.enable_js_ = settings_.enable_js;
   // The manager belongs to this MTS shell and is recreated on every Reset().
   auto native_module_manager = settings_.native_module_manager_creator
@@ -246,7 +249,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
         false, settings_.use_quickjs, false, settings_.enable_bytecode);
     shell_->InitRuntime(settings_.group_id, settings_.resource_loader,
                         module_manager_, std::move(on_runtime_actor_created),
-                        std::move(settings_.preload_js_paths), runtime_flags,
+                        settings_.preload_js_paths, runtime_flags,
                         settings_.bytecode_source_url,
                         settings_.vsync_monitor_platform_impl);
   }
