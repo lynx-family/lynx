@@ -59,6 +59,9 @@ public class ImageUtils {
   }
 
   private static int getPixelSizeForBitmapConfig(Bitmap.Config bitmapConfig) {
+    if (bitmapConfig == null) {
+      return 0;
+    }
     switch (bitmapConfig) {
       case ARGB_8888:
         return ARGB_8888_BYTES_ONE_PIXEL;
@@ -69,7 +72,12 @@ public class ImageUtils {
       case RGB_565:
         return RGB_565_BYTES_ONE_PIXEL;
     }
-    throw new UnsupportedOperationException("Current Bitmap.Config is not supported");
+    // Avoid referencing an enum constant introduced in API 26.
+    if ("RGBA_F16".equals(bitmapConfig.name())) {
+      return 8;
+    }
+    // HARDWARE and unknown configs cannot be estimated reliably.
+    return 0;
   }
 
   public static int getSizeInByteForBitmap(int width, int height, Bitmap.Config bitmapConfig) {
