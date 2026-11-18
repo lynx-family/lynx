@@ -132,8 +132,9 @@ void LynxViewClients::OnReloadTemplate(
   lynx_view_update_screen_metrics(lynx_view_, settings.screen_size.cx,
                                   settings.screen_size.cy,
                                   settings.device_pixel_ratio);
-  lynx_view_set_frame(lynx_view_, 0, 0, ui_renderer->GetWidth(),
-                      ui_renderer->GetHeight());
+  lynx_view_set_viewport(lynx_view_, ui_renderer->GetWidth(),
+                         settings.viewport_width_mode, ui_renderer->GetHeight(),
+                         settings.viewport_height_mode);
 }
 
 void LynxViewClients::OnLoadTemplateBundle(

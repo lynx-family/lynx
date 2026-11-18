@@ -5,13 +5,17 @@
 #define PLATFORM_EMBEDDER_PUBLIC_CAPI_LYNX_VIEW_CAPI_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
+#include "base/include/value/lynx_value_types.h"
 #include "lynx_export.h"
 #include "lynx_load_meta_capi.h"
-#include "lynx_runtime_lifecycle_observer_capi.h"
 #include "lynx_update_meta_capi.h"
 #include "lynx_view_builder_capi.h"
 #include "lynx_view_client_capi.h"
+#if !ENABLE_EMBEDDER_LITE
+#include "lynx_runtime_lifecycle_observer_capi.h"
+#endif
 
 LYNX_EXTERN_C_BEGIN
 
@@ -19,6 +23,10 @@ LYNX_EXTERN_C_BEGIN
 // It provides methods for loading and rendering templates, updating data, and
 // sending events. Users should call lynx_view_release() to release the LynxView
 // when it is no longer needed.
+//
+// Define ENABLE_EMBEDDER_LITE=1 for the C-compatible API without native module
+// dependencies. All operations, including release, must run on the host UI
+// thread.
 typedef struct lynx_view_t lynx_view_t;
 
 typedef struct lynx_devtool_target_t {
@@ -42,6 +50,14 @@ LYNX_CAPI_EXPORT lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                                void* user_data);
 LYNX_CAPI_EXPORT void* lynx_view_get_user_data(lynx_view_t*);
 
+// Register lifecycle event observer for LynxView. The client passed in is the
+// structure implemented by user and registered to the LynxView instance is used
+// to obtain the callbacks of each process in the LynxView lifecycle.
+LYNX_CAPI_EXPORT void lynx_view_add_client(lynx_view_t* view,
+                                           lynx_view_client_t* client);
+LYNX_CAPI_EXPORT void lynx_view_remove_client(lynx_view_t* view,
+                                              lynx_view_client_t* client);
+
 // Returns false until this LynxView is attached to the DebugRouter.
 LYNX_CAPI_EXPORT bool lynx_view_get_devtool_target(
     lynx_view_t*, lynx_devtool_target_t* target);
@@ -51,26 +67,11 @@ LYNX_CAPI_EXPORT bool lynx_view_get_devtool_target(
 LYNX_CAPI_EXPORT const char* lynx_view_get_webview2_fixed_runtime_path(
     lynx_view_t*);
 
-// Register lifecycle event observer for LynxView. The client passed in is the
-// structure implemented by user and registered to the LynxView instance is used
-// to obtain the callbacks of each process in the LynxView lifecycle.
-LYNX_CAPI_EXPORT void lynx_view_add_client(lynx_view_t*,
-                                           lynx_view_client_t* client);
-LYNX_CAPI_EXPORT void lynx_view_remove_client(lynx_view_t*,
-                                              lynx_view_client_t* client);
-
-// Register a runtime lifecycle observer for the LynxView.
-// This function allows you to associate a runtime lifecycle observer with a
-// specific LynxView instance. The observer will be notified of various runtime
-// lifecycle events, such as runtime attachment, and detachment. This can be
-// useful for monitoring and responding to changes in the runtime state.
-LYNX_CAPI_EXPORT void lynx_view_register_runtime_lifecycle_observer(
-    lynx_view_t*, lynx_runtime_lifecycle_observer_t*);
-
 // Using LynxLoadMeta to render LynxView, it is the main entrance for the client
 // to load Lynx templates.
-LYNX_CAPI_EXPORT void lynx_view_load_template(lynx_view_t*,
-                                              lynx_load_meta_t* data);
+// Loading retains the bundle and data; the caller still owns their handles.
+LYNX_CAPI_EXPORT void lynx_view_load_template(lynx_view_t* view,
+                                              lynx_load_meta_t* meta);
 
 // EXPERIMENTAL API.
 // Loads a LynxML source document with initial template data. LynxML is a
@@ -83,43 +84,52 @@ LYNX_CAPI_EXPORT void lynx_view_load_lynx_ml(
 
 // Using LynxUpdateMeta to update LynxView, it is the main entrance for the
 // client to update template data.
-LYNX_CAPI_EXPORT void lynx_view_update_data(lynx_view_t*,
-                                            lynx_update_meta_t* data);
+LYNX_CAPI_EXPORT void lynx_view_update_data(lynx_view_t* view,
+                                            lynx_update_meta_t* meta);
+
+// Clears the current page data before applying the replacement data.
+LYNX_CAPI_EXPORT void lynx_view_reset_data(lynx_view_t* view,
+                                           lynx_template_data_t* data);
 
 // Reload the template of the LynxView with the given data. This function
 // reloads the template of the specified LynxView using the provided template
 // data and global properties. It can be used when you need to refresh the view
 // with updated data or different template configurations.
+// A non-null global_props value replaces the current global props. A null
+// handle or value keeps the current global props.
 LYNX_CAPI_EXPORT void lynx_view_reload_template(
-    lynx_view_t*, lynx_template_data_t* data,
+    lynx_view_t* view, lynx_template_data_t* data,
     lynx_template_data_t* global_props);
 
 // Send global events to the front end through the client, and the front end can
 // listen to the event through GlobalEventEmitter.
-LYNX_CAPI_EXPORT void lynx_view_send_global_event(lynx_view_t*,
+// The JSON string contains the event argument array.
+LYNX_CAPI_EXPORT void lynx_view_send_global_event(lynx_view_t* view,
                                                   const char* name,
                                                   const char* json);
-
-// Update the screen metrics of the LynxView. This function allows you to modify
-// the screen-related properties of an existing LynxView, including the screen
-// width, height, and pixel ratio.
-LYNX_CAPI_EXPORT void lynx_view_update_screen_metrics(lynx_view_t*,
-                                                      const float& width,
-                                                      const float& height,
-                                                      const float& pixel_ratio);
-
-// Updates the position and size of the LynxView. This function allows you to
-// change the position and dimensions of an existing LynxView. The position is
-// defined by the `x` and `y` coordinates of the top-left corner of the view,
-// and the size is defined by the `width` and `height` parameters.
-LYNX_CAPI_EXPORT void lynx_view_set_frame(lynx_view_t*, const float& x,
-                                          const float& y, const float& width,
-                                          const float& height);
-
-// Changing the font scaling ratio in client settings will automatically change
-// the text size.
-LYNX_CAPI_EXPORT void lynx_view_set_font_scale(lynx_view_t*,
-                                               const float& font_scale);
+// Sends a portable lynx_value array as positional event arguments, without JSON
+// conversion. Runtime-backed extended values are not supported. The caller
+// keeps ownership and may release arguments after this call. Queued work
+// retains it. Returns 1 when accepted, or 0 for a null view/name or a non-array
+// argument.
+LYNX_CAPI_EXPORT int lynx_view_send_global_event_with_value(
+    lynx_view_t* view, const char* name, lynx_value arguments);
+// Measure modes are 0 for indefinite, 1 for definite, and 2 for at-most.
+// Dimensions use the UI backend's coordinate system.
+LYNX_CAPI_EXPORT void lynx_view_set_viewport(lynx_view_t* view, float width,
+                                             int32_t width_mode, float height,
+                                             int32_t height_mode);
+// Screen dimensions are in logical pixels. The pixel ratio converts them to
+// physical pixels. Same behavior as lynx_view_update_screen_metrics, with
+// dimensions and pixel ratio passed by value for C callers.
+LYNX_CAPI_EXPORT void lynx_view_update_screen_metrics_v2(lynx_view_t* view,
+                                                         float width,
+                                                         float height,
+                                                         float pixel_ratio);
+// Same behavior as lynx_view_set_font_scale, with the font scaling ratio passed
+// by value for C callers.
+LYNX_CAPI_EXPORT void lynx_view_set_font_scale_v2(lynx_view_t* view,
+                                                  float font_scale);
 
 // Set the parent window of the LynxView.
 LYNX_CAPI_EXPORT void lynx_view_set_parent(lynx_view_t*, NativeWindow parent);
@@ -145,7 +155,7 @@ lynx_view_get_generic_resource_fetcher(lynx_view_t*);
 // called when the LynxView becomes visible or active again after being in the
 // background. It may trigger necessary operations such as resuming animations,
 // reloading resources, or updating the UI.
-LYNX_CAPI_EXPORT void lynx_view_enter_foreground(lynx_view_t*);
+LYNX_CAPI_EXPORT void lynx_view_enter_foreground(lynx_view_t* view);
 
 // Instruct the LynxView to enter the background state. This function should be
 // called when the LynxView is about to become hidden or inactive, such as when
@@ -153,16 +163,12 @@ LYNX_CAPI_EXPORT void lynx_view_enter_foreground(lynx_view_t*);
 // animations, releasing resources, or saving the current state to ensure
 // efficient resource usage and a smooth transition when the view returns to the
 // foreground.
-LYNX_CAPI_EXPORT void lynx_view_enter_background(lynx_view_t*);
+LYNX_CAPI_EXPORT void lynx_view_enter_background(lynx_view_t* view);
 
 // Send bubble event to lynx view. This function is only used by test bench to
 // replay the bubble event.
 LYNX_CAPI_EXPORT void lynx_view_inject_bubble_event(lynx_view_t*,
                                                     const char* params);
-// Register instance-level view factory.
-LYNX_CAPI_EXPORT void lynx_view_register_native_view(
-    lynx_view_t*, const char* name, lynx_native_view_creator creator,
-    void* opaque);
 
 // Register Input Method Editor (IME) handler for the LynxView.
 // When registering IME (handler != NULL), the provided handler will be invoked
@@ -210,6 +216,45 @@ LYNX_CAPI_EXPORT void lynx_view_emulate_mouse_event(lynx_view_t* view,
                                                     float x, float y,
                                                     float delta_x,
                                                     float delta_y);
+
+#if defined(__cplusplus)
+// Keep the legacy reference-based entry points available to C++ callers.
+// Update the screen metrics of the LynxView. This function allows you to modify
+// the screen-related properties of an existing LynxView, including the screen
+// width, height, and pixel ratio.
+LYNX_CAPI_EXPORT void lynx_view_update_screen_metrics(lynx_view_t*,
+                                                      const float& width,
+                                                      const float& height,
+                                                      const float& pixel_ratio);
+
+// Updates the position and size of the LynxView. This function allows you to
+// change the position and dimensions of an existing LynxView. The position is
+// defined by the `x` and `y` coordinates of the top-left corner of the view,
+// and the size is defined by the `width` and `height` parameters.
+LYNX_CAPI_EXPORT void lynx_view_set_frame(lynx_view_t*, const float& x,
+                                          const float& y, const float& width,
+                                          const float& height);
+
+// Changing the font scaling ratio in client settings will automatically change
+// the text size.
+LYNX_CAPI_EXPORT void lynx_view_set_font_scale(lynx_view_t*,
+                                               const float& font_scale);
+#endif
+
+#if !ENABLE_EMBEDDER_LITE
+// Register a runtime lifecycle observer for the LynxView.
+// This function allows you to associate a runtime lifecycle observer with a
+// specific LynxView instance. The observer will be notified of various runtime
+// lifecycle events, such as runtime attachment, and detachment. This can be
+// useful for monitoring and responding to changes in the runtime state.
+LYNX_CAPI_EXPORT void lynx_view_register_runtime_lifecycle_observer(
+    lynx_view_t*, lynx_runtime_lifecycle_observer_t*);
+
+// Register instance-level view factory.
+LYNX_CAPI_EXPORT void lynx_view_register_native_view(
+    lynx_view_t*, const char* name, lynx_native_view_creator creator,
+    void* opaque);
+#endif
 
 LYNX_EXTERN_C_END
 

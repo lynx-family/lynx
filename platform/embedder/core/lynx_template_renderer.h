@@ -106,6 +106,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     int thread_mode = 0;
     LynxSize screen_size;
     LynxSize viewport_size;
+    int viewport_width_mode = 1;
+    int viewport_height_mode = 1;
     float device_pixel_ratio = 1.f;
     bool enable_new_animator = false;
     bool enable_native_list = false;

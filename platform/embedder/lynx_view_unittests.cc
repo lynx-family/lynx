@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -190,6 +191,94 @@ TEST_F(LynxViewTest, DisabledJSInitializesMTSWithoutBTS) {
   }
 }
 
+TEST_F(LynxViewTest, GlobalEventValuePreservesCallerOwnership) {
+  lynx::pub::LynxView::Builder builder;
+  view_ = builder.SetEnableJSRuntime(false).Build();
+  ASSERT_NE(view_, nullptr);
+  ASSERT_NE(view_->Impl(), nullptr);
+  const std::string text("text\0value", 10);
+  auto object = lynx::lepus::Dictionary::Create();
+  object->SetValue("text", lynx::lepus::Value(text));
+  auto arguments = lynx::lepus::CArray::Create();
+  arguments->emplace_back(object);
+  arguments->emplace_back();
+  arguments->emplace_back(std::numeric_limits<int64_t>::max());
+  lynx::lepus::Value value(arguments);
+  const auto references = arguments->SubtleRefCountForDebug();
+
+  EXPECT_EQ(lynx_view_send_global_event_with_value(view_->Impl(), "event",
+                                                   value.value()),
+            1);
+  EXPECT_EQ(arguments->SubtleRefCountForDebug(), references);
+  ASSERT_EQ(arguments->size(), 3u);
+  EXPECT_EQ(
+      arguments->get(0).GetProperty(lynx::base::String("text")).StdString(),
+      text);
+  EXPECT_TRUE(arguments->get(1).IsNil());
+  EXPECT_EQ(arguments->get(2).Int64(), std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(LynxViewTest, GlobalEventValueValidatesArgumentsAndAcceptsEmptyArray) {
+  lynx::pub::LynxView::Builder builder;
+  view_ = builder.SetEnableJSRuntime(false).Build();
+  ASSERT_NE(view_, nullptr);
+  ASSERT_NE(view_->Impl(), nullptr);
+  lynx::lepus::Value arguments(lynx::lepus::CArray::Create());
+  EXPECT_EQ(lynx_view_send_global_event_with_value(view_->Impl(), "event",
+                                                   arguments.value()),
+            1);
+  EXPECT_EQ(lynx_view_send_global_event_with_value(nullptr, "event",
+                                                   arguments.value()),
+            0);
+  EXPECT_EQ(lynx_view_send_global_event_with_value(view_->Impl(), nullptr,
+                                                   arguments.value()),
+            0);
+  lynx::lepus::Value object(lynx::lepus::Dictionary::Create());
+  EXPECT_EQ(lynx_view_send_global_event_with_value(view_->Impl(), "event",
+                                                   object.value()),
+            0);
+  lynx_value invalid{};
+  invalid.type = lynx_value_extended;
+  EXPECT_EQ(
+      lynx_view_send_global_event_with_value(view_->Impl(), "event", invalid),
+      0);
+  invalid.type = lynx_value_array;
+  EXPECT_EQ(
+      lynx_view_send_global_event_with_value(view_->Impl(), "event", invalid),
+      0);
+}
+
+TEST_F(LynxViewTest, FontScaleV2UpdatesEngineAndPreservesLegacyBehavior) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  lynx::embedder::LynxTemplateRenderer::Settings settings;
+  settings.screen_size = {320, 480};
+  settings.viewport_size = {320, 480};
+  settings.enable_js = false;
+  auto renderer = std::make_unique<InspectableTemplateRenderer>(
+      settings, ui_renderer.GetUIDelegate(), nullptr, nullptr);
+  renderer->Initialize();
+  auto engine_actor = renderer->shell()->GetEngineActor();
+  lynx_view_t view;
+  view.lynx_template_renderer = std::move(renderer);
+  auto expect_scale = [&](float expected) {
+    engine_actor->ActSync([expected](auto& engine) {
+      auto& manager = engine->GetTasm()->page_proxy()->element_manager();
+      ASSERT_NE(manager, nullptr);
+      EXPECT_FLOAT_EQ(manager->GetLynxEnvConfig().FontScale(), expected);
+    });
+  };
+
+  float scale = 1.5f;
+  lynx_view_set_font_scale_v2(&view, scale);
+  scale = 2.f;
+  expect_scale(1.5f);
+  lynx_view_set_font_scale(&view, scale);
+  expect_scale(2.f);
+  lynx_view_set_font_scale_v2(&view, 0.75f);
+  expect_scale(0.75f);
+}
+
 TEST_F(LynxViewTest, CustomVSyncSurvivesBuilderReplacementAndViewSharing) {
   struct State {
     int requests = 0;
@@ -280,14 +369,24 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
   input["css"]["cssSource"]["0"] = "index.css";
   input["manifest"] = Json::Value(Json::objectValue);
   input["lepusCode"]["root"] = R"(
+    let page;
+    let child;
     function processData(data) { return data; }
     function renderPage() {
-      const page = __CreatePage("0", 0);
-      const child = __CreateView(0);
+      page = __CreatePage("0", 0);
+      child = __CreateView(0);
       __SetInlineStyles(child, "width: 100px; height: 40px; background-color: red;");
       __AppendElement(page, child);
       __FlushElementTree(page);
     }
+    function updatePage(data, options) {
+      if (options.resetPageData && data.replacement === 1) {
+        __SetInlineStyles(child, "width: 125px; height: 40px;");
+        __FlushElementTree(page);
+      }
+    }
+    function removeComponents() {}
+    function updateGlobalProps() {}
   )";
   auto encoded = lynx::tasm::encode(Json::FastWriter().write(input));
   ASSERT_EQ(encoded.status, 0) << encoded.error_msg;
@@ -310,6 +409,8 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
   auto meta = std::make_shared<lynx::pub::LynxLoadMeta>();
   meta->SetUrl("test://lynx-view/basic");
   meta->SetTemplateBundle(bundle);
+  meta->SetGlobalProps(
+      std::make_shared<lynx::pub::LynxTemplateData>(R"({"previous":true})"));
   view_->LoadTemplate(meta);
   lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
 
@@ -336,6 +437,57 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
   EXPECT_EQ(painting->nodes.at(child_id).parent, page_id);
   EXPECT_FLOAT_EQ(painting->nodes.at(child_id).width, 100);
   EXPECT_FLOAT_EQ(painting->nodes.at(child_id).height, 40);
+
+  auto replacement =
+      std::make_shared<lynx::pub::LynxTemplateData>(R"({"replacement":1})");
+  view_->ResetData(replacement);
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_FLOAT_EQ(painting->nodes.at(child_id).width, 125);
+
+  auto* view = view_->Impl();
+  auto props =
+      std::make_shared<lynx::pub::LynxTemplateData>(R"({"retained":true})");
+  view_->ReloadTemplate(replacement, props);
+  view_->ReloadTemplate(replacement, nullptr);
+  lynx_value null_value{};
+  null_value.type = lynx_value_null;
+  auto* null_props = lynx_template_data_create_from_value(null_value);
+  ASSERT_NE(null_props, nullptr);
+  lynx_view_reload_template(view, replacement->Impl(), null_props);
+  lynx_template_data_release(null_props);
+
+  auto update = std::make_shared<lynx::pub::LynxUpdateMeta>();
+  update->SetGlobalProps(
+      std::make_shared<lynx::pub::LynxTemplateData>(R"({"updated":true})"));
+  view_->UpdateData(update);
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  const auto cached_props = view->global_props->GetValue();
+  EXPECT_TRUE(cached_props.GetProperty(lynx::base::String("retained")).Bool());
+  EXPECT_TRUE(cached_props.GetProperty(lynx::base::String("updated")).Bool());
+  EXPECT_FALSE(cached_props.Contains(lynx::base::String("previous")));
+
+  view_->ReloadTemplate(replacement,
+                        std::make_shared<lynx::pub::LynxTemplateData>("{}"));
+  const auto& empty_props = view->global_props->GetValue();
+  EXPECT_TRUE(empty_props.IsTable());
+  EXPECT_EQ(empty_props.GetLength(), 0);
+
+  lynx_view_update_screen_metrics_v2(view, 360, 640, 2);
+  lynx_view_set_viewport(view, 240, 2, 400, 0);
+  view->lynx_view_clients->OnReloadTemplate(meta->GetUrl(), encoded.buffer,
+                                            nullptr);
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  const auto& settings = view->lynx_template_renderer->GetSettings();
+  EXPECT_FLOAT_EQ(settings.screen_size.cx, 360);
+  EXPECT_FLOAT_EQ(settings.screen_size.cy, 640);
+  EXPECT_FLOAT_EQ(settings.device_pixel_ratio, 2);
+  EXPECT_FLOAT_EQ(settings.viewport_size.cx, 240);
+  EXPECT_FLOAT_EQ(settings.viewport_size.cy, 400);
+  EXPECT_EQ(settings.viewport_width_mode, 2);
+  EXPECT_EQ(settings.viewport_height_mode, 0);
+
+  EXPECT_TRUE(client->errors.empty())
+      << (client->errors.empty() ? "" : client->errors.front());
 }
 
 }  // namespace

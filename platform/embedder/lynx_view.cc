@@ -409,6 +409,13 @@ LYNX_EXTERN_C void lynx_view_update_data(lynx_view_t* view,
                                     : lynx::lepus::Value());
 }
 
+LYNX_EXTERN_C void lynx_view_reset_data(lynx_view_t* view,
+                                        lynx_template_data_t* data) {
+  if (data) {
+    view->lynx_template_renderer->ResetDataByParsedData(data->template_data);
+  }
+}
+
 LYNX_EXTERN_C void lynx_view_reload_template(
     lynx_view_t* view, lynx_template_data_t* data,
     lynx_template_data_t* global_props) {
@@ -417,11 +424,15 @@ LYNX_EXTERN_C void lynx_view_reload_template(
     view->lynx_logbox_wrapper->OnReload();
   }
 #endif
+  const bool has_global_props =
+      global_props && global_props->template_data &&
+      !global_props->template_data->GetValue().IsNil();
+  if (has_global_props) {
+    view->global_props = global_props->template_data;
+  }
   view->lynx_template_renderer->ReloadTemplate(
       data->template_data, nullptr,
-      (global_props && global_props->template_data)
-          ? global_props->template_data->GetValue()
-          : lynx::lepus::Value());
+      has_global_props ? view->global_props->GetValue() : lynx::lepus::Value());
 }
 
 LYNX_EXTERN_C void lynx_view_send_global_event(lynx_view_t* view,
@@ -432,6 +443,18 @@ LYNX_EXTERN_C void lynx_view_send_global_event(lynx_view_t* view,
   }
   view->lynx_template_renderer->SendGlobalEvent(
       name, lynx::lepus::jsonValueTolepusValue(json == nullptr ? "" : json));
+}
+
+LYNX_EXTERN_C int lynx_view_send_global_event_with_value(lynx_view_t* view,
+                                                         const char* name,
+                                                         lynx_value arguments) {
+  if (!view || !view->lynx_template_renderer || !name ||
+      arguments.type != lynx_value_array || !arguments.val_ptr) {
+    return 0;
+  }
+  view->lynx_template_renderer->SendGlobalEvent(
+      name, lynx::lepus::Value(nullptr, arguments));
+  return 1;
 }
 
 LYNX_EXTERN_C void lynx_view_update_screen_metrics(lynx_view_t* view,
@@ -450,9 +473,28 @@ LYNX_EXTERN_C void lynx_view_set_frame(lynx_view_t* view, const float& x,
   view->lynx_ui_renderer->SetFrame(x, y, width, height);
 }
 
+LYNX_EXTERN_C void lynx_view_set_viewport(lynx_view_t* view, float width,
+                                          int32_t width_mode, float height,
+                                          int32_t height_mode) {
+  view->lynx_template_renderer->UpdateViewport(width, width_mode, height,
+                                               height_mode, true);
+  view->lynx_ui_renderer->SetFrame(0.f, 0.f, width, height);
+}
+
+LYNX_EXTERN_C void lynx_view_update_screen_metrics_v2(lynx_view_t* view,
+                                                      float width, float height,
+                                                      float pixel_ratio) {
+  lynx_view_update_screen_metrics(view, width, height, pixel_ratio);
+}
+
 LYNX_EXTERN_C void lynx_view_set_font_scale(lynx_view_t* view,
                                             const float& font_scale) {
   view->lynx_template_renderer->UpdateFontScale(font_scale);
+}
+
+LYNX_EXTERN_C void lynx_view_set_font_scale_v2(lynx_view_t* view,
+                                               float font_scale) {
+  lynx_view_set_font_scale(view, font_scale);
 }
 
 LYNX_EXTERN_C void lynx_view_set_parent(lynx_view_t* view,

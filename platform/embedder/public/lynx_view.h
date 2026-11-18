@@ -19,12 +19,14 @@
 #include "lynx_generic_resource_fetcher.h"
 #include "lynx_group.h"
 #include "lynx_load_meta.h"
-#include "lynx_native_module.h"
-#include "lynx_runtime_lifecycle_observer.h"
 #include "lynx_update_meta.h"
 #include "lynx_view_client.h"
 #include "lynx_vsync_monitor.h"
 #include "lynx_windowless_renderer.h"
+#if !ENABLE_EMBEDDER_LITE
+#include "lynx_native_module.h"
+#include "lynx_runtime_lifecycle_observer.h"
+#endif
 
 // Forward declaration of internal struct
 struct lynx_view_t;
@@ -129,6 +131,7 @@ class LynxView {
       return *this;
     }
 
+#if !ENABLE_EMBEDDER_LITE
     Builder& RegisterNativeModule(const std::string& module_name,
                                   napi_module_creator creator, void* opaque) {
       lynx_view_builder_register_native_module(builder_, module_name.c_str(),
@@ -147,6 +150,7 @@ class LynxView {
           opaque);
       return *this;
     }
+#endif
 
     lynx_view_builder_t* Impl() { return builder_; }
 
@@ -184,25 +188,6 @@ class LynxView {
 
   /**
    * @apidoc
-   * @brief Register a native view for the `LynxView`.
-   * @param tag_name The tag name of element, specifying exists tag name will
-   * override corresponding builtin element.
-   * @param opaque An opaque pointer to user-specific data.
-   */
-  template <typename T>
-  LynxView& RegisterNativeView(const std::string& tag_name,
-                               void* opaque = nullptr) {
-    lynx_view_register_native_view(
-        lynx_view_, tag_name.c_str(),
-        [](void* opaque) -> lynx_native_view_t* {
-          return (new T(opaque))->native_view();
-        },
-        opaque);
-    return *this;
-  }
-
-  /**
-   * @apidoc
    * @brief Register lifecycle event observer `LynxViewClient` for the
    * `LynxView`.
    * @param client The structure implemented by the client and registered to
@@ -231,12 +216,33 @@ class LynxView {
                              lynx_view_clients_.end());
   }
 
+#if !ENABLE_EMBEDDER_LITE
+  /**
+   * @apidoc
+   * @brief Register a native view for the `LynxView`.
+   * @param tag_name The tag name of element, specifying exists tag name will
+   * override corresponding builtin element.
+   * @param opaque An opaque pointer to user-specific data.
+   */
+  template <typename T>
+  LynxView& RegisterNativeView(const std::string& tag_name,
+                               void* opaque = nullptr) {
+    lynx_view_register_native_view(
+        lynx_view_, tag_name.c_str(),
+        [](void* opaque) -> lynx_native_view_t* {
+          return (new T(opaque))->native_view();
+        },
+        opaque);
+    return *this;
+  }
+
   void RegisterRuntimeLifecycleObserver(
       std::shared_ptr<LynxRuntimeLifecycleObserver> observer) {
     observer->InitIfNeeded();
     lynx_view_register_runtime_lifecycle_observer(lynx_view_, observer->Impl());
     runtime_lifecycle_observer_ = observer;
   }
+#endif
 
   /**
    * @apidoc
@@ -258,6 +264,15 @@ class LynxView {
    */
   void UpdateData(std::shared_ptr<LynxUpdateMeta> update_meta) {
     lynx_view_update_data(lynx_view_, update_meta->Impl());
+  }
+
+  /**
+   * @apidoc
+   * @brief Clear the current page data and apply replacement data.
+   * @param data The replacement template data.
+   */
+  void ResetData(const std::shared_ptr<LynxTemplateData>& data) {
+    lynx_view_reset_data(lynx_view_, data ? data->Impl() : nullptr);
   }
 
   /**
@@ -308,7 +323,7 @@ class LynxView {
    * @param pixel_ratio The pixel ratio of the screen.
    */
   void UpdateScreenMetrics(float width, float height, float pixel_ratio) {
-    lynx_view_update_screen_metrics(lynx_view_, width, height, pixel_ratio);
+    lynx_view_update_screen_metrics_v2(lynx_view_, width, height, pixel_ratio);
   }
 
   /**
@@ -330,7 +345,7 @@ class LynxView {
    * @param scale The new font scaling ratio.
    */
   void SetFontScale(float scale) {
-    lynx_view_set_font_scale(lynx_view_, scale);
+    lynx_view_set_font_scale_v2(lynx_view_, scale);
   }
 
   /**
@@ -438,7 +453,9 @@ class LynxView {
   std::vector<std::shared_ptr<LynxViewClient>> lynx_view_clients_;
   std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
   std::shared_ptr<LynxVSyncMonitor> custom_vsync_monitor_;
+#if !ENABLE_EMBEDDER_LITE
   std::shared_ptr<LynxRuntimeLifecycleObserver> runtime_lifecycle_observer_;
+#endif
   std::shared_ptr<LynxEventSimulationProxy> event_proxy_;
 };
 

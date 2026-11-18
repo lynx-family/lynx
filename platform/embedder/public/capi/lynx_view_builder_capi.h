@@ -7,13 +7,15 @@
 #include <stdint.h>
 
 #include "lynx_export.h"
-#include "lynx_extension_module_types_capi.h"
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_group_capi.h"
-#include "lynx_native_module_capi.h"
-#include "lynx_native_view_capi.h"
 #include "lynx_vsync_monitor_capi.h"
 #include "lynx_windowless_renderer_capi.h"
+#if !ENABLE_EMBEDDER_LITE
+#include "lynx_extension_module_types_capi.h"
+#include "lynx_native_module_capi.h"
+#include "lynx_native_view_capi.h"
+#endif
 
 LYNX_EXTERN_C_BEGIN
 
@@ -21,33 +23,6 @@ typedef void* NativeWindow;
 
 typedef struct lynx_view_builder_t lynx_view_builder_t;
 LYNX_CAPI_EXPORT lynx_view_builder_t* lynx_view_builder_create();
-
-// Sets the screen size and pixel ratio for the LynxView being built. This
-// function allows you to specify the screen size and pixel ratio of the device
-// for the LynxView that is being constructed using the provided builder. The
-// screen size affects the layout and rendering of the LynxView, and the pixel
-// ratio is used to adjust the rendering quality of high - DPI displays.
-LYNX_CAPI_EXPORT void lynx_view_builder_set_screen_size(
-    lynx_view_builder_t*, const float& width, const float& height,
-    const float& pixel_ratio);
-
-// Set the initial position and size of the LynxView. This function allows you
-// to specify the initial position and dimensions of the LynxView being built
-// using the provided builder. The position is defined by the `x` and `y`
-// coordinates, and the size is defined by the `width` and `height` parameters.
-LYNX_CAPI_EXPORT void lynx_view_builder_set_frame(lynx_view_builder_t*,
-                                                  const float& x,
-                                                  const float& y,
-                                                  const float& width,
-                                                  const float& height);
-
-// Sets the font scaling ratio for the LynxView being built. This function
-// allows you to specify a scaling factor for the font size within the LynxView.
-// The text size in the LynxView will be multiplied by this scaling ratio. For
-// example, a value of 1.5 will increase the text size by 50%, while 0.8 will
-// reduce it by 20%.
-LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
-                                                       const float& scale);
 
 // Sets a custom VSync source before lynx_view_create. Drives script and core
 // animation VSync without a system-clock fallback. With a Clay windowless
@@ -126,6 +101,39 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_windowless_renderer(
 LYNX_CAPI_EXPORT void lynx_view_builder_set_generic_resource_fetcher(
     lynx_view_builder_t*, lynx_generic_resource_fetcher_t* fetcher);
 
+LYNX_CAPI_EXPORT void lynx_view_builder_release(lynx_view_builder_t* builder);
+
+#if defined(__cplusplus)
+// Keep the legacy reference-based entry points available to C++ callers.
+// Sets the screen size and pixel ratio for the LynxView being built. This
+// function allows you to specify the screen size and pixel ratio of the device
+// for the LynxView that is being constructed using the provided builder. The
+// screen size affects the layout and rendering of the LynxView, and the pixel
+// ratio is used to adjust the rendering quality of high - DPI displays.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_screen_size(
+    lynx_view_builder_t*, const float& width, const float& height,
+    const float& pixel_ratio);
+
+// Set the initial position and size of the LynxView. This function allows you
+// to specify the initial position and dimensions of the LynxView being built
+// using the provided builder. The position is defined by the `x` and `y`
+// coordinates, and the size is defined by the `width` and `height` parameters.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_frame(lynx_view_builder_t*,
+                                                  const float& x,
+                                                  const float& y,
+                                                  const float& width,
+                                                  const float& height);
+
+// Sets the font scaling ratio for the LynxView being built. This function
+// allows you to specify a scaling factor for the font size within the LynxView.
+// The text size in the LynxView will be multiplied by this scaling ratio. For
+// example, a value of 1.5 will increase the text size by 50%, while 0.8 will
+// reduce it by 20%.
+LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
+                                                       const float& scale);
+#endif
+
+#if !ENABLE_EMBEDDER_LITE
 // Register instance-level native module, which have a higher priority than
 // global modules.
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_module(
@@ -142,8 +150,7 @@ LYNX_CAPI_EXPORT void lynx_view_builder_register_extension_module(
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_view(
     lynx_view_builder_t* builder, const char* name,
     lynx_native_view_creator creator, void* opaque);
-
-LYNX_CAPI_EXPORT void lynx_view_builder_release(lynx_view_builder_t* builder);
+#endif
 
 LYNX_EXTERN_C_END
 

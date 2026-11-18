@@ -433,6 +433,8 @@ void LynxTemplateRenderer::UpdateViewport(float width, int width_mode,
                                           bool need_layout) {
   settings_.viewport_size.cx = width;
   settings_.viewport_size.cy = height;
+  settings_.viewport_width_mode = width_mode;
+  settings_.viewport_height_mode = height_mode;
   shell_->UpdateViewport(width, width_mode, height, height_mode, need_layout);
 }
 

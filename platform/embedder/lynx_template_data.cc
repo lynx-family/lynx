@@ -17,6 +17,17 @@ LYNX_EXTERN_C lynx_template_data_t* lynx_template_data_create_from_json(
   return template_data;
 }
 
+LYNX_EXTERN_C lynx_template_data_t* lynx_template_data_create_from_value(
+    lynx_value value) {
+  if (value.type == lynx_value_extended) {
+    return nullptr;
+  }
+  lynx_template_data_t* template_data = new lynx_template_data_t();
+  template_data->template_data = std::make_shared<lynx::tasm::TemplateData>();
+  template_data->template_data->SetValue(lynx::lepus::Value(nullptr, value));
+  return template_data;
+}
+
 LYNX_EXTERN_C void lynx_template_data_mark_state(
     lynx_template_data_t* template_data, const char* name) {
   template_data->template_data->SetPreprocessorName(
