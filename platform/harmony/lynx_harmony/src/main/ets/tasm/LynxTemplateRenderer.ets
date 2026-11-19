@@ -131,7 +131,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     }
     this.nativeDetach();
     this.hasDestroyed = true;
-    this.clients.forEach(client => client.onDestroy());
+    // Snapshot because clients may remove themselves in onDestroy.
+    this.clients.slice().forEach(client => client.onDestroy());
     this.lynxView = undefined;
   }
 

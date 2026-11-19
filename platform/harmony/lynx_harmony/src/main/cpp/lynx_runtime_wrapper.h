@@ -54,9 +54,11 @@ class NativeRuntimeFacadeHarmony : public shell::NativeFacadeEmptyImpl {
 class RuntimeLifecycleListenerDelegateHarmony
     : public runtime::RuntimeLifecycleListenerDelegate {
  public:
+  // Copies listener. on_release, when set, receives user_data on destruction.
   explicit RuntimeLifecycleListenerDelegateHarmony(
-      LynxRuntimeLifecycleListener* listener);
-  ~RuntimeLifecycleListenerDelegateHarmony() override = default;
+      const LynxRuntimeLifecycleListener& listener,
+      void (*on_release)(void*) = nullptr);
+  ~RuntimeLifecycleListenerDelegateHarmony() override;
   void OnRuntimeCreate(
       std::shared_ptr<runtime::IVSyncObserver> observer) override {}
   void OnRuntimeInit(int64_t runtime_id) override {}
@@ -66,7 +68,9 @@ class RuntimeLifecycleListenerDelegateHarmony
   void OnRuntimeDetach() override;
 
  private:
-  LynxRuntimeLifecycleListener* listener_{nullptr};
+  LynxRuntimeLifecycleListener listener_{};
+  void (*on_release_)(void*){nullptr};
+  bool detached_{false};
 };
 
 class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
@@ -142,6 +146,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   static napi_value New(napi_env env, napi_callback_info info);
   static napi_value NativeCreate(napi_env env, napi_callback_info info);
   static napi_value NativeEvaluateScript(napi_env env, napi_callback_info info);
+  static napi_value NativeDestroy(napi_env env, napi_callback_info info);
   static napi_value NativeEvaluateTemplateBundle(napi_env env,
                                                  napi_callback_info info);
   static napi_value NativeTransitionToFullRuntime(napi_env env,
@@ -165,6 +170,7 @@ class LynxRuntimeWrapper : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::LynxBTSRuntimeProxyImpl> runtime_proxy_;
   std::weak_ptr<runtime::js::LynxModuleManager> module_manager_;
   bool is_attached_{false};
+  bool destroyed_{false};
   devtool::LynxInspectorOwner* inspector_owner_ = nullptr;
   std::unordered_map<int32_t, napi_ref> session_storage_callback_refs_;
 };

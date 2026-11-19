@@ -465,6 +465,7 @@ export class LynxRuntimeWrapper {
     props?: Object | string, enableNewShareGroup?: boolean, debuggable?: boolean): bigint;
 
   protected nativeEvaluateScript(url: string, sources: string): void;
+  protected nativeDestroy(): void;
 
   protected nativeEvaluateBundleScript(url: string, bundle: TemplateBundle, jsFile: string): void;
 
