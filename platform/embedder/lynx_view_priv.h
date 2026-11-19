@@ -12,6 +12,9 @@
 #include "platform/embedder/lynx_ui_renderer.h"
 #include "platform/embedder/lynx_view_clients.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
+#if ENABLE_EMBEDDER_LITE
+#include "platform/embedder/capi_module/lynx_capi_module.h"
+#endif
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
 #include "platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h"
 #endif
@@ -41,6 +44,9 @@ struct lynx_view_t {
       mts_extension_module_factory = nullptr;
   std::shared_ptr<lynx::embedder::ExtensionModuleFactoryImpl>
       extension_factory_ = nullptr;
+#endif
+#if ENABLE_EMBEDDER_LITE
+  std::shared_ptr<lynx::embedder::LynxCapiModuleRegistry> capi_module_registry;
 #endif
   std::unique_ptr<lynx::embedder::LynxUIRenderer> lynx_ui_renderer = nullptr;
   std::shared_ptr<lynx::embedder::LynxResourceFetcherHolder>

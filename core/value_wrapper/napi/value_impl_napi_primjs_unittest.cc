@@ -9,6 +9,8 @@
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/runtime/lepusng/jsvalue_helper.h"
+#include "core/runtime/lepusng/quick_context.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "quickjs/include/quickjs.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -234,6 +236,34 @@ TEST_F(ValueImplNapiPrimJSTest, ValueConvertTest) {
   std::string s2(reinterpret_cast<char*>(byte_array2->GetPtr()),
                  byte_array2->GetLength());
   ASSERT_TRUE(s2 == "map_test");
+}
+
+TEST_F(ValueImplNapiPrimJSTest, PreservesMtsArrayBuffersInModuleArguments) {
+  lepus::QuickContext mts;
+  auto* ctx = mts.context();
+  lepus::LepusValueFactory factory(ctx);
+  const uint8_t bytes[] = {9, 0, 255};
+  auto args = factory.Create(LEPUS_NewObject(ctx));
+  args.SetProperty("payload", factory.Create(LEPUS_NewArrayBufferCopy(
+                                  ctx, bytes, sizeof(bytes))));
+  args.SetProperty("empty",
+                   factory.Create(LEPUS_NewArrayBufferCopy(ctx, bytes, 0)));
+
+  auto converted = ValueUtilsNapiPrimJS::ConvertPubValueToNapiValue(
+      env_, PubLepusValue(args));
+  ASSERT_NE(converted, nullptr);
+  ValueImplNapiPrimJS received(env_, converted);
+  auto payload = received.GetValueForKey("payload");
+  ASSERT_NE(payload, nullptr);
+  ASSERT_TRUE(payload->IsArrayBuffer());
+  ASSERT_EQ(payload->Length(), static_cast<int>(sizeof(bytes)));
+  auto* data = payload->ArrayBuffer();
+  ASSERT_NE(data, nullptr);
+  EXPECT_EQ(std::memcmp(data, bytes, sizeof(bytes)), 0);
+  auto empty = received.GetValueForKey("empty");
+  ASSERT_NE(empty, nullptr);
+  ASSERT_TRUE(empty->IsArrayBuffer());
+  EXPECT_EQ(empty->Length(), 0);
 }
 
 TEST_F(ValueImplNapiPrimJSTest, ValueUtilsTest) {

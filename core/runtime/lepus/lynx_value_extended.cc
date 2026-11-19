@@ -175,6 +175,18 @@ lynx_api_status lynx_value_is_array_ext(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
+lynx_api_status lynx_value_get_arraybuffer_ext(lynx_api_env env,
+                                               lynx_value value,
+                                               uint8_t** result,
+                                               size_t* length) {
+  auto js_value = WrapJSValue(value);
+  if (!LEPUS_IsArrayBuffer(js_value)) {
+    return lynx_api_invalid_arg;
+  }
+  *result = LEPUS_GetArrayBuffer(env->ctx->ctx, length, js_value);
+  return lynx_api_ok;
+}
+
 lynx_api_status lynx_value_set_element_ext(lynx_api_env env, lynx_value object,
                                            uint32_t index, lynx_value value) {
   LEPUSValue js_value;

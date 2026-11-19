@@ -67,7 +67,9 @@ class ValueImplLepus : public Value {
     return backend_value_.IsArray() ||
            (backend_value_.IsJSValue() && backend_value_.IsJSArray());
   }
-  bool IsArrayBuffer() const override { return backend_value_.IsByteArray(); }
+  bool IsArrayBuffer() const override {
+    return backend_value_.IsByteArray() || backend_value_.IsJSArrayBuffer();
+  }
   bool IsMap() const override {
     return backend_value_.IsTable() ||
            (backend_value_.IsJSValue() && backend_value_.IsJSTable());
@@ -84,12 +86,22 @@ class ValueImplLepus : public Value {
   double Double() const override { return backend_value_.Double(); }
   double Number() const override { return backend_value_.Number(); }
   uint8_t* ArrayBuffer() const override {
-    return backend_value_.ByteArray()->GetPtr();
+    if (backend_value_.IsByteArray()) {
+      return backend_value_.ByteArray()->GetPtr();
+    }
+    uint8_t* data;
+    size_t length;
+    return backend_value_.GetJSArrayBufferInfo(&data, &length) ? data : nullptr;
   }
 
   const std::string& str() const override { return backend_value_.StdString(); }
   int Length() const override {
     if (backend_value_.IsJSValue()) {
+      uint8_t* data;
+      size_t length;
+      if (backend_value_.GetJSArrayBufferInfo(&data, &length)) {
+        return static_cast<int>(length);
+      }
       return backend_value_.GetJSLength();
     } else if (backend_value_.IsByteArray()) {
       return static_cast<int>(backend_value_.ByteArray()->GetLength());

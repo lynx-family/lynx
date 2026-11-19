@@ -16,6 +16,9 @@
 #include "platform/embedder/public/capi/lynx_group_capi.h"
 #include "platform/embedder/public/capi/lynx_native_view_capi.h"
 #include "platform/embedder/public/capi/lynx_view_builder_capi.h"
+#if ENABLE_EMBEDDER_LITE
+#include "platform/embedder/capi_module/lynx_capi_module.h"
+#endif
 #if defined(ENABLE_WINDOWLESS)
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
 #endif
@@ -60,6 +63,9 @@ struct lynx_view_builder_t {
   std::unordered_map<std::string,
                      std::tuple<extension_module_creator, bool, void*>>
       extension_modules_;
+#if ENABLE_EMBEDDER_LITE
+  lynx::embedder::LynxCapiModuleMap capi_modules;
+#endif
   std::unordered_map<std::string, std::pair<lynx_native_view_creator, void*>>
       native_view_creators;
 

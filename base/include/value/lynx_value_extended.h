@@ -38,6 +38,11 @@ lynx_api_status lynx_value_get_length_ext(lynx_api_env env, lynx_value value,
                                           uint32_t* result);
 lynx_api_status lynx_value_is_array_ext(lynx_api_env env, lynx_value value,
                                         bool* result);
+// The returned bytes are borrowed from value and remain owned by its runtime.
+lynx_api_status lynx_value_get_arraybuffer_ext(lynx_api_env env,
+                                               lynx_value value,
+                                               uint8_t** result,
+                                               size_t* length);
 lynx_api_status lynx_value_set_element_ext(lynx_api_env env, lynx_value object,
                                            uint32_t index, lynx_value value);
 lynx_api_status lynx_value_get_element_ext(lynx_api_env env, lynx_value object,

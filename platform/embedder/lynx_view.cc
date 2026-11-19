@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <memory>
+#include <utility>
 
 #include "base/include/byte_utils.h"
 #include "base/include/fml/thread.h"
@@ -230,19 +231,32 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   settings.vsync_monitor_platform_impl = builder->custom_vsync_monitor;
 #endif
 
+#if ENABLE_EMBEDDER_LITE
+  if (!builder->capi_modules.empty()) {
+    view->capi_module_registry =
+        std::make_shared<lynx::embedder::LynxCapiModuleRegistry>(
+            std::exchange(builder->capi_modules, {}));
+  }
+#endif
+
 #if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
       mts_module_creators;
   lynx::embedder::GlobalModuleRegistry::GetInstance()
       .MergeWithInstanceModuleMap(builder->native_modules, mts_module_creators);
-  // Create a view-scoped native module manager for each MTS shell. Native NAPI
-  // modules are registered before extension NAPI modules to preserve priority.
+  // Match BTS priority: CAPI, native NAPI, then extension NAPI modules.
   settings.native_module_manager_creator =
       [view, module_creators = std::move(mts_module_creators),
        extension_module_creators =
            std::move(mts_extension_module_creators)]() mutable {
         auto manager = std::make_unique<lynx::pub::LynxNativeModuleManager>();
-        // Register the MTS native NAPI module factory first.
+#if ENABLE_EMBEDDER_LITE
+        if (view->capi_module_registry) {
+          manager->SetModuleFactory(
+              std::make_unique<lynx::embedder::LynxCapiModuleFactory>(
+                  view->capi_module_registry));
+        }
+#endif
         auto factory =
             std::make_unique<lynx::embedder::LynxMTSModuleFactoryNAPI>(
                 view, module_creators);
@@ -276,6 +290,33 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
       };
 #else
   lynx::embedder::RuntimeProxyCallback runtime_proxy_callback = nullptr;
+#endif
+#if ENABLE_EMBEDDER_LITE
+  if (auto registry = view->capi_module_registry) {
+#if !ENABLE_NAPI_BINDING || !ENABLE_EMBEDDER_NAPI_MODULE
+    settings.native_module_manager_creator = [registry] {
+      auto manager = std::make_unique<lynx::pub::LynxNativeModuleManager>();
+      manager->SetModuleFactory(
+          std::make_unique<lynx::embedder::LynxCapiModuleFactory>(registry));
+      return manager;
+    };
+#endif
+    runtime_proxy_callback =
+        [registry, previous = std::move(runtime_proxy_callback)](
+            std::shared_ptr<lynx::shell::LynxEngineProxy> engine_proxy,
+            std::shared_ptr<lynx::shell::LynxRuntimeProxy> runtime_proxy,
+            std::shared_ptr<lynx::runtime::js::LynxModuleManager>
+                module_manager,
+            const fml::RefPtr<fml::TaskRunner>& js_runner) {
+          if (previous) {
+            previous(std::move(engine_proxy), std::move(runtime_proxy),
+                     module_manager, js_runner);
+          }
+          module_manager->SetModuleFactory(
+              std::make_unique<lynx::embedder::LynxCapiModuleFactory>(
+                  registry));
+        };
+  }
 #endif
 
   auto lynx_template_renderer =
@@ -615,6 +656,11 @@ LYNX_EXTERN_C void lynx_view_register_ime_handler(lynx_view_t* view,
 LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->lynx_ui_renderer->PrepareForDestroy();
   view->user_data = nullptr;
+#if ENABLE_EMBEDDER_LITE
+  if (view->capi_module_registry) {
+    view->capi_module_registry->Detach();
+  }
+#endif
 #if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   // Detach napi modules.
   if (view->lynx_module_manager) {
