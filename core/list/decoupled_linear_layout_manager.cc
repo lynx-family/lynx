@@ -513,7 +513,7 @@ std::optional<float> LinearLayoutManager::ScrollByDelta(float delta) {
         [this, adapter](const ItemHolder* item) {
           return !adapter->IsDirty(item) && !adapter->IsBinding(item) &&
                  adapter->GetItemElementDelegate(item) &&
-                 IsItemHolderNotAtStickyPosition(item);
+                 CanItemHolderBeAnchor(item);
         });
     if (!anchor) return std::nullopt;
     const auto key = anchor->item_key();
@@ -603,7 +603,31 @@ void LinearLayoutManager::ScrollByInternal(float content_offset,
   // step 3.5. Handle sticky.
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
                     LINEAR_LAYOUT_MANAGER_UPDATE_STICKY_ITEMS);
-  UpdateStickyItems();
+  if (list_container_->compose_scroll_managed()) {
+    const float anchor_screen_before =
+        list_orientation_helper_->GetStart(anchor_info.item_holder_) -
+        content_offset_;
+    if (UpdateStickyItemsAfterLayout(anchor_info)) {
+      if (base::FloatsNotEqual(
+              list_orientation_helper_->GetStart(anchor_info.item_holder_) -
+                  content_offset_,
+              anchor_screen_before)) {
+        anchor_info.start_offset_ =
+            list_orientation_helper_->GetStart(anchor_info.item_holder_);
+        anchor_info.start_alignment_delta_ =
+            anchor_info.start_offset_ - content_offset_;
+        FillWithAnchor(layout_state, anchor_info);
+        LayoutInvalidItemHolder(0);
+        content_size_ = GetTargetContentSize();
+        list_anchor_manager_->AdjustContentOffsetWithAnchor(anchor_info,
+                                                            content_offset_);
+        UpdateStickyItemsAfterLayout(anchor_info);
+      }
+      layout_state.latest_updated_content_offset_ = content_offset_;
+    }
+  } else {
+    UpdateStickyItems();
+  }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
 
   // step 4. Handle preload
@@ -643,7 +667,7 @@ void LinearLayoutManager::UpdateScrollAnchorInfo(
           const ItemHolder* item_holder) {
         return !list_adapter->IsDirty(item_holder) &&
                list_adapter->GetItemElementDelegate(item_holder) &&
-               IsItemHolderNotAtStickyPosition(item_holder);
+               CanItemHolderBeAnchor(item_holder);
       });
   ItemHolder* last_visible_item_holder = list_children_helper_->GetLastChild(
       on_screen_children,
@@ -651,7 +675,7 @@ void LinearLayoutManager::UpdateScrollAnchorInfo(
           const ItemHolder* item_holder) {
         return !list_adapter->IsDirty(item_holder) &&
                list_adapter->GetItemElementDelegate(item_holder) &&
-               IsItemHolderNotAtStickyPosition(item_holder);
+               CanItemHolderBeAnchor(item_holder);
       });
   ItemHolder* anchor_item_holder = nullptr;
   if (!first_visible_item_holder || !last_visible_item_holder) {
@@ -660,7 +684,7 @@ void LinearLayoutManager::UpdateScrollAnchorInfo(
           return base::FloatsLargerOrEqual(
                      list_orientation_helper_->GetStart(item_holder),
                      content_offset_) &&
-                 IsItemHolderNotAtStickyPosition(item_holder);
+                 CanItemHolderBeAnchor(item_holder);
         });
     if (!anchor_item_holder) {
       anchor_item_holder = *(on_screen_children.begin());

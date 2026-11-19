@@ -349,12 +349,83 @@ void ListContainerImpl::FlushPatching() {
   bool should_flush_finish_layout = should_flush_finish_layout_;
   should_flush_finish_layout_ = false;
   if (compose_scroll_managed_) {
+    // The regular output pass has just written every bound item at its flow
+    // position. Overlay the active sticky header before observers read state.
+    ProjectComposeStickyHeader();
+    // Synchronous layoutcomplete callbacks run inside FlushPatching before
+    // OnLayoutChildren returns and must already observe a valid first layout.
+    has_completed_first_layout_ = true;
     // A layout commit can change item geometry without changing the extent
     // or first visible index. Observers must still see a newer snapshot.
     ++compose_scroll_revision_;
     PublishComposeScrollState();
   }
   list_delegate_->FlushPatching(should_flush_finish_layout);
+}
+
+void ListContainerImpl::ProjectComposeStickyHeader() {
+  // Only the display position is projected here. Paint and hit-test order
+  // follow the list's child order; the managed host keeps every header after
+  // the ordinary rows so the active header stays above them without z-index.
+  compose_sticky_item_.Reset();
+  compose_sticky_holder_.reset();
+  if (!sticky_enabled_ || !list_layout_manager_->CanScrollVertically()) {
+    return;
+  }
+  const auto& headers = list_adapter_->GetStickyTops();
+  const float offset = list_layout_manager_->content_offset();
+  ItemHolder* next = nullptr;
+  for (auto iter = headers.rbegin(); iter != headers.rend(); ++iter) {
+    ItemHolder* active = GetItemHolderForIndex(*iter);
+    if (!active || list_adapter_->IsRemoved(active) || !active->sticky_top()) {
+      continue;
+    }
+    if (active->top() > offset) {
+      next = active;
+      continue;
+    }
+    ItemElementDelegate* delegate =
+        list_adapter_->GetItemElementDelegate(active);
+    if (!delegate || !list_adapter_->IsFinishedBinding(active)) {
+      return;
+    }
+    float top = std::max(active->top(), offset);
+    if (next) {
+      top = std::min(top, next->top() - active->height());
+    }
+    delegate->UpdateLayoutToPlatform(delegate->GetLeft(), top);
+    compose_sticky_holder_ = active->WeakFromThis();
+    compose_sticky_item_.index = active->index();
+    compose_sticky_item_.key = active->item_key();
+    compose_sticky_item_.offset = top;
+    compose_sticky_item_.size = active->height();
+    return;
+  }
+}
+
+void ListContainerImpl::ClearComposeStickyProjection() {
+  ItemHolder* previous = compose_sticky_holder_.get();
+  compose_sticky_holder_.reset();
+  compose_sticky_item_.Reset();
+  if (!previous || list_adapter_->IsRemoved(previous) ||
+      !list_adapter_->IsFinishedBinding(previous)) {
+    return;
+  }
+  if (auto* delegate = list_adapter_->GetItemElementDelegate(previous)) {
+    delegate->UpdateLayoutToPlatform(delegate->GetLeft(), previous->top());
+  }
+}
+
+// Managed lists intercept "sticky" so that the platform does not translate
+// headers a second time. Switching modes must deliver the effective value.
+void ListContainerImpl::SyncPlatformSticky() {
+  const bool platform_sticky = sticky_enabled_ && !compose_scroll_managed_;
+  if (platform_sticky == platform_sticky_ || !value_factory_) {
+    return;
+  }
+  platform_sticky_ = platform_sticky;
+  list_delegate_->FlushListContainerInfo(
+      kPropSticky, value_factory_->CreateBool(platform_sticky), false);
 }
 
 // Update content offset and size to platform view.
@@ -640,10 +711,14 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     sticky_offset_ = value.Number();
   } else if (key_str == kPropSticky && value.IsBool()) {
     // sticky
-    sticky_enabled_ = value.Bool() && !compose_scroll_managed_;
-    if (value.Bool() && compose_scroll_managed_) {
-      DLIST_LOGW("CMP-managed lists do not support native sticky items");
+    const bool was_sticky = sticky_enabled_;
+    sticky_enabled_ = value.Bool();
+    if (compose_scroll_managed_) {
+      if (sticky_enabled_ != was_sticky) should_mark_layout_dirty = true;
+      if (!sticky_enabled_) ClearComposeStickyProjection();
       should_set_props = false;
+    } else {
+      platform_sticky_ = sticky_enabled_;
     }
   } else if (key_str == kPropExperimentalRecycleStickyItem && value.IsBool()) {
     // experimental-recycle-sticky-item
@@ -885,10 +960,10 @@ void ListContainerImpl::SetComposeScrollManaged(bool managed) {
   }
   compose_scroll_managed_ = managed;
   compose_projection_sent_ = false;
-  if (managed && sticky_enabled_) {
-    DLIST_LOGW("CMP-managed lists do not support native sticky items");
-    sticky_enabled_ = false;
+  if (!managed) {
+    ClearComposeStickyProjection();
   }
+  SyncPlatformSticky();
   list_layout_manager_->ScrollStopped();
   PublishComposeScrollState();
 }
@@ -912,6 +987,7 @@ ListScrollState ListContainerImpl::GetScrollState() const {
   state.can_scroll_backward = logical_offset > 0.f;
   state.can_scroll_forward =
       logical_offset < std::max(0.f, state.content - state.viewport);
+  state.sticky_item = compose_sticky_item_;
   auto* orientation = list_layout_manager_->orientation_helper();
   list_children_helper_->ForEachChild(
       list_children_helper_->on_screen_children(), [&](ItemHolder* item) {
@@ -954,7 +1030,8 @@ ListScrollState ListContainerImpl::PublishComposeScrollState() {
       state.first_visible_index != previous.first_visible_index ||
       state.first_visible_scroll_offset !=
           previous.first_visible_scroll_offset ||
-      state.horizontal != previous.horizontal || state.rtl != previous.rtl) {
+      state.horizontal != previous.horizontal || state.rtl != previous.rtl ||
+      !(state.sticky_item == previous.sticky_item)) {
     state.revision = ++compose_scroll_revision_;
   }
   published_compose_scroll_state_ = state;
