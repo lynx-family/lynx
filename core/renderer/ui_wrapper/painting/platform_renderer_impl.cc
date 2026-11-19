@@ -142,6 +142,7 @@ void PlatformRendererImpl::AddChild(fml::RefPtr<PlatformRenderer> child,
 }
 
 void PlatformRendererImpl::RemoveFromParent() {
+  ClearPlatformState();
   if (parent_ == nullptr) {
     return;
   }

@@ -3985,6 +3985,180 @@ TEST_F(FragmentTest, DrawFullSyncsLayoutOnlyWhenPageConfigEnabled) {
   EXPECT_EQ(begin.payload.begin.is_layout_only, 1);
 }
 
+TEST_F(FragmentTest, PublishedListStickyHitTestHandlesOverlapAndHandoff) {
+  auto page = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  auto list =
+      fml::MakeRefCounted<TestPlatformRenderer>(1, PlatformRendererType::kList);
+  DisplayListBuilder page_builder, list_builder;
+  page_builder.Begin(kRootId, PlatformRendererType::kPage, 0, 0, 200, 400)
+      .DrawView(1, 0, 0)
+      .End();
+  list_builder.Begin(1, PlatformRendererType::kList, 0, 0, 200, 200)
+      .DrawView(2, 0, 100)
+      .DrawView(4, 0, 148)
+      .DrawView(6, 0, 260)
+      .End();
+  page->UpdateDisplayList(page_builder.Build());
+  list->UpdateDisplayList(list_builder.Build());
+  page->AddChild(list);
+  TestNativePaintingCtxPlatformRef platform;
+  platform.renderers_.insert_or_assign(kRootId, page);
+  platform.renderers_.insert_or_assign(1, list);
+  auto create_item = [&](int sign, float top, float height) {
+    auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+        sign, PlatformRendererType::kListItem);
+    DisplayListBuilder builder;
+    builder.Begin(sign, PlatformRendererType::kListItem, 0, top, 200, height)
+        .Begin(sign + 1, PlatformRendererType::kView, 0, 8, 100, 32)
+        .End()
+        .End();
+    renderer->UpdateDisplayList(builder.Build());
+    list->AddChild(renderer);
+    platform.renderers_.insert_or_assign(sign, renderer);
+    return renderer;
+  };
+  auto item = create_item(2, 100, 48);
+  create_item(4, 148, 80);
+  auto next = create_item(6, 260, 48);
+  auto root = platform.ReconstructEventTargetTreeRecursively();
+  ASSERT_NE(root, nullptr);
+  // Cover both ordinary tap traversal and registered gesture targets.
+  for (int sign : {3, 5, 7}) {
+    platform.event_target_helper_->event_targets_.at(sign)
+        ->SetMinimumTouchTargetSize(0);
+  }
+  auto expect_button = [&](float y, int sign = 3) {
+    float point[2] = {10, y};
+    for (auto mode : {PlatformEventTarget::HitTestMode::kDefault,
+                      PlatformEventTarget::HitTestMode::kRegisteredTargets}) {
+      auto hit = root->HitTest(point, mode);
+      ASSERT_NE(hit, nullptr);
+      EXPECT_EQ(hit->Sign(), sign);
+    }
+  };
+  expect_button(110);  // No state: use display-list layout.
+  list->UpdateScrollOffset(0, 160);
+  item->UpdateStickyOffset(0, 60, true);
+  item->UpdateSiblingOrder(3);
+  expect_button(10);  // Both buttons overlap: the raised sticky item must win.
+  // Two raised items overlap. Published order wins, with original order for
+  // ties.
+  next->UpdateStickyOffset(0, -100, true);
+  next->UpdateSiblingOrder(4);
+  expect_button(10, 7);
+  item->UpdateSiblingOrder(5);
+  expect_button(10);
+  item->UpdateSiblingOrder(4);
+  expect_button(10, 7);
+  for (int sign : {3, 7}) {
+    platform.event_target_helper_->event_targets_.at(sign)->SetShareTouchTarget(
+        true);
+  }
+  PlatformEventTarget::HitTestTargets shared;
+  float shared_point[2] = {10, 10};
+  root->HitTest(shared_point,
+                PlatformEventTarget::HitTestMode::kRegisteredTargets, &shared);
+  ASSERT_EQ(shared.size(), 3u);
+  EXPECT_EQ(shared[0], 7);
+  EXPECT_EQ(shared[1], 3);
+  EXPECT_EQ(shared[2], 5);
+  for (int sign : {3, 7}) {
+    platform.event_target_helper_->event_targets_.at(sign)->SetShareTouchTarget(
+        false);
+  }
+  next->UpdateStickyOffset(0, 0, false);
+  next->UpdateSiblingOrder(2);
+  list->UpdateScrollOffset(0, 228);
+  item->UpdateStickyOffset(0, 112, true);
+  expect_button(10);     // The next sticky item pushes this item upwards.
+  expect_button(48, 7);  // The next item's exposed part remains clickable.
+  list->UpdateScrollOffset(0, 260);
+  item->UpdateStickyOffset(0, 0, false);
+  item->UpdateSiblingOrder(0);
+  next->UpdateStickyOffset(0, 0, true);
+  next->UpdateSiblingOrder(3);
+  expect_button(
+      10, 7);  // A newly pinned item has priority even at zero translation.
+  next->UpdateStickyOffset(0, 0, false);
+  next->UpdateSiblingOrder(2);
+  list->UpdateScrollOffset(0, 80);
+  item->UpdateStickyOffset(0, 0, false);
+  expect_button(
+      30);  // Restore the item's layout position and ordinary sibling order.
+  expect_button(80, 5);
+  item->UpdateIsOnTree(false);
+  EXPECT_FALSE(item->GetPlatformState()->sibling_order.has_value());
+  auto item_target = platform.event_target_helper_->event_targets_.at(2);
+  EXPECT_FALSE(item_target->IsVisible());
+  float detached_point[2] = {10, 30};
+  EXPECT_NE(root->HitTest(detached_point)->Sign(), 3);
+  item->ClearPlatformState();
+  EXPECT_FALSE(item_target->ShouldHitTest());
+  item->UpdateIsOnTree(true);
+  item->UpdateSiblingOrder(0);
+  expect_button(30);
+  item->UpdateStickyOffset(0, 400, true);
+  item->RemoveFromParent();
+  EXPECT_EQ(item->GetPlatformState()->sibling_order, 0);
+  list->AddChild(item);
+  expect_button(
+      30);  // A reused host must not retain the previous sticky position.
+}
+
+TEST_F(FragmentTest, PublishedPlatformStateUpdatesAndTargetExclusions) {
+  auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kListItem);
+  renderer->UpdateLayoutPosition(40, 60);
+  renderer->UpdateScrollOffset(0, 80);
+  renderer->UpdateSiblingOrder(3);
+  auto target =
+      fml::MakeRefCounted<PlatformEventTarget>(nullptr, 1, 1, 5, 7, 100, 100);
+  target->SetRendererHostSign(1);
+  target->SetPlatformRenderer(renderer->WeakFromThis());
+  EXPECT_FLOAT_EQ(target->Left(), 5);
+  EXPECT_FLOAT_EQ(target->Top(), 7);
+  EXPECT_FALSE(target->SiblingOrder().has_value());
+  target = fml::MakeRefCounted<PlatformEventTarget>(nullptr, kRootId, 2, 5, 7,
+                                                    100, 100);
+  target->SetRendererHostSign(1);
+  target->SetPlatformRenderer(renderer->WeakFromThis());
+  EXPECT_FLOAT_EQ(target->Top(), 7);
+  EXPECT_FALSE(target->SiblingOrder().has_value());
+  target->SetRendererHostSign(2);
+  EXPECT_EQ(target->SiblingOrder(), 3);
+  EXPECT_FLOAT_EQ(target->Top(), 60);
+  target->SetScrollContainer(true);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 80);
+  // Reuse the host target to check that each published field stays independent.
+  renderer->ClearPlatformState();
+  renderer->UpdateIsOnTree(true);
+  EXPECT_FALSE(renderer->GetPlatformState()->scroll_offset.has_value());
+  renderer->UpdateLayoutPosition(10, 20);
+  renderer->UpdateScrollOffset(0, 80);
+  renderer->UpdateStickyOffset(3, 40, true);
+  EXPECT_FLOAT_EQ(target->Left(), 13);
+  EXPECT_FLOAT_EQ(target->Top(), 60);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 80);
+  renderer->UpdateLayoutPosition(15, 25);
+  EXPECT_FLOAT_EQ(target->Top(), 65);
+  renderer->UpdateScrollOffset(0, 0);
+  EXPECT_FLOAT_EQ(target->ScrollOffsetY(), 0);
+  EXPECT_TRUE(target->IsScrollContainer());
+  EXPECT_EQ(target->SiblingOrder(), 3);
+  renderer->UpdateStickyOffset(0, 0, false);
+  EXPECT_FLOAT_EQ(target->Top(), 25);
+  renderer->UpdateIsOnTree(false);
+  EXPECT_FALSE(renderer->GetPlatformState()->scroll_offset.has_value());
+  EXPECT_FALSE(target->SiblingOrder().has_value());
+  renderer->UpdateIsOnTree(true);
+  EXPECT_FLOAT_EQ(target->Top(), 7);
+  target->SetScrollContainer(false);
+  renderer->UpdateLayoutPosition(40, 60);
+  renderer = nullptr;
+  EXPECT_FLOAT_EQ(target->Top(), 7);
+}
+
 TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   auto root_renderer = fml::MakeRefCounted<TestPlatformRenderer>(
       kRootId, PlatformRendererType::kPage);
@@ -4003,6 +4177,8 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
       .End()
       .End();
   scroll_renderer->UpdateDisplayList(scroll_builder.Build());
+  // Publishing layout must not suppress the scroll-query fallback.
+  scroll_renderer->UpdateLayoutPosition(0, 0);
   root_renderer->AddChild(scroll_renderer);
 
   TestNativePaintingCtxPlatformRef platform_ref;
@@ -4026,6 +4202,9 @@ TEST_F(FragmentTest, ReusedEventTargetTreeRefreshesScrollOffsetForHitTest) {
   hit_target = reused_root->HitTest(point);
   ASSERT_NE(hit_target, nullptr);
   EXPECT_EQ(hit_target->Sign(), 2);
+  // An explicitly published zero replaces the queried offset.
+  scroll_renderer->UpdateScrollOffset(0, 0);
+  EXPECT_EQ(reused_root->HitTest(point)->Sign(), 1);
 }
 
 TEST_F(FragmentTest, PlatformEventTargetHitTestAccountsForTransform) {

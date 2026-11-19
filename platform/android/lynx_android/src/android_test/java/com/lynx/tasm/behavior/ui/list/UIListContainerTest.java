@@ -12,10 +12,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import android.view.ViewGroup;
 import androidx.test.annotation.UiThreadTest;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import com.lynx.react.bridge.JavaOnlyArray;
@@ -28,6 +31,7 @@ import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.list.container.ListContainerProxy;
 import com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
@@ -41,6 +45,7 @@ import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Before;
@@ -59,6 +64,95 @@ public class UIListContainerTest {
     lynxContext.setEventEmitter(new LynxEventEmitter(renderer.getEngineProxy()));
     // These container tests do not render a template or initialize a JS runtime.
     lynxContext.setLynxView(mock(LynxView.class));
+  }
+
+  @Test
+  @UiThreadTest
+  public void testStickyPublishesOffsetAndRestoresLayoutFallback() throws Exception {
+    UIListContainer list = new UIListContainer(lynxContext);
+    list.setUpdateStickyForDiff(false);
+    list.setEnableListSticky(true);
+    list.getView().setRenderer(mock(Renderer.class));
+    UIComponent item = new UIComponent(lynxContext);
+    Renderer itemRenderer = mock(Renderer.class);
+    item.getView().setRenderer(itemRenderer);
+    item.updateLayout(0, 100, 200, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null);
+    item.getView().layout(0, 100, 200, 148);
+    Field stickyItems = UIListContainer.class.getDeclaredField("mStickyTopItems");
+    stickyItems.setAccessible(true);
+    ((Map<Integer, UIComponent>) stickyItems.get(list)).put(0, item);
+    Field indexes = UIListContainer.class.getDeclaredField("mStickyTopIndexes");
+    indexes.setAccessible(true);
+    indexes.set(list, JavaOnlyArray.of(0));
+    // A nonzero sticky offset exercises the real sticky calculation without scrolling a window.
+    int pinnedTop = (int) PixelUtils.dipToPx(120);
+    list.setStickyOffset(120);
+    list.updateStickyStarts();
+    verify(itemRenderer).publishStickyOffset(0, pinnedTop - 100, true);
+    assertEquals(pinnedTop - 100, item.getView().getTranslationY(), 0f);
+    list.setStickyOffset(0);
+    list.updateStickyStarts();
+    verify(itemRenderer).publishStickyOffset(0, 0, false);
+    assertEquals(0, item.getView().getTranslationY(), 0f);
+  }
+
+  @Test
+  @UiThreadTest
+  public void testRendererChildMembershipTracksNativeMounts() {
+    UIListContainer list = new UIListContainer(lynxContext);
+    list.getView().setRenderer(mock(Renderer.class));
+    UIComponent item = new UIComponent(lynxContext);
+    Renderer itemRenderer = mock(Renderer.class);
+    item.getView().setRenderer(itemRenderer);
+    list.insertChild(item, 0);
+    verify(itemRenderer).publishIsOnTree(false);
+    ViewGroup children = list.getView().getRendererChildViewGroup();
+    for (int i = 0; i < 2; ++i) {
+      children.addView(item.getView());
+      verify(itemRenderer, times(i + 1)).publishIsOnTree(true);
+      children.removeView(item.getView());
+      verify(itemRenderer, times(i + 2)).publishIsOnTree(false);
+    }
+    clearInvocations(itemRenderer);
+    // Legacy lists do not publish renderer state even if an item has a renderer.
+    list.getView().setRenderer(null);
+    children.addView(item.getView());
+    children.removeView(item.getView());
+    verifyNoInteractions(itemRenderer);
+  }
+
+  @Test
+  @UiThreadTest
+  public void testRendererSiblingOrderFollowsDrawingOrderAndZ() throws Exception {
+    UIListContainer list = new UIListContainer(lynxContext);
+    list.getView().setRenderer(mock(Renderer.class));
+    UIComponent[] items = new UIComponent[3];
+    for (int i = 0; i < items.length; ++i) {
+      items[i] = new UIComponent(lynxContext);
+      items[i].getView().setRenderer(mock(Renderer.class));
+      list.insertChild(items[i], i);
+    }
+    ViewGroup children = list.getView().getRendererChildViewGroup();
+    for (int i : new int[] {2, 0, 1}) {
+      children.addView(items[i].getView());
+    }
+    Method rebuild = children.getClass().getDeclaredMethod("rebuildRendererDrawingOrder");
+    rebuild.setAccessible(true);
+    Method setZ = UIListContainer.class.getDeclaredMethod(
+        "setChildTranslationZ", UIComponent.class, float.class);
+    setZ.setAccessible(true);
+    // Logical drawing order differs from native insertion order; equal Z stays stable.
+    for (boolean raised : new boolean[] {false, true, false}) {
+      setZ.invoke(list, items[0], raised ? 5f : 0f);
+      setZ.invoke(list, items[2], raised ? 5f : 0f);
+      rebuild.invoke(children);
+      int[] expected = raised ? new int[] {1, 0, 2} : new int[] {0, 1, 2};
+      for (int i = 0; i < items.length; ++i) {
+        Renderer renderer = items[i].getView().getRenderer();
+        verify(renderer).publishSiblingOrder(expected[i]);
+        clearInvocations(renderer);
+      }
+    }
   }
 
   @Test
