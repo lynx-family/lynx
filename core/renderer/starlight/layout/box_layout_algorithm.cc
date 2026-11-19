@@ -10,6 +10,7 @@
 #include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/layout/logic_direction_utils.h"
+#include "core/renderer/starlight/layout/position_layout_utils.h"
 #include "core/renderer/starlight/layout/property_resolving_utils.h"
 #include "core/renderer/starlight/style/css_type.h"
 
@@ -26,6 +27,9 @@ void BoxLayoutAlgorithm::InitializeAlgorithmEnv() { Reset(); }
 void BoxLayoutAlgorithm::SizeDeterminationByAlgorithm() {
   MeasureChildren();
   DetermineContainerSize();
+  // These children do not contribute to Box size, but their alignment lines
+  // must be available to the parent during this measurement.
+  MeasureMatchParentSizeChildren();
 }
 
 void BoxLayoutAlgorithm::MeasureChildren() {
@@ -118,12 +122,6 @@ DimensionValue<float> BoxLayoutAlgorithm::PropagatedMinConstraintsForChild(
         std::max(property_utils::StripMargins(min_size, child, dimension), 0.f);
   }
   return result;
-}
-
-// Measure match-parent-size children after the container size is determined.
-void BoxLayoutAlgorithm::MeasureAbsoluteAndFixed() {
-  LayoutAlgorithm::MeasureAbsoluteAndFixed();
-  MeasureMatchParentSizeChildren();
 }
 
 void BoxLayoutAlgorithm::MeasureMatchParentSizeChildren() {
@@ -266,7 +264,27 @@ float BoxLayoutAlgorithm::ResolveAlignmentOffset(LayoutObject* item,
 }
 
 void BoxLayoutAlgorithm::SetContainerBaseline() {
-  container_->SetBaseline(0.f);
+  if (!container_->IsComposeLayout()) {
+    container_->SetBaseline(0.f);
+    return;
+  }
+  float baseline = 0.f;
+  bool first_child = true;
+  for (auto* child : inflow_items_) {
+    float top = ResolveAlignmentOffset(child, kVertical);
+    // Compose children use relative positioning regardless of CSS quirks.
+    top += position_utils::ResolveRelativeVerticalOffset(
+        *child, container_constraints_);
+    const float child_baseline =
+        top + child->GetOffsetFromTopMarginEdgeToBaseline();
+    baseline =
+        first_child ? child_baseline : std::min(baseline, child_baseline);
+    first_child = false;
+  }
+  // Merge placed child baselines, including the border-bottom fallback.
+  // Keep the result relative to this container's content; LayoutObject adds
+  // this container's own insets.
+  container_->SetBaseline(baseline);
 }
 
 }  // namespace starlight

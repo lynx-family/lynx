@@ -54,7 +54,17 @@ void ComposeRowColumnLayoutAlgorithm::SizeDeterminationByAlgorithm() {
 }
 
 void ComposeRowColumnLayoutAlgorithm::SetContainerBaseline() {
-  container_->SetBaseline(0.f);
+  float baseline = 0.f;
+  bool first_child = true;
+  for (size_t i = 0; i < children_.size(); ++i) {
+    const float top =
+        IsHorizontal() ? CrossPosition(i) : children_[i].main_position;
+    const float child_baseline = top + children_[i].size.baseline_;
+    baseline =
+        first_child ? child_baseline : std::min(baseline, child_baseline);
+    first_child = false;
+  }
+  container_->SetBaseline(baseline);
 }
 
 void ComposeRowColumnLayoutAlgorithm::MeasureChild(size_t index, float main_min,
@@ -238,7 +248,9 @@ float ComposeRowColumnLayoutAlgorithm::CrossPosition(size_t index) const {
     case FlexAlignType::kFlexEnd:
       return rtl ? 0 : available;
     case FlexAlignType::kBaseline:
-      if (IsHorizontal()) return before_alignment_line_ - size.baseline_;
+      if (IsHorizontal()) {
+        return before_alignment_line_ - size.baseline_;
+      }
       break;
     default:
       break;

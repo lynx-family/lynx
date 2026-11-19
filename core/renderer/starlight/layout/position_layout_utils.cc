@@ -35,6 +35,17 @@ float CalcLengthValue(const NLength& length, const Constraints& constraints,
 }  // namespace
 namespace position_utils {
 
+float ResolveRelativeVerticalOffset(const LayoutObject& item,
+                                    const Constraints& content_constraints) {
+  const auto percent_base = content_constraints[kVertical].ToPercentBase();
+  const auto top =
+      NLengthToLayoutUnit(item.GetCSSStyle()->GetTop(), percent_base);
+  if (top.IsDefinite()) return top.ToFloat();
+  const auto bottom =
+      NLengthToLayoutUnit(item.GetCSSStyle()->GetBottom(), percent_base);
+  return bottom.IsDefinite() ? -bottom.ToFloat() : 0.f;
+}
+
 void CalcRelativePosition(LayoutObject* item,
                           const Constraints& content_constraints) {
   const LayoutComputedStyle* item_style = item->GetCSSStyle();
