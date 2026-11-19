@@ -1101,6 +1101,7 @@ void LayoutObject::UpdateMeasureWithLeafNode(const Constraints& constraints) {
   // A Compose node can become a leaf between measurements in the same pass.
   if (IsComposeLayout()) {
     RemoveAlgorithm();
+    SetBaseline(0.f);
   }
   /*LAYOUT OBJECT WITH ZERO CHILD DOES NOT CALL FOR A LAYOUT ALGORITHM
    * IT CAN DETERMINE ITS SIZE IMMEDIATELY*/

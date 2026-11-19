@@ -20,6 +20,9 @@ static constexpr float kInvalidPosValue = -1e+10;
 
 namespace position_utils {
 
+float ResolveRelativeVerticalOffset(const LayoutObject& item,
+                                    const Constraints& content_constraints);
+
 void CalcRelativePosition(LayoutObject* item,
                           const Constraints& content_constraints);
 
