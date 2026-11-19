@@ -13,6 +13,8 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#include "base/include/value/base_string.h"
+#include "base/include/value/table.h"
 
 namespace lynx::shell {
 namespace {
@@ -41,9 +43,9 @@ std::atomic<size_t>& HandlerCount(InterceptKind kind,
 
 const char* Interceptor::Name(InterceptKind kind) {
   static constexpr const char* names[] = {
-      "view.created", "view.loadTemplate",  "view.updateMetaData",
-      "jsb.call",     "jsb.result",         "jsb.callback",
-      "view.create",  "view.updateViewport"};
+      "view.created", "view.loadTemplate",   "view.updateMetaData",
+      "jsb.call",     "jsb.result",          "jsb.callback",
+      "view.create",  "view.updateViewport", "resource.fetch"};
   static_assert(std::size(names) == kKinds);
   return names[static_cast<size_t>(kind)];
 }
@@ -84,6 +86,28 @@ std::shared_ptr<Interceptor> Interceptor::Current(
     break;
   }
   return nullptr;
+}
+
+bool Interceptor::HasResourceFetchHandler(base::LynxEntityId view) {
+  return IsEnabled() &&
+         HandlerCount(InterceptKind::kResourceFetch, Domain::kUI).load() != 0 &&
+         IsViewAlive(view);
+}
+
+InterceptResult Interceptor::DispatchResourceFetch(base::LynxEntityId view,
+                                                   std::string url) {
+  if (!HasResourceFetchHandler(view)) return {};
+  auto provider = Current({InterceptKind::kResourceFetch}, Domain::kUI);
+  if (!provider) return {};
+  BASE_STATIC_STRING_DECL(kViewId, "viewId");
+  BASE_STATIC_STRING_DECL(kRequest, "request");
+  BASE_STATIC_STRING_DECL(kUrl, "url");
+  lepus::Value detail(lepus::Dictionary::Create());
+  detail.SetProperty(kUrl, lepus::Value(std::move(url)));
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty(kViewId, lepus::Value(std::to_string(view)));
+  event.SetProperty(kRequest, std::move(detail));
+  return provider->Dispatch(InterceptKind::kResourceFetch, event);
 }
 
 void Interceptor::HandlerAdded(InterceptKind kind, Domain domain) {
