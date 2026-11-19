@@ -11,8 +11,10 @@
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 #include "platform/embedder/lynx_view_clients.h"
+#if ENABLE_NAPI_BINDING && !ENABLE_EMBEDDER_LITE
 #include "platform/embedder/module/extension_module_factory_impl.h"
 #include "platform/embedder/module/lynx_module_manager_napi.h"
+#endif
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
 #include "platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h"
@@ -26,7 +28,7 @@ struct lynx_view_t {
   std::unique_ptr<lynx::embedder::LynxLogBoxWrapperEmbedder>
       lynx_logbox_wrapper = nullptr;
 #endif
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && !ENABLE_EMBEDDER_LITE
   std::shared_ptr<lynx::embedder::LynxModuleManagerNAPI> lynx_module_manager =
       nullptr;
   lynx::embedder::LynxMTSModuleFactoryNAPI* mts_module_factory = nullptr;

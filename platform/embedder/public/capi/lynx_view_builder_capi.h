@@ -36,6 +36,7 @@ LYNX_CAPI_EXPORT lynx_view_builder_t* lynx_view_builder_create();
 // builder does not change existing views. The monitor is released when the last
 // reference to its source is released. Do not assign the same monitor handle to
 // multiple builders or reuse it after replacing or clearing it.
+// Has no effect in Lite builds, which use the platform VSync source.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_custom_vsync_monitor(
     lynx_view_builder_t* builder, lynx_vsync_monitor_t* monitor);
 

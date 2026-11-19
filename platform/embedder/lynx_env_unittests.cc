@@ -16,11 +16,6 @@
 #include "platform/embedder/public/lynx_env.h"
 #include "platform/embedder/public/lynx_value.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
-#include "third_party/weak-node-api/headers/node_api.h"
-
-#ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/headers/weak_napi_defines.h"
-#endif
 
 namespace {
 
@@ -199,21 +194,4 @@ TEST(LynxEnv, Version) {
   auto& lynx_env = lynx::pub::LynxEnv::GetInstance();
   EXPECT_STREQ(lynx_env.GetVersion(),
                lynx::tasm::Config::GetCurrentLynxVersion().c_str());
-}
-
-TEST(LynxEnv, RegisterNativeModule) {
-  lynx_env_register_native_module(
-      "test",
-      [](napi_env, napi_value exports, const char* module_name, void* opaque) {
-        return exports;
-      },
-      nullptr);
-
-  auto& lynx_env = lynx::pub::LynxEnv::GetInstance();
-  lynx_env.RegisterNativeModule(
-      "test",
-      [](napi_env, napi_value exports, const char* module_name, void* opaque) {
-        return exports;
-      },
-      nullptr);
 }

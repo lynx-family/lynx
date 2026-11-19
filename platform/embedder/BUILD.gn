@@ -5,13 +5,18 @@
 import("../../core/Lynx.gni")
 import("../../testing/test.gni")
 
+embedder_base_dep = "../../base/src:base_static"
+if (enable_embedder_lite) {
+  embedder_base_dep = "../../base/platform/harmony:lynx_base"
+}
+
 lynx_core_source_set("clay_input_events") {
   sources = [
     "clay_input_event_target.cc",
     "clay_input_event_target.h",
   ]
   public_deps = [ "../../devtool/lynx_devtool/input:input_types" ]
-  deps = [ "../../base/src:base_static" ]
+  deps = [ embedder_base_dep ]
 }
 
 if (enable_unittests) {
@@ -34,7 +39,10 @@ config("config") {
     "../..",
     "../../base/include/value",
   ]
-  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+  defines = [
+    "CLAY_LIBRARY_IMPLEMENTATION",
+    "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}",
+  ]
   if (is_win) {
     # enable dllexport for public APIs.
     defines += [ "lynx_EXPORTS" ]
@@ -43,7 +51,7 @@ config("config") {
       "-Wno-vla-cxx-extension",
     ]
   }
-  if (is_headless) {
+  if (is_headless && !enable_embedder_lite) {
     defines += [ "ENABLE_WINDOWLESS" ]
   }
 }
@@ -81,7 +89,6 @@ lynx_core_source_set("embedder") {
     "lynx_load_meta.cc",
     "lynx_load_meta_priv.h",
     "lynx_log.cc",
-    "lynx_native_view.cc",
     "lynx_runtime_lifecycle_observer_priv.h",
     "lynx_template_bundle.cc",
     "lynx_template_bundle_priv.h",
@@ -99,11 +106,9 @@ lynx_core_source_set("embedder") {
     "lynx_view_client_priv.h",
     "lynx_view_clients.cc",
     "lynx_view_clients.h",
-    "lynx_view_event_simulation_proxy.cc",
     "lynx_view_event_simulation_proxy.h",
     "lynx_view_priv.h",
     "lynx_vsync_monitor.cc",
-    "lynx_vsync_monitor_priv.h",
     "memory/lynx_memory.cc",
   ]
   if (is_win || is_mac) {
@@ -114,23 +119,32 @@ lynx_core_source_set("embedder") {
   }
 
   deps = [
-    ":clay_input_events",
     ":public_headers",
-    "../../base/src:base_static",
     "../../core:lynx_native",
     "../../core/renderer/data",
     "./core:renderer",
-    "./lynx_service",
     "./resource",
+    embedder_base_dep,
   ]
-  if (enable_napi_binding) {
+  if (!enable_embedder_lite) {
+    sources += [
+      "lynx_native_view.cc",
+      "lynx_view_event_simulation_proxy.cc",
+      "lynx_vsync_monitor_priv.h",
+    ]
+    deps += [
+      ":clay_input_events",
+      "./lynx_service",
+    ]
+  }
+  if (enable_napi_binding && !enable_embedder_lite) {
     public_deps = [
       ":lynx_runtime_lifecycle_observer",
       "../../third_party/napi:weak_node_api_host",
       "./module",
     ]
   }
-  if (is_headless) {
+  if (is_headless && !enable_embedder_lite) {
     deps += [ "./windowless" ]
   }
   if (enable_inspector && enable_logbox) {
@@ -157,7 +171,7 @@ lynx_core_source_set("embedder") {
     if (is_linux) {
       sources += [ "lynx_ui_renderer_mock.cc" ]
     }
-  } else {
+  } else if (!enable_embedder_lite) {
     if (enable_unittests) {
       sources += [
         "testing/lynx_ui_renderer_test.cc",
@@ -281,7 +295,7 @@ copy("lynx_napi_api") {
   outputs = [ "$root_build_dir/include/third_party/weak-node-api/headers/{{source_file_part}}" ]
 }
 
-if (enable_unittests) {
+if (enable_unittests && !enable_embedder_lite) {
   executable("lynx_vsync_monitor_unittests") {
     testonly = true
 
@@ -306,12 +320,12 @@ if (enable_unittests) {
   executable("lynx_embedder_unittests") {
     testonly = true
     include_dirs = [ "../../base/include/value" ]
-    defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
     sources = [
       "lynx_env_unittests.cc",
       "lynx_group_unittests.cc",
       "lynx_load_meta_unittests.cc",
       "lynx_log_unittests.cc",
+      "lynx_napi_module_registration_unittest.cc",
       "lynx_template_bundle_unittests.cc",
       "lynx_template_data_unittests.cc",
       "lynx_ui_renderer_unittests.cc",
@@ -345,7 +359,7 @@ if (enable_unittests) {
       "./lynx_service:lynx_service_unittests",
     ]
 
-    if (enable_inspector && !enable_embedder_lite) {
+    if (enable_inspector) {
       sources += [ "lynx_devtool_provider_unittest.cc" ]
       deps += [ "./lynx_devtool" ]
     }

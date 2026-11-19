@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <memory>
+
 #include "platform/embedder/fetcher/lynx_resource_response_priv.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -35,6 +37,38 @@ TEST(LynxResourceResponse, Callback) {
   EXPECT_EQ(callbacks, 1);
   lynx_resource_response_release(response);
   EXPECT_EQ(callbacks, 1);
+}
+
+TEST(LynxResourceResponse, MoveOnlyCallbackLivesUntilResponseRelease) {
+  for (bool complete_before_release : {false, true}) {
+    SCOPED_TRACE(complete_before_release);
+    int callbacks = 0;
+    int destructions = 0;
+    struct Capture {
+      explicit Capture(int* destructions) : destructions(destructions) {}
+      ~Capture() { ++*destructions; }
+      int* destructions;
+    };
+    auto* response = lynx_resource_response_create_internal(
+        [capture = std::make_unique<Capture>(&destructions),
+         &callbacks](lynx_resource_response_t* response) {
+          EXPECT_NE(capture, nullptr);
+          ++callbacks;
+          // Completion is marked before dispatch, including reentrant calls.
+          lynx_resource_response_callback(response);
+        });
+    EXPECT_EQ(callbacks, 0);
+    EXPECT_EQ(destructions, 0);
+    if (complete_before_release) {
+      lynx_resource_response_callback(response);
+      lynx_resource_response_callback(response);
+      EXPECT_EQ(callbacks, 1);
+      EXPECT_EQ(destructions, 0);
+    }
+    lynx_resource_response_release(response);
+    EXPECT_EQ(callbacks, 1);
+    EXPECT_EQ(destructions, 1);
+  }
 }
 
 TEST(LynxResourceResponse, ReplacingAndClearingDataReleasesOnce) {

@@ -7,10 +7,12 @@
 #include <memory>
 #include <string>
 
+#include "base/include/closure.h"
 #include "platform/embedder/lynx_template_bundle_priv.h"
 #include "platform/embedder/public/capi/lynx_resource_response_capi.h"
 
-using ResourceCallback = std::function<void(lynx_resource_response_t*)>;
+using ResourceCallback =
+    lynx::base::MoveOnlyClosure<void, lynx_resource_response_t*>;
 
 struct lynx_resource_response_t {
   int code = -1;

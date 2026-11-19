@@ -6,6 +6,7 @@ import("../../../core/Lynx.gni")
 import("../../../oliver/oliver.gni")
 
 lynx_core_source_set("renderer") {
+  defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
   sources = [
     "lynx_template_renderer.cc",
     "lynx_template_renderer.h",
@@ -32,7 +33,7 @@ lynx_core_source_set("renderer") {
     "../../../core/renderer/utils:event_converter",
   ]
   public_deps = [ "../lynx_devtool:devtool_interface" ]
-  if (!enable_unittests) {
+  if (!enable_unittests && !enable_embedder_lite) {
     deps += [ "../lynx_service:lynx_service" ]
   }
 

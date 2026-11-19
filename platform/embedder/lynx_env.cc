@@ -115,6 +115,7 @@ LYNX_EXTERN_C int lynx_env_is_logbox_enabled() {
   return lynx::embedder::IsEmbedderLogBoxEnabled();
 }
 
+#if !ENABLE_EMBEDDER_LITE
 LYNX_EXTERN_C void lynx_env_register_native_module(const char* name,
                                                    napi_module_creator creator,
                                                    void* opaque) {
@@ -132,3 +133,4 @@ LYNX_EXTERN_C void lynx_env_register_extension_module(
       name, creator, is_lazy_create, opaque);
 #endif
 }
+#endif
