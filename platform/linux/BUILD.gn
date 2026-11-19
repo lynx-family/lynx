@@ -5,7 +5,7 @@
 import("../../core/Lynx.gni")
 
 shared_library("linux") {
-  output_name = "lynx"
+  output_name = "lynx_sdk"
 
   sources = []
 
