@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/ui_component/list/list_container_impl.h"
 
 namespace lynx::tasm {
@@ -82,13 +81,9 @@ void ListContainerAnimationManager::InitializeAnimator() {
   data.timing_func = timing_function_data;
   // basic animator requires a shared_ptr.
   auto* manager = list_container_impl_->element_manager();
-  auto monitor = manager ? manager->vsync_monitor() : nullptr;
-  // Share the page monitor only for custom VSync. A null monitor preserves
-  // the animator's default platform VSync behavior.
-  auto custom_monitor =
-      monitor && monitor->UsesCustomVSync() ? monitor : nullptr;
   animator_ = std::make_shared<animation::basic::LynxBasicAnimator>(
-      std::move(data), std::move(custom_monitor));
+      std::move(data),
+      manager ? manager->GetListAnimationVSyncMonitor() : nullptr);
 }
 
 void ListContainerAnimationManager::InitializeAnimatorEvent() {

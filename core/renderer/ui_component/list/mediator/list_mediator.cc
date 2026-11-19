@@ -7,7 +7,6 @@
 #include <utility>
 
 #include "base/include/value/base_string.h"
-#include "core/base/threading/vsync_monitor.h"
 #include "core/list/decoupled_list_container_factory.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/list_element.h"
@@ -377,11 +376,10 @@ int ListMediator::GetThreadStrategy() const {
 
 bool ListMediator::IsFiberArch() const { return list_element_->IsFiberArch(); }
 
-std::shared_ptr<base::VSyncMonitor> ListMediator::GetCustomVSyncMonitor()
+std::shared_ptr<base::VSyncMonitor> ListMediator::GetAnimationVSyncMonitor()
     const {
   auto* manager = list_element_->element_manager();
-  auto monitor = manager ? manager->vsync_monitor() : nullptr;
-  return monitor && monitor->UsesCustomVSync() ? monitor : nullptr;
+  return manager ? manager->GetListAnimationVSyncMonitor() : nullptr;
 }
 
 void ListMediator::CheckZIndex(

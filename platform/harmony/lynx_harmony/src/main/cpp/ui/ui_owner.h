@@ -10,11 +10,13 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/public/external_memory_snapshot.h"
@@ -224,6 +226,12 @@ class UIOwner {
   ExternalMemorySnapshot GetExternalMemorySnapshot();
   void RequestExternalMemoryReport(int64_t delay_ms);
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor();
+
+  // Completes on UI with the frame timestamp or nullopt on registration
+  // failure.
+  using AnimationFrameCallback =
+      base::MoveOnlyClosure<void, std::optional<int64_t>>;
+  void RequestAnimationFrame(AnimationFrameCallback callback);
 
   // for lynx fluency metrics
   void StartFluencyTrace(int sign, const std::string& scene,

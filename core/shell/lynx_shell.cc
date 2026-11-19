@@ -315,6 +315,8 @@ void LynxShell::BuildEngineActor(
       engine_build_options_.lynx_env_config_, page_options_, instance_id_,
       engine_build_options_.element_manager_vsync_monitor_,
       std::move(platform_layout_context));
+  element_manager->SetSharePageVSyncWithList(
+      engine_build_options_.share_page_vsync_with_list_);
   // Currently, tasm_mediator serves as the implementation of both
   // TemplateAssembler::Delegate and TemplateAssembler::LayoutScheduler,
   // so here passes *tasm_mediator twice.

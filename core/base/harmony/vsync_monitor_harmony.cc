@@ -4,6 +4,7 @@
 
 #include "core/base/harmony/vsync_monitor_harmony.h"
 
+#include <atomic>
 #include <memory>
 
 #include "base/include/log/logging.h"
@@ -26,6 +27,10 @@ std::shared_ptr<VSyncMonitor> VSyncMonitor::Create(bool is_on_ui_thread) {
 void VSyncMonitorHarmony::OnUpdateRefreshRate(int64_t refresh_rate) {
   DCHECK(refresh_rate > 0);
   g_refresh_rate_ = (1.0f / refresh_rate) * (1000.0 * 1000.0 * 1000.0);
+}
+
+void VSyncMonitorHarmony::OnUIFrame(int64_t frame_start_time) {
+  OnVSync(frame_start_time, frame_start_time + g_refresh_rate_.load());
 }
 
 void VSyncMonitorHarmony::RequestVSync() {

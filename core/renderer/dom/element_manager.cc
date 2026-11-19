@@ -1483,6 +1483,15 @@ void ElementManager::BindTimingFlagToPipelineOptions(
 
 void ElementManager::SetNeedsLayout() { need_layout_ = true; }
 
+std::shared_ptr<base::VSyncMonitor>
+ElementManager::GetListAnimationVSyncMonitor() const {
+  if (vsync_monitor_ &&
+      (share_page_vsync_with_list_ || vsync_monitor_->UsesCustomVSync())) {
+    return vsync_monitor_;
+  }
+  return nullptr;
+}
+
 void ElementManager::StopAnimationVsync() {
   animation_vsync_stopped_ = true;
   if (element_vsync_proxy_) {
