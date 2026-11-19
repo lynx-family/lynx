@@ -127,7 +127,7 @@ export abstract class LynxWebViewNodeController extends NodeController implement
   }
 
   public onLoad(): void {
-    this.webviewParams.ui.sendEvent('load', Object);
+    this.webviewParams.ui.sendEvent('load', new Object());
   }
 
   public onMessage(message: string): void {

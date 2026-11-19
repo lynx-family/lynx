@@ -66,7 +66,7 @@ struct InputView {
         .onBlur(() => {
           this.inputParams.ui.focused = false;
           this.inputParams.ui.unsetFocusedUI();
-          this.inputParams.ui.sendCustomEvent('blur', Object, 'detail');
+          this.inputParams.ui.sendCustomEvent('blur', new Object(), 'detail');
         })
         .onChange((value: string) => {
           this.inputParams.inputText = value; // legacy behavior
