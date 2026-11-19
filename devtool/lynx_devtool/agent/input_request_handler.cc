@@ -485,6 +485,25 @@ void InputRequestHandler::InsertText(
   responder->SendSuccess();
 }
 
+void InputRequestHandler::DispatchKeyEvent(
+    const std::shared_ptr<CDPResponder>& responder, const Json::Value& params) {
+  if (!devtool_platform_facade_) {
+    responder->SendError(CDPErrorCode::ServerError,
+                         "Input target is unavailable");
+    return;
+  }
+  if (!params.isObject() || !params["type"].isString()) {
+    responder->SendError(CDPErrorCode::InvalidParams,
+                         "Invalid params: expected string type");
+    return;
+  }
+  devtool_platform_facade_->DispatchKeyEvent(
+      params["type"].asString(), params.get("key", "").asString(),
+      params.get("text", "").asString(), params.get("modifiers", 0).asInt(),
+      params.get("autoRepeat", false).asBool());
+  responder->SendSuccess();
+}
+
 void InputRequestHandler::EnsureSyntheticGestureController(
     const fml::RefPtr<fml::TaskRunner>& task_runner) {
   if (synthetic_gesture_controller_) {
