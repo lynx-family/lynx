@@ -18,7 +18,7 @@ returns:
 notes:
   - Uses the global CDP channel (session -1), not the page Runtime.evaluate method.
   - Android requires the debugMode engine and an enabled debugging lifecycle. Ordinary engines report HSR_DEBUG_LIBRARY_REQUIRED; other platforms retain their default runtime-not-connected response.
-  - Source must be valid UTF-8 and at most 512 KiB. During Runtime replacement, evaluation fails with RUNTIME_LOADING. While a resource is still being fetched, evaluation can use the previous context.
+  - Source must be valid UTF-8 and at most 512 KiB. Evaluation in the context being replaced fails with RUNTIME_LOADING; evaluation in the other two contexts continues. While a resource is still being fetched, evaluation can use the previous target context.
   - The execution boundary must return the synchronous evaluation value. JavaScript exceptions, Promise values, and non-serializable values are execution errors, not successful empty results.
   - Evaluation may mutate state and does not roll back side effects. It does not expose lexical variables inside previously executed functions.
   - Store asynchronous progress on the script global object and evaluate it again, or publish HSR.messageReceived through the native facade. Events do not complete this request. There is no probe-specific command language.
