@@ -41,8 +41,8 @@ class TestMetalContext {
   TextureInfo GetTextureInfo(int64_t texture_id);
 
  private:
-  void* device_;
-  void* command_queue_;
+  void* device_ = nullptr;
+  void* command_queue_ = nullptr;
   sk_sp<GrDirectContext> skia_context_;
   std::mutex textures_mutex;
   int64_t texture_id_ctr_ = 1;                 // guarded by textures_mutex

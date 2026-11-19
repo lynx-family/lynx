@@ -81,7 +81,19 @@ fml::WeakPtr<Rasterizer> Rasterizer::GetWeakPtr() const {
 }
 
 void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
-  surface_ = std::move(surface);
+  if (display_compositor_) {
+    Teardown();
+  }
+  if (platform_const_service_->IsDisplayCompositorEnabled() &&
+      SharedImageSurface::IsSupported(surface.get())) {
+    display_compositor_ = std::make_unique<DisplayCompositor>(
+        std::move(surface), compositor_service_);
+    surface_ = std::make_unique<SharedImageSurface>(
+        display_compositor_->surface(),
+        GetRasterCacheSampleCount(platform_const_service_->GetSettings()));
+  } else {
+    surface_ = std::move(surface);
+  }
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
 
   if (max_cache_bytes_.has_value()) {
@@ -111,6 +123,7 @@ void Rasterizer::Teardown() {
     }
     surface_.reset();
   }
+  display_compositor_.reset();
 
   last_layer_tree_.reset();
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
@@ -504,9 +517,20 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameStart);
       }
-      compositor_service_->SubmitFrame(surface_->GetContextPtr(),
-                                       std::move(frame),
-                                       std::move(compositor_state));
+      if (display_compositor_) {
+        const bool rasterized = frame->Submit();
+        auto* raster_surface = static_cast<SharedImageSurface*>(surface_.get());
+        if (!rasterized || !display_compositor_->Present(
+                               raster_surface->backing(), submit_info,
+                               std::move(compositor_state))) {
+          compositor_context_->raster_cache().EndFrame();
+          return RasterStatus::kFailed;
+        }
+      } else {
+        compositor_service_->SubmitFrame(surface_->GetContextPtr(),
+                                         std::move(frame),
+                                         std::move(compositor_state));
+      }
       if (frame_timings_recorder) {
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameEnd);

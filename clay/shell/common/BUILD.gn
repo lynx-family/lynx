@@ -18,6 +18,8 @@ source_set("common") {
     "devtool/devtools_instrumentation.h",
     "display.cc",
     "display.h",
+    "display_compositor.cc",
+    "display_compositor.h",
     "display_manager.cc",
     "display_manager.h",
     "engine.cc",
@@ -71,6 +73,8 @@ source_set("common") {
     "services/ui_frame_service.cc",
     "services/ui_frame_service.h",
     "services/vsync_waiter_service.h",
+    "shared_image_surface.cc",
+    "shared_image_surface.h",
     "shell.cc",
     "shell.h",
     "shell_common_rendering_backend.h",
@@ -157,6 +161,10 @@ source_set("common") {
     "../../ui",
   ]
 
+  if (is_mac || is_ios) {
+    deps += [ ":shared_image_surface_metal" ]
+  }
+
   if (enable_skity) {
     deps += [ "../../gfx/skity" ]
     sources += [
@@ -173,6 +181,17 @@ source_set("common") {
       "skia_event_tracer_impl.h",
     ]
     public_deps += [ "//third_party/skia" ]
+  }
+}
+
+if (is_mac || is_ios) {
+  source_set("shared_image_surface_metal") {
+    sources = [ "shared_image_surface.mm" ]
+    public_configs = [ "../../:config" ]
+    deps = [ "../../gfx/shared_image" ]
+    if (enable_skity) {
+      deps += [ "../../gfx/skity" ]
+    }
   }
 }
 

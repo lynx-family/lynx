@@ -26,6 +26,8 @@ class PlatformConstService
 
   const Settings& GetSettings() const { return settings_; }
 
+  bool IsDisplayCompositorEnabled() const { return enable_display_compositor_; }
+
   fml::Milliseconds GetFrameBudget() const;
 
   explicit PlatformConstService(
@@ -36,6 +38,7 @@ class PlatformConstService
 
  private:
   Settings settings_;
+  const bool enable_display_compositor_;
   std::shared_ptr<fml::SyncSwitch> is_gpu_disabled_sync_switch_;
 
   std::shared_ptr<DisplayManager> display_manager_;

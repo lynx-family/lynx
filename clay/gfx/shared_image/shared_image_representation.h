@@ -140,10 +140,11 @@ class GLImageRepresentation : public SharedImageRepresentation {
   bool BeginWrite(ClaySharedImageWriteResult* out) override;
   bool EndWrite() override;
 
- private:
   // The returned value remains valid as long as the caller holds the
   // representation
   virtual std::optional<TextureInfo> GetTexImage() = 0;
+
+ private:
   virtual bool ReleaseTexImage() = 0;
   // The returned value remains valid as long as the caller holds the
   // representation
