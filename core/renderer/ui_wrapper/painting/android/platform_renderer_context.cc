@@ -46,6 +46,51 @@ void InvokeUIMethodCallback(JNIEnv* env, jobject /*jcaller*/, jlong nativePtr,
       ->InvokeUIMethodCallback(callback, code, data);
 }
 
+namespace {
+lynx::tasm::PlatformRenderer* GetRendererForStateUpdate(jlong native_ptr,
+                                                        jint sign) {
+  auto* context =
+      reinterpret_cast<lynx::tasm::PlatformRendererContext*>(native_ptr);
+  return context && !context->IsDestroyed() ? context->GetPlatformRenderer(sign)
+                                            : nullptr;
+}
+}  // namespace
+
+void UpdateLayoutPosition(JNIEnv* env, jobject caller, jlong native_ptr,
+                          jint sign, jfloat x, jfloat y) {
+  if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {
+    renderer->UpdateLayoutPosition(x, y);
+  }
+}
+
+void UpdateScrollOffset(JNIEnv* env, jobject caller, jlong native_ptr,
+                        jint sign, jfloat x, jfloat y) {
+  if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {
+    renderer->UpdateScrollOffset(x, y);
+  }
+}
+
+void UpdateStickyOffset(JNIEnv* env, jobject caller, jlong native_ptr,
+                        jint sign, jfloat x, jfloat y, jboolean sticky) {
+  if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {
+    renderer->UpdateStickyOffset(x, y, sticky);
+  }
+}
+
+void UpdateSiblingOrder(JNIEnv* env, jobject caller, jlong native_ptr,
+                        jint sign, jint order) {
+  if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {
+    renderer->UpdateSiblingOrder(order);
+  }
+}
+
+void UpdateIsOnTree(JNIEnv* env, jobject caller, jlong native_ptr, jint sign,
+                    jboolean is_on_tree) {
+  if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {
+    renderer->UpdateIsOnTree(is_on_tree);
+  }
+}
+
 namespace lynx {
 namespace jni {
 bool RegisterJNIForPlatformRendererContext(JNIEnv* env) {

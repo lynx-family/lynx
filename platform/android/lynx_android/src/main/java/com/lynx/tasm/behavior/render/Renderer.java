@@ -15,6 +15,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
+import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
 
 public class Renderer {
   private static final String TAG = "NativeUIRenderer.Renderer";
@@ -40,6 +41,8 @@ public class Renderer {
   private IRendererHost mRenderHost;
   private LynxBaseUI mUIHost;
   private boolean mNativeInteractionEnabled;
+  private boolean mHasStickyPosition;
+  private int mSiblingOrder = -1;
 
   private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
   private float mOpacity = 1f;
@@ -66,6 +69,33 @@ public class Renderer {
       }
       mRenderHost.applyRendererClipBounds(false, null);
     }
+  }
+
+  public void publishScrollOffset(float x, float y) {
+    mPlatformRendererContext.publishScrollOffset(mSign, x, y);
+  }
+
+  public void publishStickyOffset(float x, float y, boolean sticky) {
+    if (!sticky && !mHasStickyPosition) {
+      return;
+    }
+    mHasStickyPosition = sticky;
+    mPlatformRendererContext.publishStickyOffset(mSign, x, y, sticky);
+  }
+
+  public void publishSiblingOrder(int order) {
+    if (mSiblingOrder != order) {
+      mSiblingOrder = order;
+      mPlatformRendererContext.publishSiblingOrder(mSign, order);
+    }
+  }
+
+  public void publishIsOnTree(boolean isOnTree) {
+    if (!isOnTree) {
+      mHasStickyPosition = false;
+      mSiblingOrder = -1;
+    }
+    mPlatformRendererContext.publishIsOnTree(mSign, isOnTree);
   }
 
   public Point getRenderOffset() {
@@ -151,6 +181,11 @@ public class Renderer {
         }
         Rect childFrame = childRenderer.getLynxFrame();
         child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+        if (mUIHost instanceof UIListContainer) {
+          // Sticky translation and CSS transforms are published/applied separately.
+          childRenderer.mPlatformRendererContext.publishLayoutPosition(
+              childRenderer.mSign, child.getLeft(), child.getTop());
+        }
       }
     }
   }

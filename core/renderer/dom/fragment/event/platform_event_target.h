@@ -126,20 +126,27 @@ class PlatformEventTarget
   int32_t RootId() const { return root_id_; }
   int32_t Sign() const { return sign_; }
   int32_t RendererHostSign() const { return renderer_host_sign_; }
-  float Left() const { return left_; }
-  float Top() const { return top_; }
+  float Left() const { return PlatformPosition(0, left_); }
+  float Top() const { return PlatformPosition(1, top_); }
   float Width() const { return width_; }
   float Height() const { return height_; }
   PlatformRendererType GetPlatformRendererType() const {
     return platform_renderer_type_;
   }
+  std::optional<int32_t> SiblingOrder() const;
   bool IsScrollContainer() const { return is_scroll_container_; }
+  void SetPlatformRenderer(fml::WeakPtr<PlatformRenderer> renderer) {
+    platform_renderer_ = std::move(renderer);
+  }
   float ScrollOffsetX();
   float ScrollOffsetY();
   void RefreshScrollOffset();
   float OffsetXForCalcPosition() const { return offset_x_for_calc_position_; }
   float OffsetYForCalcPosition() const { return offset_y_for_calc_position_; }
-  bool IsVisible() const { return true; }
+  bool IsVisible() const {
+    const auto* state = PublishedPlatformState();
+    return !state || state->is_on_tree.value_or(true);
+  }
   bool IsOverlayContent() const { return false; }
   LynxEventPropStatus EnableExposureUIClip() const {
     return enable_exposure_ui_clip_;
@@ -382,6 +389,11 @@ class PlatformEventTarget
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
       const fml::RefPtr<PlatformEventTarget>& target, float out_rect[4],
       float root_view_origin_on_screen[2]) const;
+
+  const PlatformRendererState* PublishedPlatformState() const;
+  float PlatformPosition(int axis, float layout_position) const;
+
+  fml::WeakPtr<PlatformRenderer> platform_renderer_;
 
   // target props
   int32_t root_id_;

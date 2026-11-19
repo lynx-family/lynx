@@ -37,6 +37,8 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
@@ -181,6 +183,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     // The list container should manager the view of component on the interface of
     // "onLayoutFinish()"
     super.onInsertChild(child, index);
+    if (mView.getRenderer() != null && child instanceof UIComponent) {
+      View view = ((UIComponent) child).getView();
+      if (view != null) {
+        mView.publishChildTreeState(view, view.getParent() == mView.getRendererChildViewGroup());
+      }
+    }
     mView.markRendererDrawingOrderDirty();
     if (mEnableListSticky && !mUpdateStickyForDiff) {
       int indexFromItemKey = getIndexFromItemKey(((UIComponent) child).getItemKey());
@@ -411,6 +419,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     if (childView != null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         childView.setOutlineProvider(null);
+        if (mView.getRenderer() != null && ViewCompat.getTranslationZ(childView) != translateZ) {
+          mView.markRendererDrawingOrderDirty();
+        }
         ViewCompat.setTranslationZ(childView, translateZ);
       }
     }
@@ -1441,8 +1452,22 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
+  private void publishStickyItemOffset(UIComponent component, float offset, boolean sticky) {
+    View view = component.getView();
+    if (mView.getRenderer() == null || !(view instanceof IRendererHost)) {
+      return;
+    }
+    Renderer renderer = ((IRendererHost) view).getRenderer();
+    if (renderer != null) {
+      // Use the sticky offset directly: View translation may also contain CSS transforms.
+      renderer.publishStickyOffset(mIsVertical ? 0 : offset, mIsVertical ? offset : 0, sticky);
+    }
+  }
+
   private void resetStickyItem(UIComponent component) {
     if (component.getView() != null) {
+      // A sticky item may be raised even when its translation is zero.
+      publishStickyItemOffset(component, 0, false);
       if (mIsVertical) {
         component.getView().setTranslationY(0);
       } else {
@@ -1540,6 +1565,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         } else {
           stickyStartItem.getView().setTranslationX(stickyStartOffset - stickyStartItem.getLeft());
         }
+        publishStickyItemOffset(stickyStartItem,
+            stickyStartOffset
+                - (mIsVertical ? stickyStartItem.getTop() : stickyStartItem.getLeft()),
+            true);
         stickyStartItem.getView().bringToFront();
         setChildTranslationZ(stickyStartItem, Integer.MAX_VALUE);
         mView.markRendererDrawingOrderDirty();
@@ -1620,6 +1649,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         } else {
           stickyEndItem.getView().setTranslationX(stickyLeftOffset - stickyEndItem.getLeft());
         }
+        publishStickyItemOffset(stickyEndItem,
+            stickyLeftOffset - (mIsVertical ? stickyEndItem.getTop() : stickyEndItem.getLeft()),
+            true);
         stickyEndItem.getView().bringToFront();
         setChildTranslationZ(stickyEndItem, Integer.MAX_VALUE);
         mView.markRendererDrawingOrderDirty();

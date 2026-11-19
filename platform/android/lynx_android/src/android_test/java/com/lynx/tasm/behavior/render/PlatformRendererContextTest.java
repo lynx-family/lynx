@@ -99,6 +99,30 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testStickyPriorityClearsAtZeroTranslationAndSkipsRepeatedResets() {
+    PlatformRendererContext context = mock(PlatformRendererContext.class);
+    Renderer renderer = new Renderer(context, 99);
+    clearInvocations(context);
+    renderer.publishStickyOffset(0, 0, false);
+    verifyNoInteractions(context);
+    renderer.publishStickyOffset(0, 0, true);
+    renderer.publishStickyOffset(0, 0, false);
+    renderer.publishStickyOffset(0, 0, false);
+    renderer.publishStickyOffset(0, 40, true);
+    renderer.publishSiblingOrder(2);
+    renderer.publishSiblingOrder(2);
+    renderer.publishIsOnTree(false);
+    renderer.publishSiblingOrder(2);
+    renderer.publishStickyOffset(0, 0, false);
+    verify(context).publishStickyOffset(99, 0, 0, true);
+    verify(context).publishStickyOffset(99, 0, 0, false);
+    verify(context).publishStickyOffset(99, 0, 40, true);
+    verify(context).publishIsOnTree(99, false);
+    verify(context, times(2)).publishSiblingOrder(99, 2);
+    verifyNoMoreInteractions(context);
+  }
+
+  @Test
   public void testConstructorWithRootView() {
     assertNotNull(rendererContext);
     assertNotNull(rendererContext.getNativePtr());
