@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "core/list/animation/animation_manager.h"
 #include "core/list/decoupled_list_adapter.h"
 #include "core/list/decoupled_list_children_helper.h"
@@ -160,6 +161,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool has_completed_first_layout() const {
     return has_completed_first_layout_;
   }
+  bool compose_scroll_managed() const { return compose_scroll_managed_; }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -172,6 +174,9 @@ class ListContainerImpl : public ContainerDelegate {
   void UpdateListLayoutManager(LayoutType layout_type);
   int ClampScrollTargetIndex(int index) const;
   ListScrollState PublishComposeScrollState();
+  void ProjectComposeStickyHeader();
+  void ClearComposeStickyProjection();
+  void SyncPlatformSticky();
   //  fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
@@ -181,6 +186,9 @@ class ListContainerImpl : public ContainerDelegate {
   bool batch_adapter_initialized_{false};
   bool recycle_available_item_before_layout_{false};
   bool sticky_enabled_{false};
+  // The "sticky" value last delivered to the platform list. Managed lists
+  // project sticky headers in C++ and keep platform sticky disabled.
+  bool platform_sticky_{false};
   bool recycle_sticky_item_{true};
   SearchRefAnchorStrategy search_ref_anchor_strategy_{
       SearchRefAnchorStrategy::kNone};
@@ -210,6 +218,8 @@ class ListContainerImpl : public ContainerDelegate {
   bool enable_batch_render_{false};
   bool has_completed_first_layout_{false};
   bool compose_scroll_managed_{false};
+  ListStickyItem compose_sticky_item_;
+  fml::WeakPtr<ItemHolder> compose_sticky_holder_;
   ListScrollState published_compose_scroll_state_;
   uint64_t compose_scroll_revision_{0};
   uint64_t compose_projection_revision_{0};

@@ -24,6 +24,25 @@ namespace list {
 
 class ItemHolder;
 
+struct ListStickyItem {
+  // A negative index denotes an absent sticky item.
+  int index{-1};
+  std::string key;
+  float offset{0.f};
+  float size{0.f};
+  bool IsValid() const { return index >= 0; }
+  void Reset() {
+    index = -1;
+    key.clear();
+    offset = 0.f;
+    size = 0.f;
+  }
+  bool operator==(const ListStickyItem& other) const {
+    return index == other.index && key == other.key && offset == other.offset &&
+           size == other.size;
+  }
+};
+
 // Engine-owned list geometry in layout units. Offset, consumed deltas and
 // can_scroll_* follow data order, including for horizontal RTL lists.
 struct ListScrollState {
@@ -38,6 +57,7 @@ struct ListScrollState {
   uint64_t revision{0};
   bool horizontal{false};
   bool rtl{false};
+  ListStickyItem sticky_item;
 };
 
 struct ListScrollResult {

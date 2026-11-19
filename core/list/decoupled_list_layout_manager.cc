@@ -437,22 +437,35 @@ bool ListLayoutManager::UpdateStickyItemsInternal(int& layout_changed_position,
   return false;
 }
 
-void ListLayoutManager::UpdateStickyItemsAfterLayout(
+bool ListLayoutManager::UpdateStickyItemsAfterLayout(
     ListAnchorManager::AnchorInfo& anchor_info) {
+  if (!list_container_->sticky_enabled()) {
+    return false;
+  }
   // If the list has sticky items, the sticky items should be updated after
   // the first adjustment to obtain information about which sticky items will
   // enter their sticky mode. Since new sticky items may trigger extra
   // bindings and cause additional layout changes, which requires an update
   // to the layout afterwards.
-  if (list_container_->sticky_enabled()) {
-    int minimum_layout_updated_index = UpdateStickyItems();
-    minimum_layout_updated_index = std::max(minimum_layout_updated_index, 0);
-    // Layout and adjust scroll status again
-    LayoutInvalidItemHolder(minimum_layout_updated_index);
+  const bool managed = list_container_->compose_scroll_managed();
+  const size_t max_passes =
+      managed ? list_container_->list_adapter()->GetStickyTops().size() : 0;
+  bool reflowed = false;
+  for (size_t pass = 0;; ++pass) {
+    const int changed = UpdateStickyItems();
+    if (managed && (changed == kInvalidIndex || pass == max_passes)) {
+      break;
+    }
+    LayoutInvalidItemHolder(std::max(changed, 0));
     content_size_ = GetTargetContentSize();
     list_anchor_manager_->AdjustContentOffsetWithAnchor(anchor_info,
                                                         content_offset_);
+    reflowed = true;
+    if (!managed) {
+      break;
+    }
   }
+  return reflowed;
 }
 
 void ListLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
@@ -529,6 +542,12 @@ bool ListLayoutManager::IsItemHolderNotAtStickyPosition(
              content_offset_, GetHeight(), content_size_, sticky_offset,
              list_orientation_helper_->GetStart(item_holder),
              list_orientation_helper_->GetEnd(item_holder));
+}
+
+bool ListLayoutManager::CanItemHolderBeAnchor(
+    const ItemHolder* item_holder) const {
+  return list_container_->compose_scroll_managed() ||
+         IsItemHolderNotAtStickyPosition(item_holder);
 }
 
 #if ENABLE_TRACE_PERFETTO

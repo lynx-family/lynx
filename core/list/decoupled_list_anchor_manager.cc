@@ -266,9 +266,10 @@ ListAnchorManager::GetAnchorCandidates(int finishing_binding_index,
       [this, &no_dirty_item_holder, &updated_item_holder, &binding_item_holder,
        &finishing_binding_item_holder,
        finishing_binding_index](ItemHolder* item_holder) {
-        // Sticky item_holder can not be choosen as anchor
-        if (!list_layout_manager_->IsItemHolderNotAtStickyPosition(
-                item_holder)) {
+        // Legacy sticky item holders are excluded from anchor selection;
+        // managed lists keep flow coordinates on ItemHolder and only apply
+        // sticky placement as a display overlay.
+        if (!list_layout_manager_->CanItemHolderBeAnchor(item_holder)) {
           return false;
         }
         int index = item_holder->index();
@@ -357,14 +358,12 @@ void ListAnchorManager::UpdateDiffAnchorReference() {
   ItemHolder* first_visible_item_holder = list_children_helper_->GetFirstChild(
       on_screen_children, [this](const ItemHolder* item_holder) {
         return !list_adapter_->IsRemoved(item_holder) &&
-               list_layout_manager_->IsItemHolderNotAtStickyPosition(
-                   item_holder);
+               list_layout_manager_->CanItemHolderBeAnchor(item_holder);
       });
   ItemHolder* last_visible_item_holder = list_children_helper_->GetLastChild(
       on_screen_children, [this](const ItemHolder* item_holder) {
         return !list_adapter_->IsRemoved(item_holder) &&
-               list_layout_manager_->IsItemHolderNotAtStickyPosition(
-                   item_holder);
+               list_layout_manager_->CanItemHolderBeAnchor(item_holder);
       });
   if (!first_visible_item_holder || !last_visible_item_holder ||
       !list_children_helper_) {
