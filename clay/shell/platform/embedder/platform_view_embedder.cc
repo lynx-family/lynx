@@ -69,6 +69,7 @@ void PlatformViewEmbedder::SubmitFrameFuture(std::future<bool> future) {
 
 void PlatformViewEmbedder::NotifyDestroyed() {
   PlatformView::NotifyDestroyed();
+#ifndef ENABLE_SKITY
   // This context needs to be deallocated from the raster thread in order to
   // keep a coherent usage of egl from a single thread.
   fml::AutoResetWaitableEvent latch;
@@ -77,7 +78,6 @@ void PlatformViewEmbedder::NotifyDestroyed() {
       [&latch, surface = embedder_surface_.get()]() {
         auto gr_context = surface->GetMainGrContext();
         if (gr_context) {
-#ifndef ENABLE_SKITY
           bool has_handled_context = false;
 #ifdef SHELL_ENABLE_GL
           if (gr_context->backend() == GrBackendApi::kOpenGL) {
@@ -104,11 +104,11 @@ void PlatformViewEmbedder::NotifyDestroyed() {
           if (!has_handled_context) {
             gr_context->releaseResourcesAndAbandonContext();
           }
-#endif
         }
         latch.Signal();
       });
   latch.Wait();
+#endif
 }
 
 // |PlatformView|
