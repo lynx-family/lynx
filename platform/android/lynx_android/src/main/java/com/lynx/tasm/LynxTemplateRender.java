@@ -1499,7 +1499,7 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mEnableReuseEngine) {
+    if (mEnableReuseEngine || mEnableCacheEngine) {
       if (tryRenderByReuseLynxRender(templateData)) {
         return;
       }
