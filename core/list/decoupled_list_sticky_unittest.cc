@@ -33,7 +33,9 @@ class ListStickyTest : public ::testing::TestWithParam<bool> {
     element_->height_ = 100.f;
     container_ = std::make_unique<ListContainerImpl>(element_.get(), factory_);
     container_->OnAttachToElementManager();
-    container_->SetComposeScrollManaged(GetParam());
+    if (GetParam()) {
+      container_->EnableEngineManagedScroll();
+    }
     EXPECT_EQ(container_->ResolveAttribute(*factory_->CreateString(kPropSticky),
                                            *factory_->CreateBool(true)),
               !GetParam());
@@ -227,13 +229,7 @@ TEST_P(ListStickyTest, RemeasureRoleRemovalDisableAndIndexShift) {
   container_->ResolveAttribute(*factory_->CreateString(kPropSticky),
                                *factory_->CreateBool(true));
   manager_->OnLayoutChildren();
-  if (GetParam()) {
-    ASSERT_TRUE(container_->GetScrollState().sticky_item.IsValid());
-    container_->SetComposeScrollManaged(false);
-    EXPECT_FALSE(container_->compose_sticky_item_.IsValid());
-    EXPECT_FLOAT_EQ(element_->GetListItemElement("1")->top_, 130.f);
-  }
-  container_->SetComposeScrollManaged(true);
+  container_->EnableEngineManagedScroll();
   EXPECT_TRUE(container_->sticky_enabled());
   manager_->OnLayoutChildren();
   ASSERT_TRUE(container_->GetScrollState().sticky_item.IsValid());
@@ -318,7 +314,7 @@ TEST_P(ListStickyFirstScreenTest, InitialIndexPinsEarlierUnmeasuredHeader) {
   element->height_ = 100.f;
   ListContainerImpl container(element.get(), factory);
   container.OnAttachToElementManager();
-  container.SetComposeScrollManaged(true);
+  container.EnableEngineManagedScroll();
   container.ResolveAttribute(*factory->CreateString(kPropSticky),
                              *factory->CreateBool(true));
   container.ResolveAttribute(*factory->CreateString(kPropInitialScrollIndex),
@@ -363,8 +359,6 @@ TEST_P(ListStickyFirstScreenTest, InitialIndexPinsEarlierUnmeasuredHeader) {
 INSTANTIATE_TEST_SUITE_P(Estimates, ListStickyFirstScreenTest,
                          ::testing::Values(0, 40, 100));
 
-// Managed mode intercepts "sticky"; switching modes must deliver the
-// effective value so the platform neither loses nor duplicates sticky.
 TEST(ListStickyPlatformTest, ModeSwitchSyncsPlatformSticky) {
   auto factory = std::make_shared<pub::PubValueFactoryDefault>();
   MockListElement element;
@@ -379,20 +373,13 @@ TEST(ListStickyPlatformTest, ModeSwitchSyncsPlatformSticky) {
   // platform implementation off.
   EXPECT_TRUE(set_sticky(true));
   EXPECT_TRUE(element.flushed_bool_props_.empty());
-  container.SetComposeScrollManaged(true);
+  container.EnableEngineManagedScroll();
   EXPECT_EQ(element.flushed_bool_props_, (Props{{kPropSticky, false}}));
   // Managed updates are intercepted and the platform already has false.
   EXPECT_FALSE(set_sticky(false));
-  container.SetComposeScrollManaged(false);
   EXPECT_EQ(element.flushed_bool_props_.size(), 1u);
-
-  // Sticky enabled while managed is restored when native mode resumes.
-  container.SetComposeScrollManaged(true);
   EXPECT_FALSE(set_sticky(true));
   EXPECT_EQ(element.flushed_bool_props_.size(), 1u);
-  container.SetComposeScrollManaged(false);
-  EXPECT_EQ(element.flushed_bool_props_,
-            (Props{{kPropSticky, false}, {kPropSticky, true}}));
 }
 
 }  // namespace list

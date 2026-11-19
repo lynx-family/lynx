@@ -50,7 +50,7 @@ class ListMediator : public lynx::list::ElementDelegate {
   std::unique_ptr<pub::Value> ScrollBySync(float delta);
 
   void ScrollStopped();
-  void SetComposeScrollManaged(bool managed);
+  void EnableEngineManagedScroll();
   lynx::list::ListScrollResult ScrollByDelta(float delta);
   lynx::list::ListScrollState ScrollToItem(int index, float offset);
   lynx::list::ListScrollState GetScrollState() const;
@@ -125,7 +125,7 @@ class ListMediator : public lynx::list::ElementDelegate {
   void UpdateScrollInfo(float estimated_offset, bool smooth,
                         bool scrolling) override;
   void ApplyListScrollState(float scroll_x, float scroll_y, float content_width,
-                            float content_height, bool cmp_managed) override;
+                            float content_height) override;
 
   int GetThreadStrategy() const override;
   std::shared_ptr<base::VSyncMonitor> GetCustomVSyncMonitor() const override;
