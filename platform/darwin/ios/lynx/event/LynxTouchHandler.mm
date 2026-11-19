@@ -1471,6 +1471,14 @@
                                       LynxPlatformEventBehaviorRawInputExclusive)) != 0 &&
            (_platformEventBehavior & LynxPlatformEventBehaviorEventThrough) == 0;
   }
+  LynxRootUI* childLynxPage =
+      _eventHandler.touchTarget
+          .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage &&
+      [childLynxPage.context.eventHandler.touchRecognizer blockNativeEvent:gestureRecognizer]) {
+    return YES;
+  }
   id<LynxEventTarget> target = _eventHandler.touchTarget;
   BOOL res = NO;
   while (target != nil) {
@@ -1489,6 +1497,14 @@
 - (BOOL)enableSimultaneousTouch {
   if (_eventHandler.uiOwner.uiContext.lynxContext.isFragmentLayerRenderOn) {
     return (_platformEventBehavior & LynxPlatformEventBehaviorEnableSimultaneousTouch) != 0;
+  }
+  LynxRootUI* childLynxPage =
+      _eventHandler.touchTarget
+          .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage &&
+      [childLynxPage.context.eventHandler.touchRecognizer enableSimultaneousTouch]) {
+    return YES;
   }
   id<LynxEventTarget> target = _eventHandler.touchTarget;
   BOOL res = NO;
@@ -1614,8 +1630,8 @@
               .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
       if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
           childLynxPage.view.isChildLynxPage) {
-        [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:_touches
-                                                                    withEvent:_event];
+        [childLynxPage.context.eventHandler.touchRecognizer touchesCancelledInner:_touches
+                                                                        withEvent:_event];
       }
 
       [self onTouchEndOrCancel];
