@@ -116,6 +116,9 @@ class DevToolPlatformFacade
   virtual void EmulateTouch(std::shared_ptr<lynx::devtool::MouseEvent>) = 0;
   virtual void EmulateMouse(std::shared_ptr<lynx::devtool::MouseEvent> input) {}
   virtual void InsertText(const std::string& text) {}
+  virtual void DispatchKeyEvent(const std::string& type, const std::string& key,
+                                const std::string& text, int modifiers,
+                                bool auto_repeat) {}
 
   virtual std::string GetUINodeInfo(int id) { return ""; }
   virtual std::string GetLynxUITree() { return ""; }

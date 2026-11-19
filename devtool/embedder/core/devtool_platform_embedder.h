@@ -72,6 +72,9 @@ class DevtoolPlatformEmbedder
   void EmulateMouse(std::shared_ptr<lynx::devtool::MouseEvent> input);
   void Focus(int node_id);
   void InsertText(const std::string& text);
+  void DispatchKeyEvent(const std::string& type, const std::string& key,
+                        const std::string& text, int modifiers,
+                        bool auto_repeat);
 
  public:
   void SendScreenCast(const std::string& data,
