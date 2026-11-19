@@ -56,6 +56,8 @@ enum TextPropertyKeyID {
   kPropImageLoopCount = 110,
   kPropImageMode = 111,
   kPropInlineEventTarget = 112,
+  kPropInlineTruncation = 113,
+  kPropInlineEndWithFont = 114,
 
   kTextPropEnd = 0xFF,
 };

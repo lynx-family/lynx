@@ -17,6 +17,9 @@
 #import "LynxTraceEventDef.h"
 #import "base/include/compiler_specific.h"
 
+static NSAttributedStringKey const kLynxInlineTextEventTargetSignKey =
+    @"LynxInlineTextEventTargetSignKey";
+
 static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   NSTextContainer *container = layoutManager.textContainers.firstObject;
   NSUInteger numberOfGlyphs = [layoutManager numberOfGlyphs];
@@ -585,6 +588,35 @@ static BOOL layoutManagerIsTruncated(NSLayoutManager *layoutManager) {
   if ([subSpan count] > 0) {
     _subSpan = subSpan;
   }
+}
+
+- (nullable NSNumber *)inlineTextEventTargetAtPoint:(CGPoint)point {
+  if (_textStorage.length == 0 || _layoutManager.numberOfGlyphs == 0) {
+    return nil;
+  }
+  CGPoint textPoint = CGPointMake(point.x - _offsetX, point.y);
+  NSUInteger glyphIndex = [_layoutManager glyphIndexForPoint:textPoint
+                                             inTextContainer:_textContainer];
+  if (!NSLocationInRange(glyphIndex, [self visibleGlyphRange])) {
+    return nil;
+  }
+  CGRect rect = [_layoutManager boundingRectForGlyphRange:NSMakeRange(glyphIndex, 1)
+                                          inTextContainer:_textContainer];
+  // TextKit returns the nearest glyph even when the point is outside the text.
+  if (!CGRectContainsPoint(rect, textPoint)) {
+    return nil;
+  }
+  NSUInteger index = [_layoutManager characterIndexForGlyphAtIndex:glyphIndex];
+  if (index >= _textStorage.length || [_textStorage attribute:NSAttachmentAttributeName
+                                                      atIndex:index
+                                               effectiveRange:NULL] != nil) {
+    // Inline images and views must reach the native child hit test, even when
+    // their placeholder inherits a clickable outer text's attributes.
+    return nil;
+  }
+  return [_textStorage attribute:kLynxInlineTextEventTargetSignKey
+                         atIndex:index
+                  effectiveRange:NULL];
 }
 
 - (BOOL)shouldAppendTruncatedToken {

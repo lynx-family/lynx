@@ -89,6 +89,46 @@ namespace tasm {
 namespace testing {
 
 namespace {
+class CustomLayoutTestElement : public ViewElement {
+ public:
+  explicit CustomLayoutTestElement(ElementManager* manager)
+      : ViewElement(manager) {}
+
+  fml::RefPtr<Element> CloneElement(bool clone_resolved_props) const override {
+    return fml::AdoptRef<Element>(
+        new CustomLayoutTestElement(*this, clone_resolved_props));
+  }
+
+  void DispatchLayoutBefore() override {
+    ++layout_before_count;
+    ViewElement::DispatchLayoutBefore();
+  }
+
+  void ConfigureLayout() {
+    EnsureSLNode();
+    SetMeasureFunc(static_cast<Element*>(this),
+                   [](void* context, const starlight::Constraints&, bool) {
+                     return static_cast<CustomLayoutTestElement*>(
+                                static_cast<Element*>(context))
+                         ->preferred_size;
+                   });
+    SetAlignmentFunc(static_cast<Element*>(this), [](void* context) {
+      ++static_cast<CustomLayoutTestElement*>(static_cast<Element*>(context))
+            ->layout_count;
+    });
+  }
+
+  FloatSize preferred_size{100, 20};
+  int layout_count{0};
+  int layout_before_count{0};
+
+ private:
+  CustomLayoutTestElement(const CustomLayoutTestElement& other,
+                          bool clone_resolved_props)
+      : ViewElement(other, clone_resolved_props),
+        preferred_size(other.preferred_size) {}
+};
+
 class RecordingExternalMemoryContext : public lepus::VMContext {
  public:
   explicit RecordingExternalMemoryContext(runtime::MTSRuntime* runtime)
@@ -3677,6 +3717,137 @@ TEST_P(FiberElementTest,
   ASSERT_NE(page->slnode(), nullptr);
   ASSERT_NE(child->slnode(), nullptr);
   EXPECT_EQ(child->slnode()->parent(), page->slnode());
+}
+
+TEST_P(FiberElementTest, LayoutInElementPublishesLayoutUnderVirtualContainer) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_parent = manager->CreateFiberNode("inline-text");
+  auto child = manager->CreateFiberNode("view");
+  child->SetStyle(kPropertyIDWidth, lepus::Value("16px"));
+  child->SetStyle(kPropertyIDHeight, lepus::Value("14px"));
+  virtual_parent->InsertNode(child);
+  page->InsertNode(virtual_parent);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(virtual_parent->is_virtual());
+  ASSERT_NE(virtual_parent->slnode(), nullptr);
+  EXPECT_EQ(virtual_parent->slnode()->parent(), nullptr);
+
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(child->width(), 16.f);
+  EXPECT_FLOAT_EQ(child->height(), 14.f);
+  EXPECT_FALSE(child->slnode()->IsDirty());
+  EXPECT_FALSE(virtual_parent->slnode()->IsDirty());
+
+  child->SetStyle(kPropertyIDWidth, lepus::Value("0px"));
+  page->FlushActionsAsRoot();
+  // The child dirties its layout parent directly, bypassing this virtual node.
+  ASSERT_FALSE(virtual_parent->slnode()->IsDirty());
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(child->width(), 0.f);
+  EXPECT_FALSE(child->slnode()->IsDirty());
+
+  child->SetStyle(kPropertyIDWidth, lepus::Value("16px"));
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_FLOAT_EQ(child->width(), 16.f);
+}
+
+TEST_P(FiberElementTest, LayoutInElementUpdatesVirtualContainersOwnLayout) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_parent = manager->CreateFiberNode("inline-text");
+  page->InsertNode(virtual_parent);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(virtual_parent->is_virtual());
+  ASSERT_NE(virtual_parent->slnode(), nullptr);
+
+  virtual_parent->slnode()->SetBorderBoundWidth(17.f);
+  virtual_parent->slnode()->SetBorderBoundHeight(13.f);
+  virtual_parent->slnode()->RoundToPixelGrid(0, 0, 0, 0, false);
+  auto options = std::make_shared<PipelineOptions>();
+  virtual_parent->UpdateLayoutInfoRecursively(options.get());
+
+  EXPECT_FLOAT_EQ(virtual_parent->width(), 17.f);
+  EXPECT_FLOAT_EQ(virtual_parent->height(), 13.f);
+  EXPECT_FALSE(virtual_parent->slnode()->IsDirty());
+  EXPECT_FALSE(virtual_parent->slnode()->GetHasNewLayout());
+}
+
+TEST_P(FiberElementTest,
+       LayoutInElementPreparesDirtyChildUnderCleanVirtualContainer) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto virtual_parent = manager->CreateFiberNode("inline-text");
+  auto child = fml::AdoptRef(new CustomLayoutTestElement(manager));
+  child->ConfigureLayout();
+  virtual_parent->InsertNode(child);
+  page->InsertNode(virtual_parent);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(virtual_parent->is_virtual());
+  page->Layout(std::make_shared<PipelineOptions>());
+  ASSERT_EQ(child->layout_before_count, 1);
+  ASSERT_FALSE(virtual_parent->slnode()->IsDirty());
+
+  child->preferred_size = FloatSize(80, 30);
+  child->RequestLayout();
+  ASSERT_TRUE(child->slnode()->IsDirty());
+  ASSERT_FALSE(virtual_parent->slnode()->IsDirty());
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_EQ(child->layout_before_count, 2);
+  EXPECT_FLOAT_EQ(child->width(), 80.f);
+  EXPECT_FLOAT_EQ(child->height(), 30.f);
+}
+
+TEST_P(FiberElementTest, LayoutInElementStillPrunesCleanNonVirtualContainers) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  parent->InsertNode(child);
+  page->InsertNode(parent);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  ASSERT_FALSE(parent->is_virtual());
+
+  // Isolate the pruning contract from the normal upward dirty propagation.
+  child->slnode()->SetBorderBoundWidth(17.f);
+  child->slnode()->RoundToPixelGrid(0, 0, 0, 0, false);
+  parent->slnode()->MarkUpdated();
+  auto options = std::make_shared<PipelineOptions>();
+  parent->UpdateLayoutInfoRecursively(options.get());
+  EXPECT_NE(child->width(), 17.f);
+  EXPECT_TRUE(child->slnode()->IsDirty());
+  EXPECT_TRUE(child->slnode()->GetHasNewLayout());
+}
+
+TEST_P(FiberElementTest, LayoutInElementPreparesOnlyDirtyCustomVirtualNodes) {
+  manager->page_options_.SetEmbeddedMode(EmbeddedMode::LAYOUT_IN_ELEMENT);
+  auto page = manager->CreateFiberPage("page", 11);
+  auto node = fml::AdoptRef(new CustomLayoutTestElement(manager));
+  node->layout_node_type_ = LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL;
+  node->ConfigureLayout();
+  auto sibling = manager->CreateFiberView();
+  page->InsertNode(node);
+  page->InsertNode(sibling);
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(node->is_virtual());
+  auto options = std::make_shared<PipelineOptions>();
+  page->Layout(options);
+  ASSERT_EQ(node->layout_before_count, 1);
+
+  for (int i = 0; i < 5; ++i) {
+    sibling->RequestLayout();
+    page->Layout(options);
+  }
+  EXPECT_EQ(node->layout_before_count, 1);
+
+  node->RequestLayout();
+  page->Layout(options);
+  EXPECT_EQ(node->layout_before_count, 2);
 }
 
 TEST_P(FiberElementTest, LayoutInElement_RemoveVirtualChildResetsAttachedFlag) {

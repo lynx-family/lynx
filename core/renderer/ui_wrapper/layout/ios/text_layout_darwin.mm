@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/renderer/ui_wrapper/layout/ios/text_layout_darwin.h"
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -14,15 +15,21 @@
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
+#include "core/renderer/ui_wrapper/painting/native_painting_context.h"
 
 #import <Lynx/LynxBaseTextShadowNode.h>
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxServiceTextProtocol.h>
+#import <Lynx/LynxTextRenderer.h>
 #import <Lynx/LynxTextUtils.h>
 
 namespace lynx {
 namespace tasm {
 namespace {
+
+NSAttributedStringKey const kLynxInlineTextEventTargetSignKey = @"LynxInlineTextEventTargetSignKey";
+
+bool IsInlineTruncation(Element* element) { return element->GetTag().IsEqual("inline-truncation"); }
 
 NSArray<NSNumber*>* AutoFontSizePresetSizesToNSArray(
     const base::InlineVector<float, 6>& preset_sizes) {
@@ -53,6 +60,13 @@ NSString* DecodeTextContentToNSString(const base::String& text) {
 
 }  // namespace
 
+void TextLayoutDarwin::Destroy(Element* element) {
+  if (element != nullptr) {
+    truncation_event_ranges_.erase(element->impl_id());
+    [_textRenderManager releaseTextRender:element->impl_id()];
+  }
+}
+
 LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_mode, float height,
                                        int height_mode) {
   TextElement* text_element = static_cast<TextElement*>(element);
@@ -75,6 +89,30 @@ LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_
                                                           height:height
                                                       heightMode:heightMode
                                                  childrenSizeDic:childrenLayoutResultDic];
+  LynxTextRenderer* renderer = [_textRenderManager takeTextRender:element->impl_id()];
+  if (auto it = truncation_event_ranges_.find(element->impl_id());
+      renderer != nil && it != truncation_event_ranges_.end()) {
+    std::vector<PlatformTextEventTargetRange> ranges;
+    if (renderer.truncationToken.length && renderer.ellipsisCount > 0) {
+      // TextKit replaced the body suffix with the authored token.
+      const auto cut =
+          static_cast<int32_t>(renderer.textStorage.length - renderer.truncationToken.length);
+      for (auto range : it->second.token) {
+        ranges.push_back({range.sign, cut + range.start, cut + range.end});
+      }
+      for (auto range : it->second.body) {
+        if (range.start < cut)
+          ranges.push_back({range.sign, range.start, std::min(range.end, cut)});
+      }
+    } else {
+      ranges = it->second.body;
+    }
+    element->element_manager()
+        ->painting_context()
+        ->impl()
+        ->CastToNativeCtx()
+        ->UpdateTextEventTargetRanges(element->impl_id(), std::move(ranges));
+  }
   return LayoutResult{(float)result.size.width, (float)result.size.height, (float)result.baseline};
 }
 
@@ -83,7 +121,7 @@ void TextLayoutDarwin::MeasureChildrenRecursively(Element* element,
                                                   bool final_measure,
                                                   NSMutableDictionary* childrenLayoutResultDic) {
   for (auto* child = element->first_render_child(); child; child = child->next_render_sibling()) {
-    if (child->is_text()) {
+    if (child->is_text() || child->is_wrapper() || IsInlineTruncation(child)) {
       MeasureChildrenRecursively(child, constraints, final_measure, childrenLayoutResultDic);
     } else if (child->is_view() || child->is_image()) {
       FloatSize size = child->slnode()->UpdateMeasureByPlatform(constraints, final_measure);
@@ -100,13 +138,15 @@ void TextLayoutDarwin::Align(Element* element) {
 
 void TextLayoutDarwin::AlignChildrenRecursively(Element* element, NSDictionary* offsetDic) {
   for (auto* child = element->first_render_child(); child; child = child->next_render_sibling()) {
-    if (child->is_text()) {
+    if (child->is_text() || child->is_wrapper() || IsInlineTruncation(child)) {
       AlignChildrenRecursively(child, offsetDic);
     } else if (child->is_view() || child->is_image()) {
       id value = [offsetDic objectForKey:@(child->impl_id())];
       if (value) {
         CGPoint offset = [value CGPointValue];
         child->slnode()->AlignmentByPlatform(offset.y, offset.x);
+      } else {
+        child->slnode()->LayoutDisplayNone();
       }
     }
   }
@@ -124,11 +164,13 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
       [textStyle toAttributesWithFontFaceContext:_fontFaceContext withFontFaceObserver:nil];
 
   NSMutableAttributedString* attributedString = [[NSMutableAttributedString alloc] init];
+  NSAttributedString* truncationString = nil;
   NSMutableSet* inlineElementSigns = [[NSMutableSet alloc] init];
   Boolean hasViewOrImage = NO;
+  EventRanges ranges;
   [attributedString beginEditing];
   GenerateAttributedString(attributedString, element, baseAttributes, inlineElementSigns,
-                           &hasViewOrImage);
+                           &hasViewOrImage, &truncationString, ranges);
   // Apply NSParagraphStyle to entire attributed string to prevent line-height from not working.
   NSParagraphStyle* paragraphStyle = [textStyle genParagraphStyle];
   if (paragraphStyle != nil && attributedString.length > 0) {
@@ -137,12 +179,24 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
                              range:NSMakeRange(0, attributedString.length)];
   }
   [attributedString endEditing];
+  textStyle.truncationAttributedStr = truncationString;
   text_element->set_need_layout_children(hasViewOrImage);
 
   textBundle.attributedString = attributedString;
   textBundle.inlineElementSigns = inlineElementSigns;
   textBundle.textStyle = textStyle;
   [_textRenderManager putAttributedTextBundle:element->impl_id() textBundle:textBundle];
+  truncation_event_ranges_.erase(element->impl_id());
+  if (element->EnableFragmentLayerRender()) {
+    if (auto* manager = element->element_manager(); manager && manager->painting_context()) {
+      if (truncationString.length && (!ranges.body.empty() || !ranges.token.empty())) {
+        truncation_event_ranges_.emplace(element->impl_id(), std::move(ranges));
+      } else {
+        manager->painting_context()->impl()->CastToNativeCtx()->UpdateTextEventTargetRanges(
+            element->impl_id(), std::move(ranges.body));
+      }
+    }
+  }
 }
 
 void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextStyle* textStyle,
@@ -212,7 +266,17 @@ void TextLayoutDarwin::HandleParagraphStyle(TextElement* text_element, LynxTextS
 void TextLayoutDarwin::GenerateAttributedString(
     NSMutableAttributedString* attributedString, Element* element,
     NSDictionary<NSAttributedStringKey, id>* baseAttributes, NSMutableSet* inlineElementSigns,
-    Boolean* hasViewOrImage) {
+    Boolean* hasViewOrImage, NSAttributedString* __strong* truncationString, EventRanges& ranges) {
+  const NSUInteger start = attributedString.length;
+  const bool clickable = element->is_inline_element() && element->HasEventListener("tap");
+  const bool collect_range = clickable && element->EnableFragmentLayerRender();
+  NSAttributedString* previousToken = collect_range && truncationString ? *truncationString : nil;
+  if (clickable) {
+    // Inherit the outer target until a nested clickable text overrides it.
+    NSMutableDictionary* attributes = [baseAttributes mutableCopy];
+    attributes[kLynxInlineTextEventTargetSignKey] = @(element->impl_id());
+    baseAttributes = attributes;
+  }
   // handle no raw-text
   if (element->is_text()) {
     TextElement* text_element = static_cast<TextElement*>(element);
@@ -226,15 +290,50 @@ void TextLayoutDarwin::GenerateAttributedString(
   }
   for (auto* child = element->first_render_child(); child; child = child->next_render_sibling()) {
     ProcessChildAttribute(attributedString, child, baseAttributes, inlineElementSigns,
-                          hasViewOrImage);
+                          hasViewOrImage, truncationString, ranges);
+  }
+  if (collect_range) {
+    // Post-order gives nested targets priority at the same glyph.
+    if (attributedString.length > start) {
+      auto& output = truncationString ? ranges.body : ranges.token;
+      output.push_back({element->impl_id(), static_cast<int32_t>(start),
+                        static_cast<int32_t>(attributedString.length)});
+    }
+    if (truncationString && *truncationString != previousToken && (*truncationString).length) {
+      // A clickable ancestor of the marker also covers the displayed token.
+      ranges.token.push_back(
+          {element->impl_id(), 0, static_cast<int32_t>((*truncationString).length)});
+    }
   }
 }
 
 void TextLayoutDarwin::ProcessChildAttribute(
     NSMutableAttributedString* attributedString, Element* child,
     NSDictionary<NSAttributedStringKey, id>* baseAttributes, NSMutableSet* inlineElementSigns,
-    Boolean* hasViewOrImage) {
-  if (child->is_raw_text()) {
+    Boolean* hasViewOrImage, NSAttributedString* __strong* truncationString, EventRanges& ranges) {
+  if (IsInlineTruncation(child)) {
+    if (truncationString == nullptr) return;
+    NSMutableAttributedString* token = [[NSMutableAttributedString alloc] init];
+    // The token builds its own UIFont, including traits resolved by CSS inheritance.
+    CSSIDBitset property_bits({kPropertyIDFontSize, kPropertyIDFontWeight, kPropertyIDFontStyle});
+    const auto& text_attributes = child->computed_css_style()->GetTextAttributes();
+    if (text_attributes && !text_attributes->font_family.empty()) {
+      property_bits.Set(kPropertyIDFontFamily);
+    }
+    for (const auto& style : child->GetParsedStylesMap()) {
+      property_bits.Set(style.first);
+    }
+    LynxTextStyle* tokenStyle = [[LynxTextStyle alloc] init];
+    ApplyTextStyle(child, property_bits, tokenStyle);
+    NSMutableDictionary* attributes = [baseAttributes mutableCopy];
+    [attributes
+        addEntriesFromDictionary:[tokenStyle toAttributesWithFontFaceContext:_fontFaceContext
+                                                        withFontFaceObserver:nil]];
+    ranges.token.clear();
+    GenerateAttributedString(token, child, attributes, inlineElementSigns, hasViewOrImage, nullptr,
+                             ranges);
+    *truncationString = [token copy];
+  } else if (child->is_raw_text()) {
     RawTextElement* rawText = static_cast<RawTextElement*>(child);
     NSString* content = DecodeTextContentToNSString(rawText->content());
     NSAttributedString* str = [[NSAttributedString alloc] initWithString:content
@@ -253,7 +352,7 @@ void TextLayoutDarwin::ProcessChildAttribute(
     [textAttributes addEntriesFromDictionary:attributes];
 
     GenerateAttributedString(attributedString, textElement, textAttributes, inlineElementSigns,
-                             hasViewOrImage);
+                             hasViewOrImage, truncationString, ranges);
   } else if (child->is_image() || child->is_view()) {
     *hasViewOrImage = YES;
     LynxTextAttachment* textAttachment = [[LynxTextAttachment alloc] init];
@@ -280,14 +379,17 @@ void TextLayoutDarwin::ProcessChildAttribute(
     for (auto* wrap_child = child->first_render_child(); wrap_child;
          wrap_child = wrap_child->next_render_sibling()) {
       ProcessChildAttribute(attributedString, wrap_child, baseAttributes, inlineElementSigns,
-                            hasViewOrImage);
+                            hasViewOrImage, truncationString, ranges);
     }
   }
 }
 
 void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* textStyle) {
-  const CSSIDBitset& property_bits = text_element->property_bits();
+  ApplyTextStyle(text_element, text_element->property_bits(), textStyle);
+}
 
+void TextLayoutDarwin::ApplyTextStyle(Element* text_element, const CSSIDBitset& property_bits,
+                                      LynxTextStyle* textStyle) {
   auto& text_attributes = text_element->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value()) {
     for (CSSPropertyID id : property_bits) {

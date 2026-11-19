@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -32,6 +33,24 @@ bool RegisterJNIForTextLayout(JNIEnv* env) { return RegisterNativesImpl(env); }
 namespace lynx {
 namespace tasm {
 namespace {
+
+bool IsInlineTruncation(Element* element) {
+  return element->GetTag().IsEqual("inline-truncation");
+}
+
+base::String GetRawTextContent(Element* element) {
+  auto* data_model = element->data_model();
+  if (data_model == nullptr) {
+    return base::String();
+  }
+  BASE_STATIC_STRING_DECL(kTextAttr, "text");
+  const auto& attributes = data_model->attributes();
+  auto it = attributes.find(kTextAttr);
+  if (it == attributes.end() || !it->second.IsString()) {
+    return base::String();
+  }
+  return it->second.String();
+}
 
 base::UnicodeDecodeProperty WordBreakToDecodeProperty(
     starlight::WordBreakType word_break) {
@@ -67,15 +86,20 @@ TextElement* FindParentTextElement(Element* child) {
   return nullptr;
 }
 
-void AppendDecodedTextContent(std::string_view text, std::string& output,
-                              size_t& current_length, bool use_utf16,
-                              base::UnicodeDecodeProperty decode_property) {
-  std::string decoded_text =
-      base::UnicodeDecodeUtils::Decode(text, decode_property);
-  output += decoded_text;
-  current_length += use_utf16 ? GetUtf16SizeFromUtf8(decoded_text.c_str(),
-                                                     decoded_text.length())
-                              : decoded_text.length();
+bool NeedsTruncationFontSpan(Element* token) {
+  auto* style = token->computed_css_style();
+  const auto& font = style->GetTextAttributes();
+  if (!font) return false;
+  if (auto* parent = FindParentTextElement(token)) {
+    const auto& inherited = parent->computed_css_style()->GetTextAttributes();
+    if (inherited && inherited->font_weight == font->font_weight &&
+        inherited->font_style == font->font_style) {
+      return false;
+    }
+  }
+  const auto& resolved = style->GetResolvedValues();
+  return resolved.count(kPropertyIDFontWeight) ||
+         resolved.count(kPropertyIDFontStyle);
 }
 
 }  // namespace
@@ -84,6 +108,12 @@ TextLayoutAndroid::TextLayoutAndroid(JNIEnv* env, jobject text_layout)
     : text_layout_(env, text_layout) {}
 
 TextLayoutAndroid::~TextLayoutAndroid() = default;
+
+void TextLayoutAndroid::Destroy(Element* element) {
+  if (element != nullptr) {
+    truncation_event_ranges_.erase(element->impl_id());
+  }
+}
 
 LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
                                         int width_mode, float height,
@@ -154,6 +184,30 @@ LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
 
       // Store line layout info in TextElement
       text_element->SetTextLineLayoutInfo(std::move(line_infos), line_count);
+      const jsize event_size_offset = 4 + line_count * 3;
+      auto truncation = truncation_event_ranges_.find(element->impl_id());
+      if (truncation != truncation_event_ranges_.end() &&
+          array_length >= event_size_offset + 3) {
+        const auto& info = truncation->second;
+        const auto cut = static_cast<int32_t>(result[event_size_offset + 2]);
+        std::vector<PlatformTextEventTargetRange> ranges;
+        for (auto range : info.ranges) {
+          if (range.start >= info.body_length) {
+            if (cut < 0) continue;
+            range.start += cut - info.body_length;
+            range.end += cut - info.body_length;
+          } else {
+            range.end = std::min(range.end, cut < 0 ? info.body_length : cut);
+          }
+          if (range.start < range.end) ranges.push_back(range);
+        }
+        element->element_manager()
+            ->painting_context()
+            ->impl()
+            ->CastToNativeCtx()
+            ->UpdateTextEventTargetRanges(element->impl_id(),
+                                          std::move(ranges));
+      }
     } else {
       text_element->ClearTextLineLayoutInfo();
     }
@@ -170,7 +224,7 @@ void TextLayoutAndroid::MeasureInlineViewRecursively(
     std::vector<float>& layout_result) {
   for (auto* child = element->first_render_child(); child;
        child = child->next_render_sibling()) {
-    if (child->is_text()) {
+    if (child->is_text() || child->is_wrapper() || IsInlineTruncation(child)) {
       MeasureInlineViewRecursively(child, constraints, layout_result);
     } else if (child->is_view()) {
       FloatSize size =
@@ -201,16 +255,15 @@ void TextLayoutAndroid::Align(Element* element) {
     return;
   }
   jsize size = env->GetArrayLength(result.Get());
-  if (size <= 0) {
-    return;
-  }
-  jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
-  for (auto i = 0; i < size / 3; i++) {
-    result_map[arr[i * 3]] = std::make_pair(arr[i * 3 + 1], arr[i * 3 + 2]);
+  if (size > 0) {
+    jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
+    if (arr == nullptr) return;
+    for (auto i = 0; i < size / 3; i++) {
+      result_map[arr[i * 3]] = std::make_pair(arr[i * 3 + 1], arr[i * 3 + 2]);
+    }
+    env->ReleaseFloatArrayElements(result.Get(), arr, JNI_ABORT);
   }
   AlignChildrenRecursively(element, result_map);
-
-  env->ReleaseFloatArrayElements(result.Get(), arr, 0);
 }
 
 void TextLayoutAndroid::AlignChildrenRecursively(
@@ -218,17 +271,39 @@ void TextLayoutAndroid::AlignChildrenRecursively(
     const std::unordered_map<int, std::pair<float, float>>& result_map) {
   for (auto* child = element->first_render_child(); child;
        child = child->next_render_sibling()) {
-    if (child->is_text()) {
+    if (child->is_text() || child->is_wrapper() || IsInlineTruncation(child)) {
       AlignChildrenRecursively(child, result_map);
     } else if (child->is_view()) {
       auto it = result_map.find(child->impl_id());
       if (it != result_map.end()) {
         child->slnode()->AlignmentByPlatform(it->second.first,
                                              it->second.second);
+      } else {
+        child->slnode()->LayoutDisplayNone();
       }
     }
   }
 }
+
+struct TextLayoutAndroid::TextBuffer {
+  void Append(const base::String& content, TextElement* parent) {
+    if (content.empty()) return;
+    auto decoded = base::UnicodeDecodeUtils::Decode(
+        std::string_view(content.c_str(), content.length()),
+        DecodePropertyForTextElement(parent));
+    text += decoded;
+    length += use_utf16
+                  ? GetUtf16SizeFromUtf8(decoded.c_str(), decoded.length())
+                  : decoded.length();
+  }
+
+  bool use_utf16;
+  std::string text;
+  size_t length = 0;
+  bool has_inline_view = false;
+  Element* truncation = nullptr;
+  PropArrayAndroid props;
+};
 
 void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
@@ -236,21 +311,39 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
     return;
   }
   JNIEnv* env = base::android::AttachCurrentThread();
-  auto props = std::make_unique<PropArrayAndroid>();
-  TextElement* text_element = static_cast<TextElement*>(element);
-  std::string output_str;
-  size_t current_length = 0;
-  bool use_utf16 =
+  auto* text_element = static_cast<TextElement*>(element);
+  TextBuffer buffer{};
+  buffer.use_utf16 =
       text_element->is_inline_element() || text_element->has_inline_child();
-  bool has_inline_view = false;
   building_event_target_ranges_.clear();
-  BuildTextPropsBuffer(text_element, output_str, current_length, use_utf16,
-                       props.get(), &has_inline_view);
-  text_element->set_need_layout_children(has_inline_view);
+  AppendTextContent(element, buffer);
+  const auto body_length = buffer.length;
+  if (auto* token = buffer.truncation) {
+    AppendTextContent(token, buffer);
+    if (buffer.length > body_length) {
+      AppendTextProps(token, body_length, buffer.length, &buffer.props);
+      for (auto* parent = token->parent(); parent && parent != element;
+           parent = parent->parent()) {
+        if (parent->is_text())
+          AppendTextProps(parent, body_length, buffer.length, &buffer.props);
+      }
+      buffer.props.AddProp(kPropInlineTruncation);
+      buffer.props.AddProp(static_cast<int>(body_length));
+    }
+  }
+  if (buffer.length > 0)
+    AppendTextProps(element, 0, buffer.length, &buffer.props);
+  text_element->set_need_layout_children(buffer.has_inline_view);
 
+  truncation_event_ranges_.erase(element->impl_id());
   if (element->EnableFragmentLayerRender()) {
-    if (auto* manager = element->element_manager();
-        manager && manager->painting_context()) {
+    if (buffer.length > body_length && !building_event_target_ranges_.empty()) {
+      truncation_event_ranges_.emplace(
+          element->impl_id(),
+          TruncationEventRanges{static_cast<int32_t>(body_length),
+                                std::move(building_event_target_ranges_)});
+    } else if (auto* manager = element->element_manager();
+               manager && manager->painting_context()) {
       manager->painting_context()
           ->impl()
           ->CastToNativeCtx()
@@ -259,14 +352,9 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
     }
   }
 
-  props->AddProp(kPropTextString);
-  props->AddProp(output_str.c_str());
-
-  std::optional<base::android::CompactArrayBuffer> text_ab = std::nullopt;
-
-  if (props.get()->GetArrayBuffer()) {
-    text_ab = props.get()->GetArrayBuffer();
-  }
+  buffer.props.AddProp(kPropTextString);
+  buffer.props.AddProp(buffer.text.c_str());
+  auto text_ab = buffer.props.GetArrayBuffer();
   auto j_text_props = text_ab ? base::android::JReadableCompactArrayBuffer::
                                     CreateReadableCompactArrayBuffer(*text_ab)
                               : std::nullopt;
@@ -278,85 +366,76 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
                                        j_text_props->Get());
 }
 
-void TextLayoutAndroid::BuildTextPropsBuffer(
-    TextElement* element, std::string& output, size_t& current_length,
-    bool use_utf16, PropArrayAndroid* props, bool* has_inline_view) {
-  size_t start = current_length;
-  base::String& content = element->content();
-  const auto decode_property = DecodePropertyForTextElement(element);
-  if (!content.empty()) {
-    AppendDecodedTextContent(
-        std::string_view(content.c_str(), content.length()), output,
-        current_length, use_utf16, decode_property);
+void TextLayoutAndroid::AppendTextContent(Element* element,
+                                          TextBuffer& buffer) {
+  if (element->is_text()) {
+    auto* text = static_cast<TextElement*>(element);
+    buffer.Append(text->content(), text);
   }
-
-  auto* child = element->first_render_child();
-  while (child) {
-    ProcessChildProps(child, output, current_length, use_utf16, props,
-                      has_inline_view);
-    child = child->next_render_sibling();
-  }
-
-  auto end = current_length;
-  if (end > start) {
-    AppendTextProps(element, start, end, props);
-  }
-}
-
-void TextLayoutAndroid::ProcessChildProps(Element* child, std::string& output,
-                                          size_t& current_length,
-                                          bool use_utf16,
-                                          PropArrayAndroid* props,
-                                          bool* has_inline_view) {
-  if (child->is_raw_text()) {
-    auto* raw_text_child = static_cast<RawTextElement*>(child);
-    const auto& raw_content = raw_text_child->content();
-    if (!raw_content.empty()) {
-      AppendDecodedTextContent(
-          std::string_view(raw_content.c_str(), raw_content.length()), output,
-          current_length, use_utf16,
-          DecodePropertyForTextElement(FindParentTextElement(child)));
-    }
-  } else if (child->is_text()) {
-    // inline text
-    BuildTextPropsBuffer(static_cast<TextElement*>(child), output,
-                         current_length, use_utf16, props, has_inline_view);
-  } else if (child->is_image()) {
-    // inline image
-    output += kInlinePlaceHolder;
-    current_length += 1;  // placeholder's length is 1
-    AppendImageProps(static_cast<ImageElement*>(child), current_length - 1,
-                     current_length, props);
-  } else if (child->is_view()) {
-    // inline view
-    output += kInlinePlaceHolder;
-    current_length += 1;  // placeholder's length is 1
-    AppendViewProps(static_cast<ViewElement*>(child), current_length - 1,
-                    current_length, props);
-    *has_inline_view = true;
-  } else if (child->is_wrapper()) {
-    auto* wrap_child = child->first_render_child();
-    while (wrap_child) {
-      ProcessChildProps(wrap_child, output, current_length, use_utf16, props,
-                        has_inline_view);
-      wrap_child = wrap_child->next_render_sibling();
+  for (auto* child = element->first_render_child(); child;
+       child = child->next_render_sibling()) {
+    const auto start = buffer.length;
+    if (IsInlineTruncation(child)) {
+      buffer.truncation = child;
+    } else if (child->is_raw_text()) {
+      buffer.Append(static_cast<RawTextElement*>(child)->content(),
+                    FindParentTextElement(child));
+    } else if (child->GetTag().IsEqual(RawTextElement::kRawTextTag)) {
+      buffer.Append(GetRawTextContent(child), FindParentTextElement(child));
+    } else if (child->is_text() || child->is_wrapper()) {
+      AppendTextContent(child, buffer);
+      if (child->is_text() && buffer.length > start) {
+        AppendTextProps(child, start, buffer.length, &buffer.props);
+      }
+    } else if (child->is_image() || child->is_view()) {
+      buffer.text += kInlinePlaceHolder;
+      ++buffer.length;
+      if (child->is_image()) {
+        AppendImageProps(static_cast<ImageElement*>(child), start,
+                         buffer.length, &buffer.props);
+      } else {
+        AppendViewProps(static_cast<ViewElement*>(child), start, buffer.length,
+                        &buffer.props);
+        buffer.has_inline_view = true;
+      }
     }
   }
 }
 
-void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
+void TextLayoutAndroid::AppendTextProps(Element* element, size_t pos_start,
                                         size_t pos_end,
                                         PropArrayAndroid* props) {
-  TextProps* text_props = element->text_props();
-  CSSIDBitset& property_bits = element->property_bits();
-  const bool has_tap_event =
-      element->is_inline_element() && element->HasEventListener("tap");
+  auto* text_element =
+      element->is_text() ? static_cast<TextElement*>(element) : nullptr;
+  TextProps* text_props = text_element ? text_element->text_props() : nullptr;
+  auto inline_end = kPropInlineEnd;
+  CSSIDBitset token_properties;
+  if (!text_element) {
+    token_properties.Set(kPropertyIDFontSize);
+    for (const auto& style : element->GetParsedStylesMap()) {
+      if (style.first != kPropertyIDFontWeight &&
+          style.first != kPropertyIDFontStyle) {
+        token_properties.Set(style.first);
+      }
+    }
+    if (NeedsTruncationFontSpan(element)) {
+      // Android applies weight and italic together, including an explicit reset
+      // to normal.
+      token_properties.Set(kPropertyIDFontWeight);
+      token_properties.Set(kPropertyIDFontStyle);
+      inline_end = kPropInlineEndWithFont;
+    }
+  }
+  const CSSIDBitset& property_bits =
+      text_element ? text_element->property_bits() : token_properties;
+  const bool is_inline = !text_element || element->is_inline_element();
+  const bool has_tap_event = is_inline && element->HasEventListener("tap");
   if (!text_props && !property_bits.HasAny() && !has_tap_event) {
     return;
   }
   // only inline text need the pass the range，   kPropRangeStart should be
   // the first key
-  if (element->is_inline_element()) {
+  if (is_inline) {
     props->AddProp(kPropInlineStart);
     props->AddProp(static_cast<int>(pos_start));
     if (has_tap_event) {
@@ -652,8 +731,8 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
 
   // only inline text need the pass the range, kPropRangeEnd should be the
   // first key
-  if (element->is_inline_element()) {
-    props->AddProp(kPropInlineEnd);
+  if (is_inline) {
+    props->AddProp(inline_end);
     props->AddProp(static_cast<int>(pos_end));
   }
 }

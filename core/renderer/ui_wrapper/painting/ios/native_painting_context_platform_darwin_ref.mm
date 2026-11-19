@@ -4,12 +4,21 @@
 
 #include "core/renderer/ui_wrapper/painting/ios/native_painting_context_platform_darwin_ref.h"
 
+#include <algorithm>
+
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
+#import <Lynx/LynxContext+Internal.h>
+#import <Lynx/LynxRendererContext.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxTextRenderer.h>
+#import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #import "LynxTimingConstants.h"
 
@@ -19,6 +28,78 @@ namespace tasm {
 NativePaintingCtxPlatformDarwinRef::NativePaintingCtxPlatformDarwinRef(
     std::unique_ptr<PlatformRendererFactory> view_factory)
     : NativePaintingCtxPlatformRef(std::move(view_factory)) {}
+
+PlatformTextEventTargetRegions NativePaintingCtxPlatformDarwinRef::GetTextEventTargetRegions(
+    int32_t text_id) {
+  PlatformTextEventTargetRegions regions;
+  const auto* ranges = GetTextEventTargetRanges(text_id);
+  LynxRendererContext* context = GetRendererContext();
+  if (ranges == nullptr || context == nil) {
+    return regions;
+  }
+  auto append = [&](int32_t sign, CGRect rect) {
+    if (!CGRectIsEmpty(rect) && !CGRectIsNull(rect) && !CGRectIsInfinite(rect)) {
+      regions.push_back(PlatformTextEventTargetRegion{
+          sign, static_cast<float>(rect.origin.x), static_cast<float>(rect.origin.y),
+          static_cast<float>(rect.size.width), static_cast<float>(rect.size.height)});
+    }
+  };
+  if (context.uiContext.lynxContext.isTextServiceModeOn) {
+    void* page = [context getTextBundle:text_id];
+    id<LynxServiceTextProtocol> service = LynxService(LynxServiceTextProtocol);
+    if (page == nullptr || service == nil) {
+      return regions;
+    }
+    for (const auto& range : *ranges) {
+      if (range.start < 0 || range.end <= range.start) continue;
+      NSArray* rects =
+          [service getSelectionRectsOfPage:page
+                               ByCharRange:NSMakeRange(range.start, range.end - range.start)];
+      for (NSValue* value in rects) append(range.sign, value.CGRectValue);
+    }
+  } else {
+    LynxTextRenderer* renderer = [context.textRenderManager takeTextRender:text_id];
+    if (renderer == nil) return regions;
+    NSLayoutManager* layout = renderer.layoutManager;
+    NSTextContainer* container = layout.textContainers.firstObject;
+    if (container == nil) return regions;
+    const NSRange visible = [layout glyphRangeForTextContainer:container];
+    for (const auto& range : *ranges) {
+      if (range.start < 0 || range.end <= range.start ||
+          static_cast<NSUInteger>(range.end) > renderer.textStorage.length)
+        continue;
+      // Exclude line terminators: their enclosing rects extend to the line edge.
+      NSString* text = renderer.textStorage.string;
+      const CGFloat offset = renderer.textContentOffsetX;
+      NSUInteger position = range.start;
+      while (position < static_cast<NSUInteger>(range.end)) {
+        NSUInteger lineEnd, contentsEnd;
+        [text getLineStart:nullptr
+                       end:&lineEnd
+               contentsEnd:&contentsEnd
+                  forRange:NSMakeRange(position, 0)];
+        const NSUInteger end = std::min(contentsEnd, static_cast<NSUInteger>(range.end));
+        if (end > position) {
+          NSRange glyphs = [layout glyphRangeForCharacterRange:NSMakeRange(position, end - position)
+                                          actualCharacterRange:nullptr];
+          glyphs = NSIntersectionRange(glyphs, visible);
+          if (glyphs.length > 0) {
+            [layout enumerateEnclosingRectsForGlyphRange:glyphs
+                                withinSelectedGlyphRange:NSMakeRange(NSNotFound, 0)
+                                         inTextContainer:container
+                                              usingBlock:^(CGRect rect, BOOL* stop) {
+                                                rect.origin.x += offset;
+                                                append(range.sign, rect);
+                                              }];
+          }
+        }
+        if (lineEnd <= position) break;
+        position = lineEnd;
+      }
+    }
+  }
+  return regions;
+}
 
 std::vector<float> NativePaintingCtxPlatformDarwinRef::GetTransformValue(
     int32_t sign, const std::vector<float>& offsets) {

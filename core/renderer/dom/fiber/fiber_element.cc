@@ -5750,6 +5750,11 @@ void Element::MarkLayoutDirtyLite() {
     EnsureSLNode();
     sl_node_->MarkDirtyAndRequestLayout();
   } else {
+    // A custom virtual node needs its own layout-before callback even though
+    // the request is scheduled through its layout ancestor.
+    if (sl_node_ != nullptr && sl_node_->need_custom_layout()) {
+      sl_node_->MarkDirty();
+    }
     auto *parent = render_parent_;
     while (parent) {
       if (!parent->is_virtual_) {
@@ -5766,7 +5771,9 @@ void Element::MarkLayoutDirtyLite() {
  */
 void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
   if (!is_wrapper()) {
-    if (sl_node_ == nullptr || !(sl_node_->IsDirty())) {
+    // Virtual containers are skipped in the layout tree, so their dirty state
+    // cannot be used to prune their measured descendants.
+    if (!is_virtual() && (sl_node_ == nullptr || !sl_node_->IsDirty())) {
       return;
     }
 
@@ -5774,7 +5781,9 @@ void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
       UpdateLayoutInfo();
     }
 
-    sl_node_->MarkUpdated();
+    if (sl_node_ != nullptr) {
+      sl_node_->MarkUpdated();
+    }
   }
 
   for (auto &child : scoped_children_) {
@@ -5840,12 +5849,12 @@ void Element::SetAlignmentFunc(void *context,
  */
 void Element::DispatchLayoutBeforeRecursively() {
   if (!is_wrapper()) {
-    if (sl_node_ == nullptr || !sl_node_->IsDirty()) {
+    if (sl_node_ != nullptr && sl_node_->IsDirty()) {
+      if (sl_node_->need_custom_layout()) {
+        DispatchLayoutBefore();
+      }
+    } else if (!is_virtual()) {
       return;
-    }
-
-    if (sl_node_->GetSLMeasureFunc()) {
-      DispatchLayoutBefore();
     }
   }
 
