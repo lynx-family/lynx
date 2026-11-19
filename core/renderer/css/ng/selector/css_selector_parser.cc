@@ -647,9 +647,9 @@ bool CSSSelectorParser::ConsumeANPlusB(CSSParserTokenRange& range,
     n_string = range.Consume().Value();
   } else if (token.GetType() == kDimensionToken &&
              token.GetNumericValueType() == kIntegerValueType) {
-    result.first = std::clamp<int64_t>(
+    result.first = static_cast<int>(std::clamp<int64_t>(
         static_cast<int64_t>(token.NumericValue()),
-        std::numeric_limits<int>::lowest(), std::numeric_limits<int>::max());
+        std::numeric_limits<int>::lowest(), std::numeric_limits<int>::max()));
     n_string = token.Value();
   } else if (token.GetType() == kIdentToken) {
     if (token.Value()[0] == '-') {
@@ -696,9 +696,9 @@ bool CSSSelectorParser::ConsumeANPlusB(CSSParserTokenRange& range,
       b.GetNumericValueType() != kIntegerValueType)
     return false;
   if ((b.GetNumericSign() == kNoSign) == (sign == kNoSign)) return false;
-  result.second = std::clamp<int64_t>(static_cast<int64_t>(b.NumericValue()),
-                                      std::numeric_limits<int>::lowest(),
-                                      std::numeric_limits<int>::max());
+  result.second = static_cast<int>(std::clamp<int64_t>(
+      static_cast<int64_t>(b.NumericValue()),
+      std::numeric_limits<int>::lowest(), std::numeric_limits<int>::max()));
   if (sign == kMinusSign) {
     // Negating minimum integer returns itself, instead return max integer.
     if (UNLIKELY(result.second == std::numeric_limits<int>::min()))
