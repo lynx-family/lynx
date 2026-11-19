@@ -17,6 +17,7 @@ TEST(JsBundle, JsContent) {
   EXPECT_TRUE(source.IsSourceCode());
   EXPECT_FALSE(source.IsByteCode());
   EXPECT_FALSE(source.IsError());
+  EXPECT_EQ(source.GetSourceLineOffset(), 0);
 
   source = JsContent("src", JsContent::Type::BYTECODE);
   EXPECT_FALSE(source.IsSourceCode());
@@ -27,6 +28,18 @@ TEST(JsBundle, JsContent) {
   EXPECT_FALSE(source.IsSourceCode());
   EXPECT_FALSE(source.IsByteCode());
   EXPECT_TRUE(source.IsError());
+}
+
+TEST(JsBundle, WrappedSourceLineOffset) {
+  std::string script = "throw new Error('test');";
+  const int offset = AddAppServiceWrapForJsContent(script);
+  JsBundle bundle;
+  bundle.AddJsContent(
+      "app-service.js",
+      JsContent(std::move(script), JsContent::Type::SOURCE, offset));
+  auto copy = bundle.GetJsContent("app-service.js")->get();
+  EXPECT_TRUE(copy.IsSourceCode());
+  EXPECT_EQ(copy.GetSourceLineOffset(), offset);
 }
 
 TEST(JsBundle, JsBundle) {

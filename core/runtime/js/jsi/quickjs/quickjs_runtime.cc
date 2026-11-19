@@ -311,7 +311,7 @@ std::unique_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
   // LEPUS_Eval_WITH_COVERAGE. This path neither reads nor generates a shared
   // bytecode cache.
   if (!enable_js_coverage_) {
-    cache = GetBytecode(buffer, source_url);
+    cache = GetBytecode(buffer, source_url, start_line_offset);
   }
   cache::JsCacheTracker::OnPrepareJS(
       JSRuntimeType::quickjs, source_url, false,
@@ -341,7 +341,7 @@ QuickjsRuntime::evaluatePreparedJavaScript(const PreparedJavaScript &js) {
     if (GetEnableUserBytecode() && source) {
       std::vector<std::unique_ptr<cache::CacheGenerator>> generators;
       generators.push_back(std::make_unique<cache::QuickjsCacheGenerator>(
-          preparation->source_url, source));
+          preparation->source_url, source, preparation->start_line_offset));
       cache::JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
           GetBytecodeSourceUrl(), std::move(generators), true);
     }
@@ -964,8 +964,8 @@ int64_t QuickjsRuntime::GetCurrentHeapSizeBytes() {
 }
 
 std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
-    const std::shared_ptr<const Buffer> &buffer,
-    const std::string &source_url) const {
+    const std::shared_ptr<const Buffer> &buffer, const std::string &source_url,
+    int start_line_offset) const {
   std::shared_ptr<Buffer> cache;
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
@@ -975,8 +975,8 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
       GetEnableUserBytecode()) {
     LOGI("using new bytecode");
     auto &instance = cache::JsCacheManager::GetQuickjsInstance();
-    auto generator =
-        std::make_unique<cache::QuickjsCacheGenerator>(source_url, buffer);
+    auto generator = std::make_unique<cache::QuickjsCacheGenerator>(
+        source_url, buffer, start_line_offset);
     auto runtime_delegate = GetRuntimeDelegate();
     cache =
         instance.TryGetCache(source_url, GetBytecodeSourceUrl(), getRuntimeId(),

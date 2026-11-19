@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/md5.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_helper.h"
 #ifdef OS_IOS
@@ -40,8 +41,19 @@ namespace {
 }  // namespace
 
 QuickjsCacheGenerator::QuickjsCacheGenerator(
-    std::string source_url, std::shared_ptr<const Buffer> src_buffer)
-    : CacheGenerator(std::move(source_url), std::move(src_buffer)) {}
+    std::string source_url, std::shared_ptr<const Buffer> src_buffer,
+    int start_line_offset)
+    : CacheGenerator(std::move(source_url), std::move(src_buffer)),
+      start_line_offset_(start_line_offset) {
+  if (start_line_offset_ != 0) {
+    // Identical source compiled with a different origin must not reuse bytecode
+    // whose debug positions were generated with the old origin.
+    md5_optional_ =
+        base::md5(base::md5(reinterpret_cast<const char *>(src_buffer_->data()),
+                            src_buffer_->size()) +
+                  ":line-offset:" + std::to_string(start_line_offset_));
+  }
+}
 
 std::shared_ptr<Buffer> QuickjsCacheGenerator::GenerateCache() {
   std::string cache;
@@ -101,8 +113,9 @@ LEPUSValue QuickjsCacheGenerator::CompileJS(
 
   eval_flags = LEPUS_EVAL_FLAG_COMPILE_ONLY | LEPUS_EVAL_TYPE_GLOBAL |
                (enable_strip_ ? LEPUS_EVAL_FLAG_STRIP : 0);
-  obj = LEPUS_Eval(ctx, reinterpret_cast<const char *>(buffer->data()),
-                   buffer->size(), source_url.c_str(), eval_flags);
+  obj = LEPUS_Eval2(ctx, reinterpret_cast<const char *>(buffer->data()),
+                    buffer->size(), source_url.c_str(), eval_flags,
+                    start_line_offset_);
   if (LEPUS_IsException(obj)) {
     LOGE("CompileJS failed:" << source_url);
     UNUSED_LOG_VARIABLE LEPUSValue exception_val = LEPUS_GetException(ctx);

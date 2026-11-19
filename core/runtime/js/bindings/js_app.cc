@@ -3043,8 +3043,12 @@ base::expected<Value, JSINativeException> App::LoadScript(
                   "isSourceCode", content.IsSourceCode(), "isByteCode",
                   content.IsByteCode(), "size", content.GetBuffer()->size());
 
-      auto prep =
-          rt->prepareJavaScript(std::move(content).GetBuffer(), source_url);
+      // PrimJS supports negative compilation offsets for generated wrappers.
+      const int source_line_offset = rt->type() == JSRuntimeType::quickjs
+                                         ? content.GetSourceLineOffset()
+                                         : 0;
+      auto prep = rt->prepareJavaScript(std::move(content).GetBuffer(),
+                                        source_url, source_line_offset);
       auto ret = rt->evaluatePreparedJavaScript(*prep);
       if (is_app_service_js) {
         state_ = ret.has_value() ? State::kAppLoaded : State::kAppLoadFailed;
