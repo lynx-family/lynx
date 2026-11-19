@@ -62,7 +62,7 @@
 
   lynx::tasm::DisplayList list;
   [[mockApplier expect] applyDisplayList:&list];
-  [[mockApplier expect] syncHostDecorationLayers];
+  OCMReject([mockApplier syncHostDecorationLayers]);
 
   [renderer updateDisplayList:&list];
 

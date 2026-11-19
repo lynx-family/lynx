@@ -3,8 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxDisplayListApplier+Internal.h>
 #import <Lynx/LynxImageManager.h>
+#import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxRenderer+Internal.h>
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
@@ -13,12 +15,17 @@
 #import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTextLayer.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIScroller.h>
 #import <Lynx/UIView+Lynx.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
+#import "../ui/LynxUIUnitTestUtils.h"
 #include "core/public/platform_renderer_type.h"
+#include "core/renderer/ui_wrapper/painting/ios/path_darwin.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "gfx/public/display_list.h"
+#include "gfx/public/path.h"
 
 using namespace lynx::tasm;
 
@@ -37,6 +44,73 @@ using namespace lynx::tasm;
 @end
 
 namespace {
+lynx::tasm::PathDarwinFactory ClipFactory;
+
+void AppendPathClip(DisplayList &list, fml::RefPtr<lynx::gfx::Path> path,
+                    lynx::gfx::PathFillRule rule = lynx::gfx::PathFillRule::kNonzero, float x = 0,
+                    float y = 0) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kClipPath;
+  item.payload.clip_path.path_index = list.RetainPath(std::move(path));
+  item.payload.clip_path.fill_rule = rule;
+  item.payload.clip_path.x = x;
+  item.payload.clip_path.y = y;
+  list.AppendItem(item);
+}
+
+void AddOwnerClip(DisplayList &list, fml::RefPtr<lynx::gfx::Path> path,
+                  lynx::gfx::PathFillRule rule = lynx::gfx::PathFillRule::kNonzero, float x = 0,
+                  float y = 0) {
+  SubtreeProperty property{};
+  property.type = DisplayListSubtreePropertyOpType::kClipPath;
+  property.data.clip_path.path_index = path ? list.RetainPath(std::move(path)) : UINT32_MAX;
+  property.data.clip_path.fill_rule = rule;
+  property.data.clip_path.x = x;
+  property.data.clip_path.y = y;
+  list.AddSubtreeProperty(property);
+}
+
+CGPoint ProjectPoint(CGPoint point, CATransform3D transform) {
+  CGFloat w = point.x * transform.m14 + point.y * transform.m24 + transform.m44;
+  return CGPointMake((point.x * transform.m11 + point.y * transform.m21 + transform.m41) / w,
+                     (point.x * transform.m12 + point.y * transform.m22 + transform.m42) / w);
+}
+
+bool ClipMaskContains(CALayer *layer, CGPoint point) {
+  for (CALayer *mask = layer.mask; mask != nil; mask = mask.mask) {
+    CATransform3D local = CATransform3DMakeTranslation(
+        -mask.bounds.origin.x - mask.anchorPoint.x * mask.bounds.size.width,
+        -mask.bounds.origin.y - mask.anchorPoint.y * mask.bounds.size.height, 0);
+    local = CATransform3DConcat(local, mask.transform);
+    local = CATransform3DConcat(local,
+                                CATransform3DMakeTranslation(mask.position.x, mask.position.y, 0));
+    point = ProjectPoint(point, CATransform3DInvert(local));
+    if (!CGRectContainsPoint(mask.bounds, point)) return false;
+    if ([mask isKindOfClass:[CAShapeLayer class]]) {
+      CAShapeLayer *shape = (CAShapeLayer *)mask;
+      if (!CGPathContainsPoint(shape.path, nullptr, point,
+                               [shape.fillRule isEqualToString:kCAFillRuleEvenOdd]))
+        return false;
+    }
+  }
+  return true;
+}
+
+uint8_t LayerPixelAlpha(CALayer *layer, size_t x, size_t y) {
+  constexpr size_t size = 100;
+  uint8_t pixels[size * size * 4]{};
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+  CGContextRef context = CGBitmapContextCreate(pixels, size, size, 8, size * 4, colorSpace,
+                                               kCGImageAlphaPremultipliedLast);
+  CGContextTranslateCTM(context, 0, size);
+  CGContextScaleCTM(context, 1, -1);
+  [layer renderInContext:context];
+  uint8_t alpha = pixels[(y * size + x) * 4 + 3];
+  CGContextRelease(context);
+  CGColorSpaceRelease(colorSpace);
+  return alpha;
+}
+
 constexpr int32_t kViewType = static_cast<int32_t>(PlatformRendererType::kView);
 
 void AppendBegin(DisplayList &list, int32_t id, int32_t type, float x, float y, float w, float h) {
@@ -457,6 +531,129 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 
 @implementation LynxDisplayListApplierUnitTest
 
+- (NSArray<NSNumber *> *)redValuesForImage:(UIImage *)image
+                                    points:(NSArray<NSValue *> *)points
+                                      name:(NSString *)name {
+  XCTAttachment *attachment = [XCTAttachment attachmentWithImage:image];
+  attachment.name = name;
+  attachment.lifetime = XCTAttachmentLifetimeKeepAlways;
+  [self addAttachment:attachment];
+  CGImageRef cgImage = image.CGImage;
+  XCTAssertNotEqual(cgImage, nullptr);
+  XCTAssertEqual(CGImageGetBitsPerComponent(cgImage), 8u);
+  XCTAssertEqual(CGImageGetBitsPerPixel(cgImage), 32u);
+  CFDataRef pixels = CGDataProviderCopyData(CGImageGetDataProvider(cgImage));
+  const uint8_t *bytes = CFDataGetBytePtr(pixels);
+  CGImageAlphaInfo alpha = CGImageGetAlphaInfo(cgImage);
+  BOOL alphaFirst = alpha == kCGImageAlphaPremultipliedFirst || alpha == kCGImageAlphaFirst ||
+                    alpha == kCGImageAlphaNoneSkipFirst;
+  BOOL littleEndian =
+      (CGImageGetBitmapInfo(cgImage) & kCGBitmapByteOrderMask) == kCGBitmapByteOrder32Little;
+  NSUInteger redOffset = littleEndian ? (alphaFirst ? 2 : 3) : (alphaFirst ? 1 : 0);
+  NSMutableArray<NSNumber *> *values = [NSMutableArray new];
+  NSMutableArray<NSValue *> *imagePoints = [NSMutableArray new];
+  for (NSValue *value in points) {
+    CGPoint point = value.CGPointValue;
+    [imagePoints addObject:[NSValue valueWithCGPoint:point]];
+    XCTAssertTrue(CGRectContainsPoint((CGRect){CGPointZero, image.size}, point));
+    NSUInteger x = MAX(0, MIN(CGImageGetWidth(cgImage) - 1, floor(point.x)));
+    NSUInteger y = MAX(0, MIN(CGImageGetHeight(cgImage) - 1, floor(point.y)));
+    [values addObject:@(bytes[y * CGImageGetBytesPerRow(cgImage) + x * 4 + redOffset])];
+  }
+  XCTAttachment *coordinates = [XCTAttachment
+      attachmentWithString:[NSString stringWithFormat:@"View points: %@\nImage points: %@\nRed "
+                                                      @"values: %@\nBitmap info: %u",
+                                                      points, imagePoints, values,
+                                                      (unsigned)CGImageGetBitmapInfo(cgImage)]];
+  coordinates.name = [name stringByAppendingString:@"-coordinates"];
+  coordinates.lifetime = XCTAttachmentLifetimeKeepAlways;
+  [self addAttachment:coordinates];
+  CFRelease(pixels);
+  return values;
+}
+
+- (NSArray<NSNumber *> *)renderedRedValuesForView:(UIView *)view
+                                           points:(NSArray<NSValue *> *)points
+                                             name:(NSString *)name {
+  UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+  format.scale = 1;
+  format.opaque = YES;
+  if (@available(iOS 12.0, *)) format.preferredRange = UIGraphicsImageRendererFormatRangeStandard;
+  UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:view.bounds.size
+                                                                             format:format];
+  UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+    [UIColor.blackColor setFill];
+    UIRectFill((CGRect){CGPointZero, view.bounds.size});
+    CGContextTranslateCTM(context.CGContext, -view.bounds.origin.x, -view.bounds.origin.y);
+    [view.layer renderInContext:context.CGContext];
+  }];
+  NSMutableArray<NSValue *> *imagePoints = [NSMutableArray new];
+  for (NSValue *point in points) {
+    [imagePoints
+        addObject:[NSValue
+                      valueWithCGPoint:CGPointMake(point.CGPointValue.x - view.bounds.origin.x,
+                                                   point.CGPointValue.y - view.bounds.origin.y)]];
+  }
+  return [self redValuesForImage:image points:imagePoints name:name];
+}
+
+- (NSArray<NSNumber *> *)hostedRedValuesForView:(UIView *)view
+                                         points:(NSArray<NSValue *> *)points
+                                           name:(NSString *)name {
+  UIWindow *previousWindow = nil;
+  for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
+    if (candidate.isKeyWindow) previousWindow = candidate;
+  }
+  UIWindow *window = nil;
+  if (@available(iOS 13.0, *)) {
+    if (previousWindow.windowScene != nil) {
+      window = [[UIWindow alloc] initWithWindowScene:previousWindow.windowScene];
+    }
+  }
+  if (window == nil) window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+  window.frame = UIScreen.mainScreen.bounds;
+  window.windowLevel = UIWindowLevelAlert + 1;
+  window.backgroundColor = UIColor.blackColor;
+  UIViewController *controller = [UIViewController new];
+  controller.view.backgroundColor = UIColor.blackColor;
+  window.rootViewController = controller;
+  UIView *originalParent = view.superview;
+  NSUInteger originalIndex = [originalParent.subviews indexOfObjectIdenticalTo:view];
+  [controller.view addSubview:view];
+  [window makeKeyAndVisible];
+  [window layoutIfNeeded];
+  [CATransaction flush];
+  XCTestExpectation *composition = [self expectationWithDescription:name];
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(),
+                 ^{
+                   [composition fulfill];
+                 });
+  [self waitForExpectationsWithTimeout:2 handler:nil];
+  UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+  format.scale = 1;
+  format.opaque = YES;
+  if (@available(iOS 12.0, *)) format.preferredRange = UIGraphicsImageRendererFormatRangeStandard;
+  UIGraphicsImageRenderer *renderer =
+      [[UIGraphicsImageRenderer alloc] initWithSize:window.bounds.size format:format];
+  __block BOOL captured = NO;
+  UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+    captured = [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:YES];
+  }];
+  XCTAssertTrue(captured);
+  NSMutableArray<NSValue *> *windowPoints = [NSMutableArray new];
+  for (NSValue *point in points) {
+    [windowPoints addObject:[NSValue valueWithCGPoint:[view convertPoint:point.CGPointValue
+                                                                  toView:window]]];
+  }
+  NSArray<NSNumber *> *values = [self redValuesForImage:image points:windowPoints name:name];
+  [view removeFromSuperview];
+  if (originalParent != nil)
+    [originalParent insertSubview:view atIndex:MIN(originalIndex, originalParent.subviews.count)];
+  window.hidden = YES;
+  [previousWindow makeKeyWindow];
+  return values;
+}
+
 - (void)setUp {
 }
 
@@ -592,7 +789,7 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 }
 
 - (void)testInitWithView {
-  id mockView = OCMProtocolMock(@protocol(LynxRendererHost));
+  LynxMockView *mockView = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
   id mockContext = OCMClassMock([LynxRendererContext class]);
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockView
                                                                       andContext:mockContext];
@@ -600,7 +797,7 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
 }
 
 - (void)testApplyDisplayListWithNullInputs {
-  id mockView = OCMProtocolMock(@protocol(LynxRendererHost));
+  LynxMockView *mockView = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
   id mockContext = OCMClassMock([LynxRendererContext class]);
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:mockView
                                                                       andContext:mockContext];
@@ -2215,6 +2412,876 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertNotEqual(host.subviews.firstObject, first);
   OCMVerify([secondManager setTarget:[OCMArg any]]);
   XCTAssertNil(first.superview);
+}
+
+- (void)testOwnerPathIntersectsOverflowAndEvenOddAndSurvivesListRelease {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  host.backgroundColor = UIColor.redColor;
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+  AppendClipRect(content, 10, 10, 70, 70);
+  AppendEnd(content);
+  [host.renderer updateDisplayList:&content];
+  CALayer *overflowMask = host.layer.mask;
+  CGPathRef nativePath = nullptr;
+  {
+    DisplayList properties;
+    auto path = lynx::gfx::Path::MakeSvgPathData(
+        lynx::base::String("M0 0H90V90H0Z M30 30H60V60H30Z"), 1, ClipFactory);
+    nativePath = static_cast<const PathDarwin &>(path->GetImpl()).GetCGPath();
+    AddOwnerClip(properties, path, lynx::gfx::PathFillRule::kEvenOdd);
+    [host.renderer applySubtreePropertiesFromList:&properties];
+  }
+  XCTAssertNotNil(host.layer.mask);
+  XCTAssertNotEqual(nativePath, nullptr);
+  XCTAssertEqual(host.layer.mask.mask.mask, overflowMask);
+  XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(20, 20)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(40, 40)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(85, 20)));
+  XCTAssertGreaterThan(LayerPixelAlpha(host.layer, 20, 20), 200);
+  XCTAssertEqual(LayerPixelAlpha(host.layer, 40, 40), 0);
+  DisplayList clear;
+  AddOwnerClip(clear, nullptr);
+  [host.renderer applySubtreePropertiesFromList:&clear];
+  XCTAssertEqual(host.layer.mask, overflowMask);
+}
+
+- (void)testOwnerPathPropertyUpdateKeepsDecorationContentAndClearsOnReset {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:parent.bounds];
+  [parent addSubview:host];
+  [host createRendererWithSign:1 andContext:nil];
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+  AppendRecordBox(content, 0, 0, 100, 100);
+  AppendFill(content, 0xffff0000, 0);
+  AppendEnd(content);
+  [host.renderer updateDisplayList:&content];
+  CALayer *decoration = parent.layer.sublayers.firstObject;
+  XCTAssertNotEqual(decoration, host.layer);
+  DisplayList properties;
+  AddOwnerClip(properties, lynx::gfx::Path::MakeRect(20, 30, ClipFactory),
+               lynx::gfx::PathFillRule::kNonzero, 10, 15);
+  [host.renderer applySubtreePropertiesFromList:&properties];
+  XCTAssertEqual(parent.layer.sublayers.firstObject, decoration);
+  XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(15, 20)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(35, 20)));
+  XCTAssertTrue(ClipMaskContains(decoration, CGPointMake(15, 20)));
+  DisplayList replacement;
+  AddOwnerClip(replacement, lynx::gfx::Path::MakeRect(50, 50, ClipFactory));
+  [host.renderer applySubtreePropertiesFromList:&replacement];
+  XCTAssertEqual(parent.layer.sublayers.firstObject, decoration);
+  XCTAssertTrue(ClipMaskContains(decoration, CGPointMake(35, 20)));
+  DisplayList clear;
+  AddOwnerClip(clear, nullptr);
+  [host.renderer applySubtreePropertiesFromList:&clear];
+  XCTAssertNil(host.layer.mask);
+  XCTAssertNil(decoration.mask);
+  LynxDisplayListApplier *applier = [host.renderer valueForKey:@"_applier"];
+  [applier applyClipPathProperty:properties.GetSubtreePropertiesData()[0] fromList:&properties];
+  [applier reset];
+  XCTAssertNil(host.layer.mask);
+}
+
+- (void)testNestedPathScopesIntersectAndRestoreNativeChildrenAndOrder {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 100)];
+  [parent addSubview:host];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *first = [[LynxMockView alloc] initWithFrame:host.bounds];
+  LynxMockView *second = [[LynxMockView alloc] initWithFrame:host.bounds];
+  [first createRendererWithSign:2 andContext:nil];
+  [second createRendererWithSign:3 andContext:nil];
+  [host addSubview:first];
+  [host addSubview:second];
+  CAShapeLayer *intrinsic = [CAShapeLayer layer];
+  intrinsic.frame = first.bounds;
+  intrinsic.path = [UIBezierPath bezierPathWithRect:CGRectMake(0, 0, 100, 100)].CGPath;
+  first.layer.mask = intrinsic;
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 100);
+  AppendBegin(list, 4, kViewType, 10, 20, 80, 70);
+  AppendPathClip(list, lynx::gfx::Path::MakeRect(60, 50, ClipFactory));
+  AppendBegin(list, 5, kViewType, 5, 5, 40, 40);
+  AppendClipRect(list, 0, 0, 30, 30);
+  AppendDrawView(list, 2);
+  AppendEnd(list);
+  AppendDrawView(list, 3);
+  AppendEnd(list);
+  AppendRecordBox(list, 0, 0, 100, 100);
+  AppendFill(list, 0xff0000ff, 0);
+  AppendEnd(list);
+  [host.renderer updateDisplayList:&list];
+  XCTAssertEqualObjects(host.subviews, (@[ first, second ]));
+  XCTAssertEqual(host.layer.sublayers[0], first.layer);
+  XCTAssertEqual(host.layer.sublayers[1], second.layer);
+  XCTAssertTrue(ClipMaskContains(first.layer, CGPointMake(20, 30)));
+  XCTAssertFalse(ClipMaskContains(first.layer, CGPointMake(50, 30)));
+  XCTAssertTrue(ClipMaskContains(second.layer, CGPointMake(50, 30)));
+  XCTAssertFalse(ClipMaskContains(second.layer, CGPointMake(80, 30)));
+  XCTAssertEqual(parent.layer.sublayers.count, 1u);
+  XCTAssertEqual(parent.layer.sublayers.firstObject, host.layer);
+  XCTAssertEqual(host.layer.sublayers.count, 3u);
+  CALayer *unscopedFill = host.layer.sublayers.lastObject;
+  XCTAssertTrue(CGColorEqualToColor(unscopedFill.backgroundColor, UIColor.blueColor.CGColor));
+  XCTAssertNil(unscopedFill.mask);
+  DisplayList unclipped;
+  AppendBegin(unclipped, 1, kViewType, 0, 0, 100, 100);
+  AppendDrawView(unclipped, 2);
+  AppendDrawView(unclipped, 3);
+  AppendEnd(unclipped);
+  [host.renderer updateDisplayList:&unclipped];
+  XCTAssertEqual(first.layer.mask, intrinsic);
+  XCTAssertNil(second.layer.mask);
+  XCTAssertEqualObjects(host.subviews, (@[ first, second ]));
+}
+
+- (void)testParentPathCoordinatesForTransformedScrolledChildAndDecoration {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockScrollView *child = [[LynxMockScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  child.contentSize = CGSizeMake(100, 500);
+  child.contentOffset = CGPointMake(0, 40);
+  float transform[16] = {2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  [child.renderer applyTransform:transform];
+  DisplayList childList;
+  AppendBegin(childList, 2, kViewType, 0, 0, 100, 100);
+  AppendRecordBox(childList, 0, 0, 100, 100);
+  AppendFill(childList, 0xffff0000, 0);
+  AppendEnd(childList);
+  [child.renderer updateDisplayList:&childList];
+  CALayer *decoration = host.layer.sublayers.firstObject;
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 200, 200);
+  AppendPathClip(list, lynx::gfx::Path::MakeRect(40, 40, ClipFactory),
+                 lynx::gfx::PathFillRule::kNonzero, 20, 30);
+  AppendDrawView(list, 2, 10, 20);
+  AppendEnd(list);
+  [host.renderer updateDisplayList:&list];
+  CGPoint inside = CGPointMake(30, 40);
+  CGPoint outside = CGPointMake(70, 40);
+  XCTAssertTrue(ClipMaskContains(child.layer, [child.layer convertPoint:inside
+                                                              fromLayer:host.layer]));
+  XCTAssertFalse(ClipMaskContains(child.layer, [child.layer convertPoint:outside
+                                                               fromLayer:host.layer]));
+  XCTAssertTrue(ClipMaskContains(decoration, [decoration convertPoint:inside
+                                                            fromLayer:host.layer]));
+  XCTAssertFalse(ClipMaskContains(decoration, [decoration convertPoint:outside
+                                                             fromLayer:host.layer]));
+  XCTAssertEqual(child.superview, host);
+  XCTAssertEqual(decoration.superlayer, host.layer);
+  child.contentOffset = CGPointMake(0, 80);
+  [child.renderer syncHostDecorationLayers];
+  XCTAssertTrue(ClipMaskContains(child.layer, [child.layer convertPoint:inside
+                                                              fromLayer:host.layer]));
+  XCTAssertTrue(ClipMaskContains(decoration, [decoration convertPoint:inside
+                                                            fromLayer:host.layer]));
+  // Rotate by ninety degrees, scale by two, and retain the baked translation.
+  float rotated[16] = {0, 2, 0, 0, -2, 0, 0, 0, 0, 0, 1, 0, 100, 0, 0, 1};
+  [child.renderer applyTransform:rotated];
+  [child.renderer syncHostDecorationLayers];
+  XCTAssertTrue(ClipMaskContains(child.layer, [child.layer convertPoint:inside
+                                                              fromLayer:host.layer]));
+  XCTAssertFalse(ClipMaskContains(child.layer, [child.layer convertPoint:outside
+                                                               fromLayer:host.layer]));
+  XCTAssertTrue(ClipMaskContains(decoration, [decoration convertPoint:inside
+                                                            fromLayer:host.layer]));
+  XCTAssertFalse(ClipMaskContains(decoration, [decoration convertPoint:outside
+                                                             fromLayer:host.layer]));
+}
+
+- (void)testMalformedAndMissingPathClipsFailClosedForNativeChildren {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:host.bounds];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 100);
+  AppendPathClip(list, lynx::gfx::Path::MakeSvgPathData(lynx::base::String("M0 0H100V100H0Z L"), 1,
+                                                        ClipFactory));
+  AppendDrawView(list, 2);
+  AppendEnd(list);
+  [host.renderer updateDisplayList:&list];
+  XCTAssertNotNil(child.layer.mask);
+  XCTAssertTrue(CGPathIsEmpty(((CAShapeLayer *)child.layer.mask).path));
+  XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(10, 10)));
+  DisplayList property;
+  SubtreeProperty missing{};
+  missing.type = DisplayListSubtreePropertyOpType::kClipPath;
+  missing.data.clip_path.path_index = 123;
+  property.AddSubtreeProperty(missing);
+  [host.renderer applySubtreePropertiesFromList:&property];
+  XCTAssertNotNil(host.layer.mask);
+  XCTAssertTrue(CGPathIsEmpty(((CAShapeLayer *)host.layer.mask).path));
+}
+
+- (void)testScopedPathPreservesRoundedImageMaskAndReuseAcrossRemoval {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  id manager = OCMClassMock([LynxImageManager class]);
+  id context = OCMClassMock([LynxRendererContext class]);
+  OCMStub([context imageManagerForID:1]).andReturn(manager);
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:context];
+  float radii[] = {8, 4, 2, 6, 3, 7, 9, 1};
+  DisplayList clipped;
+  AppendBegin(clipped, 1, kViewType, 0, 0, 100, 100);
+  AppendPathClip(clipped, lynx::gfx::Path::MakeRect(20, 30, ClipFactory));
+  AppendRecordBox(clipped, 0, 0, 50, 50, true, radii);
+  AppendImage(clipped, 1, 0);
+  AppendEnd(clipped);
+  [applier applyDisplayList:&clipped];
+  UIImageView *image = (UIImageView *)host.subviews.firstObject;
+  XCTAssertNotNil(image);
+  CALayer *intrinsic = image.layer.mask.mask.mask;
+  XCTAssertNotNil(intrinsic);
+  XCTAssertTrue(ClipMaskContains(image.layer, CGPointMake(10, 10)));
+  XCTAssertFalse(ClipMaskContains(image.layer, CGPointMake(35, 10)));
+  DisplayList unscoped;
+  AppendBegin(unscoped, 1, kViewType, 0, 0, 100, 100);
+  AppendRecordBox(unscoped, 0, 0, 50, 50, true, radii);
+  AppendImage(unscoped, 1, 0);
+  AppendEnd(unscoped);
+  [applier applyDisplayList:&unscoped];
+  XCTAssertEqual(host.subviews.firstObject, image);
+  XCTAssertTrue([image.layer.mask isKindOfClass:[CAShapeLayer class]]);
+  XCTAssertNil(image.layer.mask.mask);
+  XCTAssertTrue(ClipMaskContains(image.layer, CGPointMake(35, 10)));
+  [applier reset];
+  XCTAssertNil(image.superview);
+}
+
+- (void)testOwnerClipSurvivesContentReplacementAndApplierTeardownClearsChildClip {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:host.bounds];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+  AppendDrawView(content, 2);
+  AppendEnd(content);
+  {
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                        andContext:nil];
+    DisplayList properties;
+    AddOwnerClip(properties, lynx::gfx::Path::MakeRect(30, 40, ClipFactory));
+    [applier applyClipPathProperty:properties.GetSubtreePropertiesData()[0] fromList:&properties];
+    [applier applyDisplayList:&content];
+    XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(10, 10)));
+    XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(50, 10)));
+    DisplayList scoped;
+    AppendBegin(scoped, 1, kViewType, 0, 0, 100, 100);
+    AppendPathClip(scoped, lynx::gfx::Path::MakeRect(10, 10, ClipFactory));
+    AppendDrawView(scoped, 2);
+    AppendEnd(scoped);
+    [applier applyDisplayList:&scoped];
+    XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(50, 10)));
+    XCTAssertNotNil(child.layer.mask);
+  }
+  XCTAssertNil(child.layer.mask);
+  XCTAssertNil(host.layer.mask);
+  XCTAssertEqual(child.superview, host);
+}
+
+- (void)testOldParentResetDoesNotClearMovedChildNewParentClip {
+  LynxMockView *firstHost = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  LynxMockView *secondHost = [[LynxMockView alloc] initWithFrame:firstHost.bounds];
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:firstHost.bounds];
+  [child createRendererWithSign:2 andContext:nil];
+  [firstHost addSubview:child];
+  LynxDisplayListApplier *first = [[LynxDisplayListApplier alloc] initWithView:firstHost
+                                                                    andContext:nil];
+  LynxDisplayListApplier *second = [[LynxDisplayListApplier alloc] initWithView:secondHost
+                                                                     andContext:nil];
+  DisplayList firstList;
+  AppendBegin(firstList, 1, kViewType, 0, 0, 100, 100);
+  AppendPathClip(firstList, lynx::gfx::Path::MakeRect(10, 10, ClipFactory));
+  AppendDrawView(firstList, 2);
+  AppendEnd(firstList);
+  [first applyDisplayList:&firstList];
+  XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(30, 30)));
+  [child.renderer detachHostDecorationLayers];
+  XCTAssertNil(child.layer.mask);
+  [secondHost addSubview:child];
+  DisplayList secondList;
+  AppendBegin(secondList, 3, kViewType, 0, 0, 100, 100);
+  AppendPathClip(secondList, lynx::gfx::Path::MakeRect(50, 50, ClipFactory));
+  AppendDrawView(secondList, 2);
+  AppendEnd(secondList);
+  [second applyDisplayList:&secondList];
+  XCTAssertTrue(ClipMaskContains(child.layer, CGPointMake(30, 30)));
+  [first reset];
+  XCTAssertNotNil(child.layer.mask);
+  XCTAssertTrue(ClipMaskContains(child.layer, CGPointMake(30, 30)));
+  XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(60, 30)));
+  [second reset];
+  XCTAssertNil(child.layer.mask);
+}
+
+- (void)testPerspectiveParentClipProjectsNativeChildAndDecorationWithoutAffineTruncation {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 150, 100)];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  float projective[16] = {1, 0, 0, .002f, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  [child.renderer applyTransform:projective];
+  DisplayList childContent;
+  AppendBegin(childContent, 2, kViewType, 0, 0, 150, 100);
+  AppendRecordBox(childContent, 0, 0, 150, 100);
+  AppendFill(childContent, 0xffff0000, 0);
+  AppendEnd(childContent);
+  [child.renderer updateDisplayList:&childContent];
+  CALayer *decoration = host.layer.sublayers.firstObject;
+  child.backgroundColor = UIColor.redColor;
+  DisplayList owner;
+  AddOwnerClip(owner, lynx::gfx::Path::MakeRect(140, 100, ClipFactory));
+  [child.renderer applySubtreePropertiesFromList:&owner];
+  DisplayList parentContent;
+  AppendBegin(parentContent, 1, kViewType, 0, 0, 200, 100);
+  AppendPathClip(parentContent, lynx::gfx::Path::MakeRect(100, 100, ClipFactory));
+  AppendDrawView(parentContent, 2);
+  AppendEnd(parentContent);
+  [host.renderer updateDisplayList:&parentContent];
+  CGPoint localInside = CGPointMake(110, 20);
+  CGPoint sourceInside = ProjectPoint(localInside, child.layer.transform);
+  XCTAssertEqualWithAccuracy(sourceInside.x, 90.163934, .001);
+  XCTAssertTrue(ClipMaskContains(child.layer, localInside));
+  XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(130, 20)));
+  XCTAssertTrue(ClipMaskContains(decoration, localInside));
+  XCTAssertFalse(ClipMaskContains(decoration, CGPointMake(130, 20)));
+  CAShapeLayer *parentMask = (CAShapeLayer *)child.layer.mask.mask;
+  CGPoint projectedEdge = ProjectPoint(CGPointMake(100, 0), parentMask.transform);
+  XCTAssertEqualWithAccuracy(projectedEdge.x, 125, .001);
+  NSArray<NSNumber *> *pixels =
+      [self hostedRedValuesForView:host
+                            points:@[
+                              [NSValue valueWithCGPoint:CGPointMake(90, 16)],
+                              [NSValue valueWithCGPoint:CGPointMake(99, 90)]
+                            ]
+                              name:@"perspective-owner-parent"];
+  XCTAssertGreaterThan(pixels[0].unsignedCharValue, 200);
+  XCTAssertEqual(pixels[1].unsignedCharValue, 0);
+  XCTAssertEqual(child.superview, host);
+  XCTAssertEqual(decoration.superlayer, host.layer);
+}
+
+- (void)testProjectivePoleAndSingularChildClipFailClosed {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 150, 100)];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 200, 100);
+  AppendPathClip(content, lynx::gfx::Path::MakeRect(100, 100, ClipFactory));
+  AppendDrawView(content, 2);
+  AppendEnd(content);
+  float pole[16] = {1, 0, 0, .02f, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  [child.renderer applyTransform:pole];
+  [host.renderer updateDisplayList:&content];
+  XCTAssertTrue(CGPathIsEmpty(((CAShapeLayer *)child.layer.mask).path));
+  float singular[16] = {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  [child.renderer applyTransform:singular];
+  [child.renderer syncHostDecorationLayers];
+  XCTAssertTrue(CGPathIsEmpty(((CAShapeLayer *)child.layer.mask).path));
+}
+
+- (void)testIntrinsicMaskOffsetCoordinatesSurviveOwnerIntersectionAndRemoval {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  host.backgroundColor = UIColor.redColor;
+  CAShapeLayer *intrinsic = [CAShapeLayer layer];
+  intrinsic.frame = CGRectMake(20, 10, 70, 80);
+  intrinsic.bounds = CGRectMake(10, 20, 70, 80);
+  intrinsic.path = [UIBezierPath bezierPathWithRect:CGRectMake(15, 25, 30, 30)].CGPath;
+  host.layer.mask = intrinsic;
+  XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(29, 25)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(20, 25)));
+  NSArray<NSNumber *> *baseline =
+      [self renderedRedValuesForView:host
+                              points:@[
+                                [NSValue valueWithCGPoint:CGPointMake(29, 25)],
+                                [NSValue valueWithCGPoint:CGPointMake(20, 25)],
+                                [NSValue valueWithCGPoint:CGPointMake(40, 25)]
+                              ]
+                                name:@"intrinsic-offset-baseline"];
+  XCTAssertGreaterThan(baseline[0].unsignedCharValue, 200);
+  XCTAssertEqual(baseline[1].unsignedCharValue, 0);
+  XCTAssertGreaterThan(baseline[2].unsignedCharValue, 200);
+  DisplayList properties;
+  AddOwnerClip(properties, lynx::gfx::Path::MakeRect(35, 40, ClipFactory));
+  [host.renderer applySubtreePropertiesFromList:&properties];
+  XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(29, 25)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(40, 25)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(20, 25)));
+  NSArray<NSNumber *> *clipped =
+      [self renderedRedValuesForView:host
+                              points:@[
+                                [NSValue valueWithCGPoint:CGPointMake(29, 25)],
+                                [NSValue valueWithCGPoint:CGPointMake(40, 25)]
+                              ]
+                                name:@"intrinsic-offset-intersection"];
+  XCTAssertGreaterThan(clipped[0].unsignedCharValue, 200);
+  XCTAssertEqual(clipped[1].unsignedCharValue, 0);
+  DisplayList removal;
+  AddOwnerClip(removal, nullptr);
+  [host.renderer applySubtreePropertiesFromList:&removal];
+  XCTAssertEqual(host.layer.mask, intrinsic);
+  XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(40, 25)));
+  NSArray<NSNumber *> *restored =
+      [self renderedRedValuesForView:host
+                              points:@[ [NSValue valueWithCGPoint:CGPointMake(40, 25)] ]
+                                name:@"intrinsic-offset-restoration"];
+  XCTAssertGreaterThan(restored[0].unsignedCharValue, 200);
+}
+
+- (void)testParentSublayerTransformAndNonDefaultChildAnchorAndBounds {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  host.bounds = CGRectMake(7, 11, 100, 100);
+  host.layer.anchorPoint = CGPointMake(.1, .3);
+  CATransform3D children = CATransform3DMakeScale(.8, .9, 1);
+  children = CATransform3DConcat(children, CATransform3DMakeTranslation(4, 6, 0));
+  children.m14 = .001;
+  host.layer.sublayerTransform = children;
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 80, 70)];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  child.bounds = CGRectMake(5, 13, 80, 70);
+  child.layer.anchorPoint = CGPointMake(.2, .7);
+  child.layer.position = CGPointMake(40, 55);
+  child.layer.transform = CATransform3DMakeRotation(.2, 0, 0, 1);
+  child.backgroundColor = UIColor.redColor;
+  CGPoint localInside = CGPointMake(45, 48);
+  CGPoint sourceInside = [host.layer convertPoint:localInside fromLayer:child.layer];
+  CGRect clipBounds = CGRectMake(sourceInside.x - 10, sourceInside.y - 10, 20, 20);
+  CAShapeLayer *clip = [CAShapeLayer layer];
+  clip.path = [UIBezierPath bezierPathWithRect:clipBounds].CGPath;
+  [child.renderer applyParentClips:@[ clip ] fromLayer:host.layer];
+  XCTAssertTrue(ClipMaskContains(child.layer, localInside));
+  CGPoint sourceOutside = CGPointMake(sourceInside.x + 20, sourceInside.y);
+  CGPoint localOutside = [child.layer convertPoint:sourceOutside fromLayer:host.layer];
+  XCTAssertFalse(ClipMaskContains(child.layer, localOutside));
+  XCTAssertEqualWithAccuracy(child.layer.anchorPoint.x, .2, .001);
+  XCTAssertEqualWithAccuracy(child.bounds.origin.y, 13, .001);
+  NSArray<NSNumber *> *pixels = [self hostedRedValuesForView:host
+                                                      points:@[
+                                                        [NSValue valueWithCGPoint:sourceInside],
+                                                        [NSValue valueWithCGPoint:sourceOutside]
+                                                      ]
+                                                        name:@"sublayer-transform-anchor-bounds"];
+  XCTAssertGreaterThan(pixels[0].unsignedCharValue, 200);
+  XCTAssertEqual(pixels[1].unsignedCharValue, 0);
+}
+
+- (void)testPathClipKeepsFollowingFillInsideHostAndEarlierShadowOutside {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 100, 80);
+  AppendRecordBox(content, 0, 0, 100, 80);
+  AppendBoxShadow(content, 0, 0, false);
+  AppendPathClip(content, lynx::gfx::Path::MakeRect(40, 40, ClipFactory));
+  AppendFill(content, 0xffff0000, 0);
+  AppendEnd(content);
+  [host.renderer updateDisplayList:&content];
+  XCTAssertEqual(parent.layer.sublayers.count, 2u);
+  XCTAssertEqual(parent.layer.sublayers.lastObject, host.layer);
+  XCTAssertNil(parent.layer.sublayers.firstObject.mask);
+  XCTAssertEqual(host.layer.sublayers.count, 1u);
+  CALayer *fill = host.layer.sublayers.firstObject;
+  XCTAssertTrue(CGColorEqualToColor(fill.backgroundColor, UIColor.redColor.CGColor));
+  XCTAssertTrue(ClipMaskContains(fill, CGPointMake(20, 20)));
+  XCTAssertFalse(ClipMaskContains(fill, CGPointMake(60, 20)));
+}
+
+- (void)testUnclippedParentRedrawDoesNotSynchronizeChildClips {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  for (BOOL hasOwnerClip : {NO, YES}) {
+    LynxMockView *child = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 80, 80)];
+    [child createRendererWithSign:2 andContext:nil];
+    [host addSubview:child];
+    [child.renderer updateLayoutOffsetIfNeeded:CGPointZero];
+    DisplayList properties;
+    if (hasOwnerClip) {
+      AddOwnerClip(properties, lynx::gfx::Path::MakeRect(20, 20, ClipFactory));
+      [child.renderer applySubtreePropertiesFromList:&properties];
+    }
+    CALayer *mask = child.layer.mask;
+    id renderer = OCMPartialMock(child.renderer);
+    OCMReject([renderer applyParentClips:[OCMArg any] fromLayer:[OCMArg any]]);
+    OCMReject([renderer clearParentClipsFromLayer:[OCMArg any]]);
+    DisplayList content;
+    AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+    AppendDrawView(content, 2);
+    AppendEnd(content);
+    [host.renderer updateDisplayList:&content];
+    [host.renderer updateDisplayList:&content];
+    XCTAssertEqual(child.layer.mask, mask);
+    if (hasOwnerClip) {
+      XCTAssertTrue(ClipMaskContains(child.layer, CGPointMake(10, 10)));
+      XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(30, 10)));
+    } else {
+      XCTAssertNil([child.renderer valueForKey:@"applier"]);
+    }
+    [host.renderer updateDisplayList:nullptr];
+    [renderer stopMocking];
+    [child removeFromSuperview];
+  }
+}
+
+- (void)testRendererContentUpdateSynchronizesClipMasksOnce {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  DisplayList initial;
+  [host.renderer updateDisplayList:&initial];
+  LynxDisplayListApplier *applier = [host.renderer valueForKey:@"applier"];
+  id mock = OCMPartialMock(applier);
+  __block NSUInteger syncCount = 0;
+  OCMStub([mock syncHostDecorationLayers])
+      .andDo(^(NSInvocation *invocation) {
+        syncCount++;
+      })
+      .andForwardToRealObject();
+  DisplayList properties;
+  AddOwnerClip(properties, lynx::gfx::Path::MakeRect(30, 30, ClipFactory));
+  [host.renderer applySubtreePropertiesFromList:&properties];
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+  AppendEnd(content);
+  for (int update = 0; update < 2; ++update) {
+    syncCount = 0;
+    [host.renderer updateDisplayList:&content];
+    XCTAssertEqual(syncCount, 1u);
+    XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(10, 10)));
+    XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(40, 10)));
+  }
+  syncCount = 0;
+  [host.renderer updateDisplayList:nullptr];
+  XCTAssertEqual(syncCount, 1u);
+  XCTAssertTrue(ClipMaskContains(host.layer, CGPointMake(10, 10)));
+  XCTAssertFalse(ClipMaskContains(host.layer, CGPointMake(40, 10)));
+  [mock stopMocking];
+}
+
+- (void)testRealScrollerCallbackPinsRootOverflowMaskWithPathIntersection {
+  for (BOOL rounded : {NO, YES}) {
+    for (BOOL hasPathClip : {NO, YES}) {
+      LynxUIScroller *scroller = [[LynxUIScroller alloc] init];
+      LynxUIMockContext *context = [LynxUIUnitTestUtils initUIMockContextWithUI:scroller];
+      [scroller updateFrame:CGRectMake(0, 0, 100, 100)
+                  withPadding:UIEdgeInsetsZero
+                       border:UIEdgeInsetsZero
+          withLayoutAnimation:NO];
+      [LynxPropsProcessor updateProp:@YES withKey:@"scroll-y" forUI:scroller];
+      [scroller propsDidUpdate];
+      UIView<LynxRendererHost> *view = (UIView<LynxRendererHost> *)scroller.view;
+      view.renderer = [[LynxRenderer alloc] initWithRenderHost:view andSign:1 andContext:nil];
+      DisplayList content;
+      AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+      const float radii[] = {4, 6, 10, 8, 12, 14, 16, 18};
+      AppendClipRect(content, 2, 3, 96, 94, rounded, radii);
+      AppendEnd(content);
+      [view.renderer updateDisplayList:&content];
+      CAShapeLayer *overflow = (CAShapeLayer *)view.layer.mask;
+      XCTAssertTrue([overflow isKindOfClass:[CAShapeLayer class]]);
+      DisplayList properties;
+      if (hasPathClip) {
+        AddOwnerClip(properties, lynx::gfx::Path::MakeRect(80, 80, ClipFactory));
+        [view.renderer applySubtreePropertiesFromList:&properties];
+      }
+      view.backgroundColor = UIColor.redColor;
+      UIScrollView *scrollView = (UIScrollView *)view;
+      scrollView.contentSize = CGSizeMake(100, 1000);
+      for (CGFloat offset : {40., 120.}) {
+        scrollView.delegate = nil;
+        scrollView.contentOffset = CGPointMake(0, offset);
+        scrollView.delegate = scroller;
+        [scroller scrollViewDidScroll:scrollView];
+        XCTAssertTrue(CGRectEqualToRect(overflow.frame, view.layer.bounds));
+        XCTAssertTrue(ClipMaskContains(view.layer, CGPointMake(20, offset + 20)));
+        XCTAssertFalse(ClipMaskContains(view.layer, CGPointMake(1, offset + 20)));
+        if (hasPathClip) {
+          XCTAssertFalse(ClipMaskContains(view.layer, CGPointMake(90, offset + 20)));
+        }
+        NSArray<NSNumber *> *pixels = [self
+            renderedRedValuesForView:view
+                              points:@[
+                                [NSValue valueWithCGPoint:CGPointMake(20, offset + 20)],
+                                [NSValue valueWithCGPoint:CGPointMake(1, offset + 20)],
+                                [NSValue valueWithCGPoint:CGPointMake(90, offset + 20)]
+                              ]
+                                name:[NSString stringWithFormat:@"root-overflow-%d-%d-%g", rounded,
+                                                                hasPathClip, offset]];
+        XCTAssertGreaterThan(pixels[0].unsignedCharValue, 200);
+        XCTAssertEqual(pixels[1].unsignedCharValue, 0);
+        if (hasPathClip) {
+          XCTAssertEqual(pixels[2].unsignedCharValue, 0);
+        } else {
+          XCTAssertGreaterThan(pixels[2].unsignedCharValue, 200);
+        }
+      }
+      if (hasPathClip) {
+        DisplayList removal;
+        AddOwnerClip(removal, nullptr);
+        [view.renderer applySubtreePropertiesFromList:&removal];
+      }
+      XCTAssertEqual(view.layer.mask, overflow);
+      XCTAssertTrue(ClipMaskContains(view.layer, CGPointMake(90, 140)));
+      XCTAssertEqual(scroller.context, context.mockUIContext);
+    }
+  }
+}
+
+- (void)testScrollHostExternalIntrinsicMaskKeepsItsGeometry {
+  LynxMockScrollView *view = [[LynxMockScrollView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  view.renderer = [[LynxRenderer alloc] initWithRenderHost:view andSign:1 andContext:nil];
+  CAShapeLayer *intrinsic = [CAShapeLayer layer];
+  intrinsic.frame = CGRectMake(20, 10, 70, 80);
+  intrinsic.bounds = CGRectMake(10, 20, 70, 80);
+  intrinsic.path = [UIBezierPath bezierPathWithRect:CGRectMake(15, 25, 30, 30)].CGPath;
+  CGRect frame = intrinsic.frame;
+  CGRect bounds = intrinsic.bounds;
+  view.layer.mask = intrinsic;
+  DisplayList properties;
+  AddOwnerClip(properties, lynx::gfx::Path::MakeRect(100, 100, ClipFactory));
+  [view.renderer applySubtreePropertiesFromList:&properties];
+  view.contentSize = CGSizeMake(100, 1000);
+  view.contentOffset = CGPointMake(0, 40);
+  [view.renderer syncHostDecorationLayers];
+  XCTAssertTrue(CGRectEqualToRect(intrinsic.frame, frame));
+  XCTAssertTrue(CGRectEqualToRect(intrinsic.bounds, bounds));
+  DisplayList removal;
+  AddOwnerClip(removal, nullptr);
+  [view.renderer applySubtreePropertiesFromList:&removal];
+  XCTAssertEqual(view.layer.mask, intrinsic);
+  XCTAssertTrue(ClipMaskContains(view.layer, CGPointMake(29, 25)));
+  XCTAssertFalse(ClipMaskContains(view.layer, CGPointMake(20, 25)));
+}
+
+- (void)testRealScrollerCallbackRefreshesProjectiveRendererMasksAndDecorations {
+  LynxUIScroller *scroller = [[LynxUIScroller alloc] init];
+  LynxUIMockContext *context = [LynxUIUnitTestUtils initUIMockContextWithUI:scroller];
+  [scroller updateFrame:CGRectMake(0, 0, 100, 100)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+  [LynxPropsProcessor updateProp:@YES withKey:@"scroll-y" forUI:scroller];
+  [scroller propsDidUpdate];
+  UIView<LynxRendererHost> *view = (UIView<LynxRendererHost> *)scroller.view;
+  view.renderer = [[LynxRenderer alloc] initWithRenderHost:view andSign:2 andContext:nil];
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 100)];
+  [parent addSubview:view];
+  float projective[16] = {1, 0, 0, .002f, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  [view.renderer applyTransform:projective];
+  DisplayList content;
+  AppendBegin(content, 2, kViewType, 0, 0, 100, 100);
+  AppendRecordBox(content, 0, 0, 100, 100);
+  AppendFill(content, 0xffff0000, 0);
+  AppendEnd(content);
+  [view.renderer updateDisplayList:&content];
+  CALayer *decoration = parent.layer.sublayers.firstObject;
+  XCTAssertNotEqual(decoration, view.layer);
+  DisplayList owner;
+  AddOwnerClip(owner, lynx::gfx::Path::MakeRect(80, 80, ClipFactory));
+  [view.renderer applySubtreePropertiesFromList:&owner];
+  CAShapeLayer *parentClip = [CAShapeLayer layer];
+  parentClip.path = [UIBezierPath bezierPathWithRect:CGRectMake(0, 0, 100, 100)].CGPath;
+  [view.renderer applyParentClips:@[ parentClip ] fromLayer:parent.layer];
+  UIScrollView *scrollView = (UIScrollView *)view;
+  scrollView.contentSize = CGSizeMake(100, 1000);
+  for (CGFloat offset : {40., 80.}) {
+    if (offset == 80) {
+      [LynxPropsProcessor updateProp:@[ @(LynxBasicShapeTypePath), @"M40 40H60V60H40Z" ]
+                             withKey:@"clip-path"
+                               forUI:scroller];
+    }
+    scrollView.delegate = nil;
+    scrollView.contentOffset = CGPointMake(0, offset);
+    scrollView.delegate = scroller;
+    [scroller scrollViewDidScroll:scrollView];
+    CGPoint inside = [view.layer convertPoint:CGPointMake(30, 30) fromLayer:parent.layer];
+    CGPoint outside = [view.layer convertPoint:CGPointMake(110, 30) fromLayer:parent.layer];
+    XCTAssertTrue(ClipMaskContains(view.layer, inside));
+    XCTAssertFalse(ClipMaskContains(view.layer, outside));
+    XCTAssertFalse(ClipMaskContains(view.layer, CGPointMake(80.5, view.bounds.origin.y + 20)));
+    XCTAssertTrue(ClipMaskContains(decoration, [decoration convertPoint:CGPointMake(30, 30)
+                                                              fromLayer:parent.layer]));
+    XCTAssertEqual(parent.layer.sublayers.firstObject, decoration);
+    XCTAssertTrue(CGPointEqualToPoint(view.layer.mask.position, CGPointZero));
+  }
+  DisplayList clear;
+  AddOwnerClip(clear, nullptr);
+  [view.renderer applySubtreePropertiesFromList:&clear];
+  [view.renderer applyParentClips:@[] fromLayer:nil];
+  [scroller scrollViewDidScroll:scrollView];
+  XCTAssertNil(view.layer.mask);
+  XCTAssertNil(decoration.mask);
+  XCTAssertEqual(scroller.context, context.mockUIContext);
+}
+
+- (void)testRealScrollerCallbackKeepsLegacyExternalMaskAndClipPathBehavior {
+  LynxUIScroller *scroller = [[LynxUIScroller alloc] init];
+  LynxUIMockContext *context = [LynxUIUnitTestUtils initUIMockContextWithUI:scroller];
+  [scroller updateFrame:CGRectMake(0, 0, 100, 100)
+              withPadding:UIEdgeInsetsZero
+                   border:UIEdgeInsetsZero
+      withLayoutAnimation:NO];
+  [LynxPropsProcessor updateProp:@YES withKey:@"scroll-y" forUI:scroller];
+  [scroller propsDidUpdate];
+  UIScrollView *view = (UIScrollView *)scroller.view;
+  view.contentSize = CGSizeMake(100, 1000);
+  CAShapeLayer *external = [CAShapeLayer layer];
+  external.frame = view.bounds;
+  external.path = [UIBezierPath bezierPathWithRect:CGRectMake(10, 10, 80, 80)].CGPath;
+  view.layer.mask = external;
+  view.delegate = nil;
+  view.contentOffset = CGPointMake(0, 40);
+  view.delegate = scroller;
+  [scroller scrollViewDidScroll:view];
+  XCTAssertEqual(view.layer.mask, external);
+  XCTAssertTrue(CGRectEqualToRect(external.frame, view.bounds));
+  [LynxPropsProcessor updateProp:@[ @(LynxBasicShapeTypePath), @"M40 40H60V60H40Z" ]
+                         withKey:@"clip-path"
+                           forUI:scroller];
+  [scroller scrollViewDidScroll:view];
+  XCTAssertNotEqual(view.layer.mask, external);
+  XCTAssertTrue(CGRectEqualToRect(CGPathGetPathBoundingBox(((CAShapeLayer *)view.layer.mask).path),
+                                  CGRectMake(40, 40, 20, 20)));
+  XCTAssertEqual(scroller.context, context.mockUIContext);
+}
+
+- (void)testPositiveScalarHomogeneousTransformsPreserveNativeClipCoverage {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+  [host createRendererWithSign:1 andContext:nil];
+  LynxMockView *child = [[LynxMockView alloc] initWithFrame:host.bounds];
+  [child createRendererWithSign:2 andContext:nil];
+  [host addSubview:child];
+  DisplayList childContent;
+  AppendBegin(childContent, 2, kViewType, 0, 0, 100, 100);
+  AppendRecordBox(childContent, 0, 0, 100, 100);
+  AppendFill(childContent, 0xffff0000, 0);
+  AppendEnd(childContent);
+  [child.renderer updateDisplayList:&childContent];
+  CALayer *decoration = host.layer.sublayers.firstObject;
+  DisplayList owner;
+  AddOwnerClip(owner, lynx::gfx::Path::MakeRect(80, 80, ClipFactory));
+  [child.renderer applySubtreePropertiesFromList:&owner];
+  DisplayList content;
+  AppendBegin(content, 1, kViewType, 0, 0, 100, 100);
+  AppendPathClip(content, lynx::gfx::Path::MakeRect(40, 40, ClipFactory));
+  AppendDrawView(content, 2);
+  AppendEnd(content);
+  for (float scale : {1.f, 1e-8f, 1e-12f}) {
+    float scalar[16] = {scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, scale, 0, 0, 0, 0, scale};
+    [child.renderer applyTransform:scalar];
+    [host.renderer updateDisplayList:&content];
+    CGPoint native = [host.layer convertPoint:CGPointMake(20, 20) fromLayer:child.layer];
+    XCTAssertEqualWithAccuracy(native.x, 20, .001);
+    XCTAssertEqualWithAccuracy(native.y, 20, .001);
+    XCTAssertTrue(ClipMaskContains(child.layer, CGPointMake(20, 20)));
+    XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(50, 20)));
+    XCTAssertTrue(ClipMaskContains(decoration, CGPointMake(20, 20)));
+    XCTAssertFalse(ClipMaskContains(decoration, CGPointMake(50, 20)));
+    XCTAssertFalse(CGPathIsEmpty(((CAShapeLayer *)child.layer.mask).path));
+    NSArray<NSNumber *> *pixels =
+        [self hostedRedValuesForView:host
+                              points:@[
+                                [NSValue valueWithCGPoint:CGPointMake(20, 20)],
+                                [NSValue valueWithCGPoint:CGPointMake(50, 20)]
+                              ]
+                                name:[NSString stringWithFormat:@"homogeneous-scalar-%g", scale]];
+    XCTAssertGreaterThan(pixels[0].unsignedCharValue, 200);
+    XCTAssertEqual(pixels[1].unsignedCharValue, 0);
+  }
+}
+
+- (void)testActualUIKitChildrenReceiveDrawViewScopesAcrossContentReplacement {
+  for (BOOL useScroller : {NO, YES}) {
+    LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    [host createRendererWithSign:1 andContext:nil];
+    LynxUIMockContext *context = nil;
+    UIView *child = nil;
+    if (useScroller) {
+      LynxUIScroller *scroller = [[LynxUIScroller alloc] init];
+      context = [LynxUIUnitTestUtils initUIMockContextWithUI:scroller];
+      [scroller updateFrame:CGRectMake(0, 0, 100, 100)
+                  withPadding:UIEdgeInsetsZero
+                       border:UIEdgeInsetsZero
+          withLayoutAnimation:NO];
+      child = scroller.view;
+    } else {
+      child = [[UIView alloc] initWithFrame:host.bounds];
+    }
+    UIView<LynxRendererHost> *rendererHost = (UIView<LynxRendererHost> *)child;
+    rendererHost.renderer = [[LynxRenderer alloc] initWithRenderHost:rendererHost
+                                                             andSign:2
+                                                          andContext:nil];
+    [host addSubview:child];
+    DisplayList childContent;
+    AppendBegin(childContent, 2, kViewType, 0, 0, 100, 100);
+    AppendRecordBox(childContent, 0, 0, 100, 100);
+    AppendFill(childContent, 0xffff0000, 0);
+    AppendEnd(childContent);
+    [rendererHost.renderer updateDisplayList:&childContent];
+    CALayer *oldDecoration = host.layer.sublayers.firstObject;
+    DisplayList parentContent;
+    AppendBegin(parentContent, 1, kViewType, 0, 0, 100, 100);
+    AppendBegin(parentContent, 3, kViewType, 10, 20, 40, 40);
+    AppendPathClip(parentContent, lynx::gfx::Path::MakeRect(40, 40, ClipFactory));
+    AppendDrawView(parentContent, 2);
+    AppendEnd(parentContent);
+    AppendEnd(parentContent);
+    [host.renderer updateDisplayList:&parentContent];
+    XCTAssertNotNil(child.layer.mask);
+    XCTAssertNotNil(oldDecoration.mask);
+    XCTAssertTrue(ClipMaskContains(child.layer, CGPointMake(20, 30)));
+    XCTAssertFalse(ClipMaskContains(child.layer, CGPointMake(70, 30)));
+    DisplayList replacement;
+    AppendBegin(replacement, 2, kViewType, 0, 0, 100, 100);
+    AppendRecordBox(replacement, 0, 0, 90, 100);
+    AppendFill(replacement, 0xffff0000, 0);
+    AppendEnd(replacement);
+    [rendererHost.renderer updateDisplayList:&replacement];
+    CALayer *decoration = host.layer.sublayers.firstObject;
+    XCTAssertNotEqual(decoration, oldDecoration);
+    XCTAssertNil(oldDecoration.superlayer);
+    XCTAssertNotNil(decoration.mask);
+    XCTAssertTrue(ClipMaskContains(child.layer, CGPointMake(20, 30)));
+    XCTAssertFalse(ClipMaskContains(decoration, CGPointMake(70, 30)));
+    NSArray<NSNumber *> *scoped =
+        [self renderedRedValuesForView:host
+                                points:@[
+                                  [NSValue valueWithCGPoint:CGPointMake(20, 30)],
+                                  [NSValue valueWithCGPoint:CGPointMake(70, 30)]
+                                ]
+                                  name:useScroller ? @"draw-view-scroller-replacement"
+                                                   : @"draw-view-UIView-replacement"];
+    XCTAssertGreaterThan(scoped[0].unsignedCharValue, 200);
+    XCTAssertEqual(scoped[1].unsignedCharValue, 0);
+    DisplayList unscoped;
+    AppendBegin(unscoped, 1, kViewType, 0, 0, 100, 100);
+    AppendDrawView(unscoped, 2);
+    AppendEnd(unscoped);
+    [host.renderer updateDisplayList:&unscoped];
+    XCTAssertNil(child.layer.mask);
+    XCTAssertNil(decoration.mask);
+    XCTAssertEqual(host.layer.sublayers.firstObject, decoration);
+    XCTAssertEqual(child.superview, host);
+    NSArray<NSNumber *> *cleared =
+        [self renderedRedValuesForView:host
+                                points:@[ [NSValue valueWithCGPoint:CGPointMake(70, 30)] ]
+                                  name:useScroller ? @"draw-view-scroller-cleared"
+                                                   : @"draw-view-UIView-cleared"];
+    XCTAssertGreaterThan(cleared[0].unsignedCharValue, 200);
+    if (context != nil) XCTAssertEqual(context.mockUI.view, child);
+  }
 }
 
 @end

@@ -77,7 +77,9 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
   [self ensureLynxDisplayListApplier];
 
   [_applier applyDisplayList:list_];
-  [_applier syncHostDecorationLayers];
+  if (list_ == nullptr) {
+    [_applier syncHostDecorationLayers];
+  }
 }
 
 - (lynx::tasm::DisplayList*)getDisplayList {
@@ -171,6 +173,28 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
 }
 
 #pragma mark - SubtreeProperties
+
+- (void)applySubtreePropertiesFromList:(const lynx::tasm::DisplayList*)list {
+  if (list == nullptr) return;
+  [self applySubtreeProperties:list->GetSubtreePropertiesData()
+                         count:list->GetSubtreePropertiesSize()];
+  for (size_t i = 0; i < list->GetSubtreePropertiesSize(); ++i) {
+    const auto& property = list->GetSubtreePropertiesData()[i];
+    if (property.type == lynx::tasm::DisplayListSubtreePropertyOpType::kClipPath) {
+      [self ensureLynxDisplayListApplier];
+      [_applier applyClipPathProperty:property fromList:list];
+    }
+  }
+}
+
+- (void)applyParentClips:(NSArray<CAShapeLayer*>*)clips fromLayer:(CALayer*)sourceLayer {
+  [self ensureLynxDisplayListApplier];
+  [_applier applyParentClips:clips fromLayer:sourceLayer];
+}
+
+- (void)clearParentClipsFromLayer:(CALayer*)sourceLayer {
+  [_applier clearParentClipsFromLayer:sourceLayer];
+}
 
 - (void)applySubtreeProperties:(const lynx::tasm::SubtreeProperty*)properties count:(size_t)count {
   if (!_host || count == 0 || properties == nullptr) {

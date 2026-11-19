@@ -1373,6 +1373,9 @@ public class LynxDevToolPool : NSObject {
 public class LynxDisplayListApplier : NSObject {
   public instancetype LynxDisplayListApplier::initWithView:andContext:(UIView< LynxRendererHost > *view,[andContext] LynxRendererContext *context);
   public void LynxDisplayListApplier::applyDisplayList:(lynx::tasm::DisplayList *list);
+  public void LynxDisplayListApplier::applyClipPathProperty:fromList:(const lynx::tasm::SubtreeProperty &property,[fromList] const lynx::tasm::DisplayList *list);
+  public void LynxDisplayListApplier::applyParentClips:fromLayer:(NSArray< CAShapeLayer * > *clips,[fromLayer] CALayer *sourceLayer);
+  public void LynxDisplayListApplier::clearParentClipsFromLayer:(CALayer *sourceLayer);
   public void LynxDisplayListApplier::detachHostDecorationLayers();
   public void LynxDisplayListApplier::reattachHostDecorationLayers();
   public void LynxDisplayListApplier::syncHostDecorationLayers();
@@ -3345,6 +3348,9 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer()::updateRendererLayoutCenter:(CGPoint center);
   public void LynxRenderer()::updateLayoutOffsetIfNeeded:(CGPoint offset);
   public void LynxRenderer()::applySubtreeProperties:count:(const lynx::tasm::SubtreeProperty *properties, [count] size_t count);
+  public void LynxRenderer()::applySubtreePropertiesFromList:(const lynx::tasm::DisplayList *list);
+  public void LynxRenderer()::applyParentClips:fromLayer:(NSArray< CAShapeLayer * > *clips, [fromLayer] CALayer *sourceLayer);
+  public void LynxRenderer()::clearParentClipsFromLayer:(CALayer *sourceLayer);
   public void LynxRenderer()::applyTransform:(const float *transform);
   public void LynxRenderer()::applyOpacity:(float opacity);
   public void LynxRenderer()::applyFilter:amount:(int32_t type, [amount] float amount);

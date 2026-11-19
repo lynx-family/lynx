@@ -17,6 +17,13 @@
 
 - (void)applyDisplayList:(lynx::tasm::DisplayList *)list;
 
+- (void)applyClipPathProperty:(const lynx::tasm::SubtreeProperty &)property
+                     fromList:(const lynx::tasm::DisplayList *)list;
+
+// Shape paths are expressed in sourceLayer coordinates and retained by the descriptors.
+- (void)applyParentClips:(NSArray<CAShapeLayer *> *)clips fromLayer:(CALayer *)sourceLayer;
+- (void)clearParentClipsFromLayer:(CALayer *)sourceLayer;
+
 - (void)detachHostDecorationLayers;
 
 - (void)reattachHostDecorationLayers;
