@@ -3099,20 +3099,15 @@ lepus::Value Element::InvokeMethod(const base::String& method,
   return {};
 }
 
-void Element::SetCustomLayerTransform(const gfx::Matrix44& transform) {
-  if (!custom_layer_transform_) {
-    custom_layer_transform_ = std::make_unique<gfx::Matrix44>(transform);
-  } else {
-    *custom_layer_transform_ = transform;
+const gfx::Matrix44* Element::CustomLayerTransform() const {
+  if (EnableFragmentLayerRender()) {
+    if (const auto* fragment =
+            static_cast<const Fragment*>(element_container())) {
+      return fragment->CustomLayerTransform();
+    }
   }
-  custom_layer_transform_updated_ = true;
-}
-
-void Element::EndCustomLayerTransformUpdate() {
-  // A callback that omits its transform restores the CSS/default matrix.
-  if (!custom_layer_transform_updated_) {
-    custom_layer_transform_.reset();
-  }
+  return custom_draw_handler_ ? custom_draw_handler_->LayerTransform()
+                              : nullptr;
 }
 
 void Element::UpdateScrollOffset(float x, float y) {

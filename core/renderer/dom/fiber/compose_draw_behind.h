@@ -5,8 +5,9 @@
 #ifndef CORE_RENDERER_DOM_FIBER_COMPOSE_DRAW_BEHIND_H_
 #define CORE_RENDERER_DOM_FIBER_COMPOSE_DRAW_BEHIND_H_
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_value.h"
-#include "core/renderer/dom/fragment/custom_draw_functions.h"
+#include "core/renderer/dom/fragment/custom_draw_handler.h"
 
 namespace lynx {
 namespace runtime {
@@ -21,13 +22,13 @@ enum class ComposeDrawPhase { kBehind, kForeground, kClip };
 // [canReuse, encodedRecording]. Native retains the compiled DisplayList and
 // uses the supplied recording when compiling for the first time or a new pixel
 // scale. Foreground runs after native content.
-CustomDrawFunctions ComposeDrawBehindFunctions(
+fml::RefPtr<CustomDrawHandler> ComposeDrawBehindFunctions(
     runtime::MTSRuntime* runtime, lepus::Value callback,
     ComposeDrawPhase phase = ComposeDrawPhase::kBehind,
     bool supports_reuse = false);
-CustomDrawFunctions ComposeDrawForegroundFunctions(runtime::MTSRuntime* runtime,
-                                                   lepus::Value callback,
-                                                   bool supports_reuse = false);
+fml::RefPtr<CustomDrawHandler> ComposeDrawForegroundFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback,
+    bool supports_reuse = false);
 
 }  // namespace tasm
 }  // namespace lynx

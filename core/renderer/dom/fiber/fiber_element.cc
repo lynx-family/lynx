@@ -2770,7 +2770,7 @@ ParallelFlushReturn Element::PrepareForCreateOrUpdate() {
 
   // Removing a layer hook resets the resolved CSS properties. Install drawing
   // bindings after style resolution so it cannot overwrite those dirty bits.
-  need_update |= FlushCustomDrawFunctions();
+  need_update |= FlushCustomDrawHandler();
 
   // If props, styles or custom layout functions changed, this patch needs to
   // trigger layout.
@@ -6185,25 +6185,23 @@ void Element::InvalidateChildrenIfNeeded() {
   invalidation_lists_.descendants.clear_and_shrink();
 }
 
-void Element::SetCustomDrawFunctions(CustomDrawFunctions functions) {
-  custom_draw_functions_ =
-      (functions.draw_foreground || functions.draw_behind ||
-       functions.draw_layer_properties)
-          ? std::make_shared<CustomDrawFunctions>(std::move(functions))
-          : nullptr;
+void Element::SetCustomDrawHandler(fml::RefPtr<CustomDrawHandler> handler) {
+  custom_draw_handler_ =
+      (handler && handler->HasAnyPhase()) ? std::move(handler) : nullptr;
   MarkDirty(kDirtyCustomDraw);
 }
 
-bool Element::FlushCustomDrawFunctions() {
+bool Element::FlushCustomDrawHandler() {
   if (!(dirty_ & kDirtyCustomDraw)) return false;
   dirty_ &= ~kDirtyCustomDraw;
   if (EnableFragmentLayerRender()) {
-    fragment_impl()->SetCustomDrawFunctions(custom_draw_functions_);
-    // Configuration belongs to this element. Redraw invalidation can traverse
-    // shared ancestors, so defer only that operation during parallel resolve.
-    HandleBeforeFlushActionsTask(
-        [this]() { fragment_impl()->InvalidateForRedraw(); },
-        kFlagGreedyParallel | kFlagLevelOrderParallel);
+    if (fragment_impl()->SetCustomDrawHandler(custom_draw_handler_)) {
+      // Configuration belongs to this element. Redraw invalidation can traverse
+      // shared ancestors, so defer only that operation during parallel resolve.
+      HandleBeforeFlushActionsTask(
+          [this]() { fragment_impl()->InvalidateForRedraw(); },
+          kFlagGreedyParallel | kFlagLevelOrderParallel);
+    }
     return true;
   }
   return false;
