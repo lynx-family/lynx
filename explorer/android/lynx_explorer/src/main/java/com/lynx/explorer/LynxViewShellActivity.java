@@ -10,6 +10,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
@@ -33,6 +34,7 @@ import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
 import com.lynx.explorer.utils.QueryMapUtils;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateData;
@@ -40,12 +42,15 @@ import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.provider.AbsTemplateProvider;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.xelement.XElementBehaviors;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class LynxViewShellActivity extends AppCompatActivity {
@@ -290,6 +295,27 @@ public class LynxViewShellActivity extends AppCompatActivity {
     Map<String, Object> initData = new HashMap<>();
     initData.put("mockData", "Hello Lynx Explorer");
 
+    if (isLynxMLUrl(url)) {
+      extraTimingInfo.mPrepareTemplateEnd = System.currentTimeMillis();
+      lynxView.setExtraTiming(extraTimingInfo);
+      String lynxMLUrl = url;
+      AbsTemplateProvider templateProvider = LynxEnv.inst().getTemplateProvider();
+      templateProvider.loadTemplate(lynxMLUrl, new AbsTemplateProvider.Callback() {
+        @Override
+        public void onSuccess(byte[] source) {
+          runOnUiThread(()
+                            -> lynxView.loadLynxML(new String(source, StandardCharsets.UTF_8),
+                                lynxMLUrl, TemplateData.fromMap(initData)));
+        }
+
+        @Override
+        public void onFailed(String message) {
+          Log.e(TAG, "Unable to load LynxML source from " + lynxMLUrl + ": " + message);
+        }
+      });
+      return;
+    }
+
     if (isAssetFilename(url)) {
       // get file from asset
       url = getAssetFilename(url);
@@ -320,6 +346,12 @@ public class LynxViewShellActivity extends AppCompatActivity {
       Log.i(TAG, "openTargetUrl failed: not supported url.");
     }
   }
+
+  static boolean isLynxMLUrl(String url) {
+    String path = url == null ? null : Uri.parse(url).getPath();
+    return path != null && path.toLowerCase(Locale.ROOT).endsWith(".lynxml");
+  }
+
   private TemplateData getGlobalProps(Context context, QueryMapUtils queryMap) {
     DisplayMetrics displayMetrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(context);
     Map globalProps = new HashMap();

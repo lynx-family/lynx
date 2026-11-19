@@ -5,12 +5,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "core/renderer/css/css_parser_token.h"
-
 #include <cstddef>
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {

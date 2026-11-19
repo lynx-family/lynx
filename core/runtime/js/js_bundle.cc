@@ -12,6 +12,32 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+
+void AddAppServiceWrapForJsContent(std::string &js_content) {
+  static constexpr char kPrefix[] =
+      "(function(){\n"
+      "function __init_card_bundle__(lynxCoreInject){\n"
+      "var tt = lynxCoreInject.tt;\n"
+      "tt.define(\"app-service.js\", function("
+      "require, module, exports, Card, setTimeout, setInterval, "
+      "clearInterval, clearTimeout, NativeModules, tt, console, Component, "
+      "TaroLynx, nativeAppId, Behavior, LynxJSBI, lynx, window, document, "
+      "frames, self, location, navigator, localStorage, history, Caches, "
+      "screen, alert, confirm, prompt, fetch, XMLHttpRequest, WebSocket, "
+      "webkit, Reporter, print, global, requestAnimationFrame, "
+      "cancelAnimationFrame){\n";
+  static constexpr char kSuffix[] =
+      "\n});\n"
+      "tt.require(\"app-service.js\");\n"
+      "}\n"
+      "return {init: __init_card_bundle__};\n"
+      "})();";
+
+  js_content.reserve(js_content.size() + sizeof(kPrefix) + sizeof(kSuffix));
+  js_content.insert(0, kPrefix);
+  js_content.append(kSuffix);
+}
+
 void JsBundle::AddJsContent(const std::string &path, JsContent content) {
   js_files_.emplace(path, std::move(content));
 }
