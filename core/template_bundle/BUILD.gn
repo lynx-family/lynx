@@ -7,6 +7,12 @@ import("../Lynx.gni")
 # constant_share_sources
 
 lynx_core_source_set("template_bundle") {
+  deps = [
+    "../runtime/js:js_common",
+    "lynxml:lynxml_parser",
+    "lynxml:lynxml_style_parser",
+  ]
+
   sources = [
     "lynx_template_bundle.cc",
     "lynx_template_bundle.h",

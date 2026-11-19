@@ -12,12 +12,6 @@
 
 namespace lynx {
 namespace css {
-#include "core/renderer/css/ng/parser/css_tokenizer_codepoints.cc"
-}
-}  // namespace lynx
-
-namespace lynx {
-namespace css {
 CSSTokenizer::CSSTokenizer(const std::string& string)
     : CSSTokenizer(ustring_helper::from_string(string)) {}
 
@@ -289,7 +283,7 @@ CSSParserToken CSSTokenizer::NextToken() {
   CodePoint code_point_func = nullptr;
 
   if (base::IsASCII(cc)) {
-    DCHECK(cc < codePointsNumber);
+    DCHECK(cc < kCodePointsNumber);
     code_point_func = kCodePoints[cc];
   } else {
     code_point_func = &CSSTokenizer::NameStart;
@@ -308,7 +302,7 @@ CSSParserToken CSSTokenizer::ConsumeNumber() {
 
   NumericValueType type = kIntegerValueType;
   NumericSign sign = kNoSign;
-  unsigned number_length = 0;
+  size_t number_length = 0;
 
   UChar next = input_.PeekWithoutReplacement(0);
   if (next == '+') {
@@ -379,10 +373,10 @@ CSSParserToken CSSTokenizer::ConsumeIdentLikeToken() {
 // https://drafts.csswg.org/css-syntax/#consume-a-string-token
 CSSParserToken CSSTokenizer::ConsumeStringTokenUntil(UChar ending_code_point) {
   // Strings without escapes get handled without allocations
-  for (unsigned size = 0;; size++) {
+  for (size_t size = 0;; size++) {
     UChar cc = input_.PeekWithoutReplacement(size);
     if (cc == ending_code_point) {
-      unsigned start_offset = input_.Offset();
+      size_t start_offset = input_.Offset();
       input_.Advance(size + 1);
       return CSSParserToken(kStringToken, input_.RangeAt(start_offset, size));
     }
@@ -460,10 +454,10 @@ CSSParserToken CSSTokenizer::ConsumeUrlToken() {
   input_.AdvanceUntilNonWhitespace();
 
   // URL tokens without escapes get handled without allocations
-  for (unsigned size = 0;; size++) {
+  for (size_t size = 0;; size++) {
     UChar cc = input_.PeekWithoutReplacement(size);
     if (cc == ')') {
-      unsigned start_offset = input_.Offset();
+      size_t start_offset = input_.Offset();
       input_.Advance(size + 1);
       return CSSParserToken(kUrlToken, input_.RangeAt(start_offset, size));
     }
@@ -546,7 +540,7 @@ bool CSSTokenizer::ConsumeIfNext(UChar character) {
 // http://www.w3.org/TR/css3-syntax/#consume-a-name
 std::u16string CSSTokenizer::ConsumeName() {
   // Names without escapes get handled without allocations
-  for (unsigned size = 0;; ++size) {
+  for (size_t size = 0;; ++size) {
     UChar cc = input_.PeekWithoutReplacement(size);
     if (IsNameCodePoint(cc)) continue;
     // peekWithoutReplacement will return NUL when we hit the end of the
@@ -554,7 +548,7 @@ std::u16string CSSTokenizer::ConsumeName() {
     // below.
     if (cc == '\0' && input_.Offset() + size < input_.length()) break;
     if (cc == '\\') break;
-    unsigned start_offset = input_.Offset();
+    size_t start_offset = input_.Offset();
     input_.Advance(size);
     return input_.RangeAt(start_offset, size);
   }

@@ -78,6 +78,10 @@ class LynxEngine {
                     const std::shared_ptr<tasm::TemplateData>& template_data,
                     std::shared_ptr<tasm::PipelineOptions> pipeline_options);
 
+  void LoadLynxML(const std::string& url, std::string source,
+                  const std::shared_ptr<tasm::TemplateData>& template_data,
+                  std::shared_ptr<tasm::PipelineOptions> pipeline_options);
+
   void LoadTemplateBundle(
       const std::string& url, tasm::LynxTemplateBundle template_bundle,
       const std::shared_ptr<tasm::TemplateData>& template_data,
