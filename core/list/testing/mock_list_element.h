@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "core/list/list_element_delegate.h"
 #include "core/list/testing/mock_list_item_element.h"
@@ -41,7 +42,12 @@ class MockListElement : public ElementDelegate {
   const std::array<float, 4>& GetBorders() const override { return borders_; }
   void FlushListContainerInfo(const std::string& list_container_info_str,
                               std::unique_ptr<pub::Value> list_container_info,
-                              bool from_fiber_data_source) override {}
+                              bool from_fiber_data_source) override {
+    if (list_container_info && list_container_info->IsBool()) {
+      flushed_bool_props_.emplace_back(list_container_info_str,
+                                       list_container_info->Bool());
+    }
+  }
   MOCK_METHOD(void, UpdateListLayoutNodeAttribute, (), (override));
   MOCK_METHOD(bool, ComponentAtIndex,
               (uint32_t index, int64_t operationId,
@@ -125,6 +131,7 @@ class MockListElement : public ElementDelegate {
   std::array<float, 4> margins_{0.f, 0.f, 0.f, 0.f};
   std::array<float, 4> borders_{0.f, 0.f, 0.f, 0.f};
   int flush_patching_count_{0};
+  std::vector<std::pair<std::string, bool>> flushed_bool_props_;
   std::unordered_set<std::string> events_;
   std::unordered_map<std::string, std::unique_ptr<MockListItemElement>>
       list_item_elements_;

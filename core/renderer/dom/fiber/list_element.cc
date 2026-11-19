@@ -110,7 +110,7 @@ lepus::Value ToInvokeMethodResult(const std::unique_ptr<pub::Value>& result,
 
 lepus::Value ComposeListScrollStateValue(
     const lynx::list::ListScrollState& state, double physical_pixels_per_unit,
-    double consumed = 0, double remaining = 0) {
+    double consumed = 0, double remaining = 0, bool sticky_supported = true) {
   BASE_STATIC_STRING_DECL(kInputConsumedPx, "consumedPx");
   BASE_STATIC_STRING_DECL(kInputRemainingPx, "remainingPx");
   BASE_STATIC_STRING_DECL(kInputValid, "valid");
@@ -140,6 +140,27 @@ lepus::Value ComposeListScrollStateValue(
       kInputFirstVisibleScrollOffsetPx,
       state.first_visible_scroll_offset * physical_pixels_per_unit);
   result->SetValue(kInputRevision, static_cast<int64_t>(state.revision));
+  // Compose uses the presence of stickyItems to detect host support.
+  if (!sticky_supported) {
+    return lepus::Value(std::move(result));
+  }
+  BASE_STATIC_STRING_DECL(kInputStickyItems, "stickyItems");
+  auto sticky_items = lepus::CArray::Create();
+  if (state.sticky_item.IsValid()) {
+    BASE_STATIC_STRING_DECL(kInputIndex, "index");
+    BASE_STATIC_STRING_DECL(kInputKey, "key");
+    BASE_STATIC_STRING_DECL(kInputOffsetPx, "offsetPx");
+    BASE_STATIC_STRING_DECL(kInputSizePx, "sizePx");
+    auto sticky = lepus::Dictionary::Create();
+    sticky->SetValue(kInputIndex, state.sticky_item.index);
+    sticky->SetValue(kInputKey, state.sticky_item.key);
+    sticky->SetValue(kInputOffsetPx,
+                     state.sticky_item.offset * physical_pixels_per_unit);
+    sticky->SetValue(kInputSizePx,
+                     state.sticky_item.size * physical_pixels_per_unit);
+    sticky_items->emplace_back(std::move(sticky));
+  }
+  result->SetValue(kInputStickyItems, std::move(sticky_items));
   return lepus::Value(std::move(result));
 }
 
@@ -830,7 +851,8 @@ lepus::Value ListElement::InvokeMethod(const base::String& method,
     // Compose binds and lays out items synchronously before returning state.
     const auto request = params.ToLepusValue(true);
     if (will_destroy() || !CanUseComposeScroll()) {
-      return ComposeListScrollStateValue({}, 1.0);
+      return ComposeListScrollStateValue({}, 1.0, 0, 0,
+                                         /*sticky_supported=*/false);
     }
     const auto type = request.GetProperty(kInputType);
     const double scale =
@@ -855,7 +877,8 @@ lepus::Value ListElement::InvokeMethod(const base::String& method,
       }
     }
     *error = "Invalid Compose list command";
-    return ComposeListScrollStateValue({}, 1.0);
+    return ComposeListScrollStateValue({}, 1.0, 0, 0,
+                                       /*sticky_supported=*/false);
   }
   static constexpr std::pair<const char*, MethodHandler> kHandlers[] = {
       {lynx::list::kScrollToPositionMethod,

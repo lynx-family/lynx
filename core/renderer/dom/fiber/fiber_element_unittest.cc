@@ -28655,6 +28655,120 @@ TEST_P(FiberElementTest, ResolveElementSubtreePreparesChangedNativeContent) {
   EXPECT_EQ(platform->before_ids.size(), 1u);
 }
 
+TEST_P(FiberElementTest, ComposeStickyProjectionUsesMeasuredElementOutput) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 1.f, 1.f);
+  PrepareLayoutInElementFirstScreenTest(this);
+  tasm->layout_scheduler_ = std::make_unique<LayoutScheduler>(manager);
+  manager->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
+  manager->SetEnableNativeListFromShell(true);
+  manager->UpdateViewport(200, SLMeasureModeDefinite, 100,
+                          SLMeasureModeDefinite, true);
+  auto renderer_runtime = CreateRendererRuntime(tasm.get());
+  Renderer::RegisterBuiltin(renderer_runtime.get(), ArchOption::FIBER_ARCH);
+  auto* context = runtime::MTSRuntime::ToQuickContext(renderer_runtime.get());
+  ASSERT_NE(context, nullptr);
+  SetDefaultEntryRuntime(tasm.get(), renderer_runtime);
+  tasm->pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+  auto page = manager->CreateFiberPage("page", 1);
+  page->MarkAsComposeLayout();
+  page->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+  manager->SetFiberPageElement(page);
+  auto handle = fml::AdoptRef<ComposeElementHandle>(new ComposeElementHandle(
+      manager, ComposeElementKind::kList, base::String(), tasm.get()));
+  auto* list = static_cast<ListElement*>(handle->content_element().get());
+  list->SetStyle(kPropertyIDWidth, lepus::Value("200px"));
+  list->SetStyle(kPropertyIDHeight, lepus::Value("100px"));
+  list->SetAttribute("enable-decoupled-list", lepus::Value(true));
+  list->SetAttribute("experimental-batch-render-strategy", lepus::Value(0));
+  list->SetAttribute("scroll-orientation", lepus::Value("vertical"));
+  page->InsertNode(handle->mount_root());
+  page->FlushActionsAsRoot();
+  ASSERT_NE(list->list_mediator_, nullptr);
+  auto* container = static_cast<lynx::list::ListContainerImpl*>(
+      list->list_mediator_->list_container_delegate_.get());
+  ASSERT_NE(container, nullptr);
+  container->SetComposeScrollManaged(true);
+  list->SetAttribute("sticky", lepus::Value(true));
+  const int heights[] = {100, 40, 60, 60, 40, 100, 100, 100};
+  auto items = lepus::CArray::Create();
+  lynx::list::testing::FiberDataSource source;
+  for (int index = 0; index < 8; ++index) {
+    const bool header = index == 1 || index == 4;
+    auto item = manager->CreateFiberElement("list-item");
+    item->SetStyle(kPropertyIDWidth, lepus::Value("100%"));
+    item->SetStyle(kPropertyIDHeight,
+                   lepus::Value(std::to_string(heights[index]) + "px"));
+    items->emplace_back(item);
+    source.insert_action_.insert_ops_.push_back(
+        {index, "opaque-" + std::to_string(index), heights[index], false,
+         header, false, true});
+  }
+  renderer_runtime->SetGlobalData("stickyItems", lepus::Value(items));
+  constexpr char kBind[] = R"JS((function(list, id, index, operation) {
+    var item = stickyItems[index];
+    __AppendElement(list, item);
+    __SetAttribute(item, 'sticky-top', index === 1 || index === 4);
+    __FlushElementTree(item, {operationID: operation,
+      elementID: __GetElementUniqueID(item), listID: id});
+    return __GetElementUniqueID(item);
+  }))JS";
+  lepus::Value callback;
+  ASSERT_TRUE(
+      context->EvalBuf(kBind, sizeof(kBind) - 1, callback, "sticky.js"));
+  list->UpdateCallbacks(callback, {}, {});
+  list->SetAttribute("update-list-info", lepus::Value(source.Resolve()));
+  page->FlushActionsAsRoot();
+  manager->RequestLayout(LayoutOptions(this, true, true));
+  ASSERT_TRUE(list->slnode()->IsComposeLayout());
+  auto header = fml::static_ref_ptr_cast<Element>(items->get(1).RefCounted());
+  const auto scroll_and_check = [&](float offset, float expected_top) {
+    auto state = container->ScrollToItem(3, offset - 200.f);
+    EXPECT_TRUE(state.valid);
+    ASSERT_TRUE(state.sticky_item.IsValid());
+    EXPECT_EQ(state.sticky_item.index, 1);
+    EXPECT_EQ(state.sticky_item.key, "opaque-1");
+    EXPECT_FLOAT_EQ(state.offset, offset);
+    EXPECT_FLOAT_EQ(state.sticky_item.offset, expected_top);
+    EXPECT_FLOAT_EQ(state.sticky_item.size, 40.f);
+    EXPECT_FLOAT_EQ(container->GetItemHolderForIndex(1)->top(), 100.f);
+    EXPECT_FLOAT_EQ(header->top(), expected_top);
+    EXPECT_FLOAT_EQ(header->height(), 40.f);
+    auto params = lepus::Dictionary::Create();
+    params->SetValue("type", lepus::Value("getState"));
+    std::string error;
+    if (list->CanUseComposeScroll()) {
+      const auto mode = manager->page_options_.GetEmbeddedMode();
+      manager->page_options_.SetEmbeddedMode(
+          EmbeddedMode::FRAGMENT_LAYER_RENDER);
+      auto result =
+          list->InvokeMethod("composeList", lepus::Value(params), &error);
+      manager->page_options_.SetEmbeddedMode(mode);
+      EXPECT_TRUE(error.empty());
+      EXPECT_TRUE(result.GetProperty("valid").Bool());
+      const auto sticky = result.GetProperty("stickyItems").GetProperty(0);
+      EXPECT_EQ(sticky.GetProperty("index").Number(), 1);
+      EXPECT_EQ(sticky.GetProperty("key").StdString(), "opaque-1");
+      EXPECT_EQ(sticky.GetProperty("offsetPx").Number(), expected_top);
+      EXPECT_EQ(sticky.GetProperty("sizePx").Number(), 40);
+    } else {
+      auto result =
+          list->InvokeMethod("composeList", lepus::Value(params), &error);
+      EXPECT_FALSE(result.GetProperty("valid").Bool());
+      EXPECT_TRUE(result.GetProperty("stickyItems").IsNil());
+    }
+  };
+  scroll_and_check(180.f, 180.f);
+  const auto revision = container->GetScrollState().revision;
+  scroll_and_check(240.f, 220.f);
+  EXPECT_GT(container->GetScrollState().revision, revision);
+  auto restored = container->ScrollToItem(1, -60.f);
+  EXPECT_TRUE(restored.valid);
+  EXPECT_FALSE(restored.sticky_item.IsValid());
+  EXPECT_FLOAT_EQ(restored.offset, 40.f);
+  EXPECT_FLOAT_EQ(container->GetItemHolderForIndex(1)->top(), 100.f);
+  EXPECT_FLOAT_EQ(header->top(), 100.f);
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
