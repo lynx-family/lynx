@@ -15,7 +15,8 @@ int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(
 
 void ModuleDelegateImpl::CallJSCallback(
     const std::shared_ptr<runtime::js::ModuleCallback>& callback,
-    base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete) {}
+    base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete,
+    bool force_async) {}
 
 void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {}
 
