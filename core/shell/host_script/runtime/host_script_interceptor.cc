@@ -47,7 +47,8 @@ bool Accepts(Interceptor::Domain domain, Kind kind) {
   switch (domain) {
     case Interceptor::Domain::kUI:
       return kind == Kind::kCreate || kind == Kind::kLoadTemplate ||
-             kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport;
+             kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport ||
+             kind == Kind::kResourceFetch;
     case Interceptor::Domain::kBTS:
       return kind == Kind::kCall || kind == Kind::kResult ||
              kind == Kind::kCallback;
@@ -59,7 +60,8 @@ bool Accepts(Interceptor::Domain domain, Kind kind) {
 // Operation events carry the operation in `request`; JSB events are flat.
 bool HasRequest(Kind kind) {
   return kind == Kind::kCreate || kind == Kind::kLoadTemplate ||
-         kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport;
+         kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport ||
+         kind == Kind::kResourceFetch;
 }
 
 Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
@@ -265,9 +267,18 @@ bool ValidPatchField(Kind kind, const std::string& key, const Value& value,
       return ValidCreateField(key, value, original);
     case Kind::kUpdateViewport:
       return (key == "width" || key == "height") && IsMeasureSpec(value);
+    case Kind::kResourceFetch:
+      return key == "url" && value.IsString() && !value.StdString().empty();
     default:
       return false;
   }
+}
+
+// A fetch answered by the script: exactly the nonempty resource bytes.
+bool ValidResourceMock(const Value& mock) {
+  return mock.IsTable() && mock.GetLength() == 1 &&
+         mock.GetProperty(kBytes).IsByteArray() &&
+         mock.GetProperty(kBytes).ByteArray()->GetLength() > 0;
 }
 
 bool ValidPatch(Kind kind, const Value& patch, const Value& original) {
@@ -316,9 +327,9 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
   *payload = decision->GetProperty(kPayload);
   auto name = action.StdString();
   if (name == "mock") {
-    return kind == Kind::kCall && ValidMock(*payload, original)
-               ? Action::kMock
-               : Action::kInvalid;
+    bool valid = (kind == Kind::kCall && ValidMock(*payload, original)) ||
+                 (kind == Kind::kResourceFetch && ValidResourceMock(*payload));
+    return valid ? Action::kMock : Action::kInvalid;
   }
   if (name != "proceed") return Action::kInvalid;
   // Explicit undefined fields mean omission, except that a result value may

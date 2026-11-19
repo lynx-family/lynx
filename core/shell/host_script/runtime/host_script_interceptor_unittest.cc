@@ -116,16 +116,16 @@ TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
   const std::pair<Interceptor::Domain, const char*> cases[] = {
       {Interceptor::Domain::kUI,
        "[['view.created','view.create','view.loadTemplate',"
-       "'view.updateMetaData','view.updateViewport'],"
+       "'view.updateMetaData','view.updateViewport','resource.fetch'],"
        "['jsb.call','jsb.result','jsb.callback']]"},
       {Interceptor::Domain::kBTS,
        "[['view.created','jsb.call','jsb.result','jsb.callback'],"
        "['view.create','view.loadTemplate',"
-       "'view.updateMetaData','view.updateViewport']]"},
+       "'view.updateMetaData','view.updateViewport','resource.fetch']]"},
       {Interceptor::Domain::kMTS,
        "[['view.created'],['view.create',"
        "'view.loadTemplate','view.updateMetaData','view.updateViewport',"
-       "'jsb.call','jsb.result','jsb.callback']]"}};
+       "'resource.fetch','jsb.call','jsb.result','jsb.callback']]"}};
   for (const auto& [domain, names] : cases) {
     Install(domain);
     std::string script =
@@ -227,7 +227,7 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
         // In InterceptKind order, which is the dispatch order below.
         domain == Interceptor::Domain::kUI
             ? "['view.created','view.loadTemplate','view.updateMetaData',"
-              "'view.create','view.updateViewport']"
+              "'view.create','view.updateViewport','resource.fetch']"
             : "['view.created','jsb.call','jsb.result','jsb.callback']";
     std::string script = R"(
       globalThis.calls = [];
@@ -798,6 +798,66 @@ TEST_F(HostScriptInterceptorTest, ViewportPatchesAreValidatedPerField) {
     Script(("patch = " + std::string(invalid)).c_str());
     EXPECT_TRUE(Dispatch(InterceptKind::kUpdateViewport).failed) << invalid;
   }
+}
+
+TEST_F(HostScriptInterceptorTest, ResourceFetchRedirectsOrAnswersWithBytes) {
+  Install();
+  Script(R"(
+    globalThis.decide = undefined;
+    interceptor.on('resource.fetch', (e, c) => decide(e.request, c));
+  )");
+  Script("decide = (r, c) => c.proceed({...r, url: r.url + '-patched'})");
+  auto result = Dispatch(InterceptKind::kResourceFetch);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.patch.GetProperty("url").StdString(), "original-patched");
+  Script("decide = (r, c) => c.mock({bytes: new Uint8Array([1, 2]).buffer})");
+  result = Dispatch(InterceptKind::kResourceFetch);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(result.mock.GetProperty("bytes").ByteArray()->GetLength(), 2u);
+  for (const char* invalid :
+       {"(r, c) => c.mock({bytes: new ArrayBuffer(0)})",
+        "(r, c) => c.mock({bytes: new ArrayBuffer(1), url: 'x'})",
+        "(r, c) => c.mock({})", "(r, c) => c.proceed({type: 'lazyBundle'})",
+        "(r, c) => c.proceed({url: ''})"}) {
+    Script(("decide = " + std::string(invalid)).c_str());
+    result = Dispatch(InterceptKind::kResourceFetch);
+    EXPECT_TRUE(result.failed) << invalid;
+    EXPECT_FALSE(result.mock.IsTable()) << invalid;
+  }
+}
+
+TEST_F(HostScriptInterceptorTest, ResourceFetchRechecksViewAndHandlerOnUI) {
+  Install(HostScriptInterceptor::Domain::kUI);
+  Interceptor::RegisterView(7);
+  Interceptor::UpdateViewUrl(7, "page");
+  EXPECT_FALSE(Interceptor::HasResourceFetchHandler(7));
+  Script(R"(
+    globalThis.seen = [];
+    globalThis.subscription = interceptor.on('resource.fetch', (e, c) => {
+      seen.push([e.viewId, e.viewURL, e.request.url].join(' '));
+      return c.proceed({url: 'target'});
+    });
+  )");
+  // Checking from the requester must not enter the UI provider.
+  std::thread requester([] {
+    EXPECT_TRUE(Interceptor::HasResourceFetchHandler(7));
+    EXPECT_FALSE(Interceptor::HasResourceFetchHandler(-1));
+  });
+  requester.join();
+  auto result = Interceptor::DispatchResourceFetch(7, "original");
+  EXPECT_EQ(result.patch.GetProperty("url").StdString(), "target");
+
+  Interceptor::DestroyView(7);
+  Interceptor::ClearViewUrl(7);
+  EXPECT_FALSE(
+      Interceptor::DispatchResourceFetch(7, "destroyed").patch.IsTable());
+  Interceptor::RegisterView(7);
+  Script("subscription.dispose()");
+  EXPECT_FALSE(Interceptor::HasResourceFetchHandler(7));
+  EXPECT_FALSE(
+      Interceptor::DispatchResourceFetch(7, "disposed").patch.IsTable());
+  EXPECT_EQ(EvalString("seen.join(',')"), "7 page original");
+  Interceptor::DestroyView(7);
 }
 
 TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {

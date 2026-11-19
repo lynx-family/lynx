@@ -997,7 +997,8 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
 
     mPageLoadListener = new InnerPageLoadListener();
     mGroup = mLynxViewBuilder.getLynxGroup();
-    mHostEnvironment.createEngineResourceLoader(mLynxViewBuilder.fetcher, mLynxContext);
+    mHostEnvironment.createEngineResourceLoader(mLynxViewBuilder.fetcher, mLynxContext)
+        .setViewId(mLogContext.viewId);
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
     mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime(), new TASMCallback());
     mNativeFacade.setTemplateLoadClient(mClient);
@@ -1077,7 +1078,8 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       }
       // only init LynxRuntime if enableJSRuntime is true.
       if (enableJSRuntime()) {
-        mHostEnvironment.createRuntimeResourceLoader(mLynxViewBuilder.fetcher, mLynxContext);
+        mHostEnvironment.createRuntimeResourceLoader(mLynxViewBuilder.fetcher, mLynxContext)
+            .setViewId(mLogContext.viewId);
         if (mRuntime != null) {
           // In LynxbakcgroundRuntime Standalone, we create and init a LynxRuntime without
           // LynxShell. During LynxTemplateRender creation, this runtime is used to create
@@ -4154,6 +4156,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   private void attachPiper(LynxBackgroundRuntime runtime, LynxModuleFactory moduleFactory) {
     mNativeFacade.setModuleFactory(moduleFactory);
 
+    runtime.bindResourceLoaderToView(mLogContext.viewId);
     nativeAttachRuntime(mNativePtr, mNativeLifecycle, runtime.getNativePtr());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
     WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();

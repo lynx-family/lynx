@@ -7,6 +7,7 @@ package com.lynx.tasm.core.resource;
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxInfoReportHelper;
@@ -50,6 +51,7 @@ public class LynxResourceLoader {
   private final LynxExternalResourceFetcherWrapper mFetcherWrapper;
   private final TemplateLoaderHelper mTemplateLoaderHelper;
   private final LynxGenericResourceFetcher mGenericResourceFetcher;
+  private volatile long mViewId = -1;
 
   private final LynxInfoReportHelper mReportHelper = new LynxInfoReportHelper();
 
@@ -63,8 +65,18 @@ public class LynxResourceLoader {
     mGenericResourceFetcher = genericResourceFetcher;
   }
 
+  /** Binds this renderer's loader, including a background runtime attached after creation. */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setViewId(long viewId) {
+    mViewId = viewId;
+  }
+
   @CalledByNative
   private void loadResource(long responseHandler, String url, int type, boolean reqInCurThread) {
+    if (LynxHostScriptResourceHooks.intercept(
+            this, mViewId, responseHandler, url, type, reqInCurThread)) {
+      return;
+    }
     if (reqInCurThread) {
       loadResource(responseHandler, url, type);
     } else {
@@ -81,6 +93,16 @@ public class LynxResourceLoader {
             responseHandler, null, RESOURCE_LOADER_FAILED, e.getMessage());
       }
     }
+  }
+
+  // Answers a lazy or frame bundle request with Host Script mock bytes, keeping verification.
+  void deliverMockedBundle(long responseHandler, String url, int type, byte[] data) {
+    LynxResourceRequest.LynxResourceType resourceType =
+        type == LynxResourceType.LYNX_RESOURCE_TYPE_FRAME
+        ? LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate
+        : LynxResourceRequest.LynxResourceType.LynxResourceTypeDynamicComponent;
+    new TemplateResourceCallback(url, responseHandler, mReportHelper, resourceType)
+        .onTemplateLoaded(true, data, null, null, null);
   }
 
   void loadResource(long responseHandler, String url, int type) {
