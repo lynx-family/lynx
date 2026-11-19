@@ -18,6 +18,12 @@ LYNX_EXTERN_C void lynx_view_client_bind_on_page_start(
     lynx_view_client_t* client, on_page_start on_page_start) {
   client->on_page_start = on_page_start;
 }
+
+LYNX_EXTERN_C void lynx_view_client_bind_on_page_start_v2(
+    lynx_view_client_t* client, on_page_start_v2 callback) {
+  client->on_page_start_v2 = callback;
+}
+
 LYNX_EXTERN_C void lynx_view_client_bind_on_load_success(
     lynx_view_client_t* client, on_load_success on_load_success) {
   client->on_load_success = on_load_success;
@@ -91,4 +97,9 @@ LYNX_EXTERN_C void lynx_view_client_bind_on_frame_timing(
 
 LYNX_EXTERN_C void lynx_view_client_release(lynx_view_client_t* client) {
   delete client;
+}
+
+LYNX_EXTERN_C void lynx_view_client_bind_on_intrinsic_content_size_changed(
+    lynx_view_client_t* client, on_intrinsic_content_size_changed callback) {
+  client->on_intrinsic_content_size_changed = callback;
 }

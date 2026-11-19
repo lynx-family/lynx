@@ -36,6 +36,7 @@ LYNX_EXTERN_C void lynx_view_builder_set_frame(lynx_view_builder_t* builder,
                                                const float& x, const float& y,
                                                const float& width,
                                                const float& height) {
+  builder->has_initial_viewport = true;
   builder->frame.x = x;
   builder->frame.y = y;
   builder->frame.width = width;
@@ -63,6 +64,17 @@ LYNX_EXTERN_C void lynx_view_builder_set_custom_vsync_monitor(
 LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t* builder, bool enable) {
   builder->enable_js_runtime = enable;
+}
+
+LYNX_EXTERN_C void lynx_view_builder_set_user_bytecode(
+    lynx_view_builder_t* builder, bool enable, const char* source_url) {
+  builder->enable_bytecode = enable;
+  builder->bytecode_source_url = source_url ? source_url : "";
+}
+
+LYNX_EXTERN_C void lynx_view_builder_set_embedded_mode(
+    lynx_view_builder_t* builder, int32_t mode) {
+  builder->embedded_mode = static_cast<lynx::tasm::EmbeddedMode>(mode);
 }
 
 LYNX_EXTERN_C bool lynx_view_builder_set_color_space(

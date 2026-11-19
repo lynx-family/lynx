@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <string>
@@ -173,6 +174,130 @@ TEST_F(LynxViewTest, CreationFailsWithoutUIRenderer) {
   EXPECT_EQ(view, nullptr);
 }
 
+TEST_F(LynxViewTest, InjectedRendererTakesPriorityAndBuilderCanBeReused) {
+  lynx::pub::LynxView::Builder builder;
+  builder.SetEnableJSRuntime(false);
+  int created = 0;
+  builder.Impl()->ui_renderer_creator = [&created](lynx_view_builder_t* raw) {
+    ++created;
+    return std::make_unique<lynx::embedder::TestLynxUIRenderer>(raw);
+  };
+  lynx::embedder::TestLynxUIRenderer::SetCreationEnabled(false);
+  using View = std::unique_ptr<lynx_view_t, decltype(&lynx_view_release)>;
+  View first(lynx_view_create(builder.Impl(), nullptr), lynx_view_release);
+  View second(lynx_view_create(builder.Impl(), nullptr), lynx_view_release);
+  lynx::embedder::TestLynxUIRenderer::SetCreationEnabled(true);
+  ASSERT_NE(first, nullptr);
+  ASSERT_NE(second, nullptr);
+  EXPECT_EQ(created, 2);
+  EXPECT_NE(first->lynx_ui_renderer.get(), second->lynx_ui_renderer.get());
+  EXPECT_EQ(first->lynx_ui_renderer->GetUIDelegate()->GetInstanceId(),
+            first->lynx_template_renderer->GetInstanceId());
+  EXPECT_EQ(second->lynx_ui_renderer->GetUIDelegate()->GetInstanceId(),
+            second->lynx_template_renderer->GetInstanceId());
+}
+
+TEST_F(LynxViewTest, DeferredViewportSurvivesReloadUntilSized) {
+  lynx::pub::LynxView::Builder builder;
+  builder.SetScreenSize(320, 480, 2).SetEnableJSRuntime(false);
+  builder.Impl()->has_initial_viewport = false;
+  view_ = builder.Build();
+  ASSERT_NE(view_->Impl(), nullptr);
+  auto* view = view_->Impl();
+  const auto& settings = view->lynx_template_renderer->GetSettings();
+  EXPECT_FALSE(settings.has_viewport);
+  view->lynx_view_clients->OnReloadTemplate("test://viewport", {}, nullptr);
+  EXPECT_FALSE(settings.has_viewport);
+
+  lynx_view_set_viewport(view, 160, 2, 240, 1);
+  EXPECT_TRUE(settings.has_viewport);
+  EXPECT_FLOAT_EQ(settings.viewport_size.cx, 160);
+  EXPECT_EQ(settings.viewport_width_mode, 2);
+
+  builder.SetFrame(0, 0, 100, 200);
+  auto sized_view = builder.Build();
+  ASSERT_NE(sized_view->Impl(), nullptr);
+  const auto& sized = sized_view->Impl()->lynx_template_renderer->GetSettings();
+  EXPECT_TRUE(sized.has_viewport);
+  EXPECT_FLOAT_EQ(sized.viewport_size.cy, 200);
+}
+
+TEST_F(LynxViewTest, BuilderCopiesBytecodeAndEmbeddedModeForEachView) {
+  lynx::pub::LynxView::Builder builder;
+  builder.SetScreenSize(320, 480, 1).SetEnableJSRuntime(false);
+  std::string url = "test://bytecode";
+  lynx_view_builder_set_user_bytecode(builder.Impl(), true, url.c_str());
+  lynx_view_builder_set_embedded_mode(builder.Impl(),
+                                      lynx::tasm::EMBEDDED_MODE_BASE);
+  url.clear();
+  view_ = builder.Build();
+  ASSERT_NE(view_->Impl(), nullptr);
+
+  lynx_view_builder_set_user_bytecode(builder.Impl(), false, nullptr);
+  lynx_view_builder_set_embedded_mode(builder.Impl(), lynx::tasm::UNSET);
+  auto other = builder.Build();
+  ASSERT_NE(other->Impl(), nullptr);
+  const auto& cleared = other->Impl()->lynx_template_renderer->GetSettings();
+  EXPECT_FALSE(cleared.enable_bytecode);
+  EXPECT_TRUE(cleared.bytecode_source_url.empty());
+  EXPECT_EQ(cleared.embedded_mode, lynx::tasm::UNSET);
+
+  const auto& settings = view_->Impl()->lynx_template_renderer->GetSettings();
+  EXPECT_TRUE(settings.enable_bytecode);
+  EXPECT_EQ(settings.bytecode_source_url, "test://bytecode");
+  EXPECT_EQ(settings.embedded_mode, lynx::tasm::EMBEDDED_MODE_BASE);
+}
+
+TEST_F(LynxViewTest, InjectedRendererFailureDoesNotFallBack) {
+  lynx::pub::LynxView::Builder builder;
+  builder.SetEnableJSRuntime(false);
+  builder.Impl()->ui_renderer_creator = [](lynx_view_builder_t*) {
+    return std::unique_ptr<lynx::embedder::LynxUIRenderer>();
+  };
+  using View = std::unique_ptr<lynx_view_t, decltype(&lynx_view_release)>;
+  View view(lynx_view_create(builder.Impl(), nullptr), lynx_view_release);
+  EXPECT_EQ(view, nullptr);
+  EXPECT_EQ(lynx_view_create(nullptr, nullptr), nullptr);
+}
+
+TEST_F(LynxViewTest, PreparePlatformOwnersBeforeDestroyingShellAndClients) {
+  struct State {
+    lynx_view_t* view = nullptr;
+    bool prepared = false;
+    bool destroyed = false;
+  } state;
+  class Renderer : public lynx::embedder::TestLynxUIRenderer {
+   public:
+    Renderer(lynx_view_builder_t* builder, State& state)
+        : TestLynxUIRenderer(builder), state_(state) {}
+    void PrepareForDestroy() override {
+      EXPECT_NE(state_.view->lynx_template_renderer, nullptr);
+      EXPECT_NE(state_.view->lynx_view_clients, nullptr);
+      EXPECT_FALSE(state_.prepared);
+      state_.prepared = true;
+    }
+    ~Renderer() override {
+      EXPECT_TRUE(state_.prepared);
+      EXPECT_EQ(state_.view->lynx_template_renderer, nullptr);
+      EXPECT_EQ(state_.view->lynx_view_clients, nullptr);
+      state_.destroyed = true;
+    }
+
+   private:
+    State& state_;
+  };
+  lynx::pub::LynxView::Builder builder;
+  builder.SetEnableJSRuntime(false);
+  builder.Impl()->ui_renderer_creator = [&state](lynx_view_builder_t* raw) {
+    return std::make_unique<Renderer>(raw, state);
+  };
+  state.view = lynx_view_create(builder.Impl(), nullptr);
+  ASSERT_NE(state.view, nullptr);
+  lynx_view_release(state.view);
+  EXPECT_TRUE(state.prepared);
+  EXPECT_TRUE(state.destroyed);
+}
+
 TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
   class RecordingRuntimeProxy : public lynx::shell::LynxBTSRuntimeProxyImpl {
    public:
@@ -264,6 +389,24 @@ TEST_F(LynxViewTest, ResetRecreatesPlatformPerformanceController) {
   EXPECT_NE(
       renderer.shell()->GetPerfControllerActor()->Impl()->GetPlatformImpl(),
       nullptr);
+}
+
+TEST_F(LynxViewTest, ResetPreservesEmbeddedMode) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  InspectableTemplateRenderer::Settings settings;
+  settings.screen_size = {320, 480};
+  settings.viewport_size = {320, 480};
+  settings.enable_js = false;
+  settings.embedded_mode = lynx::tasm::EMBEDDED_MODE_ALL;
+  InspectableTemplateRenderer renderer(settings, ui_renderer.GetUIDelegate(),
+                                       nullptr, nullptr);
+  renderer.Initialize();
+  EXPECT_EQ(renderer.shell()->GetPageOptions().GetEmbeddedMode(),
+            lynx::tasm::EMBEDDED_MODE_ALL);
+  renderer.Reset();
+  EXPECT_EQ(renderer.shell()->GetPageOptions().GetEmbeddedMode(),
+            lynx::tasm::EMBEDDED_MODE_ALL);
 }
 
 TEST_F(LynxViewTest, DisabledJSInitializesMTSWithoutBTS) {
@@ -594,6 +737,51 @@ TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
 
   EXPECT_TRUE(client->errors.empty())
       << (client->errors.empty() ? "" : client->errors.front());
+}
+
+TEST_F(LynxViewTest, PageStartV2DistinguishesSameUrlLoadAndReload) {
+  BuildView();
+  auto legacy = std::make_shared<RecordingViewClient>();
+  view_->AddClient(legacy);
+  using Starts = std::vector<std::pair<std::string, lynx_pipeline_origin_t>>;
+  Starts starts;
+  auto* client = lynx_view_client_create(&starts);
+  lynx_view_client_bind_on_page_start(
+      client, [](lynx_view_client_t*, const char*) {
+        ADD_FAILURE() << "A client with V2 bound must not receive V1";
+      });
+  lynx_view_client_bind_on_page_start_v2(
+      client, [](lynx_view_client_t* client, const char* url,
+                 lynx_pipeline_origin_t origin) {
+        static_cast<Starts*>(lynx_view_client_get_user_data(client))
+            ->emplace_back(url, origin);
+      });
+  lynx_view_add_client(view_->Impl(), client);
+
+  const char* url = "test://same";
+  auto meta = std::make_shared<lynx::pub::LynxLoadMeta>();
+  meta->SetUrl(url);
+  auto binary = EncodeTestTemplate();
+  meta->SetBinaryData(binary);
+  view_->LoadTemplate(meta);
+  view_->ReloadTemplate(std::make_shared<lynx::pub::LynxTemplateData>("{}"),
+                        nullptr);
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(starts, (Starts{{url, kLynxPipelineOriginFirstScreen},
+                            {url, kLynxPipelineOriginReload}}));
+  EXPECT_EQ(std::count(legacy->events.begin(), legacy->events.end(), "start"),
+            1);
+
+  legacy->events.clear();
+  starts.clear();
+  view_->Impl()->lynx_template_renderer->ReloadTemplate(url, binary, nullptr);
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  EXPECT_EQ(starts, (Starts{{url, kLynxPipelineOriginFirstScreen}}));
+  EXPECT_EQ(std::count(legacy->events.begin(), legacy->events.end(), "start"),
+            1);
+
+  lynx_view_remove_client(view_->Impl(), client);
+  lynx_view_client_release(client);
 }
 
 TEST_F(LynxViewTest, FrameResourceUsesTemplateRequestType) {

@@ -19,6 +19,13 @@ typedef struct lynx_view_client_t lynx_view_client_t;
 // Callbacks of LynxViewClient
 // Page starts preparing to load.
 typedef void (*on_page_start)(lynx_view_client_t* client, const char* url);
+typedef enum {
+  kLynxPipelineOriginFirstScreen = 1,
+  kLynxPipelineOriginReload = 2,
+} lynx_pipeline_origin_t;
+// The URL is borrowed for the duration of the callback.
+typedef void (*on_page_start_v2)(lynx_view_client_t* client, const char* url,
+                                 lynx_pipeline_origin_t origin);
 // Page loaded successfully.
 typedef void (*on_load_success)(lynx_view_client_t* client);
 // First screen layout completed.
@@ -89,11 +96,18 @@ typedef void (*on_enter_background)(lynx_view_client_t* client);
 typedef void (*on_frame_timing)(lynx_view_client_t* client,
                                 int64_t frame_start_time_in_ns,
                                 int64_t frame_finish_time_in_ns);
+// Harmony intrinsic content dimensions in logical pixels, on the UI thread.
+typedef void (*on_intrinsic_content_size_changed)(lynx_view_client_t* client,
+                                                  float width, float height);
 
 LYNX_CAPI_EXPORT lynx_view_client_t* lynx_view_client_create(void* user_data);
 LYNX_CAPI_EXPORT void* lynx_view_client_get_user_data(lynx_view_client_t*);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_page_start(lynx_view_client_t*,
                                                           on_page_start f);
+// Receives both template loads and in-place reloads. When both callbacks are
+// bound on one client, only V2 is used; binding NULL restores legacy delivery.
+LYNX_CAPI_EXPORT void lynx_view_client_bind_on_page_start_v2(
+    lynx_view_client_t*, on_page_start_v2 f);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_load_success(lynx_view_client_t*,
                                                             on_load_success f);
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_first_screen(lynx_view_client_t*,
@@ -125,6 +139,8 @@ LYNX_CAPI_EXPORT void lynx_view_client_bind_on_enter_background(
 LYNX_CAPI_EXPORT void lynx_view_client_bind_on_frame_timing(lynx_view_client_t*,
                                                             on_frame_timing f);
 LYNX_CAPI_EXPORT void lynx_view_client_release(lynx_view_client_t*);
+LYNX_CAPI_EXPORT void lynx_view_client_bind_on_intrinsic_content_size_changed(
+    lynx_view_client_t*, on_intrinsic_content_size_changed f);
 
 LYNX_EXTERN_C_END
 

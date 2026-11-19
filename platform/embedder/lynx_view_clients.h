@@ -6,6 +6,7 @@
 
 #include <list>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -69,8 +70,14 @@ class LynxViewClients : public TemplateRendererClient {
 
   void OnFrameTiming(int64_t frame_start_time_in_ns,
                      int64_t frame_finish_time_in_ns);
+  void OnIntrinsicContentSizeChanged(float width, float height);
+  void OnTemplateReloadStart();
 
  private:
+  void OnTemplateLoadStart(const std::string& url);
+  void DispatchPageStart(const std::string& url, lynx_pipeline_origin_t origin);
+
+  std::optional<std::string> started_template_url_;
   bool has_registered_client_ = false;
   std::vector<base::LynxError> pending_errors_;
   lynx_view_t* lynx_view_;

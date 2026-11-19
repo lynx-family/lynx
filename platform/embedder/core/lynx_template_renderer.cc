@@ -174,6 +174,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
       settings_.enable_js_group_thread ? settings_.group_id : "";
   shell_option.enable_js_group_thread_ = settings_.enable_js_group_thread;
   shell_option.enable_js_ = settings_.enable_js;
+  shell_option.page_options_.SetEmbeddedMode(settings_.embedded_mode);
   // The manager belongs to this MTS shell and is recreated on every Reset().
   auto native_module_manager = settings_.native_module_manager_creator
                                    ? settings_.native_module_manager_creator()
@@ -252,6 +253,7 @@ void LynxTemplateRenderer::Reset(bool wait_for_runtime_detach) {
                         settings_.vsync_monitor_platform_impl);
   }
 
+  ui_delegate_->SetInstanceId(shell_->GetInstanceId());
   ui_delegate_->OnLynxCreate(
       shell_->GetListEngineProxy(), engine_proxy_, runtime_proxy_,
       layout_proxy_, perf_controller_proxy_,
@@ -440,6 +442,7 @@ void LynxTemplateRenderer::UpdateScreenMetrics(float width, float height,
 void LynxTemplateRenderer::UpdateViewport(float width, int width_mode,
                                           float height, int height_mode,
                                           bool need_layout) {
+  settings_.has_viewport = true;
   settings_.viewport_size.cx = width;
   settings_.viewport_size.cy = height;
   settings_.viewport_width_mode = width_mode;

@@ -23,6 +23,8 @@ struct lynx_view_client_t {
   on_enter_background on_enter_background = nullptr;
   on_frame_timing on_frame_timing = nullptr;
   on_received_error_v2 on_received_error_v2 = nullptr;
+  on_intrinsic_content_size_changed on_intrinsic_content_size_changed = nullptr;
+  on_page_start_v2 on_page_start_v2 = nullptr;
 };
 
 #endif  // PLATFORM_EMBEDDER_LYNX_VIEW_CLIENT_PRIV_H_

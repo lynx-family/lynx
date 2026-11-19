@@ -4,6 +4,7 @@
 #ifndef PLATFORM_EMBEDDER_LYNX_VIEW_BUILDER_PRIV_H_
 #define PLATFORM_EMBEDDER_LYNX_VIEW_BUILDER_PRIV_H_
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -11,6 +12,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "core/public/page_options.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
@@ -22,11 +24,15 @@
 
 namespace lynx {
 namespace embedder {
+class LynxUIRenderer;
 class LynxVSyncMonitor;
 }  // namespace embedder
 }  // namespace lynx
 
 struct lynx_view_builder_t {
+  std::function<std::unique_ptr<lynx::embedder::LynxUIRenderer>(
+      lynx_view_builder_t*)>
+      ui_renderer_creator;
   struct screen_size {
     float width = 0;
     float height = 0;
@@ -38,11 +44,16 @@ struct lynx_view_builder_t {
     float width = 0;
     float height = 0;
   } frame;
+  bool has_initial_viewport = true;
   float font_scale = 1.0;
   std::optional<uint32_t> default_background_color;
   std::shared_ptr<lynx::embedder::LynxVSyncMonitor> custom_vsync_monitor;
 
   bool enable_js_runtime = true;
+  bool enable_bytecode = false;
+  std::string bytecode_source_url;
+  lynx::tasm::EmbeddedMode embedded_mode = lynx::tasm::EmbeddedMode::UNSET;
+  bool use_quickjs = false;
   bool enable_software_rendering = false;
   lynx_color_space_e color_space = kLynxColorSpaceSRGB;
   std::string icu_data_path;

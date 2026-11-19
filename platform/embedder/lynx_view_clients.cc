@@ -42,6 +42,14 @@ void LynxViewClients::RemoveClient(lynx_view_client_t* client) {
                  clients_.end());
 }
 
+void LynxViewClients::OnIntrinsicContentSizeChanged(float width, float height) {
+  for (auto* client : clients_) {
+    if (client->on_intrinsic_content_size_changed) {
+      client->on_intrinsic_content_size_changed(client, width, height);
+    }
+  }
+}
+
 void LynxViewClients::OnLoaded(const std::string& url) {
   for (auto& client : clients_) {
     if (client->on_load_success) {
@@ -176,8 +184,29 @@ void LynxViewClients::OnThemeUpdatedByJs(
 void LynxViewClients::OnLoadTemplate(
     const std::string& url, const std::vector<uint8_t>& source,
     const std::shared_ptr<tasm::TemplateData>& data) {
+  OnTemplateLoadStart(url);
+}
+
+void LynxViewClients::OnTemplateLoadStart(const std::string& url) {
+  started_template_url_ = url;
+  DispatchPageStart(url, kLynxPipelineOriginFirstScreen);
+}
+
+void LynxViewClients::OnTemplateReloadStart() {
+  // A callback can start a different template on this view.
+  const auto url = started_template_url_;
+  if (url) {
+    DispatchPageStart(*url, kLynxPipelineOriginReload);
+  }
+}
+
+void LynxViewClients::DispatchPageStart(const std::string& url,
+                                        lynx_pipeline_origin_t origin) {
   for (auto* client : clients_) {
-    if (client->on_page_start) {
+    if (client->on_page_start_v2) {
+      client->on_page_start_v2(client, url.c_str(), origin);
+    } else if (origin == kLynxPipelineOriginFirstScreen &&
+               client->on_page_start) {
       client->on_page_start(client, url.c_str());
     }
   }
@@ -186,6 +215,7 @@ void LynxViewClients::OnLoadTemplate(
 void LynxViewClients::OnReloadTemplate(
     const std::string& url, const std::vector<uint8_t>& source,
     const std::shared_ptr<tasm::TemplateData>& data) {
+  started_template_url_.reset();
   auto& ui_renderer = lynx_view_->lynx_ui_renderer;
   auto& template_renderer = lynx_view_->lynx_template_renderer;
   // Clone global props while the old runtime is still alive.
@@ -216,19 +246,17 @@ void LynxViewClients::OnReloadTemplate(
   lynx_view_update_screen_metrics(lynx_view_, settings.screen_size.cx,
                                   settings.screen_size.cy,
                                   settings.device_pixel_ratio);
-  lynx_view_set_viewport(lynx_view_, ui_renderer->GetWidth(),
-                         settings.viewport_width_mode, ui_renderer->GetHeight(),
-                         settings.viewport_height_mode);
+  if (settings.has_viewport) {
+    lynx_view_set_viewport(
+        lynx_view_, ui_renderer->GetWidth(), settings.viewport_width_mode,
+        ui_renderer->GetHeight(), settings.viewport_height_mode);
+  }
 }
 
 void LynxViewClients::OnLoadTemplateBundle(
     const std::string& url, const tasm::LynxTemplateBundle& template_bundle,
     const std::shared_ptr<tasm::TemplateData>& data) {
-  for (auto* client : clients_) {
-    if (client->on_page_start) {
-      client->on_page_start(client, url.c_str());
-    }
-  }
+  OnTemplateLoadStart(url);
 }
 
 void LynxViewClients::OnLoadScriptAsync(const std::string& url,

@@ -142,9 +142,12 @@ std::shared_ptr<lynx::tasm::TemplateData> MergeGlobalProps(
 
 LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
                                             void* user_data) {
+  if (!builder) {
+    return nullptr;
+  }
 #if defined(OS_IOS) && defined(ENABLE_WINDOWLESS)
   // The iOS C API hosts offscreen views; UIView uses its native entry point.
-  if (!builder || !builder->windowless_renderer) {
+  if (!builder->ui_renderer_creator && !builder->windowless_renderer) {
     return nullptr;
   }
 #if ENABLE_NAPI_BINDING
@@ -158,26 +161,30 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   view->webview2_fixed_runtime_path =
       webview_fixed_runtime_path ? webview_fixed_runtime_path : "";
   // Construct ui renderer with builder.
+  if (builder->ui_renderer_creator) {
+    view->lynx_ui_renderer = builder->ui_renderer_creator(builder);
+  } else {
 #if defined(OS_IOS)
 #if defined(ENABLE_WINDOWLESS)
-  view->lynx_ui_renderer =
-      lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
-#else
-  delete view;
-  return nullptr;
-#endif
-#elif defined(ENABLE_WINDOWLESS)
-  if (builder->windowless_renderer) {
     view->lynx_ui_renderer =
         lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
-  } else {
+#else
+    delete view;
+    return nullptr;
+#endif
+#elif defined(ENABLE_WINDOWLESS)
+    if (builder->windowless_renderer) {
+      view->lynx_ui_renderer =
+          lynx::embedder::LynxUIRenderer::CreateWindowlessUIRenderer(builder);
+    } else {
+      view->lynx_ui_renderer =
+          lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
+    }
+#else
     view->lynx_ui_renderer =
         lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
-  }
-#else
-  view->lynx_ui_renderer =
-      lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
 #endif
+  }
   // get UIDelegate from lynx_ui_renderer.
   auto* ui_delegate = view->lynx_ui_renderer
                           ? view->lynx_ui_renderer->GetUIDelegate()
@@ -191,10 +198,15 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   lynx::embedder::LynxTemplateRenderer::Settings settings;
   settings.screen_size.cx = builder->screen_size.width;
   settings.screen_size.cy = builder->screen_size.height;
+  settings.has_viewport = builder->has_initial_viewport;
   settings.viewport_size.cx = builder->frame.width;
   settings.viewport_size.cy = builder->frame.height;
   settings.device_pixel_ratio = builder->screen_size.pixel_ratio;
   settings.enable_js = builder->enable_js_runtime;
+  settings.enable_bytecode = builder->enable_bytecode;
+  settings.bytecode_source_url = builder->bytecode_source_url;
+  settings.embedded_mode = builder->embedded_mode;
+  settings.use_quickjs = builder->use_quickjs;
   auto resource_loader =
       std::make_shared<lynx::embedder::LynxResourceLoaderEmbedder>();
   settings.resource_loader = resource_loader;
@@ -319,8 +331,10 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   if (builder->font_scale != 1.0f) {
     view->lynx_template_renderer->SetFontScale(builder->font_scale);
   }
-  view->lynx_template_renderer->UpdateViewport(builder->frame.width, 1,
-                                               builder->frame.height, 1, true);
+  if (builder->has_initial_viewport) {
+    view->lynx_template_renderer->UpdateViewport(
+        builder->frame.width, 1, builder->frame.height, 1, true);
+  }
   return view;
 }
 
@@ -450,6 +464,7 @@ LYNX_EXTERN_C void lynx_view_reload_template(
   if (has_global_props) {
     view->global_props = global_props->template_data;
   }
+  view->lynx_view_clients->OnTemplateReloadStart();
   view->lynx_template_renderer->ReloadTemplate(
       data->template_data, nullptr,
       has_global_props ? view->global_props->GetValue() : lynx::lepus::Value());
