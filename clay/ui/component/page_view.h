@@ -71,6 +71,7 @@ class GapWorker;
 typedef std::vector<std::unique_ptr<clay::Value::Map>> ExposureDataList;
 
 class ServiceManager;
+class ClayMemoryTracker;
 class ViewContext;
 class NativeView;
 class OverlayManager;
@@ -268,6 +269,11 @@ class PageView : public BaseView,
   void SetImageResourceFetcher(
       fml::RefPtr<ImageFetcher> image_resource_fetcher);
 #endif
+  // Called at view creation before the page creates its image fetcher.
+  void SetMemoryTracker(std::shared_ptr<ClayMemoryTracker> tracker);
+  const std::shared_ptr<ClayMemoryTracker>& GetMemoryTracker() const {
+    return memory_tracker_;
+  }
 
   virtual void OnPlatformViewCreated();
 
@@ -654,6 +660,7 @@ class PageView : public BaseView,
 #else
   fml::RefPtr<ImageFetcher> image_resource_fetcher_;
 #endif
+  std::shared_ptr<ClayMemoryTracker> memory_tracker_;
   std::unique_ptr<GestureManager> gesture_manager_;
   std::unique_ptr<NestedScrollManager> nested_scroll_manager_;
   std::unique_ptr<MouseRegionManager> mouse_region_manager_;

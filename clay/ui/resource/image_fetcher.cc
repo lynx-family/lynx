@@ -176,12 +176,14 @@ uint64_t ImageFetcher::FetchImage(const std::string& original_url, bool is_svg,
             std::shared_ptr<BaseImage> image;
             if (platform_image->IsAnimated()) {
               applied_decode_size = {};
-              image = AnimatedImage::Make(self->weak_factory_.GetWeakPtr(),
-                                          trimmed_url, platform_image,
-                                          self->animation_handler_);
+              image = AnimatedImage::Make(
+                  self->weak_factory_.GetWeakPtr(), trimmed_url,
+                  std::move(platform_image), self->animation_handler_,
+                  self->memory_tracker_);
             } else {
               image = StaticImage::Make(self->weak_factory_.GetWeakPtr(),
-                                        trimmed_url, platform_image);
+                                        trimmed_url, std::move(platform_image),
+                                        self->memory_tracker_);
             }
             image->SetCacheIdentifier(base_identifier);
             image->SetDecodeSize(applied_decode_size);

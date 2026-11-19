@@ -23,5 +23,13 @@ source_set("codec") {
 
   public_configs = [ "../../../../../../clay:config" ]
 
+  deps = [
+    "../../../../../common/service",
+    "../../../../../gfx",
+    "../../../../../memory:memory_tracker",
+    "../../../../../net",
+    "../../../../../ui",
+  ]
+
   defines = [ "BASE_NO_EXPORT" ]
 }

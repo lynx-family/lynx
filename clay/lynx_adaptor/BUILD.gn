@@ -102,6 +102,13 @@ source_set("lynx_adaptor") {
     "../fml:fml",
     "../ui:ui",
   ]
+  deps = [ "../memory:memory_tracker" ]
+  if (enable_skity && (is_mac || is_win)) {
+    deps += [
+      "../../core/services/performance:performance",
+      "../../third_party/jsoncpp",
+    ]
+  }
   if (enable_clay_ui_tree) {
     public_deps += [
       "../../third_party/rapidjson:rapidjson",

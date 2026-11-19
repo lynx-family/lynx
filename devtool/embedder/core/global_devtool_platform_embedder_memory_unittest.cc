@@ -12,6 +12,15 @@
 namespace lynx {
 namespace devtool {
 namespace testing {
+namespace {
+
+Json::Value BuildImageDetails(int64_t bytes) {
+  Json::Value details(Json::objectValue);
+  details["imageBytes"] = Json::Int64(bytes);
+  return details;
+}
+
+}  // namespace
 
 TEST(EmbedderMemoryUsageTest, PreservesSharedVmTotalsAndPageAttribution) {
   tasm::performance::GlobalMemoryUsage usage;
@@ -69,6 +78,54 @@ TEST(EmbedderMemoryUsageTest, EmptySnapshotKeepsArrayAndUnavailableAppMemory) {
   EXPECT_DOUBLE_EQ(result["ratioToApp"].asDouble(), 0.0);
 }
 
+TEST(EmbedderMemoryUsageTest, ClayImageDetailsUseExistingUiTotals) {
+  constexpr int64_t kImageBytes = (int64_t{1} << 53) + 1;
+  tasm::performance::GlobalMemoryUsage usage;
+  usage.total.ui_bytes = 12'000;
+  usage.total.total_bytes = 25'000;
+  auto& tracked = usage.instances.emplace_back();
+  tracked.instance_id = 1;
+  tracked.page.ui_bytes = 9'000;
+  tracked.page.total_bytes = 15'000;
+  tracked.clay_memory_details.write = [](Json::Value& details) {
+    details = BuildImageDetails(kImageBytes);
+  };
+  auto& measured_zero = usage.instances.emplace_back();
+  measured_zero.instance_id = 2;
+  measured_zero.page.ui_bytes = 2'000;
+  measured_zero.page.total_bytes = 6'000;
+  measured_zero.clay_memory_details.write = [](Json::Value& details) {
+    details = BuildImageDetails(0);
+  };
+  auto& unavailable = usage.instances.emplace_back();
+  unavailable.instance_id = 3;
+  unavailable.page.ui_bytes = 1'000;
+  unavailable.page.total_bytes = 4'000;
+
+  const auto result =
+      BuildEmbedderMemoryUsageResult(usage, 100, 10, 2000, 60'000);
+  EXPECT_EQ(result["viewBytes"].asInt64(), 12'000);
+  EXPECT_EQ(result["totalBytes"].asInt64(), 25'000);
+  EXPECT_FALSE(result.isMember("viewDetail"));
+  EXPECT_FALSE(result.isMember("clayMemoryDetails"));
+  const auto& instances = result["instances"];
+  ASSERT_EQ(instances.size(), 3u);
+  EXPECT_EQ(instances[0]["viewBytes"].asInt64(), 9'000);
+  EXPECT_EQ(instances[0]["totalBytes"].asInt64(), 15'000);
+  const auto& clay_memory_details = instances[0]["clayMemoryDetails"];
+  ASSERT_TRUE(clay_memory_details.isObject());
+  EXPECT_EQ(clay_memory_details.size(), 1u);
+  EXPECT_EQ(clay_memory_details["imageBytes"].asInt64(), kImageBytes);
+  ASSERT_TRUE(instances[1]["clayMemoryDetails"].isMember("imageBytes"));
+  EXPECT_EQ(instances[1]["clayMemoryDetails"]["imageBytes"].asInt64(), 0);
+  EXPECT_FALSE(instances[2].isMember("clayMemoryDetails"));
+  for (const auto& instance : instances) {
+    EXPECT_FALSE(instance.isMember("clayMemory"));
+    EXPECT_TRUE(instance["viewDetail"].isObject());
+    EXPECT_TRUE(instance["viewDetail"].empty());
+  }
+}
+
 TEST(EmbedderMemoryUsageTest,
      PreservesDestroyedInstanceIdentityAndOmitsPageMetrics) {
   tasm::performance::GlobalMemoryUsage usage;
@@ -80,6 +137,9 @@ TEST(EmbedderMemoryUsageTest,
   destroyed.bts_runtime_type = "quickjs";
   destroyed.bts_heap_bytes = 1000;
   destroyed.bts_residual_bytes = 400;
+  destroyed.clay_memory_details.write = [](Json::Value&) {
+    ADD_FAILURE() << "Destroyed instance details must not be built";
+  };
   usage.destroyed_instances.push_back(destroyed);
   const auto result =
       BuildEmbedderMemoryUsageResult(usage, 100, 10, 2000, 6000);
@@ -92,9 +152,10 @@ TEST(EmbedderMemoryUsageTest,
   EXPECT_EQ(page["btsRuntimeType"].asString(), "quickjs");
   EXPECT_EQ(page["btsRuntimeTotalBytes"].asInt64(), 1000);
   EXPECT_EQ(page["backgroundThreadRuntimeResidualBytes"].asInt64(), 400);
-  for (const char* key : {"totalBytes", "elementBytes", "elementNodeCount",
-                          "viewBytes", "viewDetail", "mainThreadRuntimeBytes",
-                          "backgroundThreadRuntimeBytes"}) {
+  for (const char* key :
+       {"totalBytes", "elementBytes", "elementNodeCount", "viewBytes",
+        "viewDetail", "clayMemoryDetails", "mainThreadRuntimeBytes",
+        "backgroundThreadRuntimeBytes"}) {
     EXPECT_FALSE(page.isMember(key)) << key;
   }
 }

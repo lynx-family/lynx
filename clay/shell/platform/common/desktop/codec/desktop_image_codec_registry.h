@@ -15,8 +15,11 @@
 
 namespace clay {
 
+class ClayMemoryTracker;
+
 using ImageCodecGeneratorFactory = std::shared_ptr<ImageCodecGenerator> (*)(
-    std::shared_ptr<skity::Data> encoded_data, const Size& decode_size);
+    std::shared_ptr<skity::Data> encoded_data, const Size& decode_size,
+    const std::shared_ptr<ClayMemoryTracker>& memory_tracker);
 
 // Stores downstream codec factories copied by each codec service at creation.
 class DesktopImageCodecRegistry {

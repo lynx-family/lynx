@@ -23,10 +23,10 @@ class DesktopImageCodecService
   static std::shared_ptr<DesktopImageCodecService> Create();
 
   std::shared_ptr<ImageCodecGenerator> CreateCodecGenerator(
-      const std::shared_ptr<skity::Data>& encoded_data,
-      const Size& decode_size) const {
+      const std::shared_ptr<skity::Data>& encoded_data, const Size& decode_size,
+      const std::shared_ptr<ClayMemoryTracker>& memory_tracker) const {
     for (auto factory : factories_) {
-      if (auto generator = factory(encoded_data, decode_size)) {
+      if (auto generator = factory(encoded_data, decode_size, memory_tracker)) {
         return generator;
       }
     }

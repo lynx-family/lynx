@@ -6,7 +6,6 @@
 #include <memory>
 #include <string>
 
-#include "clay/gfx/shared_image/shared_image_sink.h"
 #include "clay/ui/resource/image_fetcher.h"
 
 namespace clay {

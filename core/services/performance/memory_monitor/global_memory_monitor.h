@@ -6,6 +6,7 @@
 #define CORE_SERVICES_PERFORMANCE_MEMORY_MONITOR_GLOBAL_MEMORY_MONITOR_H_
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <random>
@@ -65,6 +66,11 @@ struct InstanceState {
   std::string page_key;
   // Page's business group, not necessarily the actual VM's name (V8/JSVM).
   std::string group_id;
+
+  // The reader runs on the reporter thread. Keep the sampled details paired
+  // with usage so a query can copy them without reading the tracker again.
+  std::function<ClayMemorySample()> read_clay_memory;
+  ClayMemoryDetailsBuilder clay_memory_details;
 
   // Layout: keep non-trivially-copyable members above this block. Add new
   // trivially-copyable members below so implicit copy/move operations can

@@ -27,6 +27,21 @@ process-level draw. The page
 event plus `lynxsdk_memory_process` and `lynxsdk_memory_page` emit
 `lynx_ui_memory_enabled`; keep it fixed when querying their page-memory totals.
 
+Windowed macOS and Windows Embedder C API views keep the UI sampling decision
+made at view creation. The desktop Skity raster image fetcher counts live encoded
+copies, decoded pixel buffers, and logical GPU texture bytes including mip
+levels. Each backing counts once per view while Clay retains it, including in
+its image cache. CDP exposes the reading at
+`instances[].clayMemoryDetails.imageBytes`.
+A tracked page can report zero. Instances without a Clay reading omit
+`clayMemoryDetails`. The reading contributes once to `viewBytes` and
+`totalBytes` for the instance and the root, and feeds existing online totals.
+The monitor stores the sampled category bytes with the page totals. Online
+events use those totals, and CDP uses the same stored sample to build its
+breakdown.
+Clay supplies the accounted bytes separately, so diagnostic categories do
+not affect the totals.
+
 `page_scheduled_sample_rate` separately controls scheduled page-event delivery.
 It defaults to 0.1 and is drawn once per process, conditional on global
 selection and independently of UI collection. It leaves planned observations,

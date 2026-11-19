@@ -24,7 +24,8 @@ class AnimatedImage : public BaseImage {
   static std::shared_ptr<AnimatedImage> Make(
       fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
       std::shared_ptr<PlatformImage> image,
-      fml::WeakPtr<AnimationHandler> animation_handler);
+      fml::WeakPtr<AnimationHandler> animation_handler,
+      std::shared_ptr<ClayMemoryTracker> memory_tracker = {});
 
   std::unique_ptr<BaseImageInstance> NewInstance() override;
 

@@ -2432,6 +2432,7 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
     image_resource_fetcher_ =
         ImageFetcher::Create(GetResourceLoaderIntercept(), GetTaskRunners(),
                              unref_queue_, GetServiceManager());
+    image_resource_fetcher_->SetMemoryTracker(memory_tracker_);
     image_resource_fetcher_->SetAnimationHandler(
         animation_handler_->GetWeakPtr());
   }
@@ -2444,9 +2445,19 @@ void PageView::SetImageResourceFetcher(
   if (image_resource_fetcher_) {
     image_resource_fetcher_->SetAnimationHandler(
         animation_handler_->GetWeakPtr());
+    image_resource_fetcher_->SetMemoryTracker(memory_tracker_);
   }
 }
 #endif  // ENABLE_SKITY
+
+void PageView::SetMemoryTracker(std::shared_ptr<ClayMemoryTracker> tracker) {
+#ifdef ENABLE_SKITY
+  if (image_resource_fetcher_) {
+    image_resource_fetcher_->SetMemoryTracker(tracker);
+  }
+#endif
+  memory_tracker_ = std::move(tracker);
+}
 
 ViewTreeObserver* PageView::GetViewTreeObserver() {
   if (!view_tree_observer_) {

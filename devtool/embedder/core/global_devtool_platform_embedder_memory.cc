@@ -68,6 +68,9 @@ Json::Value BuildEmbedderMemoryUsageResult(
     instance["elementNodeCount"] = source->page.element_count;
     instance["viewBytes"] = Json::Int64(source->page.ui_bytes);
     instance["viewDetail"] = Json::Value(Json::objectValue);
+    if (source->clay_memory_details) {
+      instance["clayMemoryDetails"] = source->clay_memory_details();
+    }
     instance["mainThreadRuntimeBytes"] = Json::Int64(source->page.mts_bytes);
     // Page attribution and the whole shared VM heap are distinct quantities.
     instance["backgroundThreadRuntimeBytes"] =

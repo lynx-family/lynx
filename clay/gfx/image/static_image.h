@@ -20,7 +20,8 @@ class StaticImage : public BaseImage {
  public:
   static std::shared_ptr<StaticImage> Make(
       fml::WeakPtr<ImageFetcher> image_fetcher, std::string url,
-      std::shared_ptr<PlatformImage> image);
+      std::shared_ptr<PlatformImage> image,
+      std::shared_ptr<ClayMemoryTracker> memory_tracker = {});
 
   void Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) override;
 

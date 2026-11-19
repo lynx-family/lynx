@@ -95,6 +95,14 @@ returns:
   - name: 'instances[].viewDetail.<key>.detail'
     type: object
     description: Category-specific string map reported by the platform memory record.
+  - name: 'instances[].clayMemoryDetails'
+    type: object
+    optional: true
+    description: Clay memory details collected by the desktop Embedder for this instance. The object can include resource byte counts and diagnostic fields. Fields that contribute to viewBytes and totalBytes are documented individually.
+  - name: 'instances[].clayMemoryDetails.imageBytes'
+    type: integer
+    optional: true
+    description: Bytes attributed to live Clay image resources on the Skity path for windowed macOS and Windows Embedder views. Included in viewBytes and totalBytes. Zero means the image category was sampled with no live bytes.
   - name: 'instances[].mainThreadRuntimeBytes'
     type: integer
     description: Main-thread runtime heap snapshot bytes for the instance.
@@ -113,7 +121,7 @@ returns:
     description: Whole BTS VM heap, separate from page-attributed backgroundThreadRuntimeBytes. Zero when unavailable.
   - name: destroyedInstances
     type: array
-    description: Up to five destroyed tracked pages per shared QuickJS VM with current slot bytes at least 1024, ordered within each VM by bytes descending. Reuses the instance type but omits totalBytes, elementBytes, elementNodeCount, viewBytes, viewDetail, mainThreadRuntimeBytes, and backgroundThreadRuntimeBytes. Excluded from global totals and instance counts.
+    description: Up to five destroyed tracked pages per shared QuickJS VM with current slot bytes at least 1024, ordered within each VM by bytes descending. Reuses the instance type but omits totalBytes, elementBytes, elementNodeCount, viewBytes, viewDetail, clayMemoryDetails, mainThreadRuntimeBytes, and backgroundThreadRuntimeBytes. Excluded from global totals and instance counts.
   - name: 'destroyedInstances[].instanceId'
     type: integer
     description: Exited LynxShell instance id.

@@ -12,7 +12,24 @@
 #include "clay/gfx/image/image_info.h"
 #include "skity/geometry/rect.hpp"
 
+namespace skity {
+class DeferredTextureImage;
+}  // namespace skity
+
 namespace clay {
+
+class ClayMemoryTracker;
+
+// Call once per new pixel allocation and retain the returned Pixmap.
+[[nodiscard]] std::shared_ptr<skity::Pixmap> TrackDecodedPixmap(
+    const std::shared_ptr<ClayMemoryTracker>& tracker,
+    std::shared_ptr<skity::Pixmap> pixmap);
+
+// Call on the raster task runner to set up the deferred texture upload.
+void SetDeferredRasterImageTexture(
+    skity::GPUContext& context, skity::DeferredTextureImage& image,
+    std::shared_ptr<skity::Pixmap> pixmap, bool mipmapped,
+    const std::shared_ptr<ClayMemoryTracker>& memory_tracker);
 
 class GraphicsImageSkity : public GraphicsImage {
  public:

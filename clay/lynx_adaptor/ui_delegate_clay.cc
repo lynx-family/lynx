@@ -18,6 +18,11 @@
 #include "clay/ui/component/view_context.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+#if defined(ENABLE_SKITY) && (defined(OS_MAC) || defined(OS_WIN))
+#include "clay/memory/clay_memory_tracker.h"
+#include "core/services/performance/memory_monitor/global_memory_monitor.h"
+#include "third_party/jsoncpp/include/json/value.h"
+#endif
 
 namespace lynx {
 namespace tasm {
@@ -25,10 +30,19 @@ namespace tasm {
 UIDelegateClay::UIDelegateClay(
     clay::ViewContext* view_context,
     std::unique_ptr<lynx::runtime::NativeModuleFactory> module_factory,
-    std::shared_ptr<base::VSyncMonitorPlatformImpl> vsync_monitor_platform_impl)
+    std::shared_ptr<base::VSyncMonitorPlatformImpl> vsync_monitor_platform_impl,
+    bool enable_memory_monitoring)
     : view_context_(view_context),
       module_factory_(std::move(module_factory)),
       vsync_monitor_platform_impl_(std::move(vsync_monitor_platform_impl)) {
+#if defined(ENABLE_SKITY) && (defined(OS_MAC) || defined(OS_WIN))
+  if (enable_memory_monitoring) {
+    view_context_->GetPageView()->SetMemoryTracker(
+        std::make_shared<clay::ClayMemoryTracker>());
+  }
+#else
+  (void)enable_memory_monitoring;
+#endif
   event_dispatcher_ = std::make_unique<clay::LynxEventDispatcher>();
   view_context->SetEventDelegate(event_dispatcher_.get());
 }
@@ -113,6 +127,30 @@ void UIDelegateClay::OnLynxCreate(
     event_tracker_proxy->UpdateGenericInfo(instance_id, "renderer_type",
                                            "clay");
   }
+
+#if defined(ENABLE_SKITY) && (defined(OS_MAC) || defined(OS_WIN))
+  // The Skity raster path supplies the image reading. A reload binds its
+  // existing tracker to the new LynxShell.
+  auto* page_view = view_context_->GetPageView();
+  auto tracker = page_view ? page_view->GetMemoryTracker() : nullptr;
+  if (tracker) {
+    auto read_clay_memory = [tracker = std::move(tracker)] {
+      auto sample = tracker->GetMemorySample();
+      performance::ClayMemoryDetailsBuilder build_details{
+          [details = std::move(sample.details)](Json::Value& value) {
+            clay::ClayMemoryTracker::BuildClayMemoryDetails(details, value);
+          }};
+      return performance::ClayMemorySample{sample.accounted_ui_bytes,
+                                           std::move(build_details)};
+    };
+
+    performance::GlobalMemoryMonitor::GetInstance().WithInstance(
+        instance_id,
+        [reader = std::move(read_clay_memory)](auto& state) mutable {
+          state.read_clay_memory = std::move(reader);
+        });
+  }
+#endif
 }
 
 void UIDelegateClay::SetEnableFluencyMonitor(bool enable) {

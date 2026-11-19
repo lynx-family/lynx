@@ -65,6 +65,10 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
     animation_handler_ = std::move(handler);
   }
 
+  void SetMemoryTracker(const std::shared_ptr<ClayMemoryTracker>& tracker) {
+    memory_tracker_ = tracker;
+  }
+
  protected:
   fml::WeakPtr<ImageFetcher> GetWeakPtr() const {
     return weak_factory_.GetWeakPtr();
@@ -96,6 +100,7 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
   std::shared_ptr<ServiceManager> service_manager_;
   clay::TaskRunners task_runners_;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
+  std::shared_ptr<ClayMemoryTracker> memory_tracker_;
   fml::WeakPtr<AnimationHandler> animation_handler_;
   std::unordered_map<std::string, std::shared_ptr<BaseImage>> active_image_map_;
   std::shared_ptr<ImageCache<BaseImage>> inactive_image_cache_;
