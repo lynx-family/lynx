@@ -103,6 +103,35 @@ source_set("gfx") {
 }
 
 if (enable_unittests) {
+  executable("path_unittests") {
+    testonly = true
+    sources = [
+      "geometry/path.cc",
+      "geometry/path_unittests.cc",
+    ]
+    deps = [
+      ":gfx_fixtures",
+      "../../base/src:base_static",
+      "../testing",
+    ]
+    configs += [ "../:config" ]
+    if (enable_skity) {
+      deps += [ "//clay/third_party/skity:skity_lib" ]
+    } else {
+      deps += [ "//third_party/skia" ]
+    }
+    if (is_mac) {
+      frameworks = [
+        "AppKit.framework",
+        "CoreGraphics.framework",
+        "CoreText.framework",
+        "Foundation.framework",
+        "Metal.framework",
+        "OpenGL.framework",
+      ]
+    }
+  }
+
   test_fixtures("gfx_fixtures") {
     fixtures = []
   }

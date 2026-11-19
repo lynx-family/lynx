@@ -83,25 +83,27 @@ void PaintBoxShadow(GraphicsCanvas* canvas, const skity::RRect& shadow_rect,
   GraphicsContext::AutoRestore saver(canvas, true);
   if (!inset) {
     // Only keep the painting region out of box.
-    GrPath path;
+    GrPathBuilder path;
     PATH_ADD_RRECT(path, clip_rect);
-    canvas->ClipPath(path, GrClipOp::kDifference, true);
+    canvas->ClipPath(DetachPath(path), GrClipOp::kDifference, true);
     canvas->DrawRRect(shadow_rect, paint);
   } else {
     // This is a workaround for skia's anti alias issue. We need to calculate
     // the intersection first and then draw the new path.
-    GrPath path_hole_rrect, path_inner_rrect, intersect_path, draw_path;
+    GrPathBuilder path_hole_rrect, path_inner_rrect, draw_path;
+    GrPath intersect_path;
     PATH_ADD_RRECT(path_hole_rrect, shadow_rect);
     PATH_ADD_RRECT(path_inner_rrect, clip_rect);
     // Cast int to PathOp.
-    PATH_OP(path_hole_rrect, path_inner_rrect, 1, intersect_path);
+    PATH_OP(DetachPath(path_hole_rrect), DetachPath(path_inner_rrect), 1,
+            intersect_path);
     PATH_ADD_RRECT(draw_path, clip_rect);
     PATH_ADD_PATH(draw_path, intersect_path);
     // Cast int to fill type.
     PATH_SET_FILL_TYPE(draw_path, 1);
     // Only keep painting region in the box without border.
     canvas->ClipRRect(clip_rect, GrClipOp::kIntersect, true);
-    canvas->DrawPath(draw_path, paint);
+    canvas->DrawPath(DetachPath(draw_path), paint);
   }
 }
 

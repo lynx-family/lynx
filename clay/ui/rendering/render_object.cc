@@ -892,8 +892,9 @@ void RenderObject::SetClipPath(const GrPath& path) {
 }
 
 void RenderObject::SetOffsetPath(const FloatRoundedRect& rrect) {
-  GrPath path;
-  PATH_ADD_RRECT(path, rrect);
+  GrPathBuilder builder;
+  PATH_ADD_RRECT(builder, rrect);
+  GrPath path = DetachPath(builder);
   if (path == motion_path_.offset_path) {
     return;
   }

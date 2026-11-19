@@ -125,16 +125,10 @@ static const char* find_flag(const char str[], bool* value) {
 }
 
 bool PathBuilder::ParsePathString(const char data[], GrPath* result) {
-  GrPath path;
-#ifndef ENABLE_SKITY
+  GrPathBuilder path;
   GrPoint first = {0, 0};
   GrPoint c = {0, 0};
   GrPoint last_c = {0, 0};
-#else
-  GrPoint first = {0, 0, 0, 0};
-  GrPoint c = {0, 0, 0, 0};
-  GrPoint last_c = {0, 0, 0, 0};
-#endif  // ENABLE_SKITY
   GrPoint points[3];
   char op = '\0';
   char previousOp = '\0';
@@ -266,8 +260,7 @@ bool PathBuilder::ParsePathString(const char data[], GrPath* result) {
     }
     previousOp = op;
   }
-  // we're good, go ahead and swap in the result
-  PATH_SWAP(result, path);
+  DetachPathTo(path, result);
   return true;
 }
 
@@ -291,25 +284,15 @@ MotionState PathBuilder::CalculateMotionState(const GrPath& path,
   // Reset measure to the start of the path
   PATH_MEASURE_SET_PATH(measure, &path);
 
-#ifndef ENABLE_SKITY
-  SkPoint last_valid_pos = {0, 0};
-  SkVector last_valid_tan = {0, 0};
-#else
-  skity::Point last_valid_pos = {0, 0, 0, 0};
-  skity::Vector last_valid_tan = {0, 0, 0, 0};
-#endif
+  GrPoint last_valid_pos = {0, 0};
+  GrPoint last_valid_tan = {0, 0};
   bool has_valid_data = false;
 
   do {
     float current_length = PATH_MEASURE_GET_LENGTH(measure);
     if (target_distance <= current_length) {
-#ifndef ENABLE_SKITY
-      SkPoint position = {0, 0};
-      SkVector tangent = {0, 0};
-#else
-      skity::Point position = {0, 0, 0, 0};
-      skity::Vector tangent = {0, 0, 0, 0};
-#endif
+      GrPoint position = {0, 0};
+      GrPoint tangent = {0, 0};
       if (PATH_MEASURE_GET_POS_TAN(measure, target_distance, &position,
                                    &tangent)) {
         float radian = atan2(POINT_GET_Y(tangent), POINT_GET_X(tangent));
