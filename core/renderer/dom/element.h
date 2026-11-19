@@ -1647,6 +1647,13 @@ class Element : public lepus::RefCounted,
   float sticky_translation_x() const { return sticky_translation_x_; }
   float sticky_translation_y() const { return sticky_translation_y_; }
 
+  // Engine-thread snapshot of the FLR event root's platform origin in Page
+  // layout units. Independent Overlay roots do not use their layout-box origin.
+  void UpdatePlatformRootOffset(float x, float y);
+  const std::array<float, 2>* platform_root_offset() const {
+    return platform_root_offset_.get();
+  }
+
   /**
    * Get computed style value by property key.
    * @param key the CSS property name
@@ -2355,6 +2362,7 @@ class Element : public lepus::RefCounted,
   // info[6-7]: self left/top relative to scroller
   // info[8-9]: parent left/top relative to scroller.
   base::auto_create_optional<std::array<float, 10>> sticky_positions_;
+  base::auto_create_optional<std::array<float, 2>> platform_root_offset_;
   float max_height_{starlight::DefaultLayoutStyle::kDefaultMaxSize};
 
   float record_parent_font_size_ = -1;

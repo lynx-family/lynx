@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <utility>
@@ -87,15 +88,16 @@ fml::RefPtr<lepus::CArray> ProjectGeometryPoints(
   return projected;
 }
 
-bool WritePageBounds(lepus::Value& result,
-                     const base::geometry::FloatRect& local_rect,
-                     Element* geometry_element, Element* page, float scale) {
+bool WriteGeometryBounds(lepus::Value& result,
+                         const base::geometry::FloatRect& local_rect,
+                         Element* geometry_element, Element* destination,
+                         float scale, bool clip) {
   BASE_STATIC_STRING_DECL(kInputLeftPx, "leftPx");
   BASE_STATIC_STRING_DECL(kInputTopPx, "topPx");
   BASE_STATIC_STRING_DECL(kInputRightPx, "rightPx");
   BASE_STATIC_STRING_DECL(kInputBottomPx, "bottomPx");
-  auto rect =
-      ConvertRectBetweenElements(local_rect, geometry_element, page, true);
+  auto rect = ConvertRectBetweenElements(local_rect, geometry_element,
+                                         destination, clip);
   if (!rect) {
     return false;
   }
@@ -128,6 +130,13 @@ lepus::Value Element::QueryGeometry(const lepus::Value& request) {
   BASE_STATIC_STRING_DECL(kInputTreePath, "treePath");
   BASE_STATIC_STRING_DECL(kInputWidthPx, "widthPx");
   BASE_STATIC_STRING_DECL(kInputHeightPx, "heightPx");
+  BASE_STATIC_STRING_DECL(kInputRelativeTo, "relativeTo");
+  BASE_STATIC_STRING_DECL(kInputRect, "rect");
+  BASE_STATIC_STRING_DECL(kInputClip, "clip");
+  BASE_STATIC_STRING_DECL(kInputLeftPx, "leftPx");
+  BASE_STATIC_STRING_DECL(kInputTopPx, "topPx");
+  BASE_STATIC_STRING_DECL(kInputRightPx, "rightPx");
+  BASE_STATIC_STRING_DECL(kInputBottomPx, "bottomPx");
   auto result = lepus::Value(lepus::Dictionary::Create());
   result.SetProperty(kInputValid, lepus::Value(false));
   auto* page = element_manager_->root();
@@ -154,7 +163,39 @@ lepus::Value Element::QueryGeometry(const lepus::Value& request) {
       return result;
     }
   } else {
-    if (!WritePageBounds(result, local_rect, geometry_element, page, scale)) {
+    auto* destination = page;
+    const auto relative_to = request.GetProperty(kInputRelativeTo);
+    if (relative_to.IsNumber() && relative_to.Number() > 0) {
+      destination = element_manager_->node_manager()->Get(relative_to.Number());
+      if (!destination) {
+        return result;
+      }
+    }
+    auto bounds_rect = local_rect;
+    const auto requested_rect = request.GetProperty(kInputRect);
+    if (requested_rect.IsObject()) {
+      const auto left = requested_rect.GetProperty(kInputLeftPx);
+      const auto top = requested_rect.GetProperty(kInputTopPx);
+      const auto right = requested_rect.GetProperty(kInputRightPx);
+      const auto bottom = requested_rect.GetProperty(kInputBottomPx);
+      if (!left.IsNumber() || !top.IsNumber() || !right.IsNumber() ||
+          !bottom.IsNumber() || !std::isfinite(left.Number()) ||
+          !std::isfinite(top.Number()) || !std::isfinite(right.Number()) ||
+          !std::isfinite(bottom.Number()) || right.Number() < left.Number() ||
+          bottom.Number() < top.Number()) {
+        return result;
+      }
+      // Requested rectangles are local to the queried element, including
+      // inline text whose layout geometry belongs to its paragraph.
+      bounds_rect = {
+          {local_rect.X() + static_cast<float>(left.Number()) / scale,
+           local_rect.Y() + static_cast<float>(top.Number()) / scale},
+          {static_cast<float>(right.Number() - left.Number()) / scale,
+           static_cast<float>(bottom.Number() - top.Number()) / scale}};
+    }
+    const auto clip = request.GetProperty(kInputClip);
+    if (!WriteGeometryBounds(result, bounds_rect, geometry_element, destination,
+                             scale, !clip.IsBool() || clip.Bool())) {
       return result;
     }
     result.SetProperty(kInputTreePath, BuildGeometryTreePath(this));

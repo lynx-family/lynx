@@ -3124,6 +3124,10 @@ void Element::UpdateStickyTranslation(float x, float y) {
   sticky_translation_y_ = y;
 }
 
+void Element::UpdatePlatformRootOffset(float x, float y) {
+  *platform_root_offset_ = {x, y};
+}
+
 starlight::LayoutResultForRendering Element::layout_result() {
   auto layout_result = starlight::LayoutResultForRendering();
   layout_result.size_ = FloatSize(width(), height());
