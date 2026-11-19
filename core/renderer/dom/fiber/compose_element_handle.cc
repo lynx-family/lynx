@@ -44,7 +44,7 @@ fml::RefPtr<Element> CreateContentElement(ElementManager* manager,
     case ComposeElementKind::kList: {
       auto list = manager->CreateFiberList(
           tasm, BASE_STATIC_STRING(kElementListTag), {}, {}, {});
-      list->SetComposeScrollManaged(true);
+      list->EnableEngineManagedScroll();
       return list;
     }
     case ComposeElementKind::kSvg:

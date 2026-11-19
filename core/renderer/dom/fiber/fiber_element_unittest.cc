@@ -28715,7 +28715,7 @@ TEST_P(FiberElementTest, ComposeStickyProjectionUsesMeasuredElementOutput) {
   auto* container = static_cast<lynx::list::ListContainerImpl*>(
       list->list_mediator_->list_container_delegate_.get());
   ASSERT_NE(container, nullptr);
-  container->SetComposeScrollManaged(true);
+  container->EnableEngineManagedScroll();
   list->SetAttribute("sticky", lepus::Value(true));
   const int heights[] = {100, 40, 60, 60, 40, 100, 100, 100};
   auto items = lepus::CArray::Create();
@@ -28769,7 +28769,7 @@ TEST_P(FiberElementTest, ComposeStickyProjectionUsesMeasuredElementOutput) {
       manager->page_options_.SetEmbeddedMode(
           EmbeddedMode::FRAGMENT_LAYER_RENDER);
       auto result =
-          list->InvokeMethod("composeList", lepus::Value(params), &error);
+          list->InvokeMethod("scrollCommand", lepus::Value(params), &error);
       manager->page_options_.SetEmbeddedMode(mode);
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(result.GetProperty("valid").Bool());
@@ -28780,7 +28780,7 @@ TEST_P(FiberElementTest, ComposeStickyProjectionUsesMeasuredElementOutput) {
       EXPECT_EQ(sticky.GetProperty("sizePx").Number(), 40);
     } else {
       auto result =
-          list->InvokeMethod("composeList", lepus::Value(params), &error);
+          list->InvokeMethod("scrollCommand", lepus::Value(params), &error);
       EXPECT_FALSE(result.GetProperty("valid").Bool());
       EXPECT_TRUE(result.GetProperty("stickyItems").IsNil());
     }

@@ -398,6 +398,21 @@ void TasmMediator::RequestVsync(
   vsync_monitor_->ScheduleVSyncSecondaryCallback(id, std::move(callback));
 }
 
+void TasmMediator::ScheduleUIOperationFlush() {
+  if (ui_operation_flush_scheduled_) {
+    return;
+  }
+  ui_operation_flush_scheduled_ = true;
+  engine_actor_->ActAsync([this](auto& engine) {
+    ui_operation_flush_scheduled_ = false;
+    auto* tasm = engine->GetTasm();
+    // Embedded pages skip the actor's usual painting flush.
+    if (tasm->IsEmbeddedModeOn()) {
+      tasm->page_proxy()->element_manager()->painting_context()->Flush();
+    }
+  });
+}
+
 std::string TasmMediator::TranslateResourceForTheme(
     const std::string& res_id, const std::string& theme_key) {
   return tasm_platform_invoker_->TranslateResourceForTheme(res_id, theme_key);
