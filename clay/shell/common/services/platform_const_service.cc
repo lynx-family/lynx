@@ -6,12 +6,16 @@
 
 #include <utility>
 
+#include "clay/common/trail_settings.h"
+
 namespace clay {
 
 PlatformConstService::PlatformConstService(
     const Settings& settings, bool is_gpu_disabled,
     std::shared_ptr<DisplayManager> display_manager)
     : settings_(settings),
+      enable_display_compositor_(
+          setting::CLAY_ENABLE_DISPLAY_COMPOSITOR.value()),
       is_gpu_disabled_sync_switch_(
           std::make_shared<fml::SyncSwitch>(is_gpu_disabled)),
       display_manager_(std::move(display_manager)) {}

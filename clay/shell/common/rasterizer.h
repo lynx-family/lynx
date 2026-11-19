@@ -34,11 +34,13 @@
 #include "clay/flow/surface.h"
 #include "clay/gfx/gpu_object.h"
 #include "clay/gfx/paint_image.h"
+#include "clay/shell/common/display_compositor.h"
 #include "clay/shell/common/screenshot_utils.h"
 #include "clay/shell/common/services/compositor/compositor_service.h"
 #include "clay/shell/common/services/instrumentation_service.h"
 #include "clay/shell/common/services/platform_const_service.h"
 #include "clay/shell/common/services/raster_frame_service.h"
+#include "clay/shell/common/shared_image_surface.h"
 #include "clay/shell/common/shell_common_rendering_backend.h"
 #include "clay/ui/common/render_settings.h"
 
@@ -57,12 +59,11 @@ using clay::GPUUnrefQueue;
 /// rasterizer may only be created, used and collected on the raster task
 /// runner.
 ///
-/// The rasterizer owns the instance of the currently active on-screen render
-/// surface. On this surface, it renders the contents of layer trees submitted
-/// to it by the `Engine` (which lives on the UI task runner).
+/// The rasterizer renders layer trees from the Engine into an offscreen
+/// SharedImage. DisplayCompositor owns the output surface and presents it.
 ///
 /// The primary components owned by the rasterizer are the compositor context
-/// and the on-screen render surface. The compositor context has all the GPU
+/// and the offscreen render surface. The compositor context has all the GPU
 /// state necessary to render frames to the render surface.
 ///
 class Rasterizer final : public Stopwatch::RefreshRateUpdater,
@@ -345,7 +346,7 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
       instrumentation_service_;
   const clay::Puppet<clay::Owner::kRaster, CompositorService>
       compositor_service_;
-
+  std::unique_ptr<DisplayCompositor> display_compositor_;
   std::unique_ptr<Surface> surface_;
   std::unique_ptr<clay::CompositorContext> compositor_context_;
   // This is the last successfully rasterized layer tree.

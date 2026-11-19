@@ -318,7 +318,7 @@ NativeBufferEGLImageRepresentation::GetTexImage() {
   }
   return TextureInfo{.target = GL_TEXTURE_2D,
                      .name = texture_id_,
-                     .format = GL_RGBA,
+                     .format = GL_RGBA8,
                      .size = GetSize()};
 }
 

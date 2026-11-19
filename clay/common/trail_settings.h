@@ -20,6 +20,8 @@ namespace setting {
 
 LYNX_SETTING_KEY(CLAY_FORCE_IGNORE_RASTER_CACHE, bool,
                  "clay_force_ignore_raster_cache", false);
+LYNX_SETTING_KEY(CLAY_ENABLE_DISPLAY_COMPOSITOR, bool,
+                 "clay_enable_display_compositor", false);
 LYNX_SETTING_KEY(CLAY_ANDROID_ENABLE_PARTIAL_REPAINT, bool,
                  "clay_android_enable_partial_repaint", false);
 // Set the Trail value to one comma-separated string, for example
