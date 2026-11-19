@@ -11,8 +11,12 @@ import com.lynx.markdown.CustomDrawView;
 import com.lynx.markdown.MarkdownMeasurer;
 import com.lynx.markdown.MarkdownValuePack;
 import com.lynx.markdown.ServalMarkdownView;
+import com.lynx.tasm.behavior.render.PlatformRendererContext;
+import com.lynx.tasm.behavior.render.Renderer;
+import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.utils.UIThreadUtils;
+import com.lynx.xelement.markdown.LynxUIMarkdown;
 import com.lynx.xelement.markdown.LynxUIMarkdownShadowNode;
 
 public class LynxMarkdownView extends AndroidView {
@@ -34,6 +38,19 @@ public class LynxMarkdownView extends AndroidView {
   public LynxMarkdownView(Context context) {
     super(context);
     setWillNotDraw(true);
+  }
+
+  @Override
+  public Renderer createRenderer(PlatformRendererContext platformRendererContext, int sign) {
+    return new Renderer(platformRendererContext, sign) {
+      @Override
+      public void updateExtraData(Object extraData) {
+        LynxBaseUI ui = getUIHost();
+        if (ui instanceof LynxUIMarkdown) {
+          ((LynxUIMarkdown) ui).updateExtraData(extraData);
+        }
+      }
+    };
   }
 
   public ServalMarkdownView setBundle(LynxMarkdownBundle bundle) {

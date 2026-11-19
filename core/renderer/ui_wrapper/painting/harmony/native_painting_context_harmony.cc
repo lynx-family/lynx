@@ -10,6 +10,7 @@
 
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/task_runner.h"
+#include "core/renderer/ui_wrapper/common/harmony/platform_extra_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_layout_harmony.h"
 #include "core/renderer/ui_wrapper/layout/harmony/text_measurer_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/native_painting_context_platform_harmony_ref.h"
@@ -72,6 +73,22 @@ void NativePaintingCtxHarmony::UpdatePaintingNode(
     std::static_pointer_cast<NativePaintingCtxPlatformHarmonyRef>(ref)
         ->UpdateAttributes(id, painting_data);
   });
+}
+
+void NativePaintingCtxHarmony::UpdatePlatformExtraBundle(
+    int32_t id, PlatformExtraBundle* bundle) {
+  if (!bundle) {
+    return;
+  }
+  auto extra_data =
+      static_cast<PlatformExtraBundleHarmony*>(bundle)->GetBundle();
+  Enqueue(
+      [context = renderer_context_, id, extra_data = std::move(extra_data)]() {
+        auto* owner = context->GetUIOwner();
+        if (owner != nullptr && !owner->Destroyed()) {
+          owner->UpdateExtraData(id, extra_data);
+        }
+      });
 }
 
 void NativePaintingCtxHarmony::UpdateLayout(

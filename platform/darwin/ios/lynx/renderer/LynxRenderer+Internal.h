@@ -3,13 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxRenderer.h>
+#ifdef __cplusplus
 #include "gfx/public/display_list.h"
+#endif
 
 @interface LynxRenderer ()
 
+#ifdef __cplusplus
 - (void)updateDisplayList:(lynx::tasm::DisplayList *)list;
 
 - (lynx::tasm::DisplayList *)getDisplayList;
+#endif
 
 - (void)detachHostDecorationLayers;
 
@@ -28,7 +32,9 @@
 - (void)updateLayoutOffsetIfNeeded:(CGPoint)offset;
 
 // SubtreeProperties support
+#ifdef __cplusplus
 - (void)applySubtreeProperties:(const lynx::tasm::SubtreeProperty *)properties count:(size_t)count;
+#endif
 - (void)applyTransform:(const float *)transform;
 - (void)applyOpacity:(float)opacity;
 - (void)applyFilter:(int32_t)type amount:(float)amount;

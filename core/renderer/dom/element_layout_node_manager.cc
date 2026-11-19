@@ -41,7 +41,13 @@ void ElementLayoutNodeManager::MarkDirtyAndForceLayout(int32_t id) {
   }
 }
 
-bool ElementLayoutNodeManager::IsDirty(int32_t id) { return false; }
+bool ElementLayoutNodeManager::IsDirty(int32_t id) {
+  auto* element = GetElement(id);
+  if (element == nullptr || element->slnode() == nullptr) {
+    return false;
+  }
+  return element->slnode()->IsDirty();
+}
 
 FlexDirection ElementLayoutNodeManager::GetFlexDirection(int32_t id) {
   return FlexDirection::kRow;
