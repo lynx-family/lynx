@@ -1246,6 +1246,12 @@ public interface com::lynx::react::bridge::Callback {
   public void com.lynx.react.bridge.Callback.invoke(Object... args);
 }
 
+public interface com::lynx::tasm::core::resource::LynxHostScriptResourceHooks::Callback {
+  public void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.Callback.onMock(byte[] data);
+  public void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.Callback.onProceed(@Nullable String url);
+  public void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.Callback.onError(@Nullable String message);
+}
+
 public interface com::lynx::tasm::element::LynxElement::Callback {
   public void com.lynx.tasm.element.LynxElement.Callback< T >.onResult(@Nullable T result);
 }
@@ -1516,6 +1522,11 @@ public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExe
   public void com.lynx.tasm.DefaultLogicExecutor.init(ILynxViewGroup viewGroup);
   public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
   public void com.lynx.tasm.DefaultLogicExecutor.destroy();
+}
+
+public interface com::lynx::tasm::core::resource::LynxHostScriptResourceHooks::Delegate {
+  public boolean com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.Delegate.hasHandler(long viewId);
+  public void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.Delegate.dispatch(long viewId, @NonNull String url, boolean reqInCurThread, @NonNull Callback callback);
 }
 
 public class com::lynx::tasm::utils::DeviceUtils :  {
@@ -6031,6 +6042,11 @@ public class com::lynx::tasm::LynxHostEnvironment :  {
   public LynxBackgroundRuntimeOptions com.lynx.tasm.LynxHostEnvironment.getRuntimeOptions();
 }
 
+public class com::lynx::tasm::core::resource::LynxHostScriptResourceHooks :  {
+  public static void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.setDelegate(@Nullable Delegate delegate);
+  public static Delegate com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.getDelegate();
+}
+
 public class abstract com::lynx::tasm::service::LynxHttpRequestCallback :  {
   public void com.lynx.tasm.service.LynxHttpRequestCallback.invoke(@NonNull HttpResponse response);
 }
@@ -6737,6 +6753,7 @@ public class abstract com::lynx::tasm::provider::LynxResourceFetcher :  {
 
 public class com::lynx::tasm::core::resource::LynxResourceLoader :  {
   public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
+  public void com.lynx.tasm.core.resource.LynxResourceLoader.setViewId(long viewId);
   public byte[] com.lynx.tasm.core.resource.LynxResourceLoader.loadLynxJSAsset(String name);
 }
 
