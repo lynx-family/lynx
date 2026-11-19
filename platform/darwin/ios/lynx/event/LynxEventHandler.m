@@ -379,6 +379,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   BOOL _isFragmentLayerRendererOn;
   BOOL _enablePlatformGesture;
   BOOL _rawInputEnabled;
+  BOOL _eventGesturesRemoved;
 }
 
 - (void)dealloc {
@@ -550,6 +551,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 
 - (void)attachContainerView:(UIView*)rootView {
   _rootView = rootView;
+  if (_eventGesturesRemoved) {
+    return;
+  }
   [_rootView addGestureRecognizer:_touchRecognizer];
   if (!_rawInputEnabled) {
     [_rootView addGestureRecognizer:_longPressRecognizer];
@@ -593,6 +597,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 }
 
 - (void)removeEventGestures {
+  _eventGesturesRemoved = YES;
   [_rootView removeGestureRecognizer:_touchRecognizer];
   [_rootView removeGestureRecognizer:_longPressRecognizer];
   [_rootView removeGestureRecognizer:_tapRecognizer];
@@ -604,6 +609,21 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   if (_panGestureRecognizer != nil) {
     [_rootView removeGestureRecognizer:_panGestureRecognizer];
   }
+}
+
+- (LynxEventHandler*)parentEventHandler {
+  LynxUI* rootUI = _rootUI ?: (LynxUI*)_uiOwner.rootUI;
+  return ((LynxUI*)rootUI.parentLynxPageUI).context.eventHandler;
+}
+
+- (LynxEventHandler*)childEventHandler {
+  LynxRootUI* childLynxPage =
+      _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    return childLynxPage.context.eventHandler;
+  }
+  return nil;
 }
 
 - (LynxCustomEvent*)generateGestureEvent:(UIGestureRecognizer*)sender
@@ -871,6 +891,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 // FragmentLayerRenderer mode, the page renderer calls this before the first
 // touch; the legacy path calls it when an eligible LynxUI becomes ready.
 - (void)needCheckConsumeSlideEvent {
+  if (_eventGesturesRemoved) {
+    [[self parentEventHandler] needCheckConsumeSlideEvent];
+  }
   if (_panGestureRecognizer && _panGestureDelegate) {
     return;
   }
@@ -882,7 +905,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   _panGestureDelegate = [[PanGestureRecognizerDelegate alloc] initWithEventHandler:self];
   _panGestureRecognizer.delegate = _panGestureDelegate;
   _panGestureRecognizer.cancelsTouchesInView = self.tapRecognizer.cancelsTouchesInView;
-  [_rootView addGestureRecognizer:_panGestureRecognizer];
+  if (!_eventGesturesRemoved) {
+    [_rootView addGestureRecognizer:_panGestureRecognizer];
+  }
 }
 
 - (void)updatePlatformConsumeSlideEventAngles:(NSArray<NSNumber*>*)angles {
@@ -896,6 +921,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 }
 
 - (BOOL)hasConsumeSlideEvent {
+  if ([[self childEventHandler] hasConsumeSlideEvent]) {
+    return YES;
+  }
   if (_isFragmentLayerRendererOn) {
     return _platformConsumeSlideEventAngles.count >= 2;
   }
@@ -930,10 +958,13 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   if (_isFragmentLayerRendererOn) {
     return;
   }
-  if (_customPlatformGesture && _customPlatformDelegate) {
+  if (!_eventGesturesRemoved && _customPlatformGesture && _customPlatformDelegate) {
     return;
   }
   void (^work)(void) = ^{
+    if (self->_eventGesturesRemoved) {
+      [[self parentEventHandler] setUpPlatformGesture];
+    }
     if (self->_customPlatformGesture && self->_customPlatformDelegate) {
       return;
     }
@@ -944,7 +975,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
         [[LynxCustomPlatformGestureRecognizerDelegate alloc] initWithEventHandler:self];
     self->_customPlatformGesture.delegate = self->_customPlatformDelegate;
     self->_customPlatformGesture.cancelsTouchesInView = YES;
-    [self->_rootView addGestureRecognizer:self->_customPlatformGesture];
+    if (!self->_eventGesturesRemoved) {
+      [self->_rootView addGestureRecognizer:self->_customPlatformGesture];
+    }
   };
   if ([NSThread isMainThread]) {
     work();
@@ -977,6 +1010,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 }
 
 - (BOOL)consumeSlideEvents:(CGFloat)angle {
+  if ([[self childEventHandler] consumeSlideEvents:angle]) {
+    return YES;
+  }
   if (_isFragmentLayerRendererOn) {
     for (NSUInteger i = 0; i + 1 < _platformConsumeSlideEventAngles.count; i += 2) {
       if (angle >= _platformConsumeSlideEventAngles[i].doubleValue &&
@@ -1077,6 +1113,9 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 }
 
 - (void)startInterceptPanGestures:(enum LynxPanInterceptDirection)direction {
+  if (_eventGesturesRemoved) {
+    return;
+  }
   _firstPanInterceptDirectionTarget = [self getFirstPanInterceptDirectionTarget:direction];
   if ([self getPanInterceptScope:_firstPanInterceptDirectionTarget] != kLynxPanInterceptScopeNone) {
     // There is no need to activate PlatformGesture here, because simply changing the state of the
@@ -1091,6 +1130,11 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     (enum LynxPanInterceptDirection)direction {
   if (kLynxPanInterceptDirectionNone == direction) {
     return nil;
+  }
+  id<LynxEventTarget> childTarget =
+      [[self childEventHandler] getFirstPanInterceptDirectionTarget:direction];
+  if (childTarget != nil) {
+    return childTarget;
   }
   id<LynxEventTarget> target = _touchTarget;
   while (target && target.parentTarget != target) {
