@@ -12,6 +12,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/compiler_specific.h"
 #include "base/include/flex_optional.h"
 #include "base/include/string/string_utils.h"
 #include "base/include/value/array.h"
@@ -58,6 +59,7 @@ constexpr int kModifierOpSizeRange = 15;
 constexpr int kModifierOpAttachment = 16;
 constexpr int kModifierOpDrawForeground = 17;
 constexpr int kModifierOpScopedClip = 18;
+constexpr int kModifierOpLayout = 19;
 
 bool IsDrawOperation(int op) {
   return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind ||
@@ -89,6 +91,8 @@ BASE_STATIC_STRING_DECL(kOp, "op");
 BASE_STATIC_STRING_DECL(kPrevious, "previous");
 BASE_STATIC_STRING_DECL(kResolve, "resolve");
 BASE_STATIC_STRING_DECL(kResolveRecording, "resolveRecording");
+BASE_STATIC_STRING_DECL(kMeasure, "measure");
+BASE_STATIC_STRING_DECL(kOnPlaced, "onPlaced");
 BASE_STATIC_STRING_DECL(kLeft, "left");
 BASE_STATIC_STRING_DECL(kRight, "right");
 BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
@@ -152,6 +156,7 @@ struct ModifierFramePlan {
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
+  bool has_layout_callbacks{false};
   bool has_offset{false};
   bool has_size_range{false};
   bool has_wrap_content{false};
@@ -462,6 +467,14 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpOffset:
     case kModifierOpSizeRange:
       return ParseLayoutOperation(node, operation, error);
+    case kModifierOpLayout:
+      operation->callback = node.GetProperty(kMeasure);
+      operation->value = node.GetProperty(kOnPlaced);
+      if (!operation->callback.IsCallable() || !operation->value.IsCallable()) {
+        *error = "invalid Modifier layout callbacks";
+        return false;
+      }
+      return true;
     case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
     case kModifierOpDrawForeground:
@@ -596,6 +609,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
         previous_target = &operation;
       }
     } else if (IsDrawOperation(operation.op) ||
+               operation.op == kModifierOpLayout ||
                operation.op == kModifierOpPadding ||
                operation.op == kModifierOpOffset ||
                operation.op == kModifierOpSizeRange ||
@@ -639,6 +653,10 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
           (sizing_prefix_axes & operation.wrap_axes) != 0;
       plan->frame_count += operation.wrap_has_prefix ? 2 : 1;
       plan->has_wrap_content = true;
+      sizing_prefix_axes = 0;
+    } else if (operation.op == kModifierOpLayout) {
+      plan->has_layout_callbacks = true;
+      ++plan->frame_count;
       sizing_prefix_axes = 0;
     } else if (IsDrawOperation(operation.op)) {
       plan->has_draw_callbacks = true;
@@ -696,6 +714,11 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     } else if (WrapContentStyleAxis(operation)) {
       operation.target_frame_index =
           plan->operations[position - 1].target_frame_index;
+    } else if (operation.op == kModifierOpLayout) {
+      operation.target_frame_index = carrier_index++;
+      // Fill after this modifier applies to the measured child.
+      fill_propagation_start.fill(carrier_index);
+      constrained_axes = 0;
     } else if (IsDrawOperation(operation.op)) {
       plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
       ++carrier_index;
@@ -1092,17 +1115,24 @@ void SetWeightFill(Element* element, bool fill) {
   }
 }
 
+using ModifierFrames = base::Vector<fml::RefPtr<ModifierElement>>;
+
+ModifierFrames CollectModifierFrames(Element* mount_root, Element* owner) {
+  ModifierFrames frames;
+  // ValidateTopology has checked the single-child chain ending at owner.
+  for (auto* frame = mount_root; frame != owner; frame = frame->GetChildAt(0)) {
+    frames.emplace_back(static_cast<ModifierElement*>(frame));
+  }
+  return frames;
+}
+
 // Publish physical identities only after installing the complete chain. The
 // runtime owns callback identities and their lifetime; Elements retain no
 // parallel list of logical input nodes.
 void BindModifierAttachments(const ModifierFramePlan& plan, Element* mount_root,
                              Element* content_element,
                              runtime::MTSRuntime* registration_context) {
-  base::Vector<fml::RefPtr<ModifierElement>> frames;
-  for (auto* target = mount_root; target != content_element;
-       target = target->GetChildAt(0)) {
-    frames.emplace_back(static_cast<ModifierElement*>(target));
-  }
+  const auto frames = CollectModifierFrames(mount_root, content_element);
   for (const auto& operation : plan.operations) {
     if (operation.op == kModifierOpAttachment) {
       auto* target = OperationTarget(operation, content_element, frames);
@@ -1204,11 +1234,7 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
   // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
   // The stable content Element is not a frame; OperationTarget selects it when
   // the operation has kNoModifierFrame as its target.
-  base::Vector<fml::RefPtr<ModifierElement>> frames;
-  for (auto* target = mount_root; target != content_element;
-       target = target->GetChildAt(0)) {
-    frames.emplace_back(static_cast<ModifierElement*>(target));
-  }
+  const auto frames = CollectModifierFrames(mount_root, content_element);
 
   for (const auto& operation : plan.operations) {
     if (!IsDrawOperation(operation.op)) {
@@ -1238,17 +1264,6 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
       target->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
     }
   }
-}
-
-using ModifierFrames = base::Vector<fml::RefPtr<ModifierElement>>;
-
-ModifierFrames CollectModifierFrames(Element* mount_root, Element* owner) {
-  ModifierFrames frames;
-  // ValidateTopology has checked the single-child chain ending at owner.
-  for (auto* frame = mount_root; frame != owner; frame = frame->GetChildAt(0)) {
-    frames.emplace_back(static_cast<ModifierElement*>(frame));
-  }
-  return frames;
 }
 
 ModifierFrames PrepareModifierFrames(const ModifierFramePlan& plan,
@@ -1340,10 +1355,8 @@ fml::RefPtr<Element> UpdateModifierFrameTree(
 
 fml::RefPtr<Element> InstallModifierFramePlan(
     ModifierFramePlan& plan, Element* owner, Element* current_mount_root,
+    const ModifierFrames& previous_frames, const ModifierFrames& frames,
     runtime::MTSRuntime* registration_context, bool deep_convert) {
-  const auto previous_frames = CollectModifierFrames(current_mount_root, owner);
-  const auto frames = PrepareModifierFrames(plan, owner, previous_frames);
-
   ClearModifierOwnedProperties(owner);
   ApplyLayoutOperations(plan, frames, owner);
   ApplyNonLayoutOperations(plan, owner, frames, registration_context,
@@ -1363,6 +1376,11 @@ fml::RefPtr<Element> InstallModifierFramePlan(
 
   return UpdateModifierFrameTree(owner, current_mount_root, previous_frames,
                                  frames);
+}
+
+NO_INLINE ComposeModifierApplicator::ApplyResult ModifierApplyError(
+    const char* message) {
+  return {false, 0, message};
 }
 
 }  // namespace
@@ -1418,6 +1436,12 @@ ModifierElement::ModifierElement(ElementManager* manager)
   }
 }
 
+void ModifierElement::BindLayout(CustomLayout* layout) {
+  if (layout_epoch_ == std::numeric_limits<int32_t>::max()) layout_epoch_ = 0;
+  ++layout_epoch_;
+  layout_ = layout;
+}
+
 bool ComposeModifierApplicator::ValidateTopology(ComposeElementHandle* handle,
                                                  std::string* error_message) {
   if (handle == nullptr || handle->content_element() == nullptr ||
@@ -1433,11 +1457,6 @@ bool ComposeModifierApplicator::ValidateTopology(ComposeElementHandle* handle,
 ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     ComposeElementHandle* handle, const lepus::Value& modifier_tail,
     runtime::MTSRuntime* registration_context) {
-  if (handle == nullptr || handle->content_element() == nullptr ||
-      handle->mount_root() == nullptr) {
-    return {false, 0,
-            "Compose handle should retain a Content Element and mount root"};
-  }
   std::string error;
   if (!ValidateTopology(handle, &error)) {
     return {false, 0, std::move(error)};
@@ -1458,21 +1477,21 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     return {false, error_position, std::move(error)};
   }
   if (plan.weight_fill.has_value() && !layout_in_element) {
-    return {false, 0, "weight fill requires layout in Element"};
+    return ModifierApplyError("weight fill requires layout in Element");
   }
   if (plan.has_size_range &&
       (!layout_in_element ||
        !std::isfinite(manager->GetLynxEnvConfig().DevicePixelRatio()) ||
        manager->GetLynxEnvConfig().DevicePixelRatio() <= 0)) {
-    return {false, 0,
-            "size range requires layout in Element and positive density"};
+    return ModifierApplyError(
+        "size range requires layout in Element and positive density");
   }
   if (plan.has_wrap_content && !layout_in_element) {
-    return {false, 0, "wrapContent requires layout in Element"};
+    return ModifierApplyError("wrapContent requires layout in Element");
   }
   if (plan.has_offset) {
     if (!layout_in_element) {
-      return {false, 0, "offset requires layout in Element"};
+      return ModifierApplyError("offset requires layout in Element");
     }
     const double scale = manager->GetLynxEnvConfig().LayoutsUnitPerPx();
     for (const auto& operation : plan.operations) {
@@ -1482,31 +1501,58 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
                std::numeric_limits<float>::max() ||
            std::abs(operation.layout_values[1] * scale) >
                std::numeric_limits<float>::max())) {
-        return {false, 0, "offset exceeds the native layout unit range"};
+        return ModifierApplyError(
+            "offset exceeds the native layout unit range");
       }
     }
   }
   // Reject unsupported plans before changing any active callbacks or nodes.
   if (plan.has_attachments && !registration_context) {
-    return {false, 0, "Modifier attachment requires a registering runtime"};
+    return ModifierApplyError(
+        "Modifier attachment requires a registering runtime");
+  }
+  if (plan.has_layout_callbacks &&
+      (!layout_in_element || !registration_context)) {
+    return ModifierApplyError(
+        "layout modifiers require layout in Element and a registering runtime");
   }
   if (plan.has_draw_callbacks) {
     if (!registration_context) {
-      return {false, 0, "drawing modifiers require a registering runtime"};
+      return ModifierApplyError(
+          "drawing modifiers require a registering runtime");
     }
     if (!manager->IsFragmentLayerRenderModeOn()) {
-      return {false, 0, "drawing modifiers require Fragment Layer rendering"};
+      return ModifierApplyError(
+          "drawing modifiers require Fragment Layer rendering");
     }
   }
 
+  if (handle->HasExecutingModifierLayout()) {
+    return ModifierApplyError("cannot replace an executing Modifier layout");
+  }
+  handle->ClearModifierLayouts();
   // Remove old bindings before updating the chain, including any binding on
   // the content Element that will be reused by the new plan.
   ClearModifierDrawCallbacks(previous_mount_root.get(), content_element.get());
 
-  auto mount_root = InstallModifierFramePlan(
-      plan, content_element.get(), previous_mount_root.get(),
-      registration_context, manager->GetEnableParallelElement());
-  handle->SetMountRoot(std::move(mount_root));
+  {
+    auto* owner = content_element.get();
+    const auto previous_frames =
+        CollectModifierFrames(previous_mount_root.get(), owner);
+    const auto frames = PrepareModifierFrames(plan, owner, previous_frames);
+    handle->SetMountRoot(InstallModifierFramePlan(
+        plan, owner, previous_mount_root.get(), previous_frames, frames,
+        registration_context, manager->GetEnableParallelElement()));
+    if (plan.has_layout_callbacks) {
+      for (const auto& operation : plan.operations) {
+        if (operation.op != kModifierOpLayout) continue;
+        handle->AddModifierLayout(*frames[operation.target_frame_index],
+                                  *registration_context, operation.callback,
+                                  operation.value);
+      }
+      handle->mount_root()->RequestLayout();
+    }
+  }
   if (plan.has_attachments) {
     BindModifierAttachments(plan, handle->mount_root().get(),
                             content_element.get(), registration_context);

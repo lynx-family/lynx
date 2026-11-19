@@ -7,11 +7,15 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
+#include <optional>
 #include <utility>
 
 #include "base/include/auto_reset.h"
+#include "base/include/compiler_specific.h"
 #include "base/include/float_comparison.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/lepusng/jsvalue_helper.h"
@@ -22,15 +26,28 @@ namespace tasm {
 
 namespace {
 
+constexpr char kModifierPlacementX[] = "x";
+constexpr char kModifierPlacementY[] = "y";
+
+NO_INLINE float ReadLayoutNumber(const lepus::Value& value,
+                                 const base::String& key, float scale) {
+  const auto property = value.GetProperty(key);
+  return property.IsNumber() ? property.Number() / scale
+                             : std::numeric_limits<float>::quiet_NaN();
+}
+
 // Project placement order into the existing stacking machinery without changing
 // the authored styles. GetElementStyle remains the source for restoration.
-void SetPlacementZIndex(Element& element,
-                        const std::optional<CSSValue>& value) {
+NO_INLINE void SetPlacementZIndex(Element& element, std::optional<int> order) {
   if (element.will_destroy()) return;
   auto* style = element.computed_css_style();
   auto authored = element.GetElementStyle(kPropertyIDZIndex);
-  bool changed = style->SetValue(kPropertyIDZIndex, value.value_or(CSSValue()),
-                                 !value.has_value());
+  const CSSValue projected =
+      order ? CSSValue(lepus::Value(*order), CSSValuePattern::NUMBER)
+            : CSSValue();
+  const auto& value = !order && authored ? *authored : projected;
+  const bool changed =
+      style->SetValue(kPropertyIDZIndex, value, !order && !authored);
   // The projected value must not become the declared value in the new styling
   // pipeline, which also uses this map when resolving subsequent patches.
   if (authored) {
@@ -45,13 +62,19 @@ void SetPlacementZIndex(Element& element,
 }
 
 void RestoreZIndex(Element& element) {
-  if (element.will_destroy()) return;
-  SetPlacementZIndex(element, element.GetElementStyle(kPropertyIDZIndex));
+  SetPlacementZIndex(element, std::nullopt);
 }
 
 }  // namespace
 
 thread_local CustomLayout* CustomLayout::active_ = nullptr;
+
+fml::RefPtr<CustomLayout> CustomLayout::Create(
+    Element& owner, runtime::MTSRuntime& runtime,
+    const lepus::Value& measure_callback, const lepus::Value& place_callback) {
+  return fml::AdoptRef(
+      new CustomLayout(owner, runtime, measure_callback, place_callback));
+}
 
 CustomLayout::CustomLayout(Element& owner, runtime::MTSRuntime& runtime,
                            const lepus::Value& measure_callback,
@@ -63,6 +86,8 @@ CustomLayout::CustomLayout(Element& owner, runtime::MTSRuntime& runtime,
   measure_callback_.CopyWeakValue(measure_callback);
   place_callback_.CopyWeakValue(place_callback);
 }
+
+CustomLayout::~CustomLayout() = default;
 
 void CustomLayout::visitor(void* rt, void* func, uint64_t trace_tool) const {
   auto* runtime = static_cast<LEPUSRuntime*>(rt);
@@ -79,11 +104,41 @@ void CustomLayout::ResetPlacementOrder() {
   RestoreZIndex(*owner_);
 }
 
+void CustomLayout::Attach() {
+  owner_->SetCustomLayoutFunctions({
+      nullptr,
+      [](void* context) { static_cast<CustomLayout*>(context)->Alignment(); },
+      nullptr,
+      this,
+      [](void* context, const starlight::ComposeConstraints& constraints,
+         bool final_measure) {
+        const auto size = static_cast<CustomLayout*>(context)->Measure(
+            constraints, final_measure);
+        return FloatSize(size.width_, size.height_, size.baseline_);
+      },
+  });
+}
+
 void CustomLayout::Detach() {
   // A callback can release its handle while keep_alive retains this adapter.
   // Prevent that in-flight pass from committing placement after cleanup.
   valid_ = false;
-  ResetPlacementOrder();
+  const bool is_modifier = owner_->is_modifier();
+  if (is_modifier) static_cast<ModifierElement&>(*owner_).ClearLayoutBinding();
+  if (!owner_->will_destroy()) {
+    owner_->SetCustomLayoutFunctions({});
+    // A measure can run before the queued Element flush. Clear the live hooks
+    // before releasing the adapter.
+    if (auto* node = owner_->slnode()) {
+      node->SetContext(nullptr);
+      node->SetSLMeasureFunc(nullptr);
+      node->SetSLComposeMeasureFunc(nullptr);
+      node->SetSLAlignmentFunc(nullptr);
+      node->SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(nullptr);
+      node->MarkDirty();
+    }
+  }
+  if (!is_modifier) ResetPlacementOrder();
 }
 
 void CustomLayout::Invalidate() {
@@ -101,17 +156,20 @@ bool CustomLayout::IsChild(Element& child) const {
 
 LayoutResult CustomLayout::Measure(
     const starlight::ComposeConstraints& constraints, bool final_measure) {
-  auto keep_alive = shared_from_this();
+  fml::RefPtr<CustomLayout> keep_alive(this);
   if (IsExecuting()) return {};
   base::AutoReset<Phase> phase(&phase_, Phase::kMeasure);
   base::AutoReset<CustomLayout*> active(&active_, this);
   final_measure_ = final_measure;
+  const bool is_modifier = owner_->is_modifier();
   // Preserve projections for children measured again to avoid invalidating
   // cached measurements while restoring and reapplying stacking contexts.
-  auto previous_children = std::move(children_);
+  auto previous_children =
+      is_modifier ? base::Vector<Child>() : std::move(children_);
   children_.clear();
   valid_ = true;
   auto restore_unused_projection = [&] {
+    if (is_modifier) return;
     for (auto& previous : previous_children) {
       if (!valid_ ||
           std::none_of(children_.begin(), children_.end(), [&](const auto& c) {
@@ -133,18 +191,48 @@ LayoutResult CustomLayout::Measure(
       lepus::Value(maximum(constraints.max_width)),
       lepus::Value(constraints.min_height * scale),
       lepus::Value(maximum(constraints.max_height)));
-  auto w = value.GetProperty(BASE_STATIC_STRING(kWidth));
-  auto h = value.GetProperty(BASE_STATIC_STRING(kHeight));
-  if (!w.IsNumber() || !h.IsNumber()) {
-    valid_ = false;
-    restore_unused_projection();
-    return {};
-  }
-  LayoutResult result(w.Number() / scale, h.Number() / scale);
+  const auto width = ReadLayoutNumber(value, BASE_STATIC_STRING(kWidth), scale);
+  const auto height =
+      ReadLayoutNumber(value, BASE_STATIC_STRING(kHeight), scale);
+  LayoutResult result(width, height);
   valid_ = valid_ && std::isfinite(result.width_) && result.width_ >= 0 &&
            std::isfinite(result.height_) && result.height_ >= 0;
+  if (valid_ && is_modifier) {
+    const auto x =
+        ReadLayoutNumber(value, BASE_STATIC_STRING(kModifierPlacementX), scale);
+    const auto y =
+        ReadLayoutNumber(value, BASE_STATIC_STRING(kModifierPlacementY), scale);
+    valid_ =
+        valid_ && children_.size() == 1 && std::isfinite(x) && std::isfinite(y);
+    if (valid_) {
+      auto& child = children_.front();
+      child.x = x;
+      child.y = y;
+      valid_ = IsChild(*child.element);
+      if (valid_) {
+        result.width_ = constraints.ConstrainWidth(result.width_);
+        result.height_ = constraints.ConstrainHeight(result.height_);
+        result.baseline_ =
+            child.element->slnode()->GetOffsetFromTopMarginEdgeToBaseline() +
+            child.y;
+      }
+    }
+  }
   restore_unused_projection();
   return valid_ ? result : LayoutResult();
+}
+
+CustomLayout* CustomLayout::ActiveModifierMeasure(
+    runtime::MTSRuntime& runtime) {
+  auto* layout = active_;
+  return layout && layout->phase_ == Phase::kMeasure && layout->valid_ &&
+                 layout->UsesRuntime(runtime) && layout->owner_->is_modifier()
+             ? layout
+             : nullptr;
+}
+
+Element* CustomLayout::ModifierChild() const {
+  return owner_->GetChildCount() == 1 ? owner_->GetChildAt(0) : nullptr;
 }
 
 bool CustomLayout::MeasureChild(Element& child, float min_width,
@@ -211,10 +299,21 @@ bool CustomLayout::PlaceChild(Element& child, float x, float y, float z) {
 }
 
 void CustomLayout::Alignment() {
-  auto keep_alive = shared_from_this();
+  fml::RefPtr<CustomLayout> keep_alive(this);
   if (IsExecuting() || !valid_) return;
   base::AutoReset<Phase> phase(&phase_, Phase::kPlace);
   base::AutoReset<CustomLayout*> active(&active_, this);
+  if (owner_->is_modifier()) {
+    auto& child = children_.front();
+    if (!IsChild(*child.element)) return;
+    child.element->slnode()->AlignmentByPlatform(child.y, child.x);
+    if (valid_ && final_measure_) {
+      const auto& frame = static_cast<const ModifierElement&>(*owner_);
+      runtime_.CallClosure(place_callback_, lepus::Value(frame.impl_id()),
+                           lepus::Value(frame.layout_epoch()));
+    }
+    return;
+  }
   placement_order_ = 0;
   for (auto& child : children_) child.placed = false;
   auto result = runtime_.CallClosure(place_callback_);
@@ -242,15 +341,12 @@ void CustomLayout::Alignment() {
   }
   // Keep nested z children inside this layout's ordinary stacking context.
   if (!owner_->computed_css_style()->HasZIndex())
-    SetPlacementZIndex(*owner_,
-                       CSSValue(lepus::Value(0), CSSValuePattern::NUMBER));
+    SetPlacementZIndex(*owner_, 0);
   for (size_t i = 0; i < placed.size(); ++i) {
     auto& child = *placed[i];
     // Map floating-point z and placement order to the existing integer
     // stacking order. The policy owns the order of these siblings.
-    SetPlacementZIndex(*child.element,
-                       CSSValue(lepus::Value(static_cast<int>(i) + 1),
-                                CSSValuePattern::NUMBER));
+    SetPlacementZIndex(*child.element, static_cast<int>(i) + 1);
     child.element->slnode()->AlignmentByPlatform(child.y, child.x);
     // A nested policy may release this policy's handle during alignment.
     if (!valid_) return;

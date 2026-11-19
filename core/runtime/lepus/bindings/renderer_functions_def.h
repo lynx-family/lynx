@@ -136,6 +136,8 @@
   V(FiberMeasureElement)                \
   V(FiberPlaceElement)                  \
   V(FiberInvalidateLayout)              \
+  V(FiberMeasureLayoutModifierChild)    \
+  V(FiberInvalidateLayoutModifier)      \
   V(FiberSetComposeModifier)            \
   V(FiberSetID)                         \
   V(FiberGetID)                         \
