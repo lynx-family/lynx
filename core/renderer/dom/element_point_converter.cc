@@ -25,7 +25,7 @@ Element* FindLayoutParent(Element* element, Element* root) {
   if (layout_node == nullptr) {
     return nullptr;
   }
-  if (layout_node->IsNewFixed()) {
+  if (element->IsOverlay() || layout_node->IsNewFixed()) {
     return root;
   }
   const auto* parent_layout_node = layout_node->ParentLayoutObject();
@@ -57,7 +57,7 @@ bool BuildPathToRoot(Element* element, Element* root,
       return true;
     }
     if (!element->attached_to_layout_parent() &&
-        !element->slnode()->IsNewFixed()) {
+        !element->slnode()->IsNewFixed() && !element->IsOverlay()) {
       return false;
     }
     element = FindLayoutParent(element, root);
@@ -104,6 +104,22 @@ bool ParentScrolls(Element* parent, Element* child) {
   }
   const auto scroll = parent->slnode()->attr_map().getScroll();
   return parent->is_list() || (scroll.has_value() && *scroll);
+}
+
+bool OffsetOverlayPoints(base::geometry::FloatPoint* points, size_t count,
+                         Element* overlay, bool to_page) {
+  const auto* offset = overlay->platform_root_offset();
+  if (!offset) {
+    return false;
+  }
+  // Bridge the independent native window directly to Page. Its platform
+  // origin replaces the placeholder's layout position and parent transforms.
+  const float x = to_page ? (*offset)[0] : -(*offset)[0];
+  const float y = to_page ? (*offset)[1] : -(*offset)[1];
+  for (size_t i = 0; i < count; ++i) {
+    points[i] = {points[i].X() + x, points[i].Y() + y};
+  }
+  return true;
 }
 
 base::geometry::FloatRect BoundsOfConvertedCorners(
@@ -201,6 +217,12 @@ bool ConvertPointsBetweenElements(base::geometry::FloatPoint* points,
   for (size_t index = 0; index < source_common_ancestor_index; ++index) {
     auto* child = source_path[index];
     auto* parent = source_path[index + 1];
+    if (child->IsOverlay()) {
+      if (!OffsetOverlayPoints(points, count, child, true)) {
+        return false;
+      }
+      continue;
+    }
     const auto transform = LocalTransform(child);
     const bool scrolls = ParentScrolls(parent, child);
     for (size_t i = 0; i < count; ++i) {
@@ -221,6 +243,12 @@ bool ConvertPointsBetweenElements(base::geometry::FloatPoint* points,
   for (size_t index = target_common_ancestor_index; index > 0; --index) {
     auto* child = target_path[index - 1];
     auto* parent = target_path[index];
+    if (child->IsOverlay()) {
+      if (!OffsetOverlayPoints(points, count, child, false)) {
+        return false;
+      }
+      continue;
+    }
     gfx::Matrix44 inverse;
     if (!LocalTransform(child).invert(&inverse)) {
       return false;
@@ -286,6 +314,11 @@ base::flex_optional<base::geometry::FloatRect> ConvertRectBetweenElements(
   // box here, matching the rect result contract above. Point conversion remains
   // exact for invertible transforms.
   for (auto* clipper : source_path) {
+    // Overlay has a zero-sized layout box and starts an independent viewport.
+    // Page clipping ancestors do not clip content in its native window.
+    if (clipper->IsOverlay()) {
+      break;
+    }
     auto* style = clipper->computed_css_style();
     if (style == nullptr) {
       continue;
