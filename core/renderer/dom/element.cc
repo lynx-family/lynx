@@ -3072,6 +3072,15 @@ lepus::Value Element::InvokeMethod(const base::String& method,
   if (method == "getGeometry") {
     return QueryGeometry(request);
   }
+  if (method == "textEditCommand") {
+    // Capture the edit payload, including its command ID and pixel values.
+    // Run it after native input creation and previously queued focus ops.
+    AppendPendingInvokeTask([this, request] {
+      EnqueueInvoke("textEditCommand", pub::ValueImplLepus(request),
+                    [](int32_t, const pub::Value&) {});
+    });
+    return lepus::Value(true);
+  }
   if (method == "getInputAncestors") {
     auto ancestors = lepus::CArray::Create();
     for (auto* node : FiberNodeInfo::PathToRoot(this)) {

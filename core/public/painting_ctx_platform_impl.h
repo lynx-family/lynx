@@ -97,6 +97,11 @@ class PaintingCtxPlatformRef {
   virtual void ApplyListScrollState(int32_t container_id, float scroll_x,
                                     float scroll_y, float content_width,
                                     float content_height, bool cmp_managed) {}
+  // A Compose modifier scroll projects absolute layout-unit state. Platform
+  // callbacks must not feed this projection back into Engine scrolling.
+  virtual void ApplyScrollViewState(int32_t sign, float scroll_x,
+                                    float scroll_y, float content_width,
+                                    float content_height) {}
   virtual void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) {}
 
   virtual void MarkUIOperationQueueFlushForRecreateEngine(bool enable) {}

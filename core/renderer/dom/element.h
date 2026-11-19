@@ -1864,6 +1864,8 @@ class Element : public lepus::RefCounted,
   virtual void OnNodeAdded(Element* child);
   virtual void OnNodeRemoved(Element* child);
   virtual void OnEventHandlersChanged(const base::String& name) {}
+  // Called after layout info for the visited subtree has been updated.
+  virtual void OnSubtreeLayoutUpdated(PipelineOptions* options) {}
 
   void UpdateNodeInfo(int32_t node_info);
   // Returns whether consuming the attribute should update the element.

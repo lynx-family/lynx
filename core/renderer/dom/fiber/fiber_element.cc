@@ -5980,6 +5980,8 @@ void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
     child->UpdateLayoutInfoRecursively(options);
   }
 
+  OnSubtreeLayoutUpdated(options);
+
   // A dirty child can change the list's content layout, so collect dirty list
   // nodes regardless of whether their own layout info needs to be updated. This
   // is intentionally post-order so nested lists are collected before their

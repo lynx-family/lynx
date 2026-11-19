@@ -959,17 +959,14 @@ void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
   }
 }
 
-void ListContainerImpl::SetComposeScrollManaged(bool managed) {
-  if (compose_scroll_managed_ == managed) {
+void ListContainerImpl::EnableEngineManagedScroll() {
+  if (compose_scroll_managed_) {
     return;
   }
-  compose_scroll_managed_ = managed;
-  compose_projection_sent_ = false;
-  if (!managed) {
-    ClearComposeStickyProjection();
-  }
+  compose_scroll_managed_ = true;
   SyncPlatformSticky();
   list_layout_manager_->ScrollStopped();
+  // The first projection establishes ownership even before layout is valid.
   PublishComposeScrollState();
 }
 
@@ -1057,8 +1054,7 @@ ListScrollState ListContainerImpl::PublishComposeScrollState() {
   list_delegate_->ApplyListScrollState(
       horizontal ? physical_offset : 0.f, horizontal ? 0.f : physical_offset,
       horizontal ? extent : list_layout_manager_->GetWidth(),
-      horizontal ? list_layout_manager_->GetHeight() : extent,
-      compose_scroll_managed_);
+      horizontal ? list_layout_manager_->GetHeight() : extent);
   return state;
 }
 

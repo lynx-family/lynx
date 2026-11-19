@@ -271,6 +271,8 @@ class PaintingContext {
   void ApplyListScrollState(int32_t container_id, float scroll_x,
                             float scroll_y, float content_width,
                             float content_height, bool cmp_managed);
+  void ApplyScrollViewState(int32_t sign, float scroll_x, float scroll_y,
+                            float content_width, float content_height);
 
   void FinishLayoutOperation(const std::shared_ptr<PipelineOptions>& options);
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id);

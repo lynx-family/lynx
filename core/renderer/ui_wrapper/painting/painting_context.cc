@@ -298,6 +298,16 @@ void PaintingContext::ApplyListScrollState(int32_t container_id, float scroll_x,
   });
 }
 
+void PaintingContext::ApplyScrollViewState(int32_t sign, float scroll_x,
+                                           float scroll_y, float content_width,
+                                           float content_height) {
+  Enqueue([ref = platform_impl_->GetPlatformRef(), sign, scroll_x, scroll_y,
+           content_width, content_height] {
+    ref->ApplyScrollViewState(sign, scroll_x, scroll_y, content_width,
+                              content_height);
+  });
+}
+
 void PaintingContext::Enqueue(shell::UIOperation op, bool high_priority) {
   if (!platform_impl_->EnableUIOperationQueue() || !ui_operation_queue_) {
     op();
