@@ -75,6 +75,7 @@ class ListLayoutManager {
   }
   bool ItemHolderVisibleInList(const ItemHolder* item_holder) const;
   bool IsItemHolderNotAtStickyPosition(const ItemHolder* item_holder) const;
+  bool CanItemHolderBeAnchor(const ItemHolder* item_holder) const;
   void UpdateDiffAnchorReference() {
     list_anchor_manager_->UpdateDiffAnchorReference();
   }
@@ -168,7 +169,7 @@ class ListLayoutManager {
   // Sticky methods
   int UpdateStickyItems();
   bool ShouldRecycleStickyItemHolder(const ItemHolder* item_holder) const;
-  void UpdateStickyItemsAfterLayout(ListAnchorManager::AnchorInfo& anchor_info);
+  bool UpdateStickyItemsAfterLayout(ListAnchorManager::AnchorInfo& anchor_info);
   // Calculated content_offset must be clamped to [0, content_size], or Android
   // may stop at an over-edge index
   float ClampContentOffsetToEdge(float content_offset, float content_size);
