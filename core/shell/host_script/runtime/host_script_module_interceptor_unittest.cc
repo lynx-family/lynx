@@ -18,6 +18,7 @@
 #include "base/include/value/table.h"
 #include "core/inspector/observer/native_module_record_observer.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/bindings/modules/module_interceptor_registry.h"
 #include "core/runtime/js/jsi/quickjs/quickjs_runtime.h"
 #include "core/shell/host_script/runtime/host_script_value_snapshot.h"
@@ -41,6 +42,7 @@ using runtime::js::Function;
 using runtime::js::JSINativeException;
 using runtime::js::LynxJSIModule;
 using runtime::js::LynxModule;
+using runtime::js::LynxModuleManager;
 using runtime::js::ModuleCallback;
 using runtime::js::ModuleCallbackFunctionHolder;
 using runtime::js::ModuleDelegate;
@@ -81,10 +83,20 @@ class Provider : public Interceptor {
   bool HasHandlers(Kind kind) const override {
     return enabled && ((kind == Kind::kCall && call_enabled) ||
                        (kind == Kind::kResult && result_enabled) ||
-                       (kind == Kind::kCallback && callback_enabled));
+                       (kind == Kind::kCallback && callback_enabled) ||
+                       (kind == Kind::kResolveModule && resolve_subscription));
   }
   InterceptResult Dispatch(Kind kind, const lepus::Value& event) override {
     events.emplace_back(kind, event);
+    if (kind == Kind::kResolveModule) {
+      InterceptResult result;
+      if (event.GetProperty("module").StdString() == "Replay") {
+        result.mock = lepus::Value(lepus::Dictionary::Create());
+        result.mock.SetProperty("methods", Array(lepus::Value("read")));
+        result.subscription = resolve_subscription;
+      }
+      return result;
+    }
     return dispatch ? dispatch(kind, event) : InterceptResult{};
   }
   void ReportError(const std::string&) override {}
@@ -99,6 +111,7 @@ class Provider : public Interceptor {
   bool call_enabled = true;
   bool result_enabled = true;
   bool callback_enabled = true;
+  std::shared_ptr<int> resolve_subscription;
   std::function<InterceptResult(Kind, const lepus::Value&)> dispatch;
   std::vector<std::pair<Kind, lepus::Value>> events;
 };
@@ -170,6 +183,8 @@ class LegacyInterceptor : public ModuleInterceptor {
 
 class NativeModule : public LynxNativeModule {
  public:
+  NativeModule() { methods_.try_emplace("read", "read", 0); }
+
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string&, std::unique_ptr<pub::Value> args, size_t,
       const CallbackMap& callbacks) override {
@@ -339,6 +354,19 @@ class HostScriptModuleInterceptorTest : public ::testing::Test {
     EXPECT_TRUE(value.has_value());
     return value.has_value() ? std::move(*value) : Value::undefined();
   }
+  std::shared_ptr<LynxModuleManager> BindModuleManager(
+      bool enable_lookup = true) {
+    HostScriptModuleInterceptor::Register();
+    if (!enable_lookup) LynxModuleManager::SetMissingModuleResolver(nullptr);
+    auto manager = std::make_shared<LynxModuleManager>();
+    manager->InitModuleInterceptor();
+    manager->initBindingPtr(manager, delegate);
+    manager->SetLogContext({kView, 0, 0});
+    rt.global().setProperty(
+        rt, "NativeModules",
+        Object::createFromHostObject(rt, manager->bindingPtr));
+    return manager;
+  }
   void MockCall(std::vector<lepus::Value> callbacks,
                 std::optional<lepus::Value> return_value = std::nullopt) {
     provider->dispatch = [callbacks, return_value](Kind kind,
@@ -369,6 +397,92 @@ class HostScriptModuleInterceptorTest : public ::testing::Test {
   std::shared_ptr<Observer> observer = std::make_shared<Observer>();
   LegacyInterceptor* legacy = nullptr;
 };
+
+TEST_F(HostScriptModuleInterceptorTest, MissingModuleReplaysRecordedMethod) {
+  provider->resolve_subscription = std::make_shared<int>(0);
+  auto manager = BindModuleManager(false);
+  EXPECT_TRUE(Evaluate("NativeModules.Replay === null").getBool());
+  EXPECT_TRUE(provider->Events(Kind::kResolveModule).empty());
+  manager = BindModuleManager();
+  MockCall({MockCallback(0, Array(lepus::Value(21)))}, lepus::Value(7));
+
+  auto result = Evaluate(R"(
+    globalThis.values = [];
+    globalThis.replay = NativeModules.Replay;
+    replay.read(value => values.push(value));
+  )");
+  ASSERT_TRUE(result.isNumber());
+  EXPECT_EQ(result.getNumber(), 7);
+  EXPECT_TRUE(Evaluate("typeof replay.unrecorded === 'undefined'").getBool());
+  EXPECT_EQ(Evaluate("values.length").getNumber(), 0);
+  delegate->Drain();
+  EXPECT_EQ(Evaluate("values[0]").getNumber(), 21);
+  auto detached = Evaluate(R"(
+    const read = NativeModules.Replay.read;
+    read(value => values.push(value));
+  )");
+  ASSERT_TRUE(detached.isNumber());
+  EXPECT_EQ(detached.getNumber(), 7);
+  delegate->Drain();
+  EXPECT_EQ(Evaluate("values[1]").getNumber(), 21);
+  for (const auto& event : provider->Events(Kind::kCall)) {
+    EXPECT_TRUE(event.GetProperty("missingModule").Bool());
+  }
+  const auto lookups = provider->Events(Kind::kResolveModule);
+  ASSERT_EQ(lookups.size(), 2u);
+  EXPECT_EQ(lookups.front().GetProperty("module").StdString(), "Replay");
+  EXPECT_EQ(native->calls, 0);
+  EXPECT_TRUE(delegate->functions.empty());
+}
+
+TEST_F(HostScriptModuleInterceptorTest, RegistrationTakesPriorityOverReplay) {
+  auto manager = BindModuleManager();
+  provider->resolve_subscription = std::make_shared<int>(0);
+  EXPECT_TRUE(
+      Evaluate("typeof NativeModules.Replay.read === 'function'").getBool());
+  EXPECT_EQ(manager->bindingPtr->GetModule("Replay"), nullptr);
+
+  auto factory = std::make_unique<runtime::NativeModuleFactory>();
+  factory->Register("Replay", [native = native] { return native; });
+  manager->SetModuleFactory(std::move(factory));
+  auto real = manager->bindingPtr->GetModule("Replay");
+  ASSERT_TRUE(real);
+  EXPECT_EQ(manager->bindingPtr->GetModule("Replay"), real);
+  auto result = Evaluate("NativeModules.Replay.read()");
+  ASSERT_TRUE(result.isNumber());
+  EXPECT_EQ(result.getNumber(), 42);
+  EXPECT_EQ(native->calls, 1);
+  ASSERT_EQ(provider->Events(Kind::kCall).size(), 1u);
+  EXPECT_FALSE(provider->Events(Kind::kCall).front().Contains("missingModule"));
+  EXPECT_EQ(provider->Events(Kind::kResolveModule).size(), 1u);
+}
+
+TEST_F(HostScriptModuleInterceptorTest, MissingMockResponseReleasesCallback) {
+  auto manager = BindModuleManager();
+  rt.SetEnableJsBindingApiThrowException(true);
+  provider->resolve_subscription = std::make_shared<int>(0);
+  auto method = Evaluate("NativeModules.Replay.read").getObject(rt);
+  ASSERT_TRUE(method.isFunction(rt));
+  auto read = method.getFunction(rt);
+  std::vector<double> values;
+  Value args[] = {
+      Callback(values),
+      Evaluate("const cycle = {}; cycle.self = cycle; cycle"),
+  };
+  auto* argv = static_cast<const Value*>(args);
+  EXPECT_FALSE(read.call(rt, argv, size_t{2}).has_value());
+  EXPECT_TRUE(delegate->functions.empty());
+  EXPECT_FALSE(read.call(rt, argv, size_t{1}).has_value());
+  EXPECT_TRUE(delegate->functions.empty());
+
+  const auto events_before = provider->events.size();
+  provider->resolve_subscription.reset();
+  EXPECT_TRUE(Evaluate("NativeModules.Replay === null").getBool());
+  EXPECT_FALSE(read.call(rt, argv, size_t{1}).has_value());
+  EXPECT_TRUE(delegate->functions.empty());
+  EXPECT_EQ(provider->events.size(), events_before);
+  EXPECT_TRUE(values.empty());
+}
 
 // Invocation stages.
 

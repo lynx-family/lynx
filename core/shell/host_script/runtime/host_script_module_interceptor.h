@@ -6,15 +6,21 @@
 #define CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_MODULE_INTERCEPTOR_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "core/runtime/js/bindings/modules/module_interceptor.h"
+#include "core/shell/host_script/runtime/interceptor.h"
+
+namespace lynx::runtime::js {
+struct MissingNativeModuleRequest;
+}
 
 namespace lynx::shell {
 
 /**
- * Exposes BTS native module calls to Host Script as jsb.call, jsb.result and
- * jsb.callback. Each stage is dispatched only while a BTS provider handles it
+ * Exposes BTS native module calls to Host Script. Each stage is dispatched
+ * only while a BTS provider handles it
  * for a live view. A mock decision is final: it replaces the native call and
  * skips the result and callback stages of that invocation. Native Promises are
  * not covered.
@@ -25,6 +31,9 @@ class HostScriptModuleInterceptor final
   // Adds the interceptor ahead of the built-in ones of every module manager
   // initialized afterwards. Idempotent.
   static void Register();
+  static void ResolveMissingModule(
+      const runtime::js::MissingNativeModuleRequest& request,
+      runtime::js::Value& value);
 
   std::shared_ptr<runtime::js::ModuleCallContext> BeforeConvertArgs(
       const std::shared_ptr<runtime::js::LynxModule>& module,

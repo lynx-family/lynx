@@ -10,9 +10,12 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/auto_reset.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
+#include "core/public/jsb/lynx_native_module.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module_callback.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/bindings/modules/module_interceptor_registry.h"
 #include "core/shell/host_script/runtime/host_script_value_snapshot.h"
 #include "core/shell/host_script/runtime/interceptor.h"
@@ -24,12 +27,17 @@
 namespace lynx::shell {
 namespace {
 using runtime::CallbackMap;
+using runtime::LynxNativeModule;
+using runtime::js::Function;
 using runtime::js::LynxModule;
+using runtime::js::MissingNativeModuleRequest;
 using runtime::js::ModuleCallback;
 using runtime::js::ModuleCallContext;
 using runtime::js::ModuleDelegate;
 using runtime::js::ModuleInterceptorResult;
 using runtime::js::NativeModuleInfoCollectorPtr;
+using runtime::js::Object;
+using runtime::js::PropNameID;
 using runtime::js::Runtime;
 using runtime::js::Value;
 using Kind = InterceptKind;
@@ -48,15 +56,48 @@ BASE_STATIC_STRING_DECL(kValue, "value");
 BASE_STATIC_STRING_DECL(kArgumentIndex, "argumentIndex");
 BASE_STATIC_STRING_DECL(kReturnValue, "returnValue");
 BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
+BASE_STATIC_STRING_DECL(kMissingModule, "missingModule");
+BASE_STATIC_STRING_DECL(kMethods, "methods");
 
 constexpr std::initializer_list<Kind> kStages = {Kind::kCall, Kind::kResult,
                                                  Kind::kCallback};
+struct ReplayInvocation {
+  const LynxModule* module = nullptr;
+  bool active = false;
+};
+thread_local ReplayInvocation current_replay;
 
 #if !defined(LYNX_HOST_SCRIPT_STANDALONE)
 std::unique_ptr<runtime::js::ModuleInterceptor> Create() {
   return std::make_unique<HostScriptModuleInterceptor>();
 }
 #endif
+
+class MockOnlyNativeModule final : public LynxNativeModule {
+ public:
+  MockOnlyNativeModule(const lepus::Value& methods,
+                       const std::shared_ptr<ModuleDelegate>& delegate)
+      : module_delegate_(delegate) {
+    for (int i = 0; i < methods.GetLength(); ++i) {
+      auto method = methods.GetProperty(i).StdString();
+      methods_.try_emplace(method, method, 0);
+    }
+  }
+
+  base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
+      const std::string& method, std::unique_ptr<pub::Value>, size_t,
+      const CallbackMap& callbacks) override {
+    if (auto delegate = module_delegate_.lock()) {
+      for (const auto& [index, callback] : callbacks) {
+        delegate->CallJSCallback(nullptr, nullptr, callback->CallbackId());
+      }
+    }
+    return base::unexpected("No replay mock handled method: " + method);
+  }
+
+ private:
+  std::weak_ptr<ModuleDelegate> module_delegate_;
+};
 
 bool IsFunction(Runtime& rt, const Value& value) {
   return value.isObject() && value.getObject(rt).isFunction(rt);
@@ -100,13 +141,14 @@ lepus::Value Patched(const InterceptResult& decision,
 // One BTS native module invocation, shared with the callbacks it registers.
 class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
  public:
-  Call() = default;
+  explicit Call(bool mock_only) : mock_only_(mock_only) {}
   Call(std::weak_ptr<Interceptor> provider, base::LynxEntityId view,
-       std::string module, std::string method)
+       std::string module, std::string method, bool mock_only)
       : provider_(std::move(provider)),
         id_(next_id_.fetch_add(1, std::memory_order_relaxed)),
         view_(view),
-        module_(std::move(module)) {
+        module_(std::move(module)),
+        mock_only_(mock_only) {
     method_name = std::move(method);
   }
 
@@ -126,12 +168,14 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
     event.SetProperty(kMethod, lepus::Value(method_name));
     event.SetProperty(kViewId, lepus::Value(std::to_string(view_)));
     event.SetProperty(kInvocationId, lepus::Value(std::to_string(id_)));
+    if (mock_only_) event.SetProperty(kMissingModule, lepus::Value(true));
     if (!context.IsUndefined()) event.SetProperty(kContext, context);
     return event;
   }
 
   // A mock is final for the whole invocation, including its callbacks.
   bool mocked() const { return mocked_; }
+  bool mock_only() const { return mock_only_; }
   void SetMock(lepus::Value mock) {
     mocked_ = mock.IsTable();
     mock_ = std::move(mock);
@@ -151,6 +195,7 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
   int64_t id_ = 0;
   base::LynxEntityId view_ = -1;
   std::string module_;
+  bool mock_only_;
   bool mocked_ = false;
   lepus::Value mock_;
 };
@@ -158,6 +203,8 @@ class HostScriptModuleInterceptor::Call final : public ModuleCallContext {
 #if !defined(LYNX_HOST_SCRIPT_STANDALONE)
 void HostScriptModuleInterceptor::Register() {
   runtime::js::ModuleInterceptorRegistry::RegisterLeading(&Create);
+  runtime::js::LynxModuleManager::SetMissingModuleResolver(
+      &ResolveMissingModule);
 }
 #endif
 
@@ -167,14 +214,61 @@ HostScriptModuleInterceptor::Call* HostScriptModuleInterceptor::GetCall(
   return static_cast<Call*>(context);
 }
 
+void HostScriptModuleInterceptor::ResolveMissingModule(
+    const MissingNativeModuleRequest& request, Value& value) {
+  if (!Interceptor::IsEnabled()) return;
+  const auto view = request.view;
+  auto provider =
+      Interceptor::Current({Kind::kResolveModule}, Interceptor::Domain::kBTS);
+  if (!provider || !Interceptor::IsViewAlive(view)) return;
+  auto event = lepus::Value(lepus::Dictionary::Create());
+  event.SetProperty(kModule, lepus::Value(request.name));
+  event.SetProperty(kViewId, lepus::Value(std::to_string(view)));
+  auto result = provider->Dispatch(Kind::kResolveModule, event);
+  if (result.failed || result.subscription.expired()) return;
+  const auto& methods = result.mock.GetProperty(kMethods);
+  if (!methods.IsArray() || methods.GetLength() == 0 ||
+      !Interceptor::IsViewAlive(view))
+    return;
+
+  auto native =
+      std::make_shared<MockOnlyNativeModule>(methods, request.delegate);
+  // Reuse the engine's argument conversion and callback handling.
+  auto module = request.wrap(request, native);
+  Runtime& runtime = request.runtime;
+  Object replay(runtime);
+  for (const auto& named_method : native->GetMethodList()) {
+    const auto& name = named_method.first;
+    const auto property = PropNameID::forUtf8(runtime, name);
+    auto method = Function::createFromHostFunction(
+        runtime, property, 0,
+        [module, method = LynxModule::MethodMetadata(0, name), view,
+         provider = std::weak_ptr<Interceptor>(provider),
+         subscription = result.subscription](Runtime& rt, const Value&,
+                                             const Value* args, size_t count) {
+          auto owner = provider.lock();
+          const bool active = owner && owner->IsAttached() &&
+                              !subscription.expired() &&
+                              Interceptor::IsViewAlive(view);
+          base::AutoReset<ReplayInvocation> scope(
+              &current_replay, ReplayInvocation{module.get(), active});
+          return module->invokeMethod(method, &rt, args, count);
+        });
+    if (!replay.setProperty(runtime, property, std::move(method))) return;
+  }
+  value = Value(std::move(replay));
+}
+
 std::shared_ptr<ModuleCallContext>
 HostScriptModuleInterceptor::BeforeConvertArgs(
     const std::shared_ptr<LynxModule>& module,
     const LynxModule::MethodMetadata& method, Runtime* runtime,
     const Value* args, size_t count, std::vector<Value>& rewritten) {
-  if (!Interceptor::IsEnabled()) return std::make_shared<Call>();
+  const bool mock_only = current_replay.module == module.get();
+  if ((mock_only && !current_replay.active) || !Interceptor::IsEnabled())
+    return std::make_shared<Call>(mock_only);
   auto provider = Interceptor::Current(kStages, Interceptor::Domain::kBTS);
-  if (!provider) return std::make_shared<Call>();
+  if (!provider) return std::make_shared<Call>(mock_only);
   auto view = module->GetLogContext().view_id;
   if (!Interceptor::IsViewAlive(view)) {
     for (auto kind : kStages) {
@@ -184,10 +278,10 @@ HostScriptModuleInterceptor::BeforeConvertArgs(
         break;
       }
     }
-    return std::make_shared<Call>();
+    return std::make_shared<Call>(mock_only);
   }
-  auto owned =
-      std::make_shared<Call>(provider, view, module->name_, method.name);
+  auto owned = std::make_shared<Call>(provider, view, module->name_,
+                                      method.name, mock_only);
   auto& call = *owned;
 
   auto handler = call.Provider(Kind::kCall);
@@ -334,7 +428,7 @@ void HostScriptModuleInterceptor::OnInvokeMethodEnd(
   // A mock whose arguments failed to convert never reaches interception.
   // Nothing will invoke the callbacks registered before the failure.
   auto* call = GetCall(context);
-  if (!call || !call->mocked()) return;
+  if (!call || (!call->mocked() && !call->mock_only())) return;
   call->TakeMock();
   if (args_converted) return;
   call->pending_callbacks = {};

@@ -97,6 +97,13 @@ class HostScriptInterceptorTest : public HostScriptInterceptorEnvTest {
     env_.RunScript(source);
     ASSERT_FALSE(env_.IsExceptionPending());
   }
+  void DrainJobs() {
+    LEPUSContext* pending_context = nullptr;
+    int status;
+    while ((status = LEPUS_ExecutePendingJob(runtime_, &pending_context)) > 0) {
+    }
+    ASSERT_EQ(status, 0);
+  }
   InterceptResult Dispatch(InterceptKind kind = InterceptKind::kLoadTemplate) {
     lepus::Value event(lepus::Dictionary::Create());
     event.SetProperty("viewId", lepus::Value("1"));
@@ -117,15 +124,17 @@ TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
       {Interceptor::Domain::kUI,
        "[['view.created','view.create','view.loadTemplate',"
        "'view.updateMetaData','view.updateViewport','resource.fetch'],"
-       "['jsb.call','jsb.result','jsb.callback']]"},
+       "['jsb.call','jsb.result','jsb.callback','jsb.resolveModule']]"},
       {Interceptor::Domain::kBTS,
-       "[['view.created','jsb.call','jsb.result','jsb.callback'],"
+       "[['view.created','jsb.call','jsb.result','jsb.callback',"
+       "'jsb.resolveModule'],"
        "['view.create','view.loadTemplate',"
        "'view.updateMetaData','view.updateViewport','resource.fetch']]"},
       {Interceptor::Domain::kMTS,
        "[['view.created'],['view.create',"
        "'view.loadTemplate','view.updateMetaData','view.updateViewport',"
-       "'resource.fetch','jsb.call','jsb.result','jsb.callback']]"}};
+       "'resource.fetch','jsb.call','jsb.result','jsb.callback',"
+       "'jsb.resolveModule']]"}};
   for (const auto& [domain, names] : cases) {
     Install(domain);
     std::string script =
@@ -141,6 +150,92 @@ TEST_F(HostScriptInterceptorTest, DomainsAcceptOnlyTheirEventKinds) {
     provider_->Uninstall();
     provider_.reset();
   }
+}
+
+TEST_F(HostScriptInterceptorTest, JsbRulesShareBridgeInRegistrationOrder) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    globalThis.first = interceptor.on('jsb.call', (event, chain) => {
+      if (event.module === 'bridge' && event.args[0] === 'report') {
+        return chain.mock({returnValue: 'report'});
+      }
+      event.args[0] = 'changed';
+      return chain.next();
+    });
+    interceptor.on('jsb.call', (event, chain) =>
+      event.module === 'bridge' && event.args[0] === 'route'
+        ? chain.mock({returnValue: 'route'})
+        : chain.next());
+  )");
+  auto dispatch = [&](const char* api) {
+    lepus::Value event(lepus::Dictionary::Create());
+    event.SetProperty("module", lepus::Value("bridge"));
+    auto args = lepus::CArray::Create();
+    args->push_back(lepus::Value(api));
+    event.SetProperty("args", lepus::Value(args));
+    auto result = provider_->Dispatch(InterceptKind::kCall, event);
+    EXPECT_FALSE(result.failed);
+    return result.mock;
+  };
+  EXPECT_EQ(dispatch("report").GetProperty("returnValue").StdString(),
+            "report");
+  EXPECT_EQ(dispatch("route").GetProperty("returnValue").StdString(), "route");
+  EXPECT_FALSE(dispatch("other").IsTable());
+  Script("first.dispose(); first.dispose()");
+  EXPECT_FALSE(dispatch("report").IsTable());
+  EXPECT_EQ(dispatch("route").GetProperty("returnValue").StdString(), "route");
+}
+
+TEST_F(HostScriptInterceptorTest, ChainSkipsRemovedAndDefersNewHandlers) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    const first = interceptor.on('jsb.result', (event, chain) => {
+      first.dispose();
+      second.dispose();
+      interceptor.on('jsb.result',
+        (_, next) => next.proceed({value: 'new'}));
+      return chain.next();
+    });
+    const second = interceptor.on('jsb.result',
+      (_, chain) => chain.proceed({value: 'removed'}));
+  )");
+  auto first = Dispatch(InterceptKind::kResult);
+  EXPECT_FALSE(first.failed);
+  EXPECT_FALSE(first.patch.IsTable());
+  auto second = Dispatch(InterceptKind::kResult);
+  EXPECT_FALSE(second.failed);
+  EXPECT_EQ(second.patch.GetProperty("value").StdString(), "new");
+}
+
+TEST_F(HostScriptInterceptorTest, ResolverMockFollowsItsSubscription) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    interceptor.on('jsb.resolveModule', (event, chain) =>
+      event.module === 'invalid' ? chain.mock({methods: ['']}) : chain.next());
+    globalThis.replay = interceptor.on('jsb.resolveModule', (event, chain) =>
+      event.module === 'resourceloader' && event.viewId === '1'
+        ? chain.mock({methods: ['read', 'write']}) : chain.next());
+  )");
+  auto resolve = [&](const char* module, const char* view) {
+    lepus::Value event(lepus::Dictionary::Create());
+    event.SetProperty("module", lepus::Value(module));
+    event.SetProperty("viewId", lepus::Value(view));
+    return provider_->Dispatch(InterceptKind::kResolveModule, event);
+  };
+  auto replay = resolve("resourceloader", "1");
+  ASSERT_FALSE(replay.failed);
+  const auto& methods = replay.mock.GetProperty("methods");
+  ASSERT_TRUE(methods.IsArray());
+  ASSERT_EQ(methods.GetLength(), 2);
+  EXPECT_EQ(methods.GetProperty(0u).StdString(), "read");
+  EXPECT_EQ(methods.GetProperty(1u).StdString(), "write");
+  EXPECT_FALSE(replay.subscription.expired());
+  EXPECT_FALSE(resolve("other", "1").mock.IsTable());
+  EXPECT_FALSE(resolve("resourceloader", "2").mock.IsTable());
+  EXPECT_TRUE(resolve("invalid", "1").failed);
+  Script("replay.dispose()");
+  EXPECT_TRUE(replay.subscription.expired());
+  EXPECT_FALSE(resolve("resourceloader", "1").mock.IsTable());
 }
 
 TEST_F(HostScriptInterceptorTest, DomainLookupRequiresOwnerThread) {
@@ -220,7 +315,8 @@ TEST_F(HostScriptInterceptorTest, DomainsCanShareOneOwnerThread) {
   mts->Uninstall();
 }
 
-TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
+TEST_F(HostScriptInterceptorTest,
+       RejectsDuplicateHandlersForSingleHandlerEvents) {
   for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS}) {
     Install(domain);
     const char* names =
@@ -228,7 +324,7 @@ TEST_F(HostScriptInterceptorTest, RejectsDuplicateHandlersForEachKind) {
         domain == Interceptor::Domain::kUI
             ? "['view.created','view.loadTemplate','view.updateMetaData',"
               "'view.create','view.updateViewport','resource.fetch']"
-            : "['view.created','jsb.call','jsb.result','jsb.callback']";
+            : "['view.created']";
     std::string script = R"(
       globalThis.calls = [];
       globalThis.names = )" +
@@ -507,13 +603,102 @@ TEST_F(HostScriptInterceptorTest, SpecialNumbersInPromiseCallbacks) {
     });
     EXPECT_FALSE(completed);
     Script("resume()");
-    LEPUSContext* pending_context = nullptr;
-    int status;
-    while ((status = LEPUS_ExecutePendingJob(runtime_, &pending_context)) > 0) {
-    }
-    ASSERT_EQ(status, 0);
+    DrainJobs();
     EXPECT_TRUE(completed);
   }
+}
+
+TEST_F(HostScriptInterceptorTest, PromiseNextResumesCallbackHandlersInOrder) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    globalThis.order = [];
+    interceptor.on('jsb.callback', async (event, chain) => {
+      order.push('first');
+      event.args[0] = 'edited';
+      await new Promise(resolve => { globalThis.firstDone = resolve; });
+      return chain.next();
+    });
+    interceptor.on('jsb.callback', async (event, chain) => {
+      order.push(event.args[0] + '@' + event.viewURL);
+      await new Promise(resolve => { globalThis.secondDone = resolve; });
+      return chain.next();
+    });
+    interceptor.on('jsb.callback', (event, chain) => {
+      order.push('finish@' + event.viewURL);
+      return chain.proceed({args: ['patched']});
+    });
+    interceptor.on('jsb.callback', (_, chain) => {
+      order.push('skipped');
+      return chain.next();
+    });
+  )");
+  lepus::Value event(lepus::Dictionary::Create());
+  Interceptor::UpdateViewUrl(1, "before-reload");
+  event.SetProperty("viewId", lepus::Value("1"));
+  auto args = lepus::CArray::Create();
+  args->push_back(lepus::Value("original"));
+  event.SetProperty("args", lepus::Value(args));
+  auto result = provider_->Dispatch(InterceptKind::kCallback, event);
+  ASSERT_TRUE(result.pending);
+  int completions = 0;
+  result.pending([&](InterceptResult settled) {
+    ++completions;
+    EXPECT_FALSE(settled.failed);
+    EXPECT_EQ(settled.patch.GetProperty("args").GetProperty(0u).StdString(),
+              "patched");
+  });
+  EXPECT_EQ(EvalString("order.join(',')"), "first");
+  Interceptor::UpdateViewUrl(1, "after-reload");
+  Script("firstDone()");
+  DrainJobs();
+  EXPECT_EQ(completions, 0);
+  EXPECT_EQ(EvalString("order.join(',')"), "first,original@before-reload");
+  Script("secondDone()");
+  DrainJobs();
+  EXPECT_EQ(completions, 1);
+  EXPECT_EQ(EvalString("order.join(',')"),
+            "first,original@before-reload,finish@before-reload");
+  Interceptor::ClearViewUrl(1);
+}
+
+TEST_F(HostScriptInterceptorTest, PromiseNextKeepsOriginalHandlerWindow) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    interceptor.on('jsb.callback', async (_, chain) => {
+      await new Promise(resolve => { globalThis.resume = resolve; });
+      return chain.next();
+    });
+    globalThis.removed = interceptor.on('jsb.callback', (_, chain) =>
+      chain.proceed({args: ['removed']}));
+  )");
+  auto result = Dispatch(InterceptKind::kCallback);
+  ASSERT_TRUE(result.pending);
+  int completions = 0;
+  result.pending([&](InterceptResult settled) {
+    ++completions;
+    EXPECT_FALSE(settled.failed);
+    EXPECT_FALSE(settled.patch.IsTable());
+  });
+  Script(R"(
+    removed.dispose();
+    interceptor.on('jsb.callback', (_, chain) =>
+      chain.proceed({args: ['late']}));
+    resume();
+  )");
+  DrainJobs();
+  EXPECT_EQ(completions, 1);
+
+  result = Dispatch(InterceptKind::kCallback);
+  ASSERT_TRUE(result.pending);
+  result.pending([&](InterceptResult settled) {
+    ++completions;
+    EXPECT_FALSE(settled.failed);
+    EXPECT_EQ(settled.patch.GetProperty("args").GetProperty(0u).StdString(),
+              "late");
+  });
+  Script("resume()");
+  DrainJobs();
+  EXPECT_EQ(completions, 2);
 }
 
 TEST_F(HostScriptInterceptorTest,

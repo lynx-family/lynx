@@ -5,6 +5,8 @@
 #ifndef CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_BINDING_H_
 #define CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_JSI_MODULE_BINDING_H_
 
+#include <cstddef>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,15 +23,28 @@ namespace js {
  */
 class LynxJSIModuleBinding : public HostObject {
  public:
+  struct LookupFallback {
+    Runtime& runtime;
+    Value& result;
+  };
+  using Provider = std::function<std::shared_ptr<LynxModule>(const std::string&,
+                                                             LookupFallback*)>;
+
   explicit LynxJSIModuleBinding(
-      const LynxModuleProviderFunction& moduleProvider);
+      const LynxModuleProviderFunction& moduleProvider)
+      : LynxJSIModuleBinding(
+            [moduleProvider](const std::string& name, LookupFallback*) {
+              return moduleProvider(name);
+            }) {}
+  explicit LynxJSIModuleBinding(std::nullptr_t) {}
+  explicit LynxJSIModuleBinding(Provider moduleProvider);
   ~LynxJSIModuleBinding() override = default;
 
   Value get(Runtime* rt, const PropNameID& name) override;
   std::shared_ptr<LynxModule> GetModule(const std::string& name);
 
  private:
-  LynxModuleProviderFunction moduleProvider_;
+  Provider moduleProvider_;
 };
 
 }  // namespace js

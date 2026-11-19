@@ -28,6 +28,7 @@ enum class InterceptKind {
   kCreate,
   kUpdateViewport,
   kResourceFetch,
+  kResolveModule,
   kCount
 };
 
@@ -42,6 +43,8 @@ struct InterceptResult {
   bool cancelled = false;
   // Start waiting once the native callback registrations are ready.
   std::function<void(InterceptCompletion)> pending;
+  // A replay module is callable while the resolver subscription is active.
+  std::weak_ptr<const void> subscription;
 };
 
 // Optional thread-affine extension. Only callback delivery may be deferred.
