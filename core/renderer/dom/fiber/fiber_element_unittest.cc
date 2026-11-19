@@ -24396,6 +24396,61 @@ TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
 }
 
+TEST_P(FiberElementTest, TestGetComputedStyleByKeyColorsPreserveAlpha) {
+  for (const bool enable_new_styling_pipeline : {false, true}) {
+    SCOPED_TRACE(enable_new_styling_pipeline);
+    base::AutoReset<bool> styling_pipeline(
+        &manager->enable_new_styling_pipeline_, enable_new_styling_pipeline);
+    auto page = manager->CreateFiberPage("page", 11);
+    manager->SetFiberPageElement(page);
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    page->InsertNode(view);
+
+    const struct {
+      const char* style;
+      const char* expected;
+    } cases[] = {
+        {"background-color: #12345680; color: #12345680; border-color: "
+         "#12345680;",
+         "rgba(18, 52, 86, 0.501961)"},
+        {"background-color: #1234560c; color: #1234560c; border-color: "
+         "#1234560c;",
+         "rgba(18, 52, 86, 0.047059)"},
+        {"background-color: rgba(18, 52, 86, 0.5); color: rgba(18, 52, 86, "
+         "0.5);"
+         "border-color: rgba(18, 52, 86, 0.5);",
+         "rgba(18, 52, 86, 0.498039)"},
+        {"background-color: transparent; color: transparent; border-color: "
+         "transparent;",
+         "rgba(0, 0, 0, 0)"},
+        {"background-color: #123456; color: #123456; border-color: #123456;",
+         "rgb(18, 52, 86)"},
+    };
+    for (const auto& test : cases) {
+      SCOPED_TRACE(test.style);
+      view->SetRawInlineStyles(test.style);
+      page->FlushActionsAsRoot();
+      for (const char* key :
+           {"background-color", "color", "border-top-color",
+            "border-right-color", "border-bottom-color", "border-left-color"}) {
+        SCOPED_TRACE(key);
+        const auto value = view->GetComputedStyleByKey(key);
+        ASSERT_TRUE(value.IsString());
+        EXPECT_EQ(value.StdString(), test.expected);
+      }
+    }
+
+    view->RemoveAllInlineStyles();
+    page->FlushActionsAsRoot();
+    // The new pipeline drops optional color data on reset.
+    EXPECT_EQ(view->GetComputedStyleByKey("background-color").StdString(),
+              enable_new_styling_pipeline ? "" : "rgba(0, 0, 0, 0)");
+    EXPECT_EQ(view->GetComputedStyleByKey("color").StdString(),
+              enable_new_styling_pipeline ? "" : "rgb(0, 0, 0)");
+  }
+}
+
 TEST_P(FiberElementTest, TestGetComputedStyleByKeyCustomProperties) {
   lynx::base::AutoReset<bool> css_inline_config(
       &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
