@@ -8,6 +8,7 @@
 #define HAS_SPARKLING 1
 #endif
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView+Identify.h>
 #import <Lynx/LynxView.h>
@@ -211,7 +212,27 @@ NSString *const kBackButtonImageDark = @"back_dark";
 
   LynxTemplateData *initData =
       [[LynxTemplateData alloc] initWithDictionary:@{@"mockData" : @"Hello Lynx Explorer"}];
-  if (self.data) {
+  NSString *extension =
+      url.length > 0 ? [NSURLComponents componentsWithString:url].path.pathExtension : nil;
+  if ([extension.lowercaseString isEqualToString:@"lynxml"]) {
+    void (^loadLynxML)(NSData *) = ^(NSData *sourceData) {
+      NSString *source = [[NSString alloc] initWithData:sourceData encoding:NSUTF8StringEncoding];
+      [lynxView loadLynxML:source withURL:url initData:initData];
+    };
+    if (data) {
+      loadLynxML(data);
+    } else {
+      [[LynxEnv sharedInstance].config.templateProvider
+          loadTemplateWithUrl:url
+                   onComplete:^(NSData *sourceData, NSError *error) {
+                     if (error) {
+                       LLogError(@"Unable to load LynxML source: %@", error.localizedDescription);
+                       return;
+                     }
+                     loadLynxML(sourceData);
+                   }];
+    }
+  } else if (data) {
     [lynxView loadTemplate:data withURL:url initData:initData];
   } else {
     [lynxView loadTemplateFromURL:url initData:initData];

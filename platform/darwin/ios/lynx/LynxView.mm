@@ -214,6 +214,14 @@
   RUN_RENDER_SAFELY([_templateRender loadTemplate:tem withURL:url initData:data];);
 }
 
+- (void)loadLynxML:(NSString*)source withURL:(NSString*)url initData:(LynxTemplateData*)data {
+  [self setUpModuleGlobalProps];
+  if (_dispatchingIntrinsicContentSizeChange) {
+    _LogI(@"Warning!!!! you possibly call loadLynxML inside of layoutDidFinish call stack");
+  }
+  RUN_RENDER_SAFELY([_templateRender loadLynxML:source withURL:url initData:data];);
+}
+
 - (void)loadTemplateBundle:(LynxTemplateBundle*)bundle
                    withURL:(NSString*)url
                   initData:(LynxTemplateData*)data {

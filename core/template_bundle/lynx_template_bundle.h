@@ -72,6 +72,10 @@ class LepusChunkManager {
 //
 class LynxTemplateBundle final {
  public:
+  // Checks the magic word after the 32-bit total-size field without decoding.
+  // A matching header does not guarantee that the remaining data is valid.
+  static bool HasBinaryHeader(const std::vector<uint8_t>& data);
+
   // Decodes using TemplateBinaryReader. Suitable for rendering paths where
   // lazy/async decoding (CSS fragments, element templates, parsed styles,
   // lepus chunks) is desired. Stores a lazy reader delegate in this bundle.
@@ -89,6 +93,14 @@ class LynxTemplateBundle final {
                                const std::string& template_url,
                                bool skip_css_decode = false,
                                std::optional<bool> is_card = std::nullopt);
+
+  // Builds a bundle from a Lynx Markup Language document beginning with
+  // <!doctype lynx> and containing a <lynx> root. Source blocks use <style>,
+  // <script thread="main">, and <script thread="background">. Blocks may
+  // interleave, but each type may occur at most once. At least one non-empty
+  // main script is required to build a TemplateBundle. Returns an empty string
+  // on success, or an error message on failure.
+  std::string FromLynxML(const std::string& source);
 
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
@@ -221,6 +233,11 @@ class LynxTemplateBundle final {
 
  private:
   void EnsureParseTaskScheduler();
+
+  std::string BuildFromLynxMLSources(
+      const std::string& main_thread_script,
+      const std::string& background_thread_script, const std::string& style,
+      const std::string& engine_version);
 
   // header info.
   uint32_t total_size_{0};

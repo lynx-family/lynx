@@ -1,0 +1,54 @@
+# Copyright 2026 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../testing/test.gni")
+import("../../Lynx.gni")
+
+lynx_core_source_set("lynxml_parser") {
+  sources = [
+    "lynxml_parser.cc",
+    "lynxml_parser.h",
+    "lynxml_source_observer.cc",
+    "lynxml_source_observer.h",
+  ]
+}
+
+lynx_core_source_set("lynxml_style_parser") {
+  check_includes = false
+  sources = [
+    "lynxml_style_parser.cc",
+    "lynxml_style_parser.h",
+  ]
+
+  # The TASM encoder compiles CSS sources directly into encoder_common, so it
+  # must not also link the CSS targets. SSR and NodeLynx do not use encoder_common
+  # and need the same CSS dependencies as the native runtime.
+  if (!is_oliver || is_oliver_ssr || is_oliver_node_lynx) {
+    deps = [ "../../renderer/css:css_parser" ]
+    public_deps = [ "../../renderer/css:css" ]
+  }
+}
+
+unittest_set("lynxml_parser_testset") {
+  sources = [
+    "lynxml_parser_unittest.cc",
+    "lynxml_source_observer_unittest.cc",
+    "lynxml_style_parser_unittest.cc",
+  ]
+  deps = [
+    "../../renderer:tasm_group",
+    "../../renderer/dom:renderer_dom",
+    "../../runtime/lepus/bindings:bindings",
+    "../../shell/testing:mock_tasm_delegate_testset",
+  ]
+  public_deps = [
+    ":lynxml_parser",
+    ":lynxml_style_parser",
+  ]
+}
+
+unittest_exec("lynxml_parser_unittest_exec") {
+  sources = []
+  deps = [ ":lynxml_parser_testset" ]
+}
