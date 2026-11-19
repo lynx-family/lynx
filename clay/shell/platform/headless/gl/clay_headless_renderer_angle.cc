@@ -13,8 +13,10 @@
 #include <dxgi.h>
 
 #include <array>
+#include <new>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "clay/fml/logging.h"
@@ -22,6 +24,65 @@
 #include "clay/shell/platform/headless/clay_headless_engine.h"
 
 namespace clay {
+
+#if OS_WIN
+namespace {
+
+struct PendingD3D11DeviceRelease {
+  // Keep the library loaded until after the device has been released.
+  fml::RefPtr<fml::NativeLibrary> library;
+  Microsoft::WRL::ComPtr<ID3D11Device> device;
+  HMODULE callback_module = nullptr;
+};
+
+void CALLBACK ReleaseD3D11DeviceCallback(PTP_CALLBACK_INSTANCE instance,
+                                         void* context) {
+  auto* pending = static_cast<PendingD3D11DeviceRelease*>(context);
+  // The callback can outlive the renderer and its containing library.
+  FreeLibraryWhenCallbackReturns(instance, pending->callback_module);
+  CallbackMayRunLong(instance);
+  std::unique_ptr<PendingD3D11DeviceRelease> release(pending);
+}
+
+void ReleaseD3D11DeviceAsync(fml::RefPtr<fml::NativeLibrary> library,
+                             Microsoft::WRL::ComPtr<ID3D11Device> device) {
+  if (!device) {
+    return;
+  }
+
+  auto* pending = new (std::nothrow)
+      PendingD3D11DeviceRelease{std::move(library), std::move(device)};
+  if (!pending) {
+    FML_LOG(ERROR) << "Could not allocate deferred D3D11 device release; "
+                      "releasing synchronously outside the EGL lock.";
+    device.Reset();
+    return;
+  }
+
+  if (!GetModuleHandleExW(
+          GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+          reinterpret_cast<LPCWSTR>(&ReleaseD3D11DeviceCallback),
+          &pending->callback_module)) {
+    FML_LOG(ERROR) << "Could not retain D3D11 release callback module: "
+                   << GetLastError()
+                   << "; releasing synchronously outside the EGL lock.";
+    delete pending;
+    return;
+  }
+
+  if (!TrySubmitThreadpoolCallback(ReleaseD3D11DeviceCallback, pending,
+                                   nullptr)) {
+    FML_LOG(ERROR) << "Could not schedule deferred D3D11 device release: "
+                   << GetLastError()
+                   << "; releasing synchronously outside the EGL lock.";
+    HMODULE callback_module = pending->callback_module;
+    delete pending;
+    FreeLibrary(callback_module);
+  }
+}
+
+}  // namespace
+#endif  // OS_WIN
 
 constexpr std::array<DWORD, 1> kDefaultD3D11DeviceRetryDelaysMs = {1000};
 constexpr std::array<DWORD, 3> kDefaultAngleInitRetryDelaysMs = {1000, 2000,
@@ -360,8 +421,14 @@ void HeadlessAngleSurfaceManager::CleanUp() {
         << ", d3d11_device=null";
   }
 
+#if OS_WIN
+  // Keep the device alive while EGL drops its references. Its final release
+  // must not run inside ANGLE's global lock or block the calling UI thread.
+  auto device_to_release = std::move(resolved_device_);
+#else
   // Needs to be reset before destroying the EGLContext.
   resolved_device_.Reset();
+#endif  // OS_WIN
 
   if (egl_display_ != EGL_NO_DISPLAY && egl_surface_ != EGL_NO_SURFACE) {
     result = eglDestroySurface(egl_display_, egl_surface_);
@@ -399,6 +466,10 @@ void HeadlessAngleSurfaceManager::CleanUp() {
       LogEglError("Failed to destroy device");
     }
   }
+
+#if OS_WIN
+  ReleaseD3D11DeviceAsync(d3d11_, std::move(device_to_release));
+#endif  // OS_WIN
 }
 
 bool HeadlessAngleSurfaceManager::InitializeEGL(
