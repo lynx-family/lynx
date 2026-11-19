@@ -27,19 +27,23 @@ void LepusModuleDelegate::InvokeCallback(
     const std::shared_ptr<runtime::LynxModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func) {
   if (engine_actor_ != nullptr) {
-    engine_actor_->Act([callback](auto& engine) -> void {
-      if (callback->GetType() == runtime::LynxModuleCallback::Type::LEPUS) {
-        // safe cast to lepus callback
-        std::shared_ptr<LepusModuleCallback> lepus_callback =
-            std::static_pointer_cast<LepusModuleCallback>(callback);
-        engine->InvokeLepusCallback(
-            static_cast<int32_t>(lepus_callback->CallbackId()), "",
-            lepus_callback->GetArgs(), true);
-      } else {
-        LOGE("NativeModules"
-             << "module callback type error , expected type lepus");
-      }
-    });
+    engine_actor_->Act(
+        [callback, func = std::move(invoke_pre_func)](auto& engine) -> void {
+          if (func && !func()) {
+            return;
+          }
+          if (callback->GetType() == runtime::LynxModuleCallback::Type::LEPUS) {
+            // safe cast to lepus callback
+            std::shared_ptr<LepusModuleCallback> lepus_callback =
+                std::static_pointer_cast<LepusModuleCallback>(callback);
+            engine->InvokeLepusCallback(
+                static_cast<int32_t>(lepus_callback->CallbackId()), "",
+                lepus_callback->GetArgs(), true);
+          } else {
+            LOGE("NativeModules"
+                 << "module callback type error , expected type lepus");
+          }
+        });
   } else {
     LOGE("NativeModules"
          << "Engine is destroyed, skip invoke lepus callback");

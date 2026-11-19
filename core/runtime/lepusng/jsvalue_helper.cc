@@ -11,6 +11,7 @@
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/byte_array.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
@@ -83,11 +84,17 @@ LEPUSValue LEPUSValueHelper::ToJsValue(LEPUSContext* ctx, const lynx_value& val,
     case lynx_value_uint64:
       return NewUint64(ctx, val.val_uint64);
     case lynx_value_nan:
+      return LEPUS_NAN;
     case lynx_value_function:
       assert(false);
       break;
     case lynx_value_external:
       return NewPointer(val.val_ptr);
+    case lynx_value_arraybuffer: {
+      auto* buffer = reinterpret_cast<lepus::ByteArray*>(val.val_ptr);
+      return LEPUS_NewArrayBufferCopy(ctx, buffer->GetPtr(),
+                                      buffer->GetLength());
+    }
     case lynx_value_map:
       if (deep_convert) {
         auto* table = reinterpret_cast<lepus::Dictionary*>(val.val_ptr);
@@ -98,7 +105,6 @@ LEPUSValue LEPUSValueHelper::ToJsValue(LEPUSContext* ctx, const lynx_value& val,
         auto* arr = reinterpret_cast<lepus::CArray*>(val.val_ptr);
         return ArrayToJsValue(ctx, *arr, true);
       }
-    case lynx_value_arraybuffer:
       return CreateLepusRef(ctx,
                             reinterpret_cast<lepus::RefCounted*>(val.val_ptr),
                             lepus::Value::LegacyTypeFromLynxValue(val));

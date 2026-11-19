@@ -6,6 +6,7 @@
 
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/js/jsi/jsi.h"
@@ -25,6 +26,72 @@ using runtime::js::JSIObjectWrapperManager;
 using runtime::js::JSValueCircularArray;
 using runtime::js::ParseJSValue;
 class UtilTests : public js::test::JSITestBase {};
+
+TEST_P(UtilTests, ValueFromLepusPreservesSharedArrayBuffers) {
+  auto bytes = std::make_unique<uint8_t[]>(3);
+  bytes[0] = 0;
+  bytes[1] = 127;
+  bytes[2] = 255;
+  auto buffer = lepus::ByteArray::Create(std::move(bytes), 3);
+  auto* original = buffer->GetPtr();
+  auto nested = lepus::Dictionary::Create();
+  nested->SetValue("buffer", lepus::Value(buffer));
+  auto array = lepus::CArray::Create();
+  array->emplace_back(buffer);
+  array->emplace_back(nested);
+  array->emplace_back(lepus::ByteArray::Create());
+  lepus::Value source(array);
+  auto check = function(R"(
+    function(value) {
+      const first = new Uint8Array(value[0]);
+      const second = new Uint8Array(value[1].buffer);
+      const valid = value[0] instanceof ArrayBuffer &&
+        value[1].buffer instanceof ArrayBuffer &&
+        value[2] instanceof ArrayBuffer && value[2].byteLength === 0 &&
+        first.length === 3 && second.length === 3 &&
+        first[0] === 0 && first[1] === 127 && first[2] === 255 &&
+        second[0] === 0 && second[1] === 127 && second[2] === 255;
+      first[1] = 42;
+      return valid && second[1] === 127;
+    }
+  )");
+
+  for (int iteration = 0; iteration < 2; ++iteration) {
+    auto converted = valueFromLepus(rt, source);
+    ASSERT_TRUE(converted.has_value());
+    auto result = check.call(rt, *converted);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(result->getBool());
+    ASSERT_EQ(buffer->GetPtr(), original);
+    ASSERT_EQ(buffer->GetLength(), 3u);
+    EXPECT_EQ(buffer->GetPtr()[1], 127);
+  }
+}
+
+TEST_P(UtilTests, ValueFromLepusPreservesNestedNaN) {
+  lynx_value raw{};
+  raw.type = lynx_value_nan;
+  lepus::Value nan(nullptr, raw);
+  auto array = lepus::CArray::Create();
+  array->emplace_back(nan);
+  auto object = lepus::Dictionary::Create();
+  object->SetValue("nan", nan);
+  object->SetValue("items", lepus::Value(array));
+  auto check = function(R"(
+    function(value, scalar) {
+      return Number.isNaN(scalar) && Number.isNaN(value.nan) &&
+        Number.isNaN(value.items[0]);
+    }
+  )");
+  auto converted = valueFromLepus(rt, lepus::Value(object));
+  auto scalar = valueFromLepus(rt, nan);
+  ASSERT_TRUE(converted.has_value());
+  ASSERT_TRUE(scalar.has_value());
+  auto result = check.call(rt, *converted, *scalar);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_TRUE(result->getBool());
+  EXPECT_EQ(object->GetValue("nan")->value().type, lynx_value_nan);
+}
 
 TEST_P(UtilTests, EvaluatePreloadSourcesTest) {
   std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>> sources;
