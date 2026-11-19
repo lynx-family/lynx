@@ -60,7 +60,9 @@ class TemplateRendererClient {
       int level, int32_t error_code, const std::string& message,
       const std::string& fix_suggestion,
       const std::unordered_map<std::string, std::string>& custom_info,
-      bool is_logbox_only) {}
+      bool is_logbox_only, const std::string& root_cause) {}
+  virtual void OnModuleMethodInvoked(const std::string& module,
+                                     const std::string& method, int32_t code) {}
   virtual void OnThemeUpdatedByJs(
       const std::unordered_map<std::string, std::string>& theme) {}
   virtual void OnLoadTemplate(const std::string& url,
@@ -225,7 +227,9 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       int level, int32_t error_code, const std::string& message,
       const std::string& fix_suggestion,
       const std::unordered_map<std::string, std::string>& custom_info,
-      bool is_logbox_only);
+      bool is_logbox_only, const std::string& root_cause = "");
+  void OnModuleMethodInvoked(const std::string& module,
+                             const std::string& method, int32_t code);
   void OnThemeUpdatedByJs(
       const std::unordered_map<std::string, std::string>& theme);
   void OnReloadTemplate(const std::string& url,
