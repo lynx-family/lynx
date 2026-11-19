@@ -3,6 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/base/darwin/vsync_monitor_darwin.h"
+
+#include <cstdint>
+
+#include "base/include/fml/message_loop.h"
+#include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -102,8 +107,70 @@
 namespace lynx {
 namespace base {
 
+namespace {
+
+VSyncMonitor &GetUIFrameSource(bool high_refresh_rate) {
+  // Both sources are registered and used only on the main run loop.
+  // Share frames between pages with the same refresh preference.
+  struct FrameSources {
+    std::shared_ptr<VSyncMonitor> standard;
+    std::shared_ptr<VSyncMonitor> high_refresh;
+  };
+  static base::NoDestructor<FrameSources> sources;
+  auto &monitor = high_refresh_rate ? sources->high_refresh : sources->standard;
+  if (!monitor) {
+    monitor = VSyncMonitor::Create(false);
+    monitor->BindTaskRunner(fml::MessageLoop::EnsureInitializedForCurrentThread().GetTaskRunner());
+    monitor->Init();
+    if (high_refresh_rate) {
+      monitor->SetHighRefreshRate();
+    }
+  }
+  return *monitor;
+}
+
+class UIVSyncMonitorIOS final : public VSyncMonitor {
+ public:
+  UIVSyncMonitorIOS() : VSyncMonitor(true) {}
+
+ private:
+  void RequestVSyncOnUIThread() override {
+    const bool high_refresh_rate = high_refresh_rate_;
+    auto weak_monitor = weak_from_this();
+    dispatch_block_t request = ^{
+      if (weak_monitor.expired()) {
+        return;
+      }
+      // Each TASM monitor already coalesces its own requests. These IDs are
+      // assigned on main, where the shared source registers its callbacks.
+      static uintptr_t next_request_id = 0;
+      GetUIFrameSource(high_refresh_rate)
+          .ScheduleVSyncSecondaryCallback(++next_request_id,
+                                          [weak_monitor](int64_t start, int64_t target) {
+                                            if (auto monitor = weak_monitor.lock()) {
+                                              monitor->OnVSync(start, target);
+                                            }
+                                          });
+    };
+    if ([NSThread isMainThread]) {
+      request();
+    } else {
+      dispatch_async(dispatch_get_main_queue(), request);
+    }
+  }
+
+  void SetHighRefreshRate() override { high_refresh_rate_ = true; }
+
+  bool high_refresh_rate_ = false;
+};
+
+}  // namespace
+
 std::shared_ptr<VSyncMonitor> VSyncMonitor::Create(bool is_on_ui_thread) {
-  return std::make_shared<lynx::base::VSyncMonitorIOS>(false, is_on_ui_thread);
+  if (is_on_ui_thread) {
+    return std::make_shared<UIVSyncMonitorIOS>();
+  }
+  return std::make_shared<VSyncMonitorIOS>(false, false);
 }
 
 class LynxVSyncPulsePuppet {
