@@ -273,11 +273,11 @@ class EmbeddedViewParams {
         size_points_(size_points),
         mutators_stack_(mutators_stack),
         presentation_kind_(presentation_kind) {
-    clay::GrPath path;
+    clay::GrPathBuilder path;
     skity::Rect starting_rect =
         skity::Rect::MakeWH(size_points.x, size_points.y);
     PATH_ADD_RECT(path, starting_rect);
-    PATH_TRANSFORM(path, matrix);
+    PATH_BUILDER_TRANSFORM(path, matrix);
     RECT_ASSIGN(final_bounding_rect_, PATH_GET_BOUNDS(path));
   }
 

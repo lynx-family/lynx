@@ -5,6 +5,7 @@
 #ifndef CLAY_GFX_RENDERING_BACKEND_H_
 #define CLAY_GFX_RENDERING_BACKEND_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 
@@ -85,6 +86,7 @@
 #include "skity/graphic/image.hpp"
 #include "skity/graphic/paint.hpp"
 #include "skity/graphic/path.hpp"
+#include "skity/graphic/path_builder.hpp"
 #include "skity/graphic/path_measure.hpp"
 #include "skity/graphic/path_op.hpp"
 #include "skity/graphic/sampling_options.hpp"
@@ -113,6 +115,7 @@ using GrPaint = SkPaint;
 using GrSurface = SkSurface;
 using GrSurfacePtr = sk_sp<SkSurface>;
 using GrPath = SkPath;
+using GrPathBuilder = SkPath;
 using GrImage = SkImage;
 using GrImagePtr = sk_sp<SkImage>;
 using GrSamplingOptions = SkSamplingOptions;
@@ -305,7 +308,8 @@ class GrSoftwareSurface {
   path.arcTo(clay::ConvertSkityRectToSkRect(oval), start_angle, sweep_angle, \
              force_move)
 #define PATH_GET_LAST_POINT(path, point) path.getLastPt(point)
-#define PATH_SWAP(path, other) path->swap(other)
+#define PATH_BUILDER_TRANSFORM(path, matrix) \
+  path.transform(clay::ConvertSkityMatrixToSkMatrix(matrix))
 
 // GrPathMeasure
 #define PATH_MEASURE_GET_LENGTH(measure) measure.getLength()
@@ -386,6 +390,20 @@ class GrSoftwareSurface {
 #define DATA_GET_BYTES(data) data->bytes()
 #define DATA_IS_EMPTY(data) data->isEmpty()
 
+inline void ReservePathPoints(GrPathBuilder& builder, size_t num_points) {
+  builder.incReserve(num_points);
+}
+
+inline GrPath DetachPath(GrPathBuilder& builder) {
+  GrPath path;
+  path.swap(builder);
+  return path;
+}
+
+inline void DetachPathTo(GrPathBuilder& builder, GrPath* path) {
+  path->swap(builder);
+}
+
 #else
 // PROTOTYPES
 class MarkdownCanvasHelperSkity;
@@ -399,13 +417,14 @@ using GrPaint = skity::Paint;
 using GrSurface = skity::GPUSurface;
 using GrSurfacePtr = std::shared_ptr<skity::GPUSurface>;
 using GrPath = skity::Path;
+using GrPathBuilder = skity::PathBuilder;
 using GrImage = skity::Image;
 using GrImagePtr = std::shared_ptr<skity::Image>;
 using GrSamplingOptions = skity::SamplingOptions;
 using GrShaderPtr = std::shared_ptr<skity::Shader>;
 using GrColor = skity::Color;
 using GrColorFilterPtr = std::shared_ptr<skity::ColorFilter>;
-using GrPoint = skity::Point;
+using GrPoint = skity::Vec2;
 using GrTextBlobPtr = std::shared_ptr<skity::TextBlob>;
 using GrGpuBackendType = skity::GPUBackendType;
 using GrImageInfo = struct ImageInfo;
@@ -560,7 +579,7 @@ class GrSoftwareSurface {
 #define PATH_LINE_TO_POINT(path, point) path.LineTo(point)
 #define PATH_RLINE_TO(path, delta_x, delta_y)                    \
   {                                                              \
-    skity::Point last_point;                                     \
+    skity::Vec2 last_point;                                      \
     path.GetLastPt(&last_point);                                 \
     path.LineTo(last_point.x + delta_x, last_point.y + delta_y); \
   }
@@ -578,14 +597,14 @@ class GrSoftwareSurface {
 #define PATH_ARC_TO_ANGLE(path, oval, start_angle, sweep_angle, force_move) \
   path.ArcTo(oval, start_angle, sweep_angle, force_move)
 #define PATH_GET_LAST_POINT(path, point) path.GetLastPt(point)
-#define PATH_SWAP(path, other) path->Swap(other)
+#define PATH_BUILDER_TRANSFORM(path, matrix) path.Transform(matrix)
 
 // GrPathMeasure
 #define PATH_MEASURE_GET_LENGTH(measure) measure.GetLength()
 #define PATH_MEASURE_NEXT_CONTOUR(measure) measure.NextContour()
 #define PATH_MEASURE_SET_PATH(measure, path) measure.SetPath(path, false)
 #define PATH_MEASURE_GET_POS_TAN(measure, distance, position, tangent) \
-  measure.GetPosTan(distance, position, tangent)
+  measure.GetPosTan2D(distance, position, tangent)
 
 // GrImage
 #define IMAGE_WIDTH(image) image->Width()
@@ -655,6 +674,17 @@ class GrSoftwareSurface {
 #define DATA_GET_WRITABLE_DATA(data) const_cast<void*>(data->RawData())
 #define DATA_GET_BYTES(data) data->Bytes()
 #define DATA_IS_EMPTY(data) data->IsEmpty()
+
+inline void ReservePathPoints(GrPathBuilder& builder, size_t num_points) {
+  builder.Reserve(builder.CountPoints() + num_points,
+                  builder.CountVerbs() + num_points);
+}
+
+inline GrPath DetachPath(GrPathBuilder& builder) { return builder.Detach(); }
+
+inline void DetachPathTo(GrPathBuilder& builder, GrPath* path) {
+  builder.DetachTo(path);
+}
 #endif  // ENABLE_SKITY
 
 }  // namespace clay
