@@ -103,6 +103,10 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
       const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate);
 
  private:
+  std::shared_ptr<LynxModule> WrapNativeModule(
+      const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate,
+      const std::shared_ptr<LynxNativeModule> &native_module);
+
   base::LogContext log_context_;
   int64_t context_id_ = -1;
   LynxModuleProviderFunction BindingFunc(

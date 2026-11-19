@@ -70,7 +70,7 @@ bool SetHostScriptRuntimeProvider(const HostScriptRuntimeCallbacks* callbacks,
       callbacks->executor_features != kHostScriptExecutorFeatures ||
       !callbacks->prepare || !callbacks->update_debug_state ||
       !callbacks->create_module_interceptor || !callbacks->register_view ||
-      !callbacks->destroy_view)
+      !callbacks->destroy_view || !callbacks->load_resource)
     return false;
   if (!commit) {
     const auto* current = LoadProvider();
@@ -80,6 +80,7 @@ bool SetHostScriptRuntimeProvider(const HostScriptRuntimeCallbacks* callbacks,
   if (!__atomic_compare_exchange_n(&provider, &expected, callbacks, false,
                                    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
     return expected == callbacks;
+  pub::SetResourceLoadHook(callbacks->load_resource);
   if (ui_initialized.load(std::memory_order_acquire))
     PrepareHostScriptRuntime();
   return true;

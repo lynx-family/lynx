@@ -80,6 +80,16 @@ Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
 
   if (p != methodMap_.end()) {
     auto& meta = p->second;
+    if (IsMockOnly()) {
+      // Replay modules are not cached by the manager. A detached method
+      // retains its wrapper, while HSR checks whether the rule is still active.
+      return Function::createFromHostFunction(
+          *runtime, prop, static_cast<unsigned int>(meta->argCount),
+          [module = shared_from_this(), meta](Runtime& rt, const Value&,
+                                              const Value* args, size_t count) {
+            return module->invokeMethod(*meta, &rt, args, count);
+          });
+    }
     return Function::createFromHostFunction(
         *runtime, prop, static_cast<unsigned int>(meta->argCount),
         [meta, propNameUtf8,

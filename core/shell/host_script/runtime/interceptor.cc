@@ -41,9 +41,10 @@ std::atomic<size_t>& HandlerCount(InterceptKind kind,
 
 const char* Interceptor::Name(InterceptKind kind) {
   static constexpr const char* names[] = {
-      "view.created", "view.loadTemplate",  "view.updateMetaData",
-      "jsb.call",     "jsb.result",         "jsb.callback",
-      "view.create",  "view.updateViewport"};
+      "view.created",      "view.loadTemplate",   "view.updateMetaData",
+      "jsb.call",          "jsb.result",          "jsb.callback",
+      "view.create",       "view.updateViewport", "resource.fetch",
+      "resource.complete", "jsb.resolveModule"};
   static_assert(std::size(names) == kKinds);
   return names[static_cast<size_t>(kind)];
 }
@@ -72,6 +73,7 @@ std::shared_ptr<Interceptor> Interceptor::Current(
     std::initializer_list<InterceptKind> kinds, Domain domain) {
   if (auto provider = current[HostScriptDomainIndex(domain)].lock()) {
     if (!provider->IsAttached()) return nullptr;
+    if (!kinds.size()) return provider;
     for (auto kind : kinds)
       if (provider->HasHandlers(kind)) return provider;
     return nullptr;

@@ -4,12 +4,35 @@
 
 #include "core/resource/lynx_resource_loader_android.h"
 
+#include <utility>
+
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/jni_helper.h"
+#include "core/resource/lynx_resource_load_hook.h"
 #include "core/resource/lynx_resource_setting.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxResourceLoader_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxResourceLoader_register_jni.h"
+
+namespace lynx::pub {
+namespace {
+ResourceLoadHook resource_load_hook = nullptr;
+}  // namespace
+
+void SetResourceLoadHook(ResourceLoadHook hook) {
+  __atomic_store_n(&resource_load_hook, hook, __ATOMIC_RELEASE);
+}
+
+void LoadResourceWithContext(LynxResourceLoader& loader,
+                             const LynxResourceRequest& request,
+                             base::LynxEntityId view,
+                             shell::HostScriptDomain domain,
+                             ResourceLoadCallback callback) {
+  const auto hook = __atomic_load_n(&resource_load_hook, __ATOMIC_ACQUIRE);
+  if (hook && hook(loader, request, view, domain, callback)) return;
+  loader.LoadResource(request, std::move(callback));
+}
+}  // namespace lynx::pub
 
 namespace lynx {
 namespace jni {

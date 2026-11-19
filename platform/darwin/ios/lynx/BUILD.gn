@@ -26,8 +26,12 @@ podspec_target("lynx_podspec") {
       git = "https://github.com/lynx-family/lynx.git"
     }
     requires_arc = true
+    preserve_paths = [
+      "core/resource/lynx_resource_load_hook.h",
+      "core/shell/host_script/runtime/host_script_domain.h",
+    ]
     if (use_flatten_deps) {
-      preserve_paths = [
+      preserve_paths += [
         "core/renderer/css/ng/parser/css_parser_token.h",
         "third_party/double-conversion/double-conversion/utils.h",
       ]

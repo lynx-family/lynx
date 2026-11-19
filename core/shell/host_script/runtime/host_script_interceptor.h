@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "core/shell/host_script/runtime/interceptor.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
@@ -20,9 +21,9 @@ namespace lynx::shell {
 
 // The runtime owner installs this into an existing environment, on its owning
 // thread. This component never creates a VM, thread or cross-thread JS handle.
-// Each event kind accepts one active handler. Dispose it before registering
-// another handler of the same kind. Handlers decide with `proceed`, optionally
-// with a patch, or `mock` for jsb.call, and receive the event's `LynxView`
+// JSB decisions and resource requests accept handlers in registration order.
+// The handler returns `next` to continue, `proceed` to stop with an optional
+// patch, or `mock` when supported. It receives the event's `LynxView`
 // proxy (or null) as their third argument. The view.created notification
 // accepts handlers in every domain, passes only the proxy and ignores return
 // values. A new view.created handler first receives the existing Views,
@@ -63,6 +64,7 @@ class HostScriptInterceptor final
     uint64_t id;
     InterceptKind kind;
     Napi::FunctionReference function;
+    bool active = true;
     // Views already delivered to this view.created handler.
     std::unordered_set<base::LynxEntityId> created;
   };
@@ -103,8 +105,9 @@ class HostScriptInterceptor final
   Napi::FunctionReference then_;
   uint64_t next_pending_ = 1;
   std::unordered_map<uint64_t, Pending> pending_;
-  std::array<std::shared_ptr<Entry>, static_cast<size_t>(InterceptKind::kCount)>
-      entries_{};
+  std::array<std::vector<std::shared_ptr<Entry>>,
+             static_cast<size_t>(InterceptKind::kCount)>
+      entries_;
 };
 }  // namespace lynx::shell
 #endif  // CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_INTERCEPTOR_H_

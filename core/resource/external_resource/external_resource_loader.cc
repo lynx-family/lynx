@@ -11,6 +11,7 @@
 #include "base/include/log/logging.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/resource/lynx_resource_handle.h"
+#include "core/resource/lynx_resource_load_hook.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/template_bundle/lynx_template_bundle.h"
@@ -47,8 +48,8 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
   std::future<ExternalResourceInfo> future = promise->get_future();
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
-  resource_loader_->LoadResource(
-      request,
+  pub::LoadResourceWithContext(
+      *resource_loader_, request, view_id_, HostScriptDomain::kBTS,
       [url, weak_self = weak_from_this(),
        promise_weak = std::weak_ptr<std::promise<ExternalResourceInfo>>(
            promise)](pub::LynxResourceResponse& response) mutable {
@@ -85,9 +86,10 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
-  resource_loader_->LoadResource(
-      request, [url, callback_id, weak_self = weak_from_this()](
-                   pub::LynxResourceResponse& response) {
+  pub::LoadResourceWithContext(
+      *resource_loader_, request, view_id_, HostScriptDomain::kBTS,
+      [url, callback_id,
+       weak_self = weak_from_this()](pub::LynxResourceResponse& response) {
         auto self = weak_self.lock();
         if (!self) {
           LOGI("LoadScriptAsync::self is null");
@@ -189,10 +191,11 @@ void ExternalResourceLoader::LoadLazyBundle(std::string url,
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
-  resource_loader_->LoadResource(
-      request, [url = std::move(url), callback_id,
-                component_ids = std::move(ids), weak_self = weak_from_this()](
-                   pub::LynxResourceResponse& response) mutable {
+  pub::LoadResourceWithContext(
+      *resource_loader_, request, view_id_, HostScriptDomain::kBTS,
+      [url = std::move(url), callback_id, component_ids = std::move(ids),
+       weak_self =
+           weak_from_this()](pub::LynxResourceResponse& response) mutable {
         auto self = weak_self.lock();
         if (!self) {
           LOGI("LoadLazyBundle:self is null");
@@ -258,8 +261,8 @@ std::vector<uint8_t> ExternalResourceLoader::LoadJSSource(
   std::future<std::vector<uint8_t>> future = promise->get_future();
   auto request = pub::LynxResourceRequest{
       .url = url, .type = pub::LynxResourceType::kAssets};
-  resource_loader_->LoadResource(
-      request,
+  pub::LoadResourceWithContext(
+      *resource_loader_, request, view_id_, HostScriptDomain::kBTS,
       [url, weak_self = weak_from_this(),
        promise_weak = std::weak_ptr<std::promise<std::vector<uint8_t>>>(
            promise)](pub::LynxResourceResponse& response) mutable {

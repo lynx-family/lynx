@@ -142,6 +142,18 @@ void GroupInterceptor::AddLeadingInterceptor(
   }
 }
 
+ModuleInterceptor::MockModule GroupInterceptor::ResolveMissingModule(
+    const std::string& name, base::LynxEntityId view,
+    const std::shared_ptr<ModuleDelegate>& delegate) {
+  for (const auto& interceptor : interceptors_) {
+    auto mock = interceptor->ResolveMissingModule(name, view, delegate);
+    if (mock.module) {
+      return mock;
+    }
+  }
+  return {};
+}
+
 void GroupInterceptor::SetTemplateUrl(const std::string& url) {
   for (const auto& interceptor : interceptors_) {
     interceptor->SetTemplateUrl(url);

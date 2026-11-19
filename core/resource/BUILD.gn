@@ -21,6 +21,14 @@ lynx_core_source_set("resource") {
   public_deps = [ ":resource_loader" ]
 }
 
+lynx_core_source_set("resource_load_hook_headers") {
+  sources = [ "lynx_resource_load_hook.h" ]
+  public_deps = [
+    "../../base/src:base_log_headers",
+    "../shell/host_script/runtime:host_script_domain",
+  ]
+}
+
 lynx_core_source_set("resource_loader") {
   sources = [
     "lynx_resource_handle.cc",
@@ -51,11 +59,16 @@ lynx_core_source_set("resource_loader") {
     ]
   }
 
+  if (!is_android) {
+    sources += [ "lynx_resource_load_hook_stub.cc" ]
+  }
+
   if (enable_testbench_replay) {
     deps += [ "../services/replay:replay_resource_cache" ]
   }
 
   public_deps = [
+    ":resource_load_hook_headers",
     "../../base/src:base_log_headers",
     "trace:resource_trace",
   ]
