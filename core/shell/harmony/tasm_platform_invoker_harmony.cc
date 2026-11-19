@@ -5,11 +5,67 @@
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 
 #include <atomic>
+#include <optional>
 
+#include "base/include/log/logging.h"
+#include "core/base/harmony/vsync_monitor_harmony.h"
+#include "core/base/threading/task_runner_manufactor.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 
 namespace lynx {
 namespace harmony {
+namespace {
+
+class PageVSyncMonitor final : public base::VSyncMonitorHarmony {
+ public:
+  explicit PageVSyncMonitor(
+      const std::weak_ptr<tasm::harmony::LynxContext>& context)
+      : context_(context) {}
+
+ private:
+  void RequestVSync() override {
+    base::UIThread::GetRunner()->PostTask(
+        [weak_context = context_, weak_monitor = weak_from_this()]() {
+          auto context = weak_context.lock();
+          auto* owner = context ? context->GetUIOwner() : nullptr;
+          if (!owner || owner->Destroyed() || weak_monitor.expired()) {
+            return;
+          }
+          owner->RequestAnimationFrame(
+              [weak_monitor](std::optional<int64_t> timestamp) {
+                if (auto monitor = weak_monitor.lock()) {
+                  auto& page_monitor = static_cast<PageVSyncMonitor&>(*monitor);
+                  auto context = page_monitor.context_.lock();
+                  auto* owner = context ? context->GetUIOwner() : nullptr;
+                  if (!owner || owner->Destroyed()) {
+                    return;
+                  }
+                  if (timestamp) {
+                    page_monitor.OnUIFrame(*timestamp);
+                  } else {
+                    LOGE("ArkUI VSync request failed");
+                    page_monitor.DiscardPendingVSync();
+                  }
+                }
+              });
+        });
+  }
+
+  const std::weak_ptr<tasm::harmony::LynxContext> context_;
+};
+
+}  // namespace
+
+std::shared_ptr<base::VSyncMonitor>
+TasmPlatformInvokerHarmony::CreatePageVSyncMonitor() const {
+  if (weak_context_.expired() ||
+      !tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread()) {
+    return nullptr;
+  }
+  return std::make_shared<PageVSyncMonitor>(weak_context_);
+}
 
 void TasmPlatformInvokerHarmony::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {

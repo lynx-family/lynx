@@ -5,6 +5,7 @@
 #ifndef CORE_ANIMATION_LYNX_BASIC_ANIMATOR_BASIC_ANIMATOR_FRAME_CALLBACK_PROVIDER_H_
 #define CORE_ANIMATION_LYNX_BASIC_ANIMATOR_BASIC_ANIMATOR_FRAME_CALLBACK_PROVIDER_H_
 
+#include <cstdint>
 #include <memory>
 
 #include "core/animation/basic_animation/animation_frame_callback_provider.h"
@@ -21,8 +22,9 @@ class BasicAnimatorFrameCallbackProvider
     : public AnimationFrameCallbackProvider {
  public:
   explicit BasicAnimatorFrameCallbackProvider(
-      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor)
-      : vsync_monitor_(vsync_monitor) {}
+      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor);
+  BasicAnimatorFrameCallbackProvider(
+      const BasicAnimatorFrameCallbackProvider &) = delete;
 
   ~BasicAnimatorFrameCallbackProvider() override = default;
 
@@ -32,7 +34,8 @@ class BasicAnimatorFrameCallbackProvider
   std::shared_ptr<base::VSyncMonitor> GetVSyncMonitor();
 
  private:
-  std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
+  const uintptr_t frame_callback_id_;
 };
 }  // namespace basic
 }  // namespace animation

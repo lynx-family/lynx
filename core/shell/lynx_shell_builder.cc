@@ -250,11 +250,19 @@ LynxShell* LynxShellBuilder::build() {
   // Resolve the monitor from the final builder configuration, independent of
   // the order in which the enable flag and platform source were set.
   if (enable_element_manager_vsync_monitor_) {
-    shell->engine_build_options_.element_manager_vsync_monitor_ =
-        vsync_monitor_platform_impl_
-            ? std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_)
-            : base::VSyncMonitor::Create(tasm::LynxEnv::GetInstance()
-                                             .EnableAnimationVsyncOnUIThread());
+    auto& monitor = shell->engine_build_options_.element_manager_vsync_monitor_;
+    if (vsync_monitor_platform_impl_) {
+      monitor =
+          std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_);
+    } else if (tasm_platform_invoker_) {
+      monitor = tasm_platform_invoker_->CreatePageVSyncMonitor();
+      shell->engine_build_options_.share_page_vsync_with_list_ =
+          static_cast<bool>(monitor);
+    }
+    if (!monitor) {
+      monitor = base::VSyncMonitor::Create(
+          tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
+    }
   }
   shell->engine_build_options_.vsync_monitor_platform_impl_ =
       vsync_monitor_platform_impl_;

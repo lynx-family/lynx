@@ -64,6 +64,7 @@ class LYNX_EXPORT_FOR_DEVTOOL VSyncMonitor
 
  protected:
   virtual void RequestVSync();
+  void DiscardPendingVSync();
 
   Callback callback_;
 
