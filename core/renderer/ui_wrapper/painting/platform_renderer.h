@@ -5,12 +5,15 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_PLATFORM_RENDERER_H_
 
+#include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include "base/include/closure.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/vector.h"
 #include "core/public/platform_renderer_type.h"
 #include "core/public/prop_bundle.h"
@@ -27,6 +30,18 @@ class DisplayList;
 class PropBundle;
 class PlatformExtraBundle;
 
+// Published and consumed on the platform thread. Position is in the parent
+// content coordinates, excluding CSS transforms and parent scrolling.
+struct PlatformRendererState {
+  std::optional<std::array<float, 2>> layout_position;
+  std::optional<std::array<float, 2>> scroll_offset;
+  std::array<float, 2> sticky_offset = {0.f, 0.f};
+  // Unknown membership preserves behavior for hosts that do not publish state.
+  std::optional<bool> is_on_tree;
+  // Back-to-front drawing order among siblings, published by the native parent.
+  std::optional<int32_t> sibling_order;
+};
+
 // Initialization metadata consumed only by the C++ PlatformRenderer creation
 // path. Platform-specific props should still be passed through PropBundle.
 struct PlatformRendererInitConfig {
@@ -36,7 +51,8 @@ struct PlatformRendererInitConfig {
 
 // Abstract base class for platform-specific UI rendering operations.
 // Provides a common interface for cross-platform UI element management.
-class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
+class PlatformRenderer : public fml::RefCountedThreadSafeStorage,
+                         public fml::EnableWeakFromThis<PlatformRenderer> {
  public:
   ~PlatformRenderer() override = default;
   // Update the display list for this renderer
@@ -63,6 +79,37 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
 
   virtual base::String GetExtendedRendererTagName() const = 0;
 
+  // Unpublished fields preserve the existing layout and platform queries.
+  const PlatformRendererState* GetPlatformState() const {
+    return &platform_state_;
+  }
+  void UpdateLayoutPosition(float x, float y) {
+    platform_state_.layout_position = {x, y};
+  }
+  void UpdateScrollOffset(float x, float y) {
+    platform_state_.scroll_offset = {x, y};
+  }
+  void UpdateStickyOffset(float x, float y, bool sticky) {
+    platform_state_.sticky_offset =
+        sticky ? std::array<float, 2>{x, y} : std::array<float, 2>{0.f, 0.f};
+  }
+  void UpdateSiblingOrder(int32_t order) {
+    platform_state_.sibling_order = order;
+  }
+  void UpdateIsOnTree(bool is_on_tree) {
+    if (!is_on_tree) {
+      platform_state_ = {};
+    }
+    platform_state_.is_on_tree = is_on_tree;
+  }
+  // Logical removal resets geometry; the native parent owns membership and
+  // order.
+  void ClearPlatformState() {
+    platform_state_.layout_position.reset();
+    platform_state_.scroll_offset.reset();
+    platform_state_.sticky_offset = {0.f, 0.f};
+  }
+
   // Invoke a UI method on the platform renderer host. Return true only when the
   // renderer handled the method and will own the callback; return false to let
   // the caller fall back to the platform UI implementation.
@@ -73,6 +120,9 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage {
   }
 
   void ReleaseSelf() const override = 0;
+
+ private:
+  PlatformRendererState platform_state_;
 };
 
 // Factory interface for creating platform-specific renderers

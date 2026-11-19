@@ -28,6 +28,8 @@ import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.FloatUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 
 public class ListContainerView extends NestedScrollContainerView
@@ -528,6 +530,7 @@ public class ListContainerView extends NestedScrollContainerView
   @Override
   protected void onScrollChanged(int l, int t, int oldl, int oldt) {
     super.onScrollChanged(l, t, oldl, oldt);
+    publishListScrollOffset();
     if (DEBUG) {
       LLog.i(TAG, "onScrollChanged: " + oldt + " -> " + t + ", " + oldl + " -> " + l);
     }
@@ -559,6 +562,21 @@ public class ListContainerView extends NestedScrollContainerView
               mPreviousOffsetX, t, mUiListContainer.isRtl() ? contentOffsetXRTL(oldl) : oldl, oldt);
         }
       }
+    }
+  }
+
+  void publishChildTreeState(View child, boolean isOnTree) {
+    if (mRenderer != null && child instanceof IRendererHost) {
+      Renderer renderer = ((IRendererHost) child).getRenderer();
+      if (renderer != null) {
+        renderer.publishIsOnTree(isOnTree);
+      }
+    }
+  }
+
+  private void publishListScrollOffset() {
+    if (mRenderer != null) {
+      mRenderer.publishScrollOffset(getScrollX(), getScrollY());
     }
   }
 
@@ -869,12 +887,14 @@ public class ListContainerView extends NestedScrollContainerView
     @Override
     public void onViewAdded(View child) {
       super.onViewAdded(child);
+      publishChildTreeState(child, true);
       mRendererDrawingOrderDirty = true;
     }
 
     @Override
     public void onViewRemoved(View child) {
       super.onViewRemoved(child);
+      publishChildTreeState(child, false);
       mRendererDrawingOrderDirty = true;
     }
 
@@ -920,6 +940,7 @@ public class ListContainerView extends NestedScrollContainerView
       if (mUiListContainer == null || childViewCount < 2) {
         mRendererDrawingOrderDirty = false;
         // No reordering is needed without a list container or with fewer than two children.
+        publishRendererSiblingOrder();
         return;
       }
 
@@ -969,6 +990,25 @@ public class ListContainerView extends NestedScrollContainerView
         }
       }
       mRendererDrawingOrderDirty = false;
+      publishRendererSiblingOrder();
+    }
+
+    private void publishRendererSiblingOrder() {
+      ArrayList<View> children = new ArrayList<>(getChildCount());
+      for (int i = 0; i < getChildCount(); ++i) {
+        children.add(getChildAt(getChildDrawingOrder(getChildCount(), i)));
+      }
+      // Android draws by Z first, retaining custom drawing order for equal Z.
+      Collections.sort(
+          children, (left, right) -> Float.compare(ViewCompat.getZ(left), ViewCompat.getZ(right)));
+      for (int i = 0; i < children.size(); ++i) {
+        View child = children.get(i);
+        Renderer renderer =
+            child instanceof IRendererHost ? ((IRendererHost) child).getRenderer() : null;
+        if (renderer != null) {
+          renderer.publishSiblingOrder(i);
+        }
+      }
     }
 
     @Override
@@ -1000,6 +1040,7 @@ public class ListContainerView extends NestedScrollContainerView
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
       if (mRenderer != null) {
         mRenderer.onLayout(changed, l, t, r, b);
+        publishListScrollOffset();
       }
     }
 

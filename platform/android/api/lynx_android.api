@@ -9854,6 +9854,10 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public final int com.lynx.tasm.behavior.render.Renderer.REPAINT_TYPE_DRAW_ONLY REPAINT_TYPE_DRAW_ONLY;
   public final int com.lynx.tasm.behavior.render.Renderer.REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
   public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy);
+  public void com.lynx.tasm.behavior.render.Renderer.publishScrollOffset(float x, float y);
+  public void com.lynx.tasm.behavior.render.Renderer.publishStickyOffset(float x, float y, boolean sticky);
+  public void com.lynx.tasm.behavior.render.Renderer.publishSiblingOrder(int order);
+  public void com.lynx.tasm.behavior.render.Renderer.publishIsOnTree(boolean isOnTree);
   public Point com.lynx.tasm.behavior.render.Renderer.getRenderOffset();
   public Rect com.lynx.tasm.behavior.render.Renderer.getLynxFrame();
   public com.lynx.tasm.behavior.render.Renderer.Renderer(@NonNull PlatformRendererContext platformRendererContext, int sign);

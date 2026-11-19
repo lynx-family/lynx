@@ -10,23 +10,59 @@
 #include <limits>
 #include <utility>
 
+#include "base/include/algorithm.h"
 #include "core/renderer/dom/fragment/event/platform_event_target_helper.h"
 
 namespace lynx {
 namespace tasm {
 
+const PlatformRendererState* PlatformEventTarget::PublishedPlatformState()
+    const {
+  // Independent event roots and flattened descendants keep their own geometry.
+  if (IsRoot() || Sign() != RendererHostSign()) {
+    return nullptr;
+  }
+  auto* renderer = platform_renderer_.get();
+  return renderer ? renderer->GetPlatformState() : nullptr;
+}
+
+float PlatformEventTarget::PlatformPosition(int axis,
+                                            float layout_position) const {
+  const auto* state = PublishedPlatformState();
+  if (!state) {
+    return layout_position;
+  }
+  return (state->layout_position ? (*state->layout_position)[axis]
+                                 : layout_position) +
+         state->sticky_offset[axis];
+}
+
+std::optional<int32_t> PlatformEventTarget::SiblingOrder() const {
+  const auto* state = PublishedPlatformState();
+  return state ? state->sibling_order : std::nullopt;
+}
+
 float PlatformEventTarget::ScrollOffsetX() {
+  if (const auto* state = PublishedPlatformState();
+      state && state->scroll_offset) {
+    return is_scroll_container_ ? (*state->scroll_offset)[0] : 0.f;
+  }
   UpdateScrollOffsetIfNeeded();
   return scroll_offset_x_;
 }
 
 float PlatformEventTarget::ScrollOffsetY() {
+  if (const auto* state = PublishedPlatformState();
+      state && state->scroll_offset) {
+    return is_scroll_container_ ? (*state->scroll_offset)[1] : 0.f;
+  }
   UpdateScrollOffsetIfNeeded();
   return scroll_offset_y_;
 }
 
 void PlatformEventTarget::RefreshScrollOffset() {
-  if (!is_scroll_container_) {
+  const auto* state = PublishedPlatformState();
+  if ((state && state->scroll_offset) || !is_scroll_container_) {
     return;
   }
   scroll_offset_updated_ = false;
@@ -81,9 +117,28 @@ PlatformEventTarget::HitTestResult PlatformEventTarget::HitTestInternal(
   const bool event_targets_only = mode == HitTestMode::kRegisteredTargets;
   HitTestResult result;
   if (visit_children) {
-    const auto& children = ChildrenTargets();
-    // Traverse siblings in reverse paint order, as for ordinary FLR input.
-    for (auto child = children.rbegin(); child != children.rend(); ++child) {
+    const auto* children = &ChildrenTargets();
+    ChildrenTargetVec ordered_children;
+    if (children->size() > 1 &&
+        std::any_of(children->begin(), children->end(), [](const auto& child) {
+          return child->SiblingOrder().has_value();
+        })) {
+      base::InlineVector<std::pair<int32_t, size_t>, 4> order;
+      for (size_t i = 0; i < children->size(); ++i) {
+        order.emplace_back(
+            (*children)[i]->SiblingOrder().value_or(static_cast<int32_t>(i)),
+            i);
+      }
+      // Original indices break ties, preserving paint order for equal ranks.
+      base::InsertionSort(
+          order.data(), order.size(),
+          [](const auto& left, const auto& right) { return left < right; });
+      for (const auto& entry : order) {
+        ordered_children.push_back((*children)[entry.second]);
+      }
+      children = &ordered_children;
+    }
+    for (auto child = children->rbegin(); child != children->rend(); ++child) {
       if (!(*child)->ShouldHitTest()) {
         continue;
       }
@@ -160,7 +215,7 @@ fml::RefPtr<PlatformEventTarget> PlatformEventTarget::HitTest(
 }
 
 bool PlatformEventTarget::ShouldHitTest() const {
-  return user_interaction_enabled_;
+  return user_interaction_enabled_ && IsVisible();
 }
 
 bool PlatformEventTarget::GetPointInTarget(
