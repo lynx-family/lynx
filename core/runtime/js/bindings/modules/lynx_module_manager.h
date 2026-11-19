@@ -27,6 +27,7 @@ namespace lynx {
 namespace runtime {
 class ExtensionModuleFactory;
 namespace js {
+class LynxModuleManager;
 class NativeModuleRecordObserver;
 // issue: #1510
 // LynxModuleUtils::LynxModuleManagerAllowList
@@ -42,6 +43,20 @@ struct LynxModuleManagerAllowList {
 }  // namespace LynxModuleUtils
 
 using LynxJSIModuleBindingPtr = std::shared_ptr<LynxJSIModuleBinding>;
+
+// Borrows the page runtime and the engine's standard module wrapper for a
+// synchronous lookup. The resolver may retain the resulting wrapper.
+struct MissingNativeModuleRequest {
+  Runtime &runtime;
+  const std::string &name;
+  base::LynxEntityId view;
+  const std::shared_ptr<ModuleDelegate> &delegate;
+  LynxModuleManager &manager;
+  std::shared_ptr<LynxModule> (*wrap)(
+      const MissingNativeModuleRequest &,
+      const std::shared_ptr<LynxNativeModule> &);
+};
+
 // LynxModuleManager is the implementation of LynxNativeModuleManager , Use JSI
 // FFI to bind JS Env
 class LynxModuleManager : public pub::LynxNativeModuleManager {
@@ -64,6 +79,9 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
 
   void initBindingPtr(std::weak_ptr<LynxModuleManager> weak_manager,
                       const std::shared_ptr<ModuleDelegate> &delegate);
+  using MissingModuleResolver = void (*)(const MissingNativeModuleRequest &,
+                                         Value &);
+  static void SetMissingModuleResolver(MissingModuleResolver resolver);
 
   void InitModuleInterceptor();
   void SetTemplateUrl(const std::string &url);
@@ -103,9 +121,13 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
       const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate);
 
  private:
+  std::shared_ptr<LynxModule> WrapNativeModule(
+      const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate,
+      const std::shared_ptr<LynxNativeModule> &native_module);
+
   base::LogContext log_context_;
   int64_t context_id_ = -1;
-  LynxModuleProviderFunction BindingFunc(
+  LynxJSIModuleBinding::Provider BindingFunc(
       std::weak_ptr<LynxModuleManager> weak_manager,
       const std::shared_ptr<ModuleDelegate> &delegate);
 

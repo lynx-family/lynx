@@ -32,7 +32,8 @@ static jlong Install(JNIEnv*, jclass, jboolean commit) {
         return new hsr::HostScriptModuleInterceptor();
       },
       hsr::Interceptor::RegisterView,
-      hsr::Interceptor::DestroyView};
+      hsr::Interceptor::DestroyView,
+      hsr::HostScriptModuleInterceptor::ResolveMissingModule};
   const auto* transport = hsr::GetStandaloneHostScriptTransport();
   if (!hsr::GetHostScriptEngine()->set_provider(&callbacks, commit)) return 0;
   return reinterpret_cast<jlong>(transport);

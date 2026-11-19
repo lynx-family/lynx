@@ -64,7 +64,8 @@ class LynxModule : public HostObject,
    public:
     const size_t argCount;
     const std::string name;
-    MethodMetadata(size_t argCount, const std::string& methodName);
+    MethodMetadata(size_t argCount, const std::string& methodName)
+        : argCount(argCount), name(methodName) {}
   };
 
   virtual base::expected<Value, JSINativeException> invokeMethod(

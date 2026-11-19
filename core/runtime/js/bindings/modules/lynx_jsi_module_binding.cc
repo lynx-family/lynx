@@ -12,23 +12,24 @@ namespace js {
 /**
  * Public API to install the LynxModule system.
  */
-LynxJSIModuleBinding::LynxJSIModuleBinding(
-    const LynxModuleProviderFunction& moduleProvider)
-    : moduleProvider_(moduleProvider) {}
+LynxJSIModuleBinding::LynxJSIModuleBinding(Provider moduleProvider)
+    : moduleProvider_(std::move(moduleProvider)) {}
 
 Value LynxJSIModuleBinding::get(Runtime* rt, const PropNameID& prop) {
   Scope scope(*rt);
   std::string moduleName = prop.utf8(*rt);
-  std::shared_ptr<LynxModule> module = moduleProvider_(moduleName);
+  auto replacement = Value::null();
+  LookupFallback fallback{*rt, replacement};
+  std::shared_ptr<LynxModule> module = moduleProvider_(moduleName, &fallback);
   if (module == nullptr) {
-    return Value::null();
+    return replacement;
   }
   return Object::createFromHostObject(*rt, std::move(module));
 }
 
 std::shared_ptr<LynxModule> LynxJSIModuleBinding::GetModule(
     const std::string& name) {
-  return moduleProvider_(name);
+  return moduleProvider_(name, nullptr);
 }
 
 }  // namespace js

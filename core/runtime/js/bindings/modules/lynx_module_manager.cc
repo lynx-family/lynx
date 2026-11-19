@@ -4,6 +4,8 @@
 
 #include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 
+#include <atomic>
+
 #include "core/public/jsb/extension_module_factory.h"
 #include "core/runtime/js/bindings/interceptor/interceptor_factory.h"
 #include "core/runtime/js/bindings/modules/lynx_jsi_module.h"
@@ -13,6 +15,15 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+namespace {
+std::atomic<LynxModuleManager::MissingModuleResolver> missing_module_resolver{
+    nullptr};
+}  // namespace
+
+void LynxModuleManager::SetMissingModuleResolver(
+    MissingModuleResolver resolver) {
+  missing_module_resolver.store(resolver, std::memory_order_release);
+}
 LynxModuleManager::~LynxModuleManager() {
   LOGI(GetLogContext() << " NativeModule: ~LynxJSIModuleManager");
   for (auto &module : module_map_) {
@@ -58,34 +69,50 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
   if (!native_module && extension_module_factory_) {
     native_module = extension_module_factory_->CreateModule(name);
   }
-  if (native_module) {
-    auto lynx_jsi_module =
-        std::make_shared<LynxJSIModule>(name, delegate, native_module);
-    lynx_jsi_module->SetLogContext(log_context_);
-    // set delegate & proxy
-    native_module->SetDelegate(lynx_jsi_module);
-    native_module->SetRuntimeProxy(runtime_proxy);
-    native_module->SetContextID(context_id_);
-    // set interceptor
-    lynx_jsi_module->SetModuleInterceptor(group_interceptor_);
-    lynx_jsi_module->SetNativeModuleRecordObserver(
-        native_module_record_observer_);
-    lynx_jsi_module->SetRecordID(record_id_);
-    itr = module_map_.emplace(name, std::move(lynx_jsi_module)).first;
-    return itr->second;
-  }
-  return std::shared_ptr<LynxModule>(nullptr);
+  if (!native_module) return nullptr;
+  return module_map_
+      .emplace(name, WrapNativeModule(name, delegate, native_module))
+      .first->second;
 }
 
-LynxModuleProviderFunction LynxModuleManager::BindingFunc(
+std::shared_ptr<LynxModule> LynxModuleManager::WrapNativeModule(
+    const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate,
+    const std::shared_ptr<LynxNativeModule> &native_module) {
+  auto module = std::make_shared<LynxJSIModule>(name, delegate, native_module);
+  module->SetLogContext(log_context_);
+  native_module->SetDelegate(module);
+  native_module->SetRuntimeProxy(runtime_proxy);
+  native_module->SetContextID(context_id_);
+  module->SetModuleInterceptor(group_interceptor_);
+  module->SetNativeModuleRecordObserver(native_module_record_observer_);
+  module->SetRecordID(record_id_);
+  return module;
+}
+
+LynxJSIModuleBinding::Provider LynxModuleManager::BindingFunc(
     std::weak_ptr<LynxModuleManager> weak_manager,
     const std::shared_ptr<ModuleDelegate> &delegate) {
-  return [weak_manager, delegate](const std::string &name) {
+  const auto resolve = missing_module_resolver.load(std::memory_order_acquire);
+  return [weak_manager, delegate, resolve](
+             const std::string &name,
+             LynxJSIModuleBinding::LookupFallback *fallback) {
     auto manager = weak_manager.lock();
     if (manager) {
       auto ptr = manager->GetModule(name, delegate);
       if (ptr != nullptr) {
         return ptr;
+      }
+      if (resolve && fallback && manager->group_interceptor_ &&
+          manager->group_interceptor_->HasInvocationHooks()) {
+        resolve({fallback->runtime, name, manager->log_context_.view_id,
+                 delegate, *manager,
+                 [](const MissingNativeModuleRequest &request,
+                    const std::shared_ptr<LynxNativeModule> &native) {
+                   return request.manager.WrapNativeModule(
+                       request.name, request.delegate, native);
+                 }},
+                fallback->result);
+        if (!fallback->result.isNull()) return std::shared_ptr<LynxModule>();
       }
     }
     // ptr == nullptr
