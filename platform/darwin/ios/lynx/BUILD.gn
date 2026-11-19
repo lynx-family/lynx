@@ -434,6 +434,7 @@ subspec_target("UnitTests") {
     "LynxUnitTestUtils.mm",
     "base/LynxComponentStatisticUnitTest.m",
     "base/LynxFPSMonitorUnitTest.m",
+    "base/LynxFontFaceManagerUnitTest.m",
     "base/LynxLogUnitTest.m",
     "base/background/LynxBackgroundManagerUnitTest.m",
     "base/background/LynxBoxShadowLayerUnitTest.m",

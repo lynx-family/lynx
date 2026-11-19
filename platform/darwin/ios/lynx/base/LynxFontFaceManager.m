@@ -381,7 +381,8 @@ typedef struct _LynxInnerFontInfo {
     id cached = [_registedFontMap objectForKey:cacheKey];
     if (cached != nil) {
       if ([cached isKindOfClass:[NSString class]]) {
-        // has name cached
+        // Registration may finish after the caller's initial cache lookup.
+        item.dataFontName = cached;
         return false;
       }
       if ([cached isKindOfClass:[NSMutableSet class]]) {
