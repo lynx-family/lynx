@@ -215,6 +215,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     virtual void SendNativeCustomEvent(const std::string &name, int tag,
                                        const lepus::Value &param_value,
                                        const std::string &param_name) = 0;
+    virtual void ScheduleUIOperationFlush() {}
     virtual void InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                         int32_t ref_id) = 0;
     virtual void RemoveLayoutNode(int32_t parent_id, int32_t child_id) = 0;
@@ -288,6 +289,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   PaintingContext *painting_context();
   inline Catalyzer *catalyzer() { return catalyzer_.get(); }
+  void ScheduleUIOperationFlush() { delegate_->ScheduleUIOperationFlush(); }
   inline NodeManager *node_manager() { return node_manager_.get(); }
 
   void SetLogContext(const base::LogContext &log_context);
