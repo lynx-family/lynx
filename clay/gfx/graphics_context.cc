@@ -5,6 +5,7 @@
 #include "clay/gfx/graphics_context.h"
 
 #include <memory>
+#include <utility>
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/image/image_resource.h"
@@ -449,13 +450,13 @@ float GraphicsContext::GetPathLength(const GrPath& path) {
 
 void GraphicsContext::SetPathFromPoints(clay::GrPath* path, size_t num_points,
                                         const FloatPoint* points) {
-#ifndef ENABLE_SKITY
-  path->incReserve(num_points);
-#endif  // ENABLE_SKITY
-  PATH_MOVE_TO((*path), points[0].x(), points[0].y());
+  clay::GrPathBuilder builder(std::move(*path));
+  ReservePathPoints(builder, num_points);
+  PATH_MOVE_TO(builder, points[0].x(), points[0].y());
   for (size_t i = 1; i < num_points; ++i) {
-    PATH_LINE_TO((*path), points[i].x(), points[i].y());
+    PATH_LINE_TO(builder, points[i].x(), points[i].y());
   }
+  DetachPathTo(builder, path);
 }
 
 void GraphicsContext::AdjustLineToPixelBoundaries(FloatPoint* p1,

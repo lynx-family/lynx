@@ -299,7 +299,7 @@ void Stopwatch::InitVisualizeSurface(const skity::Rect& rect) const {
   // Draw the old data to initially populate the graph.
   // Prepare a path for the data. We start at the height of the last point, so
   // it looks like we wrap around
-  skity::Path path;
+  skity::PathBuilder path;
   path.MoveTo(x, height);
   path.LineTo(x, y + height * (1.0 - UnitHeight(laps_[0].ToMillisecondsF(),
                                                 max_unit_interval)));
@@ -324,7 +324,7 @@ void Stopwatch::InitVisualizeSurface(const skity::Rect& rect) const {
 
   // Draw the graph.
   paint.SetColor(0xAA0000FF);
-  visualize_cache_canvas_->DrawPath(path, paint);
+  visualize_cache_canvas_->DrawPath(path.Detach(), paint);
 #endif  // !OS_IOS
 }
 
@@ -468,7 +468,7 @@ void CounterValues::Visualize(clay::GrCanvas* canvas,
   const float right = x + width;
 
   // Prepare a path for the data.
-  clay::GrPath path;
+  clay::GrPathBuilder path;
   PATH_MOVE_TO(path, x, bottom);
 
   for (size_t i = 0; i < kMaxSamples; ++i) {
@@ -490,7 +490,7 @@ void CounterValues::Visualize(clay::GrCanvas* canvas,
 
   // Draw the graph.
   PAINT_SET_COLOR(paint, 0xAA0000FF);
-  CANVAS_DRAW_PATH(canvas, path, paint);
+  CANVAS_DRAW_PATH(canvas, clay::DetachPath(path), paint);
 
   // Paint the vertical marker for the current frame.
   const double sample_unit_width = (1.0 / kMaxSamples);

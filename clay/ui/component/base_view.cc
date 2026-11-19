@@ -1026,8 +1026,9 @@ void BaseView::SetCursor(const clay::Value::Array& array) {
 }
 
 // Add Lamé curve in the target quadrant to the target path.
-static void AddLameCurveToPath(GrPath& path, float rx, float ry, float cx,
-                               float cy, float ex, float ey, int quadrant) {
+static void AddLameCurveToPath(GrPathBuilder& path, float rx, float ry,
+                               float cx, float cy, float ex, float ey,
+                               int quadrant) {
   double cosI, sinI, x, y;
   float fx = (quadrant == 1 || quadrant == 4) ? 1 : -1;
   float fy = (quadrant == 1 || quadrant == 2) ? 1 : -1;
@@ -1267,7 +1268,7 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       if (path_data->params.size() != 4 || path_data->exponents.size() != 2) {
         break;
       }
-      GrPath path;
+      GrPathBuilder path;
       float rx = utils::ResolvePlatformLength(path_data->params[0], width_);
       float ry = utils::ResolvePlatformLength(path_data->params[1], height_);
       float cx = utils::ResolvePlatformLength(path_data->params[2], width_);
@@ -1282,7 +1283,7 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       for (int i = 1; i <= 4; i++) {
         AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, i);
       }
-      SET_PATH(path);
+      SET_PATH(DetachPath(path));
       break;
     }
     case ClipPathData::ClipType::kInset: {
@@ -1329,15 +1330,15 @@ void BaseView::DrawClipPath(bool is_clip_path) {
           utils::ResolvePlatformLength(path_data->radius[3].y, width_);
       switch (path_data->corner_type) {
         case ClipPathData::CornerType::kCornerRect: {
-          GrPath path;
+          GrPathBuilder path;
           skity::Rect rect = skity::Rect::MakeLTRB(left, top, width_ - right,
                                                    height_ - bottom);
           PATH_ADD_RECT(path, rect);
-          SET_PATH(path);
+          SET_PATH(DetachPath(path));
           break;
         }
         case ClipPathData::CornerType::kCornerRounded: {
-          GrPath path;
+          GrPathBuilder path;
           skity::Vec2 radii[4] = {
               {radius_top_left_x, radius_top_left_y},
               {radius_top_right_x, radius_top_right_y},
@@ -1349,14 +1350,14 @@ void BaseView::DrawClipPath(bool is_clip_path) {
                                     height_ - top - bottom),
               radii);
           PATH_ADD_RRECT(path, rrect);
-          SET_PATH(path);
+          SET_PATH(DetachPath(path));
           break;
         }
         case ClipPathData::CornerType::kCornerSuperElliptical: {
           if (path_data->exponents.size() != 2) {
             break;
           }
-          GrPath path;
+          GrPathBuilder path;
           std::vector<float> radius = {
               radius_top_left_x,     radius_top_left_y,
               radius_top_right_x,    radius_top_right_y,
@@ -1392,7 +1393,7 @@ void BaseView::DrawClipPath(bool is_clip_path) {
           cx = width_ - right - rx;
           cy = top + ry;
           AddLameCurveToPath(path, rx, ry, cx, cy, ex, ey, 4);
-          SET_PATH(path);
+          SET_PATH(DetachPath(path));
           break;
         }
         case ClipPathData::CornerType::kUnknown:
