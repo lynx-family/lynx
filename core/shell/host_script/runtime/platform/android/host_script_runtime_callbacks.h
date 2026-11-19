@@ -11,7 +11,9 @@ namespace lynx {
 namespace runtime {
 namespace js {
 class ModuleInterceptor;
-}
+class Value;
+struct MissingNativeModuleRequest;
+}  // namespace js
 }  // namespace runtime
 namespace shell {
 
@@ -25,9 +27,11 @@ struct HostScriptRuntimeCallbacks {
   runtime::js::ModuleInterceptor* (*create_module_interceptor)();
   void (*register_view)(int32_t view);
   void (*destroy_view)(int32_t view);
+  void (*resolve_missing_module)(const runtime::js::MissingNativeModuleRequest&,
+                                 runtime::js::Value&);
 };
 
-constexpr uint32_t kHostScriptRuntimeAbiVersion = 7;
+constexpr uint32_t kHostScriptRuntimeAbiVersion = 12;
 // Engine-owned executor allocation isolates replay/recorder field differences.
 // Shared inline types still require matching build features.
 constexpr uint32_t kHostScriptExecutorFeatures =

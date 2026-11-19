@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "core/shell/host_script/runtime/interceptor.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
@@ -20,13 +21,13 @@ namespace lynx::shell {
 
 // The runtime owner installs this into an existing environment, on its owning
 // thread. This component never creates a VM, thread or cross-thread JS handle.
-// Each event kind accepts one active handler. Dispose it before registering
-// another handler of the same kind. Handlers decide with `proceed`, optionally
-// with a patch, or `mock` for jsb.call and resource.fetch. Their third argument
-// is the event's `LynxView` proxy (or null). The view.created notification
-// accepts handlers in every domain, passes only the proxy and ignores return
-// values. A new view.created handler first receives the existing Views,
-// asynchronously, and each handler is notified at most once per View.
+// JSB decisions accept multiple handlers in registration order. Other events
+// accept one handler per kind. Handlers return `next` to continue a JSB chain,
+// `proceed` with an optional patch, or `mock` when supported. Their third
+// argument is the event's `LynxView` proxy (or null). The view.created
+// notification accepts handlers in every domain, passes only the proxy and
+// ignores return values. A new view.created handler first receives the existing
+// Views, asynchronously, and each handler is notified at most once per View.
 class HostScriptLynxViews;
 
 class HostScriptInterceptor final
@@ -63,6 +64,7 @@ class HostScriptInterceptor final
     uint64_t id;
     InterceptKind kind;
     Napi::FunctionReference function;
+    bool active = true;
     // Views already delivered to this view.created handler.
     std::unordered_set<base::LynxEntityId> created;
   };
@@ -78,18 +80,24 @@ class HostScriptInterceptor final
     InterceptCompletion complete;
     lepus::Value event;
     uint64_t handler;
+    // The last handler present when the callback was first dispatched.
+    uint64_t last_handler;
+    std::string view_url;
     bool mock;
   };
+  InterceptResult DispatchFrom(InterceptKind kind, const lepus::Value& event,
+                               uint64_t after_handler, uint64_t last_handler,
+                               std::string view_url);
   std::function<void(InterceptCompletion)> WaitForCallbacks(
       Napi::Array promises, const lepus::Value& event, uint64_t handler,
-      bool mock);
+      bool mock, uint64_t last_handler = 0, const std::string& view_url = {});
   void Complete(uint64_t id, Napi::Value value, bool failed,
                 bool cancelled = false);
   void CancelPending(uint64_t handler = 0, const std::string& view = {});
   static Napi::Value Settled(const Napi::CallbackInfo& info);
   std::function<void(InterceptCompletion)> ReadCallbacks(
       Napi::Value& returned, InterceptKind kind, const lepus::Value& event,
-      uint64_t handler);
+      uint64_t handler, uint64_t last_handler, const std::string& view_url);
   void Remove(uint64_t id);
   Napi::Env env_;
   Domain domain_;
@@ -103,8 +111,9 @@ class HostScriptInterceptor final
   Napi::FunctionReference then_;
   uint64_t next_pending_ = 1;
   std::unordered_map<uint64_t, Pending> pending_;
-  std::array<std::shared_ptr<Entry>, static_cast<size_t>(InterceptKind::kCount)>
-      entries_{};
+  std::array<std::vector<std::shared_ptr<Entry>>,
+             static_cast<size_t>(InterceptKind::kCount)>
+      entries_;
 };
 }  // namespace lynx::shell
 #endif  // CORE_SHELL_HOST_SCRIPT_RUNTIME_HOST_SCRIPT_INTERCEPTOR_H_
