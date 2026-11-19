@@ -22,8 +22,8 @@ namespace lynx::shell {
 // thread. This component never creates a VM, thread or cross-thread JS handle.
 // Each event kind accepts one active handler. Dispose it before registering
 // another handler of the same kind. Handlers decide with `proceed`, optionally
-// with a patch, or `mock` for jsb.call, and receive the event's `LynxView`
-// proxy (or null) as their third argument. The view.created notification
+// with a patch, or `mock` for jsb.call and resource.fetch. Their third argument
+// is the event's `LynxView` proxy (or null). The view.created notification
 // accepts handlers in every domain, passes only the proxy and ignores return
 // values. A new view.created handler first receives the existing Views,
 // asynchronously, and each handler is notified at most once per View.

@@ -6762,6 +6762,7 @@ public class abstract com::lynx::tasm::provider::LynxResourceFetcher :  {
 
 public class com::lynx::tasm::core::resource::LynxResourceLoader :  {
   public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
+  public void com.lynx.tasm.core.resource.LynxResourceLoader.setViewId(long viewId);
   public byte[] com.lynx.tasm.core.resource.LynxResourceLoader.loadLynxJSAsset(String name);
 }
 
