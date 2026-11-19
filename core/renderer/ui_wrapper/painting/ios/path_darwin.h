@@ -5,18 +5,27 @@
 #ifndef CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PATH_DARWIN_H_
 #define CORE_RENDERER_UI_WRAPPER_PAINTING_IOS_PATH_DARWIN_H_
 
+#include <CoreGraphics/CGPath.h>
+
 #include <memory>
 
 #include "gfx/public/path_impl_factory.h"
 
 namespace lynx::tasm {
 
-// Source-only backend skeleton; native access belongs to a later consumer
-// slice.
 class PathDarwin final : public gfx::PathImpl {
  public:
   explicit PathDarwin(gfx::PathSource source);
   ~PathDarwin() override;
+
+  // Called on the iOS preparation/drawing executor. The immutable result is
+  // borrowed while this implementation is retained; nullptr means invalid SVG.
+  // Placement and fill rule belong to the consumer, not the cached geometry.
+  CGPathRef GetCGPath() const;
+
+ private:
+  mutable CGPathRef path_{nullptr};
+  mutable bool realized_{false};
 };
 
 class PathDarwinFactory final : public gfx::PathImplFactory {
