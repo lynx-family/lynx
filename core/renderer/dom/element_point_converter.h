@@ -18,7 +18,8 @@ class Element;
 
 // Converts a point between Element-local border-box coordinate systems using
 // Element-owned layout state. Returns no value when Layout-in-Element is not
-// enabled or the Elements do not share an attached layout tree.
+// enabled or the Elements do not share an attached Page. Independent Overlay
+// roots use their latest FLR platform origin relative to that Page.
 base::flex_optional<base::geometry::FloatPoint> ConvertPointBetweenElements(
     const base::geometry::FloatPoint& point, Element* from, Element* to);
 
