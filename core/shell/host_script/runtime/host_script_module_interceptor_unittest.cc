@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/message_loop.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/inspector/observer/native_module_record_observer.h"
@@ -290,6 +291,7 @@ class Observer : public NativeModuleRecordObserver {
 class HostScriptModuleInterceptorTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    fml::MessageLoop::EnsureInitializedForCurrentThread();
     auto vm = rt.createVM(nullptr);
     auto context = rt.createContext(vm);
     rt.InitRuntime(context);

@@ -7,6 +7,7 @@ package com.lynx.tasm.core.resource;
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxInfoReportHelper;
@@ -24,12 +25,14 @@ import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceUtil;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class LynxResourceLoader {
   static final String CORE_JS = "assets://lynx_core.js";
@@ -50,6 +53,7 @@ public class LynxResourceLoader {
   private final LynxExternalResourceFetcherWrapper mFetcherWrapper;
   private final TemplateLoaderHelper mTemplateLoaderHelper;
   private final LynxGenericResourceFetcher mGenericResourceFetcher;
+  private volatile long mViewId = -1;
 
   private final LynxInfoReportHelper mReportHelper = new LynxInfoReportHelper();
 
@@ -63,24 +67,64 @@ public class LynxResourceLoader {
     mGenericResourceFetcher = genericResourceFetcher;
   }
 
+  /** Binds this renderer's loader, including a background runtime attached after creation. */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setViewId(long viewId) {
+    mViewId = viewId;
+  }
+
   @CalledByNative
   private void loadResource(long responseHandler, String url, int type, boolean reqInCurThread) {
-    if (reqInCurThread) {
-      loadResource(responseHandler, url, type);
-    } else {
-      try {
-        LynxThreadPool.getBriefIOExecutor().execute(new Runnable() {
-          @Override
-          public void run() {
-            loadResource(responseHandler, url, type);
+    if (type == LynxResourceType.LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE
+        || type == LynxResourceType.LYNX_RESOURCE_TYPE_FRAME) {
+      final long viewId = mViewId;
+      if (LynxHostScriptResourceHooks.hasHandler(viewId)) {
+        // Only a synchronous UI caller can resume the load inline after the decision.
+        final boolean loadInline = reqInCurThread && UIThreadUtils.isOnUiThread();
+        UIThreadUtils.runOnUiThreadImmediately(() -> {
+          Object decision = null;
+          try {
+            if (url != null) {
+              decision = LynxHostScriptResourceHooks.nativeDispatch(
+                  viewId, url.getBytes(StandardCharsets.UTF_8));
+            }
+          } catch (Throwable e) {
+            LLog.e(TAG, "Host Script resource.fetch failed: " + e.getMessage());
           }
+          dispatchResource(responseHandler, url, type, loadInline, decision);
         });
-      } catch (Throwable e) {
-        // to release native pointer if exception occurs
-        InvokeNativeCallbackWithBytes(
-            responseHandler, null, RESOURCE_LOADER_FAILED, e.getMessage());
+        return;
       }
     }
+    dispatchResource(responseHandler, url, type, reqInCurThread, null);
+  }
+
+  private void dispatchResource(long responseHandler, String url, int type, boolean reqInCurThread,
+      @Nullable Object decision) {
+    if (reqInCurThread) {
+      loadResolvedResource(responseHandler, url, type, decision);
+      return;
+    }
+    try {
+      LynxThreadPool.getBriefIOExecutor().execute(
+          () -> loadResolvedResource(responseHandler, url, type, decision));
+    } catch (Throwable e) {
+      InvokeNativeCallbackWithBytes(responseHandler, null, RESOURCE_LOADER_FAILED, e.getMessage());
+    }
+  }
+
+  private void loadResolvedResource(
+      long responseHandler, String url, int type, @Nullable Object decision) {
+    if (decision instanceof byte[]) {
+      LynxResourceRequest.LynxResourceType resourceType =
+          type == LynxResourceType.LYNX_RESOURCE_TYPE_FRAME
+          ? LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate
+          : LynxResourceRequest.LynxResourceType.LynxResourceTypeDynamicComponent;
+      new TemplateResourceCallback(url, responseHandler, mReportHelper, resourceType)
+          .onTemplateLoaded(true, (byte[]) decision, null, null, null);
+      return;
+    }
+    loadResource(responseHandler, decision instanceof String ? (String) decision : url, type);
   }
 
   void loadResource(long responseHandler, String url, int type) {
