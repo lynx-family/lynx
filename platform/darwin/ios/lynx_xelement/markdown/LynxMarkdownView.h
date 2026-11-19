@@ -7,11 +7,13 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxMarkdownBundleV2;
+@class LynxUIMarkdownV2;
 @class ServalMarkdownView;
 
 @interface LynxMarkdownViewV2 : UIView
 
 @property(nonatomic, copy, nullable) void (^exposureUpdater)(void);
+@property(nonatomic, weak, nullable) LynxUIMarkdownV2 *markdownUI;
 
 - (nullable ServalMarkdownView *)setBundle:(nullable LynxMarkdownBundleV2 *)bundle;
 - (void)setContentOffset:(CGPoint)contentOffset;

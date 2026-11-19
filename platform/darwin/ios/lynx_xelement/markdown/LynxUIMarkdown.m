@@ -70,6 +70,7 @@ static uint32_t LynxUIMarkdownColorToARGB(UIColor *color) {
 
 - (LynxMarkdownViewV2 *)createView {
   LynxMarkdownViewV2 *view = [[LynxMarkdownViewV2 alloc] init];
+  view.markdownUI = self;
   __weak typeof(self) weakSelf = self;
   view.exposureUpdater = ^{
     [weakSelf updateLinkExposure];

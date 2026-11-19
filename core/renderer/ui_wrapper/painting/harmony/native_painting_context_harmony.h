@@ -51,6 +51,8 @@ class NativePaintingCtxHarmony : public PaintingCtxPlatformImpl,
                     const float* borders, const float* bounds,
                     const float* sticky, float max_height, uint32_t node_index,
                     bool display_none) override;
+  void UpdatePlatformExtraBundle(int32_t id,
+                                 PlatformExtraBundle* bundle) override;
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override {}
   void Flush() override;
   void HandleValidate(int tag) override {}

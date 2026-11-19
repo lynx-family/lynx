@@ -5,6 +5,8 @@
 #import "LynxMarkdownInlineViewHandle.h"
 
 #import <Lynx/LynxNativeLayoutNode.h>
+#import <Lynx/LynxRenderer+Internal.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIOwner.h>
 
@@ -91,6 +93,11 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   bounds.origin.y += contentOffset.y;
   [ui setFrame:bounds];
   [ui frameDidChange];
+  if ([ui.view respondsToSelector:@selector(renderer)]) {
+    LynxRenderer *renderer = [(id<LynxRendererHost>)ui.view renderer];
+    [renderer updateRendererLayoutFrame:bounds];
+    [renderer syncHostDecorationLayers];
+  }
 }
 
 - (void)setVisibility:(BOOL)visible {
@@ -101,6 +108,9 @@ static LynxMeasureMode LynxMarkdownToLynxMeasureMode(ServalMarkdownLayoutMode mo
   void (^updateUI)(void) = ^{
     ui.view.hidden = !visible;
     [ui.backgroundManager setHidden:!visible];
+    if ([ui.view respondsToSelector:@selector(renderer)]) {
+      [[(id<LynxRendererHost>)ui.view renderer] syncHostDecorationLayers];
+    }
   };
   if ([NSThread isMainThread]) {
     updateUI();

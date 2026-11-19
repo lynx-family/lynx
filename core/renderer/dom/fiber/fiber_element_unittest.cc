@@ -40,6 +40,7 @@
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_layout_coordinates.h"
+#include "core/renderer/dom/element_layout_node_manager.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/element_point_converter.h"
 #include "core/renderer/dom/fiber/component_element.h"
@@ -6832,6 +6833,33 @@ TEST_P(FiberElementTest, LayoutInElementLegacyReuseAfterDeferredViewport) {
 
 TEST_P(FiberElementTest, LayoutInElementUnifiedReuseAfterDeferredViewport) {
   ExpectLayoutInElementReuseAfterDeferredViewport(this, true);
+}
+
+TEST_P(FiberElementTest, ElementLayoutNodeManagerTracksSubtreeDirtyState) {
+  manager->page_options_.embedded_mode_ = static_cast<EmbeddedMode>(
+      static_cast<int32_t>(manager->page_options_.embedded_mode_) |
+      static_cast<int32_t>(EmbeddedMode::LAYOUT_IN_ELEMENT));
+  ElementLayoutNodeManager layout_nodes(*manager);
+  EXPECT_FALSE(layout_nodes.IsDirty(-1));
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto parent = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  EXPECT_FALSE(layout_nodes.IsDirty(child->impl_id()));
+  page->InsertNode(parent);
+  parent->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_FALSE(layout_nodes.IsDirty(parent->impl_id()));
+  EXPECT_FALSE(layout_nodes.IsDirty(child->impl_id()));
+
+  child->SetStyle(kPropertyIDWidth, lepus::Value("80px"));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(layout_nodes.IsDirty(parent->impl_id()));
+  EXPECT_TRUE(layout_nodes.IsDirty(child->impl_id()));
+  page->Layout(std::make_shared<PipelineOptions>());
+  EXPECT_FALSE(layout_nodes.IsDirty(parent->impl_id()));
+  EXPECT_FALSE(layout_nodes.IsDirty(child->impl_id()));
 }
 
 TEST_P(FiberElementTest, PageElementLayoutUpdatesPlatformRootSize) {

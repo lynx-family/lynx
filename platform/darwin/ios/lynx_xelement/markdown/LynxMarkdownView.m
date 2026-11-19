@@ -2,11 +2,24 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <ServalMarkdown/MarkdownMeasurer.h>
 #import <ServalMarkdown/ServalMarkdownView.h>
 #import <XElement/LynxMarkdownView.h>
+#import <XElement/LynxUIMarkdown.h>
 #import "adaptor/LynxMarkdownBundle.h"
+
+@interface LynxMarkdownV2Renderer : LynxRenderer
+@property(nonatomic, weak) LynxUIMarkdownV2 *markdownUI;
+@end
+
+@implementation LynxMarkdownV2Renderer
+- (void)updatePlatformExtraBundle:(id)data {
+  [self.markdownUI onReceiveUIOperation:data];
+}
+@end
 
 @interface LynxMarkdownViewV2 ()
 
@@ -21,6 +34,15 @@
   CGSize _measuredSize;
   CGPoint _contentOffset;
   BOOL _exposureUpdatePending;
+}
+
+- (LynxRenderer *)createRendererWithSign:(int32_t)sign andContext:(LynxRendererContext *)context {
+  LynxMarkdownV2Renderer *renderer =
+      [[LynxMarkdownV2Renderer alloc] initWithRenderHost:(UIView<LynxRendererHost> *)self
+                                                 andSign:sign
+                                              andContext:context];
+  renderer.markdownUI = self.markdownUI;
+  return renderer;
 }
 
 - (instancetype)init {
