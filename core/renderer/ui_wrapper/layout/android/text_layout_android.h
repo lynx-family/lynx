@@ -37,14 +37,12 @@ class TextLayoutAndroid : public TextLayoutImpl {
 
   void DispatchLayoutBefore(Element* element) override;
 
+  void Destroy(Element* element) override;
+
  private:
-  void BuildTextPropsBuffer(TextElement* element, std::string& output,
-                            size_t& current_length, bool use_utf16,
-                            PropArrayAndroid* props, bool* has_inline_view);
-  void ProcessChildProps(Element* element, std::string& output,
-                         size_t& current_length, bool use_utf16,
-                         PropArrayAndroid* props, bool* has_inline_view);
-  void AppendTextProps(TextElement* element, size_t pos_start, size_t pos_end,
+  struct TextBuffer;
+  void AppendTextContent(Element* element, TextBuffer& buffer);
+  void AppendTextProps(Element* element, size_t pos_start, size_t pos_end,
                        PropArrayAndroid* props);
   static void AppendViewProps(ViewElement* view_element, size_t start,
                               size_t end, PropArrayAndroid* props);
@@ -59,6 +57,11 @@ class TextLayoutAndroid : public TextLayoutImpl {
 
   base::android::ScopedWeakGlobalJavaRef<jobject> text_layout_;
   std::vector<PlatformTextEventTargetRange> building_event_target_ranges_;
+  struct TruncationEventRanges {
+    int32_t body_length;
+    std::vector<PlatformTextEventTargetRange> ranges;
+  };
+  std::unordered_map<int32_t, TruncationEventRanges> truncation_event_ranges_;
 };
 }  // namespace tasm
 }  // namespace lynx

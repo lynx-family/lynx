@@ -32,6 +32,7 @@ class NativePaintingCtxPlatformDarwinRef : public NativePaintingCtxPlatformRef {
   void GetPlatformRendererScrollOffset(int32_t sign, float offset[2]) override;
   bool IsPlatformRendererScrollable(int32_t sign) override;
   LynxRendererContext* GetRendererContext();
+  PlatformTextEventTargetRegions GetTextEventTargetRegions(int32_t text_id) override;
 
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
 
