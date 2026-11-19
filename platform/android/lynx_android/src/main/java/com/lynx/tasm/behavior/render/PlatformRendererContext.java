@@ -160,6 +160,47 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return res;
   }
 
+  void publishLayoutPosition(int sign, float x, float y) {
+    if (!mDestroyed && mNativePtr != 0) {
+      nativeUpdateLayoutPosition(mNativePtr, sign, x, y);
+    }
+  }
+
+  private native void nativeUpdateLayoutPosition(long nativePtr, int sign, float x, float y);
+
+  void publishScrollOffset(int sign, float x, float y) {
+    if (!mDestroyed && mNativePtr != 0) {
+      nativeUpdateScrollOffset(mNativePtr, sign, x, y);
+    }
+  }
+
+  private native void nativeUpdateScrollOffset(long nativePtr, int sign, float x, float y);
+
+  void publishStickyOffset(int sign, float x, float y, boolean sticky) {
+    if (!mDestroyed && mNativePtr != 0) {
+      nativeUpdateStickyOffset(mNativePtr, sign, x, y, sticky);
+    }
+  }
+
+  private native void nativeUpdateStickyOffset(
+      long nativePtr, int sign, float x, float y, boolean sticky);
+
+  void publishSiblingOrder(int sign, int order) {
+    if (!mDestroyed && mNativePtr != 0) {
+      nativeUpdateSiblingOrder(mNativePtr, sign, order);
+    }
+  }
+
+  private native void nativeUpdateSiblingOrder(long nativePtr, int sign, int order);
+
+  void publishIsOnTree(int sign, boolean isOnTree) {
+    if (!mDestroyed && mNativePtr != 0) {
+      nativeUpdateIsOnTree(mNativePtr, sign, isOnTree);
+    }
+  }
+
+  private native void nativeUpdateIsOnTree(long nativePtr, int sign, boolean isOnTree);
+
   // Returns null while the root view is not attached to a window.
   @CalledByNative
   float[] getRootViewLocationInWindow() {

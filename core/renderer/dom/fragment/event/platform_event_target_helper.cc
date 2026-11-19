@@ -714,6 +714,9 @@ PlatformEventTargetHelper::ReconstructEventTargetTreeRecursively(
         const auto event_target = fml::MakeRefCounted<PlatformEventTarget>(
             this, tree_root_id, sign, begin.x, begin.y, begin.w, begin.h);
         event_target->SetRendererHostSign(page_renderer->GetId());
+        if (sign == page_renderer->GetId() && sign != tree_root_id) {
+          event_target->SetPlatformRenderer(page_renderer->WeakFromThis());
+        }
         event_target->SetPlatformRendererType(type);
         event_target->SetScrollContainer(IsScrollContainer(type, sign));
         event_target->SetOverflow(begin.overflow_x != 0, begin.overflow_y != 0);
