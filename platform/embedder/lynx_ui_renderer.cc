@@ -4,6 +4,7 @@
 
 #include "platform/embedder/lynx_ui_renderer.h"
 
+#if ENABLE_EMBEDDER_BUILTIN_UI
 #include <cctype>
 #include <string_view>
 #include <utility>
@@ -11,10 +12,23 @@
 #include "base/include/timer/time_utils.h"
 #include "clay/ui/event/key_codes.h"
 #include "platform/embedder/clay_input_event_target.h"
+#endif
 
 namespace lynx {
 namespace embedder {
 
+LynxUIRenderer::~LynxUIRenderer() { InvalidateInputEvents(); }
+
+#if !ENABLE_EMBEDDER_BUILTIN_UI
+std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
+    lynx_view_builder_t* builder) {
+  return nullptr;
+}
+
+void LynxUIRenderer::CancelInputEvents() {}
+
+void LynxUIRenderer::InvalidateInputEvents() {}
+#else
 namespace {
 
 constexpr int32_t kSyntheticTouchDeviceId = 1;
@@ -101,8 +115,6 @@ int64_t ButtonMask(std::string_view button) {
 }
 
 }  // namespace
-
-LynxUIRenderer::~LynxUIRenderer() { InvalidateInputEvents(); }
 
 std::shared_ptr<devtool::input::InputEventTarget>
 LynxUIRenderer::GetInputEventTarget() {
@@ -281,6 +293,7 @@ void LynxUIRenderer::DispatchKeyEvent(const std::string& type,
   }
   SendKeyEvent(event);
 }
+#endif  // ENABLE_EMBEDDER_BUILTIN_UI
 
 }  // namespace embedder
 }  // namespace lynx

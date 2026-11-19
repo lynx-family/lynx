@@ -15,8 +15,6 @@
 #include "platform/embedder/lynx_group_priv.h"
 #include "platform/embedder/lynx_load_meta_priv.h"
 #include "platform/embedder/lynx_runtime_lifecycle_observer_priv.h"
-#include "platform/embedder/lynx_service/lynx_security_service_priv.h"
-#include "platform/embedder/lynx_service/lynx_service_center_priv.h"
 #include "platform/embedder/lynx_update_meta_priv.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/lynx_view_event_simulation_proxy.h"
@@ -24,7 +22,17 @@
 #include "platform/embedder/lynx_devtool/devtool_env_embedder.h"
 #endif
 #include "platform/embedder/lynx_view_priv.h"
+#if ENABLE_EMBEDDER_SERVICE
+#include "platform/embedder/lynx_service/lynx_security_service_priv.h"  // nogncheck
+#include "platform/embedder/lynx_service/lynx_service_center_priv.h"  // nogncheck
+#endif
+#if ENABLE_EMBEDDER_CUSTOM_VSYNC
 #include "platform/embedder/lynx_vsync_monitor_priv.h"
+#endif
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
+#include "platform/embedder/module/extension_module_factory_impl.h"
+#include "platform/embedder/module/lynx_module_manager_napi.h"
+#endif
 #include "platform/embedder/module/global_module_registry.h"
 #include "platform/embedder/resource/lynx_resource_loader_embedder.h"
 
@@ -171,7 +179,13 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
       lynx::embedder::LynxUIRenderer::CreateWithBuilder(builder);
 #endif
   // get UIDelegate from lynx_ui_renderer.
-  auto* ui_delegate = view->lynx_ui_renderer->GetUIDelegate();
+  auto* ui_delegate = view->lynx_ui_renderer
+                          ? view->lynx_ui_renderer->GetUIDelegate()
+                          : nullptr;
+  if (!ui_delegate) {
+    delete view;
+    return nullptr;
+  }
 
   // Construct template renderer with builder.
   lynx::embedder::LynxTemplateRenderer::Settings settings;
@@ -199,7 +213,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
 #if defined(OS_HARMONY) && defined(ENABLE_WINDOWLESS)
   settings.use_quickjs = true;
 #endif
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   std::unordered_map<std::string,
                      std::tuple<extension_module_creator, bool, void*>>
       extension_module_creators;
@@ -212,9 +226,11 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
           std::move(extension_module_creators));
   view->extension_factory_->OnLynxViewCreate(view, ui_delegate);
 #endif
+#if ENABLE_EMBEDDER_CUSTOM_VSYNC
   settings.vsync_monitor_platform_impl = builder->custom_vsync_monitor;
+#endif
 
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   std::unordered_map<std::string, std::pair<napi_module_creator, void*>>
       mts_module_creators;
   lynx::embedder::GlobalModuleRegistry::GetInstance()
@@ -267,7 +283,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
           settings, ui_delegate, nullptr, nullptr,
           std::move(runtime_proxy_callback));
   view->lynx_template_renderer = std::move(lynx_template_renderer);
-#if ENABLE_INSPECTOR
+#if ENABLE_INSPECTOR && ENABLE_EMBEDDER_BUILTIN_UI
   view->lynx_template_renderer->SetInputEventTarget(
       view->lynx_ui_renderer->GetInputEventTarget());
   view->lynx_template_renderer->SetTemplateRendererEventSimulationProxy(
@@ -282,6 +298,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
   SetupLogBoxWrapper(view, builder->parent);
 #endif
+#if ENABLE_EMBEDDER_SERVICE
   view->lynx_template_renderer->SetTemplateVerification(
       [](uint8_t* content, size_t length, const std::string url,
          const char** error_msg) {
@@ -297,6 +314,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
         }
         return true;
       });
+#endif
 
   if (builder->font_scale != 1.0f) {
     view->lynx_template_renderer->SetFontScale(builder->font_scale);
@@ -350,7 +368,7 @@ LYNX_EXTERN_C void lynx_view_remove_client(lynx_view_t* view,
 
 LYNX_EXTERN_C void lynx_view_register_runtime_lifecycle_observer(
     lynx_view_t* view, lynx_runtime_lifecycle_observer_t* observer) {
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   auto runtime_proxy = view->lynx_template_renderer->GetRuntimeProxy();
   static_cast<lynx::shell::LynxBTSRuntimeProxyImpl*>(runtime_proxy.get())
       ->AddLifecycleListener(
@@ -386,12 +404,14 @@ LYNX_EXTERN_C void lynx_view_load_template(lynx_view_t* view,
 LYNX_EXTERN_C void lynx_view_load_lynx_ml(lynx_view_t* view, const char* source,
                                           const char* url,
                                           lynx_template_data_t* initial_data) {
+#if ENABLE_EMBEDDER_BUILTIN_UI
   if (!source || !url) {
     return;
   }
   view->lynx_template_renderer->LoadLynxML(
       url, source, nullptr,
       initial_data ? initial_data->template_data : nullptr);
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_update_data(lynx_view_t* view,
@@ -560,7 +580,7 @@ lynx_view_get_generic_resource_fetcher(lynx_view_t* view) {
 LYNX_EXTERN_C void lynx_view_enter_foreground(lynx_view_t* view) {
   view->lynx_template_renderer->OnEnterForeground();
   view->lynx_ui_renderer->OnEnterForeground();
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   view->extension_factory_->OnEnterForeground();
 #endif
 }
@@ -568,7 +588,7 @@ LYNX_EXTERN_C void lynx_view_enter_foreground(lynx_view_t* view) {
 LYNX_EXTERN_C void lynx_view_enter_background(lynx_view_t* view) {
   view->lynx_template_renderer->OnEnterBackground();
   view->lynx_ui_renderer->OnEnterBackground();
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   view->extension_factory_->OnEnterBackground();
 #endif
 }
@@ -581,7 +601,9 @@ LYNX_EXTERN_C void lynx_view_inject_bubble_event(lynx_view_t* view,
 LYNX_EXTERN_C void lynx_view_register_native_view(
     lynx_view_t* view, const char* name, lynx_native_view_creator creator,
     void* opaque) {
+#if ENABLE_EMBEDDER_BUILTIN_UI
   view->lynx_ui_renderer->RegisterNativeView(name, creator, opaque);
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_register_ime_handler(lynx_view_t* view,
@@ -593,7 +615,7 @@ LYNX_EXTERN_C void lynx_view_register_ime_handler(lynx_view_t* view,
 LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
   view->lynx_ui_renderer->PrepareForDestroy();
   view->user_data = nullptr;
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   // Detach napi modules.
   if (view->lynx_module_manager) {
     view->lynx_module_manager->Detach();

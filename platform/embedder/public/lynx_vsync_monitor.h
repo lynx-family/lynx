@@ -40,13 +40,18 @@ class LynxVSyncMonitor : public std::enable_shared_from_this<LynxVSyncMonitor> {
     if (c_monitor_) {
       return;
     }
+    auto weak_monitor =
+        std::make_unique<std::weak_ptr<LynxVSyncMonitor>>(weak_from_this());
     c_monitor_ = lynx_vsync_monitor_create_with_finalizer(
-        new std::weak_ptr<LynxVSyncMonitor>(weak_from_this()),
-        [](lynx_vsync_monitor_t* monitor, void* user_data) {
+        weak_monitor.get(), [](lynx_vsync_monitor_t* monitor, void* user_data) {
           std::weak_ptr<LynxVSyncMonitor>* weak_ptr =
               reinterpret_cast<std::weak_ptr<LynxVSyncMonitor>*>(user_data);
           delete weak_ptr;
         });
+    if (!c_monitor_) {
+      return;
+    }
+    weak_monitor.release();
     lynx_vsync_monitor_bind_frame_tick_complete_func(
         c_monitor_, [](lynx_vsync_monitor_t* c_monitor, uint64_t frame_id,
                        int64_t frame_start_time) {

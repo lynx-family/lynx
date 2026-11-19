@@ -163,6 +163,16 @@ TEST_F(LynxViewTest, DispatchKeyEventRequiresSupportedSimulationProxy) {
   EXPECT_FALSE(renderer.DispatchKeyEvent("keyDown", "A", "", 0, false));
 }
 
+TEST_F(LynxViewTest, CreationFailsWithoutUIRenderer) {
+  lynx::pub::LynxView::Builder builder;
+  builder.SetEnableJSRuntime(false);
+  lynx::embedder::TestLynxUIRenderer::SetCreationEnabled(false);
+  using View = std::unique_ptr<lynx_view_t, decltype(&lynx_view_release)>;
+  View view(lynx_view_create(builder.Impl(), nullptr), lynx_view_release);
+  lynx::embedder::TestLynxUIRenderer::SetCreationEnabled(true);
+  EXPECT_EQ(view, nullptr);
+}
+
 TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
   class RecordingRuntimeProxy : public lynx::shell::LynxBTSRuntimeProxyImpl {
    public:

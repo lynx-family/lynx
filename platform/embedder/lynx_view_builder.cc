@@ -5,6 +5,9 @@
 #include "base/include/log/logging.h"
 #include "build/build_config.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
+#if ENABLE_EMBEDDER_CUSTOM_VSYNC
+#include "platform/embedder/lynx_vsync_monitor_priv.h"
+#endif
 #include "platform/embedder/native_view/lynx_texture_view.h"
 
 LYNX_EXTERN_C lynx_view_builder_t* lynx_view_builder_create() {
@@ -46,6 +49,7 @@ LYNX_EXTERN_C void lynx_view_builder_set_font_scale(
 
 LYNX_EXTERN_C void lynx_view_builder_set_custom_vsync_monitor(
     lynx_view_builder_t* builder, lynx_vsync_monitor_t* monitor) {
+#if ENABLE_EMBEDDER_CUSTOM_VSYNC
   if (builder->custom_vsync_monitor &&
       builder->custom_vsync_monitor->GetCMonitor() == monitor) {
     return;
@@ -53,6 +57,7 @@ LYNX_EXTERN_C void lynx_view_builder_set_custom_vsync_monitor(
   builder->custom_vsync_monitor =
       monitor ? std::make_shared<lynx::embedder::LynxVSyncMonitor>(monitor)
               : nullptr;
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
@@ -124,20 +129,26 @@ LYNX_EXTERN_C void lynx_view_builder_set_generic_resource_fetcher(
 LYNX_EXTERN_C void lynx_view_builder_register_native_module(
     lynx_view_builder_t* builder, const char* module_name,
     napi_module_creator module_creator, void* opaque) {
+#if ENABLE_EMBEDDER_NAPI_MODULE
   builder->native_modules[module_name] = {module_creator, opaque};
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_builder_register_extension_module(
     lynx_view_builder_t* builder, const char* name,
     extension_module_creator creator, bool is_lazy_create, void* opaque) {
+#if ENABLE_EMBEDDER_NAPI_MODULE
   builder->extension_modules_.emplace(
       name, std::make_tuple(creator, is_lazy_create, opaque));
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_builder_register_native_view(
     lynx_view_builder_t* builder, const char* name,
     lynx_native_view_creator creator, void* opaque) {
+#if ENABLE_EMBEDDER_BUILTIN_UI
   builder->native_view_creators[name] = {creator, opaque};
+#endif
 }
 
 LYNX_EXTERN_C void lynx_view_builder_release(lynx_view_builder_t* builder) {

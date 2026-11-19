@@ -23,6 +23,9 @@ class NativeSubCodeSrcGenerator(FileGenerator):
             self._relative_path, self._file_name)
         self._append(
             "#include \"{0}\"\n\n".format(header_path))
+        if self._meta_data_list:
+            self._append("#include <initializer_list>\n")
+            self._append("#include <utility>\n\n")
         for ns in NAMESPACES:
             self._append("namespace {0} {{\n".format(ns))
 
@@ -61,6 +64,8 @@ class NativeMetaDataImplGenerator(ModuleGenerator):
         for meta_data in self._meta_data_list:
             field_name = get_field_name(meta_data)
             param_name = to_lower_snake(meta_data[KEY_NAME])
+            if meta_data[KEY_TYPE] == TYPE_STR or meta_data.get(KEY_MULTI_SELECTION, False):
+                param_name = "std::move({0})".format(param_name)
             init_list.append("{0}({1})".format(field_name, param_name))
         
         self._append_with_indent("\t: {0} {{\n".format(", ".join(init_list)))
@@ -68,27 +73,48 @@ class NativeMetaDataImplGenerator(ModuleGenerator):
         
         # Generate GetMetaData function
         self._append_with_indent("std::shared_ptr<{0}> GetMetaData(int32_t code) {{\n".format(META_DATA_CLASS_NAME))
+        for meta_data in self._meta_data_list:
+            self._append_with_indent("\t{0} {1};\n".format(
+                self._get_lookup_type(meta_data), get_field_name(meta_data)))
         self._append_with_indent("\tswitch (code) {\n")
 
     def after_generate(self):
         self._append_with_indent("\t\tdefault:\n")
         self._append_with_indent("\t\t\treturn nullptr;\n")
         self._append_with_indent("\t}\n")
+        # Keep string/vector/shared_ptr construction out of individual cases.
+        params = []
+        for meta_data in self._meta_data_list:
+            value = get_field_name(meta_data)
+            if meta_data.get(KEY_MULTI_SELECTION, False):
+                value = "{0}({1})".format(convert_meta_data_type(meta_data), value)
+            params.append(value)
+        self._append_with_indent("\treturn std::make_shared<{0}>({1});\n".format(
+            META_DATA_CLASS_NAME, ", ".join(params)))
         self._append_with_indent("}\n\n")
 
     def on_next_sub_code(self, code, behavior, section):
         code_name = get_sub_code_name(code, behavior, section)
-        self._append_with_indent("\t\tcase {0}:\n".format(code_name))
-        self._append_with_indent("\t\t\treturn std::make_shared<{0}>({0}(\n".format(META_DATA_CLASS_NAME))
-        
-        # Generate constructor parameters
-        params = []
+        self._append_with_indent("\t\tcase {0}: {{\n".format(code_name))
         for meta_data in self._meta_data_list:
             value = self._get_meta_data_value(meta_data, code, behavior)
-            params.append("\t\t\t\t\t{0}".format(value))
-        
-        self._append(",\n".join(params))
-        self._append("\n\t\t\t\t));\n")
+            field_name = get_field_name(meta_data)
+            if meta_data.get(KEY_MULTI_SELECTION, False):
+                # Static storage keeps the backing array alive after the case.
+                self._append_with_indent("\t\t\tstatic constexpr {0} {1}values = {2};\n".format(
+                    self._get_lookup_type(meta_data), field_name, value))
+                value = field_name + "values"
+            self._append_with_indent("\t\t\t{0} = {1};\n".format(field_name, value))
+        self._append_with_indent("\t\t\tbreak;\n")
+        self._append_with_indent("\t\t}\n")
+
+    def _get_lookup_type(self, meta_data):
+        if meta_data.get(KEY_MULTI_SELECTION, False):
+            return convert_meta_data_type(meta_data).replace(
+                "std::vector<", "std::initializer_list<", 1)
+        if meta_data[KEY_TYPE] == TYPE_STR:
+            return "const char*"
+        return convert_meta_data_type(meta_data)
 
     def _get_meta_data_value(self, meta_data, code, behavior):
         data_value = meta_data_value_for_sub_code(meta_data, code, behavior)

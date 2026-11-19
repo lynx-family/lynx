@@ -40,10 +40,11 @@ class EmbedderDevToolProvider {
 };
 
 // Internal integration for libraries built from the same source, toolchain and
-// C++ ABI configuration. Lite builds accept one provider; full builds reject
-// external registration. Register on the host UI thread during startup, before
-// environment calls or renderer creation. The provider is borrowed and must
-// remain alive, together with its library, for the process lifetime.
+// C++ ABI configuration. Builds without the built-in provider accept one
+// external provider; builds with it reject external registration. Register on
+// the host UI thread during startup, before environment calls or renderer
+// creation. The provider is borrowed and must remain alive, together with its
+// library, for the process lifetime.
 LYNX_EXPORT_FOR_DEVTOOL bool RegisterEmbedderDevToolProvider(
     EmbedderDevToolProvider* provider);
 

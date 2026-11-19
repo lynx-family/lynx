@@ -13,6 +13,8 @@ namespace lynx {
 namespace embedder {
 namespace {
 
+bool creation_enabled = true;
+
 class TestPaintingRef : public tasm::PaintingCtxPlatformRef {
  public:
   explicit TestPaintingRef(std::shared_ptr<TestPaintingState> state)
@@ -128,6 +130,10 @@ class TestUIDelegate : public tasm::UIDelegate {
 
 }  // namespace
 
+void TestLynxUIRenderer::SetCreationEnabled(bool enabled) {
+  creation_enabled = enabled;
+}
+
 TestLynxUIRenderer::TestLynxUIRenderer(lynx_view_builder_t* builder)
     : LynxUIRenderer(builder),
       state_(std::make_shared<TestPaintingState>()),
@@ -137,6 +143,9 @@ TestLynxUIRenderer::~TestLynxUIRenderer() = default;
 
 std::unique_ptr<LynxUIRenderer> LynxUIRenderer::CreateWithBuilder(
     lynx_view_builder_t* builder) {
+  if (!creation_enabled) {
+    return nullptr;
+  }
   return std::make_unique<TestLynxUIRenderer>(builder);
 }
 

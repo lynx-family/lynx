@@ -34,6 +34,9 @@ target(lynx_harmony_type, "lynx_harmony") {
     "../../../third_party/quickjs",
     "../lynx_xelement",
   ]
+  if (enable_embedder_lite) {
+    deps = [ "../../embedder:embedder" ]
+  }
   cflags = []
   lib_dirs = [ primjs_native_lib_dir ]
   libs = [

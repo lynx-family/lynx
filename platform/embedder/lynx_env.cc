@@ -118,7 +118,7 @@ LYNX_EXTERN_C int lynx_env_is_logbox_enabled() {
 LYNX_EXTERN_C void lynx_env_register_native_module(const char* name,
                                                    napi_module_creator creator,
                                                    void* opaque) {
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   lynx::embedder::GlobalModuleRegistry::GetInstance().RegisterNativeModule(
       name, creator, opaque);
 #endif
@@ -127,7 +127,7 @@ LYNX_EXTERN_C void lynx_env_register_native_module(const char* name,
 LYNX_EXTERN_C void lynx_env_register_extension_module(
     const char* name, extension_module_creator creator, bool is_lazy_create,
     void* opaque) {
-#if ENABLE_NAPI_BINDING
+#if ENABLE_NAPI_BINDING && ENABLE_EMBEDDER_NAPI_MODULE
   lynx::embedder::GlobalModuleRegistry::GetInstance().RegisterExtensionModule(
       name, creator, is_lazy_create, opaque);
 #endif

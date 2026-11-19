@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "base/include/byte_utils.h"
-#include "base/include/fml/make_copyable.h"
 
 namespace {
 static lynx_resource_type_e ConvertResourceType(
@@ -80,7 +79,7 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
       lynx_resource_request_create_internal(request.url,
                                             ConvertResourceType(request.type));
   lynx_resource_response_t* fetcher_response =
-      lynx_resource_response_create_internal(fml::MakeCopyable(
+      lynx_resource_response_create_internal(
           [callback = std::move(callback)](
               lynx_resource_response_t* fetcher_response) mutable {
             pub::LynxResourceResponse response;
@@ -93,7 +92,7 @@ void LynxResourceLoaderEmbedder::LoadResourceInternal(
                                     fetcher_response->data.length);
             }
             callback(response);
-          }));
+          });
   lynx_generic_resource_fetcher_fetch_resource(
       resource_fetcher_holder_->GenericFetcher(), fetcher_request,
       fetcher_response);

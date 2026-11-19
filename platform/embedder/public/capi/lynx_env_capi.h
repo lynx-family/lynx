@@ -64,10 +64,10 @@ LYNX_CAPI_EXPORT void lynx_env_set_close_card_callback(
 // logbox
 LYNX_CAPI_EXPORT void lynx_env_enable_logbox(int enable);
 LYNX_CAPI_EXPORT int lynx_env_is_logbox_enabled();
-// Global native module
+
+// Global module registration has no effect when NAPI modules are disabled.
 LYNX_CAPI_EXPORT void lynx_env_register_native_module(
     const char* name, napi_module_creator creator, void* opaque);
-// Global extension module
 LYNX_CAPI_EXPORT void lynx_env_register_extension_module(
     const char* name, extension_module_creator creator, bool is_lazy_create,
     void* opaque);
