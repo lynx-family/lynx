@@ -70,10 +70,6 @@ const std::unordered_set<std::string>& LynxModule::MethodAllowList() {
   return *method_allow_list;
 }
 
-LynxModule::MethodMetadata::MethodMetadata(size_t count,
-                                           const std::string& methodName)
-    : argCount(count), name(methodName) {}
-
 Value LynxModule::get(Runtime* runtime, const PropNameID& prop) {
   std::string propNameUtf8 = prop.utf8(*runtime);
   auto p = methodMap_.find(propNameUtf8);

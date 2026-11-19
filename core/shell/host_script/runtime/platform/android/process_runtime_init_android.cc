@@ -10,6 +10,7 @@
 
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/utils/devtool_lifecycle.h"
+#include "core/runtime/js/bindings/modules/lynx_module_manager.h"
 #include "core/runtime/js/bindings/modules/module_interceptor.h"
 #include "core/runtime/js/bindings/modules/module_interceptor_registry.h"
 #include "core/runtime/js/js_executor.h"
@@ -109,6 +110,8 @@ void PrepareHostScriptRuntime() {
   if (!callbacks) return;
   runtime::js::ModuleInterceptorRegistry::RegisterLeading(
       &CreateModuleInterceptor);
+  runtime::js::LynxModuleManager::SetMissingModuleResolver(
+      callbacks->resolve_missing_module);
   callbacks->prepare(view_created.load(std::memory_order_acquire));
 }
 

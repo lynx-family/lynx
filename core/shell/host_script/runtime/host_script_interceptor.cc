@@ -4,6 +4,7 @@
 
 #include "core/shell/host_script/runtime/host_script_interceptor.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -34,11 +35,17 @@ BASE_STATIC_STRING_DECL(kAction, "action");
 BASE_STATIC_STRING_DECL(kPayload, "payload");
 BASE_STATIC_STRING_DECL(kRequest, "request");
 BASE_STATIC_STRING_DECL(kViewId, "viewId");
+BASE_STATIC_STRING_DECL(kMethods, "methods");
 BASE_STATIC_STRING_DECL(kUrl, "url");
 BASE_STATIC_STRING_DECL(kWidth, "width");
 BASE_STATIC_STRING_DECL(kHeight, "height");
 
-enum class Action { kInvalid, kProceed, kMock };
+enum class Action { kInvalid, kProceed, kMock, kNext };
+
+bool SupportsNext(Kind kind) {
+  return kind == Kind::kResolveModule || kind == Kind::kCall ||
+         kind == Kind::kResult || kind == Kind::kCallback;
+}
 
 // Creation notifications are available in every domain. Decisions stay on
 // the domain owning the intercepted operation.
@@ -50,8 +57,7 @@ bool Accepts(Interceptor::Domain domain, Kind kind) {
              kind == Kind::kUpdateMetaData || kind == Kind::kUpdateViewport ||
              kind == Kind::kResourceFetch;
     case Interceptor::Domain::kBTS:
-      return kind == Kind::kCall || kind == Kind::kResult ||
-             kind == Kind::kCallback;
+      return SupportsNext(kind);
     default:
       return false;
   }
@@ -75,12 +81,15 @@ Napi::Value MakeDecision(const Napi::CallbackInfo& info) {
   return decision;
 }
 
-Napi::Object CreateChain(Napi::Env env) {
+Napi::Object CreateChain(Napi::Env env, Kind kind) {
   static const char* actions[] = {"proceed", "mock"};
+  static const char* next = "next";
   auto chain = Napi::Object::New(env);
   for (auto& action : actions) {
     chain.Set(action, Napi::Function::New(env, MakeDecision, action, &action));
   }
+  if (SupportsNext(kind))
+    chain.Set(next, Napi::Function::New(env, MakeDecision, next, &next));
   return chain;
 }
 
@@ -317,6 +326,17 @@ bool ValidMock(const Value& mock, const Value& event) {
   return true;
 }
 
+bool ValidModuleMock(const Value& mock) {
+  if (!mock.IsTable() || mock.GetLength() != 1) return false;
+  const auto& methods = mock.GetProperty(kMethods);
+  if (!methods.IsArray() || methods.GetLength() == 0) return false;
+  for (int i = 0; i < methods.GetLength(); ++i) {
+    const auto& name = methods.GetProperty(i);
+    if (!name.IsString() || name.StdString().empty()) return false;
+  }
+  return true;
+}
+
 Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
                     Value* payload) {
   std::vector<Napi::Value> parents;
@@ -326,9 +346,14 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
   if (!action.IsString()) return Action::kInvalid;
   *payload = decision->GetProperty(kPayload);
   auto name = action.StdString();
+  if (name == "next" && SupportsNext(kind) && payload->IsTable() &&
+      payload->GetLength() == 0)
+    return Action::kNext;
   if (name == "mock") {
-    bool valid = (kind == Kind::kCall && ValidMock(*payload, original)) ||
-                 (kind == Kind::kResourceFetch && ValidResourceMock(*payload));
+    const bool valid =
+        (kind == Kind::kCall && ValidMock(*payload, original)) ||
+        (kind == Kind::kResourceFetch && ValidResourceMock(*payload)) ||
+        (kind == Kind::kResolveModule && ValidModuleMock(*payload));
     return valid ? Action::kMock : Action::kInvalid;
   }
   if (name != "proceed") return Action::kInvalid;
@@ -348,12 +373,13 @@ Action ReadDecision(Napi::Value returned, Kind kind, const Value& original,
 std::function<void(InterceptCompletion)>
 HostScriptInterceptor::WaitForCallbacks(Napi::Array promises,
                                         const Value& event, uint64_t handler,
-                                        bool mock) {
+                                        bool mock, uint64_t last_handler,
+                                        const std::string& view_url) {
   // Attach then only after the caller supplies its completion. No early-result
   // buffering or separate subscription lifetime is needed.
   auto refs = std::make_shared<Napi::Reference<Napi::Array>>(
       Napi::Persistent(promises));
-  return [weak = weak_from_this(), refs, event, handler,
+  return [weak = weak_from_this(), refs, event, handler, last_handler, view_url,
           mock](InterceptCompletion complete) mutable {
     if (!refs) return;
     auto self = weak.lock();
@@ -369,10 +395,11 @@ HostScriptInterceptor::WaitForCallbacks(Napi::Array promises,
     auto promises = refs->Value().As<Napi::Array>();
     for (uint32_t i = 0; i < promises.Length(); ++i) {
       uint64_t id = self->next_pending_++;
-      self->pending_.emplace(id, Pending{complete, event, handler, mock});
+      self->pending_.emplace(
+          id, Pending{complete, event, handler, last_handler, view_url, mock});
       bool registered = false;
-      for (const auto& entry : self->entries_)
-        registered |= entry && entry->id == handler;
+      for (const auto& entries : self->entries_)
+        for (const auto& entry : entries) registered |= entry->id == handler;
       if (!registered) {
         self->Complete(id, self->env_.Undefined(), true, true);
         continue;
@@ -409,15 +436,26 @@ void HostScriptInterceptor::Complete(uint64_t id, Napi::Value value,
       result.mock.SetProperty(kCallbacks, Value(callbacks));
       result.failed = !data || !ValidMock(result.mock, pending.event);
     } else {
-      result.failed = ReadDecision(value, Kind::kCallback, pending.event,
-                                   &result.patch) == Action::kInvalid;
+      const auto action =
+          ReadDecision(value, Kind::kCallback, pending.event, &result.patch);
+      if (action == Action::kNext) {
+        result =
+            DispatchFrom(Kind::kCallback, pending.event, pending.handler,
+                         pending.last_handler, std::move(pending.view_url));
+      } else {
+        result.failed = action != Action::kProceed;
+      }
     }
   }
   if (env_.IsExceptionPending()) {
     env_.GetAndClearPendingException();
     result.failed = true;
   }
-  pending.complete(std::move(result));
+  if (result.pending && !result.failed) {
+    result.pending(std::move(pending.complete));
+  } else {
+    pending.complete(std::move(result));
+  }
 }
 
 Napi::Value HostScriptInterceptor::Settled(const Napi::CallbackInfo& info) {
@@ -488,9 +526,9 @@ void HostScriptInterceptor::Uninstall() {
   Napi::HandleScope scope(env_);
   active_ = false;
   Interceptor::Detach(this);
-  for (auto& entry : entries_) {
-    if (entry) HandlerRemoved(entry->kind, domain_);
-    entry.reset();
+  for (auto& entries : entries_) {
+    for (const auto& entry : entries) HandlerRemoved(entry->kind, domain_);
+    entries.clear();
   }
   auto global = Napi::Env(env_).Global();
   if (global.Get("interceptor").StrictEquals(api_.Value()))
@@ -538,7 +576,8 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
   auto name = info[0].As<Napi::String>().Utf8Value();
   Kind kind = Kind::kCount;
   for (int i = 0; i < static_cast<int>(Kind::kCount); ++i) {
-    if (name == Name(static_cast<Kind>(i))) kind = static_cast<Kind>(i);
+    auto candidate = static_cast<Kind>(i);
+    if (name == Name(candidate)) kind = candidate;
   }
   if (kind == Kind::kCount || !Accepts(domain_, kind)) {
     Napi::TypeError::New(env,
@@ -546,8 +585,8 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
         .ThrowAsJavaScriptException();
     return env.Undefined();
   }
-  auto& slot = entries_[static_cast<size_t>(kind)];
-  if (slot) {
+  auto& entries = entries_[static_cast<size_t>(kind)];
+  if (!SupportsNext(kind) && !entries.empty()) {
     Napi::Error::New(
         env, ("Interceptor handler already registered for " + name).c_str())
         .ThrowAsJavaScriptException();
@@ -557,7 +596,7 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
   entry->id = next_id_++;
   entry->kind = kind;
   entry->function = Napi::Persistent(info[1].As<Napi::Function>());
-  slot = entry;
+  entries.push_back(entry);
   HandlerAdded(kind, domain_);
   if (kind == Kind::kCreated && views_) {
     // Replay later, so the handler never runs inside its own registration.
@@ -574,18 +613,23 @@ Napi::Value HostScriptInterceptor::Add(const Napi::CallbackInfo& info) {
 }
 
 void HostScriptInterceptor::Remove(uint64_t id) {
-  for (auto& entry : entries_) {
-    if (entry && entry->id == id) {
-      HandlerRemoved(entry->kind, domain_);
-      entry.reset();
-      CancelPending(id);
-      return;
-    }
+  for (auto& entries : entries_) {
+    auto found =
+        std::find_if(entries.begin(), entries.end(),
+                     [id](const auto& entry) { return entry->id == id; });
+    if (found == entries.end()) continue;
+    HandlerRemoved((*found)->kind, domain_);
+    (*found)->active = false;
+    entries.erase(found);
+    CancelPending(id);
+    return;
   }
 }
+
 bool HostScriptInterceptor::HasHandlers(Kind kind) const {
-  return active_ && entries_[static_cast<size_t>(kind)] != nullptr;
+  return active_ && !entries_[static_cast<size_t>(kind)].empty();
 }
+
 void HostScriptInterceptor::ReportError(const std::string& message) {
   LOGE("Host Script interceptor: " << message);
   if (reporter_) reporter_(message);
@@ -594,8 +638,10 @@ void HostScriptInterceptor::ReportError(const std::string& message) {
 void HostScriptInterceptor::NotifyCreated(base::LynxEntityId view,
                                           uint64_t id) {
   if (!active_ || !IsAttached() || !views_) return;
-  auto entry = entries_[static_cast<size_t>(Kind::kCreated)];
-  if (!entry || (id && entry->id != id)) return;
+  const auto& entries = entries_[static_cast<size_t>(Kind::kCreated)];
+  if (entries.empty()) return;
+  auto entry = entries.front();
+  if (id && entry->id != id) return;
   Napi::Env env(env_);
   Napi::ContextScope context_scope(env);
   Napi::HandleScope scope(env);
@@ -614,12 +660,14 @@ void HostScriptInterceptor::NotifyCreated(base::LynxEntityId view,
 }
 
 std::function<void(InterceptCompletion)> HostScriptInterceptor::ReadCallbacks(
-    Napi::Value& returned, Kind kind, const Value& event, uint64_t handler) {
+    Napi::Value& returned, Kind kind, const Value& event, uint64_t handler,
+    uint64_t last_handler, const std::string& view_url) {
   if (env_.IsExceptionPending() || returned.IsEmpty()) return {};
   auto promises = Napi::Array::New(env_);
   if (kind == Kind::kCallback && returned.IsPromise()) {
     promises.Set(uint32_t{0}, returned);
-    return WaitForCallbacks(promises, event, handler, false);
+    return WaitForCallbacks(promises, event, handler, false, last_handler,
+                            view_url);
   }
   if (kind != Kind::kCall || !returned.IsObject()) return {};
   auto decision = returned.As<Napi::Object>();
@@ -659,6 +707,14 @@ std::function<void(InterceptCompletion)> HostScriptInterceptor::ReadCallbacks(
 }
 
 InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
+  return DispatchFrom(kind, event, 0, 0, {});
+}
+
+InterceptResult HostScriptInterceptor::DispatchFrom(Kind kind,
+                                                    const Value& event,
+                                                    uint64_t after_handler,
+                                                    uint64_t last_handler,
+                                                    std::string view_url) {
   InterceptResult result;
   if (!active_ || !IsAttached()) return result;
   // Creation is delivered by NotifyCreated with a View proxy.
@@ -672,9 +728,10 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
   Napi::Env env(env_);
   Napi::ContextScope context_scope(env);
   Napi::HandleScope scope(env);
-  // Keep the current handler alive if it disposes itself or uninstalls HSR.
-  // Release its reference while the owning NAPI context is still entered.
-  auto entry = entries_[static_cast<size_t>(kind)];
+  // Registration can change from a handler. Hold the original order and
+  // release its references while the owning NAPI context is entered.
+  const auto entries = entries_[static_cast<size_t>(kind)];
+  if (last_handler == 0) last_handler = entries.back()->id;
   const Value& original =
       HasRequest(kind) ? event.GetProperty(kRequest) : event;
   const auto view_id = event.GetProperty(kViewId);
@@ -682,31 +739,44 @@ InterceptResult HostScriptInterceptor::Dispatch(Kind kind, const Value& event) {
                         ? static_cast<base::LynxEntityId>(std::strtoll(
                               view_id.StdString().c_str(), nullptr, 10))
                         : base::kUnavailableLynxEntityId;
-  std::string view_url;
   if (kind == Kind::kLoadTemplate) {
     const auto url = original.GetProperty(kUrl);
     if (url.IsString()) view_url = url.StdString();
-  } else {
+  } else if (after_handler == 0) {
     view_url = ViewUrl(view);
   }
-  auto snapshot = ToJS(env, event).As<Napi::Object>();
-  snapshot.DefineProperty(Napi::PropertyDescriptor::Value(
-      "viewURL", Napi::String::New(env, view_url), napi_enumerable));
-  auto returned = entry->function.Value().Call(
-      {snapshot, CreateChain(env), views_ ? views_->Get(view) : env.Null()});
-  result.pending = ReadCallbacks(returned, kind, event, entry->id);
-  bool failed = returned.IsEmpty() || env.IsExceptionPending() ||
-                (returned.IsPromise() && !result.pending);
-  if (!failed && !returned.IsPromise()) {
+  auto proxy = views_ ? views_->Get(view) : env.Null();
+  bool failed = false;
+  for (const auto& entry : entries) {
+    if (!active_ || !IsAttached()) break;
+    if (entry->id > last_handler) break;
+    if (!entry->active || entry->id <= after_handler) continue;
+    Napi::HandleScope handler_scope(env);
+    auto snapshot = ToJS(env, event).As<Napi::Object>();
+    snapshot.DefineProperty(Napi::PropertyDescriptor::Value(
+        "viewURL", Napi::String::New(env, view_url), napi_enumerable));
+    auto returned =
+        entry->function.Value().Call({snapshot, CreateChain(env, kind), proxy});
+    result.pending =
+        ReadCallbacks(returned, kind, event, entry->id, last_handler, view_url);
+    failed = returned.IsEmpty() || env.IsExceptionPending() ||
+             (returned.IsPromise() && !result.pending);
+    if (failed || returned.IsPromise()) break;
+
     Value patch;
     auto action = ReadDecision(returned, kind, original, &patch);
+    if (action == Action::kNext) continue;
     if (action == Action::kInvalid) {
       failed = true;
     } else if (action == Action::kMock) {
-      result.mock = std::move(patch);
+      if (kind != Kind::kResolveModule || (active_ && entry->active)) {
+        result.mock = std::move(patch);
+        if (kind == Kind::kResolveModule) result.subscription = entry;
+      }
     } else if (patch.GetLength()) {
       result.patch = std::move(patch);
     }
+    break;
   }
   dispatching_ = false;
   if (failed) {
