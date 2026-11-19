@@ -5,8 +5,9 @@
 #ifndef CORE_RENDERER_DOM_FIBER_COMPOSE_GRAPHICS_LAYER_H_
 #define CORE_RENDERER_DOM_FIBER_COMPOSE_GRAPHICS_LAYER_H_
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_value.h"
-#include "core/renderer/dom/fragment/custom_draw_functions.h"
+#include "core/renderer/dom/fragment/custom_draw_handler.h"
 
 namespace lynx {
 namespace runtime {
@@ -18,8 +19,8 @@ namespace tasm {
 // with (Element, physical width, physical height) and records its transform
 // in the DisplayList. The Element is the hook's own target, including a
 // generated Modifier frame when the layer precedes another operation.
-CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback);
+fml::RefPtr<CustomDrawHandler> GraphicsLayerDrawFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback);
 
 }  // namespace tasm
 }  // namespace lynx

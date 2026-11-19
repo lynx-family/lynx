@@ -7253,9 +7253,21 @@ TEST_P(FiberElementTest, LayoutCoordinatesMapsPhysicalPointsToCoordinateRoot) {
   ASSERT_TRUE(result.valid);
   EXPECT_DOUBLE_EQ(result.x, 300.);
   EXPECT_DOUBLE_EQ(result.y, 600.);
+  class StaticLayerTransformHandler final : public CustomDrawHandler {
+   public:
+    explicit StaticLayerTransformHandler(const gfx::Matrix44& transform)
+        : CustomDrawHandler(kLayerProperties), transform_(transform) {}
+    const gfx::Matrix44* LayerTransform() const override { return &transform_; }
+    void Draw(Fragment&, DisplayListBuilder&, Phase) override {}
+
+   private:
+    gfx::Matrix44 transform_;
+  };
   gfx::Matrix44 scale;
   scale.preScale(2.f, 3.f, 1.f);
-  child->SetCustomLayerTransform(scale);
+  child->SetCustomDrawHandler(
+      fml::MakeRefCounted<StaticLayerTransformHandler>(scale));
+  page->FlushActionsAsRoot();
   result =
       QueryLayoutCoordinates(manager, child->impl_id(),
                              LayoutCoordinatesQuery::kLocalToRoot, 25., 50.);
