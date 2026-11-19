@@ -24,7 +24,9 @@ typedef void (*lynx_vsync_monitor_frame_tick_complete)(
 // Creates a lynx_vsync_monitor_t instance with a finalizer. It associates
 // the provided user data with the monitor, which can be retrieved later using
 // `lynx_vsync_monitor_get_user_data`. The finalizer function will be called
-// when the monitor is released.
+// when the monitor is released. Lite builds do not support custom VSync:
+// creation returns null and does not take ownership of user_data or invoke the
+// finalizer. The getter returns null and binding a callback has no effect.
 LYNX_CAPI_EXPORT lynx_vsync_monitor_t* lynx_vsync_monitor_create_with_finalizer(
     void* user_data, void (*finalizer)(lynx_vsync_monitor_t*, void*));
 

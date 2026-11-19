@@ -4,11 +4,6 @@
 
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
-#include "third_party/weak-node-api/headers/node_api.h"
-
-#ifdef USE_WEAK_SUFFIX_NAPI
-#include "third_party/weak-node-api/headers/weak_napi_defines.h"
-#endif
 
 TEST(LynxViewBuilder, DefaultBackgroundColor) {
   auto* builder = lynx_view_builder_create();
@@ -35,13 +30,6 @@ TEST(LynxViewBuilder, Create) {
   lynx_group_t* group = lynx_group_create("group");
   lynx_view_builder_set_lynx_group(builder, group);
 
-  lynx_view_builder_register_native_module(
-      builder, "test",
-      [](napi_env, napi_value exports, const char* module_name, void* opaque) {
-        return exports;
-      },
-      nullptr);
-
   EXPECT_EQ(builder->screen_size.width, 100);
   EXPECT_EQ(builder->screen_size.height, 200);
   EXPECT_EQ(builder->screen_size.pixel_ratio, 1.0);
@@ -52,12 +40,12 @@ TEST(LynxViewBuilder, Create) {
   EXPECT_EQ(builder->font_scale, 1.0);
   EXPECT_FALSE(builder->enable_js_runtime);
   EXPECT_EQ(builder->group, group);
-  EXPECT_EQ(builder->native_modules.size(), 1);
 
   lynx_view_builder_release(builder);
   lynx_group_release(group);
 }
 
+#if ENABLE_EMBEDDER_CUSTOM_VSYNC
 TEST(LynxViewBuilder, CustomVSyncFinalizesUnusedAndReplacedMonitors) {
   int finalized = 0;
   auto create = [&] {
@@ -77,3 +65,4 @@ TEST(LynxViewBuilder, CustomVSyncFinalizesUnusedAndReplacedMonitors) {
   lynx_view_builder_release(builder);
   EXPECT_EQ(finalized, 3);
 }
+#endif

@@ -11,14 +11,20 @@
 #include <unordered_map>
 #include <utility>
 
-#include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "platform/embedder/public/capi/lynx_env_capi.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
+#include "platform/embedder/public/capi/lynx_native_view_capi.h"
 #include "platform/embedder/public/capi/lynx_view_builder_capi.h"
 #if defined(ENABLE_WINDOWLESS)
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
 #endif
+
+namespace lynx {
+namespace embedder {
+class LynxVSyncMonitor;
+}  // namespace embedder
+}  // namespace lynx
 
 struct lynx_view_builder_t {
   struct screen_size {

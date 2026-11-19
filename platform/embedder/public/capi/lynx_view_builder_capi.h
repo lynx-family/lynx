@@ -7,16 +7,14 @@
 #include <stdint.h>
 
 #include "lynx_export.h"
+#include "lynx_extension_module_types_capi.h"
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_group_capi.h"
+#include "lynx_native_module_capi.h"
+#include "lynx_native_view_capi.h"
 #include "lynx_types.h"
 #include "lynx_vsync_monitor_capi.h"
 #include "lynx_windowless_renderer_capi.h"
-#if !ENABLE_EMBEDDER_LITE
-#include "lynx_extension_module_types_capi.h"
-#include "lynx_native_module_capi.h"
-#include "lynx_native_view_capi.h"
-#endif
 
 LYNX_EXTERN_C_BEGIN
 
@@ -44,6 +42,7 @@ LYNX_CAPI_EXPORT bool lynx_view_builder_set_color_space(
 // builder does not change existing views. The monitor is released when the last
 // reference to its source is released. Do not assign the same monitor handle to
 // multiple builders or reuse it after replacing or clearing it.
+// Has no effect in Lite builds, which use the platform VSync source.
 LYNX_CAPI_EXPORT void lynx_view_builder_set_custom_vsync_monitor(
     lynx_view_builder_t* builder, lynx_vsync_monitor_t* monitor);
 
@@ -141,24 +140,20 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_font_scale(lynx_view_builder_t*,
                                                        const float& scale);
 #endif
 
-#if !ENABLE_EMBEDDER_LITE
-// Register instance-level native module, which have a higher priority than
-// global modules.
+// Instance-level native and extension modules take precedence over global
+// registrations. Both calls have no effect when NAPI modules are disabled.
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_module(
     lynx_view_builder_t* builder, const char* name, napi_module_creator creator,
     void* opaque);
 
-// Register instance-level extension module, which have a higher priority than
-// global extension modules.
 LYNX_CAPI_EXPORT void lynx_view_builder_register_extension_module(
     lynx_view_builder_t* builder, const char* name,
     extension_module_creator creator, bool is_lazy_create, void* opaque);
 
-// Register instance-level view factory.
+// Register an instance-level view factory. Has no effect without built-in UI.
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_view(
     lynx_view_builder_t* builder, const char* name,
     lynx_native_view_creator creator, void* opaque);
-#endif
 
 LYNX_EXTERN_C_END
 

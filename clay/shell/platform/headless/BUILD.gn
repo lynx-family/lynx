@@ -221,6 +221,7 @@ if (is_headless && !enable_clay_standalone &&
 if (enable_unittests && is_win && !enable_clay_standalone) {
   executable("native_view_color_space_unittests") {
     testonly = true
+    defines = embedder_defines
     sources = [
       "../../../../platform/embedder/lynx_native_view.cc",
       "../../../../platform/embedder/lynx_view_builder.cc",
@@ -289,7 +290,7 @@ if (is_mac && shell_enable_metal) {
       if (is_headless) {
         sources += windowless_color_space_test_sources
       }
-      defines = [ "CLAY_TEST_EMBEDDER_API" ]
+      defines = embedder_defines + [ "CLAY_TEST_EMBEDDER_API" ]
       deps += [
         "../../../../base/src:base_values",
         "../../../../base/src:base_values_extended",

@@ -10,12 +10,10 @@
 #include "base/include/value/lynx_value_types.h"
 #include "lynx_export.h"
 #include "lynx_load_meta_capi.h"
+#include "lynx_runtime_lifecycle_observer_capi.h"
 #include "lynx_update_meta_capi.h"
 #include "lynx_view_builder_capi.h"
 #include "lynx_view_client_capi.h"
-#if !ENABLE_EMBEDDER_LITE
-#include "lynx_runtime_lifecycle_observer_capi.h"
-#endif
 
 LYNX_EXTERN_C_BEGIN
 
@@ -24,9 +22,7 @@ LYNX_EXTERN_C_BEGIN
 // sending events. Users should call lynx_view_release() to release the LynxView
 // when it is no longer needed.
 //
-// Define ENABLE_EMBEDDER_LITE=1 for the C-compatible API without native module
-// dependencies. All operations, including release, must run on the host UI
-// thread.
+// All operations, including release, must run on the host UI thread.
 typedef struct lynx_view_t lynx_view_t;
 
 typedef struct lynx_devtool_target_t {
@@ -72,15 +68,6 @@ LYNX_CAPI_EXPORT const char* lynx_view_get_webview2_fixed_runtime_path(
 // Loading retains the bundle and data; the caller still owns their handles.
 LYNX_CAPI_EXPORT void lynx_view_load_template(lynx_view_t* view,
                                               lynx_load_meta_t* meta);
-
-// EXPERIMENTAL API.
-// Loads a LynxML source document with initial template data. LynxML is a
-// single-file template format that is parsed and built into a template bundle
-// at load time. Both this API and the LynxML format may change in future
-// releases. The initial data may be null.
-LYNX_CAPI_EXPORT void lynx_view_load_lynx_ml(
-    lynx_view_t*, const char* source, const char* url,
-    lynx_template_data_t* initial_data);
 
 // Using LynxUpdateMeta to update LynxView, it is the main entrance for the
 // client to update template data.
@@ -242,20 +229,24 @@ LYNX_CAPI_EXPORT void lynx_view_set_font_scale(lynx_view_t*,
                                                const float& font_scale);
 #endif
 
-#if !ENABLE_EMBEDDER_LITE
-// Register a runtime lifecycle observer for the LynxView.
-// This function allows you to associate a runtime lifecycle observer with a
-// specific LynxView instance. The observer will be notified of various runtime
-// lifecycle events, such as runtime attachment, and detachment. This can be
-// useful for monitoring and responding to changes in the runtime state.
+// EXPERIMENTAL API.
+// Loads a LynxML source document with initial template data. LynxML is a
+// single-file template format that is parsed and built into a template bundle
+// at load time. Both this API and the LynxML format may change in future
+// releases. The initial data may be null. Has no effect without built-in UI.
+LYNX_CAPI_EXPORT void lynx_view_load_lynx_ml(
+    lynx_view_t*, const char* source, const char* url,
+    lynx_template_data_t* initial_data);
+
+// Registers an observer for runtime attach and detach events.
+// Without NAPI modules, this call does not retain or notify the observer.
 LYNX_CAPI_EXPORT void lynx_view_register_runtime_lifecycle_observer(
     lynx_view_t*, lynx_runtime_lifecycle_observer_t*);
 
-// Register instance-level view factory.
+// Register an instance-level view factory. Has no effect without built-in UI.
 LYNX_CAPI_EXPORT void lynx_view_register_native_view(
     lynx_view_t*, const char* name, lynx_native_view_creator creator,
     void* opaque);
-#endif
 
 LYNX_EXTERN_C_END
 

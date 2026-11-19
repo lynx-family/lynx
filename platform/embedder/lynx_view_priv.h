@@ -11,12 +11,19 @@
 #include "platform/embedder/fetcher/lynx_resource_fetcher_holder.h"
 #include "platform/embedder/lynx_ui_renderer.h"
 #include "platform/embedder/lynx_view_clients.h"
-#include "platform/embedder/module/extension_module_factory_impl.h"
-#include "platform/embedder/module/lynx_module_manager_napi.h"
 #include "platform/embedder/public/capi/lynx_view_capi.h"
 #if ENABLE_INSPECTOR && LYNX_ENABLE_LOGBOX
 #include "platform/embedder/lynx_devtool/logbox/lynx_logbox_wrapper_embedder.h"
 #endif
+
+namespace lynx {
+namespace embedder {
+class ExtensionModuleFactoryImpl;
+class LynxMTSExtensionModuleFactoryNAPI;
+class LynxMTSModuleFactoryNAPI;
+class LynxModuleManagerNAPI;
+}  // namespace embedder
+}  // namespace lynx
 
 struct lynx_view_t {
   std::unique_ptr<lynx::embedder::LynxTemplateRenderer> lynx_template_renderer =

@@ -20,7 +20,7 @@ lynx_core_source_set("devtool_interface") {
     "../:lynx_embedder_capi",
     "../../../core/public",
   ]
-  defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
+  defines = [ "ENABLE_EMBEDDER_BUILTIN_DEVTOOL=!${enable_embedder_lite}" ]
 }
 
 devtool_source_set("lynx_devtool") {

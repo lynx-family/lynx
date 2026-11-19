@@ -25,6 +25,7 @@
 #include "clay/ui/event/key_codes.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "platform/embedder/lynx_view_clients.h"
+#include "platform/embedder/lynx_vsync_monitor_priv.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
 

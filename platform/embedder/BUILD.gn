@@ -5,13 +5,18 @@
 import("../../core/Lynx.gni")
 import("../../testing/test.gni")
 
+embedder_base_dep = "../../base/src:base_static"
+if (is_harmony) {
+  embedder_base_dep = "../../base/platform/harmony:lynx_base"
+}
+
 lynx_core_source_set("clay_input_events") {
   sources = [
     "clay_input_event_target.cc",
     "clay_input_event_target.h",
   ]
   public_deps = [ "../../devtool/lynx_devtool/input:input_types" ]
-  deps = [ "../../base/src:base_static" ]
+  deps = [ embedder_base_dep ]
 }
 
 if (enable_unittests) {
@@ -46,7 +51,7 @@ config("config") {
       "-Wno-vla-cxx-extension",
     ]
   }
-  if (is_headless) {
+  if (is_headless && !enable_embedder_lite) {
     defines += [ "ENABLE_WINDOWLESS" ]
   }
 }
@@ -74,6 +79,7 @@ lynx_core_source_set("devtool_settings_embedder") {
 }
 
 lynx_core_source_set("embedder") {
+  defines = embedder_defines
   sources = [
     "frame_timing_listener_impl.cc",
     "frame_timing_listener_impl.h",
@@ -84,7 +90,6 @@ lynx_core_source_set("embedder") {
     "lynx_load_meta.cc",
     "lynx_load_meta_priv.h",
     "lynx_log.cc",
-    "lynx_native_view.cc",
     "lynx_runtime_lifecycle_observer_priv.h",
     "lynx_template_bundle.cc",
     "lynx_template_bundle_priv.h",
@@ -102,14 +107,12 @@ lynx_core_source_set("embedder") {
     "lynx_view_client_priv.h",
     "lynx_view_clients.cc",
     "lynx_view_clients.h",
-    "lynx_view_event_simulation_proxy.cc",
     "lynx_view_event_simulation_proxy.h",
     "lynx_view_priv.h",
     "lynx_vsync_monitor.cc",
-    "lynx_vsync_monitor_priv.h",
     "memory/lynx_memory.cc",
   ]
-  if (enable_frame_tick_fence) {
+  if (enable_frame_tick_fence && !enable_embedder_lite) {
     sources += [
       "frame_tick_fence.cc",
       "frame_tick_fence.h",
@@ -123,23 +126,32 @@ lynx_core_source_set("embedder") {
   }
 
   deps = [
-    ":clay_input_events",
+    ":lynx_runtime_lifecycle_observer",
     ":public_headers",
-    "../../base/src:base_static",
     "../../core:lynx_native",
     "../../core/renderer/data",
     "./core:renderer",
-    "./lynx_service",
     "./resource",
+    embedder_base_dep,
   ]
-  if (enable_napi_binding) {
+  if (!enable_embedder_lite) {
+    sources += [
+      "lynx_native_view.cc",
+      "lynx_view_event_simulation_proxy.cc",
+      "lynx_vsync_monitor_priv.h",
+    ]
+    deps += [
+      ":clay_input_events",
+      "./lynx_service",
+    ]
+  }
+  if (enable_napi_binding && !enable_embedder_lite) {
     public_deps = [
-      ":lynx_runtime_lifecycle_observer",
       "../../third_party/napi:weak_node_api_host",
       "./module",
     ]
   }
-  if (is_headless) {
+  if (is_headless && !enable_embedder_lite) {
     deps += [ "./windowless" ]
   }
   if (enable_inspector && enable_logbox) {
@@ -166,7 +178,7 @@ lynx_core_source_set("embedder") {
     if (is_linux) {
       sources += [ "lynx_ui_renderer_mock.cc" ]
     }
-  } else {
+  } else if (!enable_embedder_lite) {
     if (enable_unittests) {
       sources += [
         "testing/lynx_ui_renderer_test.cc",
@@ -192,6 +204,7 @@ lynx_core_source_set("embedder") {
 }
 
 group("public_headers") {
+  public_configs = [ ":public_api" ]
   deps = [
     ":lynx_embedder_capi",
     ":lynx_embedder_cxxapi",
@@ -290,9 +303,10 @@ copy("lynx_napi_api") {
   outputs = [ "$root_build_dir/include/third_party/weak-node-api/headers/{{source_file_part}}" ]
 }
 
-if (enable_unittests) {
+if (enable_unittests && !enable_embedder_lite) {
   executable("lynx_vsync_monitor_unittests") {
     testonly = true
+    defines = [ "ENABLE_EMBEDDER_CUSTOM_VSYNC=!${enable_embedder_lite}" ]
 
     sources = [
       "../../clay/lynx_adaptor/vsync/vsync_monitor_adaptor_unittest.cc",
@@ -308,7 +322,7 @@ if (enable_unittests) {
         "frame_tick_fence.h",
         "frame_tick_fence_unittests.cc",
       ]
-      defines = [ "ENABLE_FRAME_TICK_FENCE" ]
+      defines += [ "ENABLE_FRAME_TICK_FENCE" ]
     }
     deps = [
       "../../base/src:base_public_headers",
@@ -319,11 +333,13 @@ if (enable_unittests) {
       "//third_party/googletest:gtest_main",
     ]
   }
+}
 
+if (enable_unittests && !enable_embedder_lite) {
   executable("lynx_embedder_unittests") {
     testonly = true
+    defines = embedder_defines
     include_dirs = [ "../../base/include/value" ]
-    defines = [ "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}" ]
     sources = [
       "lynx_env_unittests.cc",
       "lynx_error_unittests.cc",
@@ -363,7 +379,7 @@ if (enable_unittests) {
       "./lynx_service:lynx_service_unittests",
     ]
 
-    if (enable_inspector && !enable_embedder_lite) {
+    if (enable_inspector) {
       sources += [ "lynx_devtool_provider_unittest.cc" ]
       deps += [ "./lynx_devtool" ]
     }

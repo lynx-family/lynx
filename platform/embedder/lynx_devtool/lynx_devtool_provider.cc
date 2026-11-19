@@ -16,7 +16,7 @@ EmbedderDevToolProvider*& GetDevToolProvider() {
 }  // namespace
 
 bool RegisterEmbedderDevToolProvider(EmbedderDevToolProvider* provider) {
-#if ENABLE_EMBEDDER_LITE
+#if !ENABLE_EMBEDDER_BUILTIN_DEVTOOL
   auto& registered = GetDevToolProvider();
   if (!provider || registered) {
     return false;
@@ -29,7 +29,7 @@ bool RegisterEmbedderDevToolProvider(EmbedderDevToolProvider* provider) {
 }
 
 void RegisterBuiltinEmbedderDevToolProvider(EmbedderDevToolProvider* provider) {
-#if !ENABLE_EMBEDDER_LITE
+#if ENABLE_EMBEDDER_BUILTIN_DEVTOOL
   GetDevToolProvider() = provider;
 #endif
 }

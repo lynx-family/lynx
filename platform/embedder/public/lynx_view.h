@@ -19,14 +19,12 @@
 #include "lynx_generic_resource_fetcher.h"
 #include "lynx_group.h"
 #include "lynx_load_meta.h"
+#include "lynx_native_module.h"
+#include "lynx_runtime_lifecycle_observer.h"
 #include "lynx_update_meta.h"
 #include "lynx_view_client.h"
 #include "lynx_vsync_monitor.h"
 #include "lynx_windowless_renderer.h"
-#if !ENABLE_EMBEDDER_LITE
-#include "lynx_native_module.h"
-#include "lynx_runtime_lifecycle_observer.h"
-#endif
 
 // Forward declaration of internal struct
 struct lynx_view_t;
@@ -138,7 +136,6 @@ class LynxView {
       return *this;
     }
 
-#if !ENABLE_EMBEDDER_LITE
     Builder& RegisterNativeModule(const std::string& module_name,
                                   napi_module_creator creator, void* opaque) {
       lynx_view_builder_register_native_module(builder_, module_name.c_str(),
@@ -157,7 +154,6 @@ class LynxView {
           opaque);
       return *this;
     }
-#endif
 
     lynx_view_builder_t* Impl() { return builder_; }
 
@@ -223,7 +219,6 @@ class LynxView {
                              lynx_view_clients_.end());
   }
 
-#if !ENABLE_EMBEDDER_LITE
   /**
    * @apidoc
    * @brief Register a native view for the `LynxView`.
@@ -249,7 +244,6 @@ class LynxView {
     lynx_view_register_runtime_lifecycle_observer(lynx_view_, observer->Impl());
     runtime_lifecycle_observer_ = observer;
   }
-#endif
 
   /**
    * @apidoc
@@ -460,9 +454,7 @@ class LynxView {
   std::vector<std::shared_ptr<LynxViewClient>> lynx_view_clients_;
   std::shared_ptr<LynxWindowlessRenderer> windowless_renderer_;
   std::shared_ptr<LynxVSyncMonitor> custom_vsync_monitor_;
-#if !ENABLE_EMBEDDER_LITE
   std::shared_ptr<LynxRuntimeLifecycleObserver> runtime_lifecycle_observer_;
-#endif
   std::shared_ptr<LynxEventSimulationProxy> event_proxy_;
 };
 
