@@ -4,6 +4,7 @@
 
 #include "core/runtime/js/js_bundle.h"
 
+#include <algorithm>
 #include <functional>
 #include <optional>
 #include <unordered_map>
@@ -13,7 +14,7 @@ namespace lynx {
 namespace runtime {
 namespace js {
 
-void AddAppServiceWrapForJsContent(std::string &js_content) {
+int AddAppServiceWrapForJsContent(std::string &js_content) {
   static constexpr char kPrefix[] =
       "(function(){\n"
       "function __init_card_bundle__(lynxCoreInject){\n"
@@ -36,6 +37,8 @@ void AddAppServiceWrapForJsContent(std::string &js_content) {
   js_content.reserve(js_content.size() + sizeof(kPrefix) + sizeof(kSuffix));
   js_content.insert(0, kPrefix);
   js_content.append(kSuffix);
+  return -static_cast<int>(
+      std::count(kPrefix, kPrefix + sizeof(kPrefix) - 1, '\n'));
 }
 
 void JsBundle::AddJsContent(const std::string &path, JsContent content) {

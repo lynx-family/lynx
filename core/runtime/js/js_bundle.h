@@ -20,8 +20,8 @@ namespace js {
 
 // Only used by the LynxML template-bundle builder. Wraps app-service source
 // code in the return-by-function format expected by Lynx Core's card loading
-// path.
-void AddAppServiceWrapForJsContent(std::string &js_content);
+// path. Returns the line offset that maps wrapped code back to the source.
+int AddAppServiceWrapForJsContent(std::string &js_content);
 
 // A `JsContent` represents content of a js file, either source code or
 // bytecode.
@@ -35,9 +35,10 @@ class JsContent {
 
   JsContent(std::shared_ptr<StringBuffer> buffer, Type type)
       : buffer_(std::move(buffer)), type_(type) {}
-  JsContent(std::string buffer, Type type)
+  JsContent(std::string buffer, Type type, int source_line_offset = 0)
       : buffer_(std::make_shared<StringBuffer>(std::move(buffer))),
-        type_(type) {}
+        type_(type),
+        source_line_offset_(source_line_offset) {}
   JsContent(const char *buffer, Type type)
       : buffer_(std::make_shared<StringBuffer>(std::string(buffer))),
         type_(type) {}
@@ -52,9 +53,13 @@ class JsContent {
   bool IsByteCode() const { return type_ == Type::BYTECODE; }
   bool IsError() const { return type_ == Type::ERROR; }
 
+  int GetSourceLineOffset() const { return source_line_offset_; }
+
  private:
   std::shared_ptr<Buffer> buffer_;
   Type type_;
+  // Passed to the compiler so stack traces use the original source positions.
+  int source_line_offset_ = 0;
 };
 
 class JsBundle {
