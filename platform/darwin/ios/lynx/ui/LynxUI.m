@@ -27,6 +27,8 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxMeaningfulContentSnapshot.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRenderer.h>
+#import <Lynx/LynxRendererHost.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceSystemInvokeProtocol.h>
@@ -64,6 +66,10 @@
 #import "LynxUI+Gesture.h"
 #import "LynxUIIntersectionObserver.h"
 #import "list/container/LynxUIListContainer+Internal.h"
+
+@interface LynxRenderer (MaskGeometrySynchronization)
+- (void)syncHostDecorationLayers;
+@end
 
 @interface LynxEventSpec (ResponseChainEvent)
 @property(nonatomic, readonly) BOOL hasResponseChainListener;
@@ -856,6 +862,13 @@ static int64_t LynxSaturatedAddMemoryUsageBytes(int64_t lhs, int64_t rhs) {
 
 - (bool)updateLayerMaskOnFrameChanged {
   LYNX_ASSERT_ON_MAIN_THREAD;
+
+  UIView<LynxRendererHost>* host = (UIView<LynxRendererHost>*)self.view;
+  LynxRenderer* renderer = [host respondsToSelector:@selector(renderer)] ? host.renderer : nil;
+  if (renderer != nil) {
+    [renderer syncHostDecorationLayers];
+    return false;
+  }
 
   if (_clipPath) {
     CAShapeLayer* mask = [[CAShapeLayer alloc] init];
