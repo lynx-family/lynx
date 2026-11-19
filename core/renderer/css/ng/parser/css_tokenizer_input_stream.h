@@ -36,21 +36,21 @@ class CSSTokenizerInputStream {
   // return NUL (kEndOfFileMarker) if the stream position is at the end.
   // NOTE: This may *also* return NUL if there's one in the input! Never
   // compare the return value to '\0'.
-  UChar PeekWithoutReplacement(unsigned lookahead_offset) const {
+  UChar PeekWithoutReplacement(size_t lookahead_offset) const {
     if ((offset_ + lookahead_offset) >= string_length_) return '\0';
     return string_[offset_ + lookahead_offset];
   }
 
-  void Advance(unsigned offset = 1) { offset_ += offset; }
+  void Advance(size_t offset = 1) { offset_ += offset; }
   void PushBack(UChar cc) {
     --offset_;
     // DCHECK(NextInputChar() == cc);
   }
 
-  double GetDouble(unsigned start, unsigned end) const;
+  double GetDouble(size_t start, size_t end) const;
 
   template <bool characterPredicate(UChar)>
-  unsigned SkipWhilePredicate(unsigned offset) {
+  size_t SkipWhilePredicate(size_t offset) {
     while ((offset_ + offset) < string_length_ &&
            characterPredicate(string_[offset_ + offset]))
       ++offset;
@@ -62,7 +62,7 @@ class CSSTokenizerInputStream {
   size_t length() const { return string_length_; }
   size_t Offset() const { return std::min(offset_, string_length_); }
 
-  std::u16string RangeAt(unsigned start, unsigned length) const {
+  std::u16string RangeAt(size_t start, size_t length) const {
     DCHECK(start + length <= string_length_);
     return string_.substr(start, length);
   }

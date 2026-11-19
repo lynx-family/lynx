@@ -254,6 +254,7 @@ lynx_css_parser_sources = [
   "ng/parser/css_parser_token_stream.cc",
   "ng/parser/css_tokenizer.cc",
   "ng/parser/css_tokenizer.h",
+  "ng/parser/css_tokenizer_codepoints.cc",
   "ng/parser/css_tokenizer_input_stream.cc",
   "ng/parser/css_tokenizer_input_stream.h",
   "ng/parser/font_face_parser.cc",
