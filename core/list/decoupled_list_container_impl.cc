@@ -298,6 +298,7 @@ void ListContainerImpl::FinishBindItemHolder(
     const std::shared_ptr<tasm::PipelineOptions>& options) {
   if (list_adapter_) {
     list_adapter_->OnFinishBindItemHolder(list_item_delegate, options);
+    CompleteComposeScrollToItemIfNeeded();
   }
 }
 
@@ -306,6 +307,7 @@ void ListContainerImpl::FinishBindItemHolders(
     const std::shared_ptr<tasm::PipelineOptions>& options) {
   if (list_adapter_) {
     list_adapter_->OnFinishBindItemHolders(list_item_delegate_array, options);
+    CompleteComposeScrollToItemIfNeeded();
   }
 }
 
@@ -757,6 +759,7 @@ void ListContainerImpl::OnLayoutChildren(
       }
       // Record completion of the initial layout.
       has_completed_first_layout_ = true;
+      CompleteComposeScrollToItemIfNeeded();
       if (compose_scroll_managed_) {
         PublishComposeScrollState();
       }
@@ -889,6 +892,7 @@ void ListContainerImpl::SetComposeScrollManaged(bool managed) {
     DLIST_LOGW("CMP-managed lists do not support native sticky items");
     sticky_enabled_ = false;
   }
+  compose_scroll_target_.reset();
   list_layout_manager_->ScrollStopped();
   PublishComposeScrollState();
 }
@@ -903,6 +907,8 @@ ListScrollState ListContainerImpl::GetScrollState() const {
   state.valid = true;
   // Compose keeps a nonnegative position even when the list has no items.
   state.first_visible_index = 0;
+  state.measure_pending = !AreOnScreenItemsReady();
+  state.pending = compose_scroll_target_.has_value();
   const float logical_offset = list_layout_manager_->content_offset();
   state.viewport = list_layout_manager_->main_axis_size();
   state.content = list_layout_manager_->content_size();
@@ -948,8 +954,9 @@ int ListContainerImpl::ClampScrollTargetIndex(int index) const {
 ListScrollState ListContainerImpl::PublishComposeScrollState() {
   ListScrollState state = GetScrollState();
   const auto& previous = published_compose_scroll_state_;
-  if (state.valid != previous.valid || state.offset != previous.offset ||
-      state.viewport != previous.viewport ||
+  if (state.valid != previous.valid || state.pending != previous.pending ||
+      state.measure_pending != previous.measure_pending ||
+      state.offset != previous.offset || state.viewport != previous.viewport ||
       state.content != previous.content ||
       state.first_visible_index != previous.first_visible_index ||
       state.first_visible_scroll_offset !=
@@ -981,6 +988,9 @@ ListScrollState ListContainerImpl::PublishComposeScrollState() {
 }
 
 ListScrollResult ListContainerImpl::ScrollByDelta(float delta) {
+  // Cancellation is meaningful even for a zero delta. Do not leave an older
+  // asynchronous scrollToItem alive after a new gesture takes ownership.
+  compose_scroll_target_.reset();
   list_layout_manager_->ScrollStopped();
   ListScrollResult result;
   result.remaining = delta;
@@ -1000,13 +1010,14 @@ ListScrollResult ListContainerImpl::ScrollByDelta(float delta) {
       // Filling can synchronously discover a larger extent. Keep consuming
       // the request against that new range rather than reporting a false edge.
       if (result.remaining > 0.f ? offset >= range : offset <= 0.f) break;
-    } while (true);
+    } while (AreOnScreenItemsReady());
     result.state = PublishComposeScrollState();
   }
   return result;
 }
 
 ListScrollState ListContainerImpl::ScrollToItem(int index, float offset) {
+  compose_scroll_target_.reset();
   list_layout_manager_->ScrollStopped();
   const auto state = GetScrollState();
   if (!state.valid || intercept_depth_ != 0 || index < 0 ||
@@ -1015,28 +1026,68 @@ ListScrollState ListContainerImpl::ScrollToItem(int index, float offset) {
   }
   index = ClampScrollTargetIndex(index);
   if (index == kInvalidIndex) {
-    return state;
+    return PublishComposeScrollState();
   }
-  ItemHolder* target = GetItemHolderForIndex(index);
+  if (!GetItemHolderForIndex(index)) {
+    return {};
+  }
+  compose_scroll_target_ = ComposeScrollTarget{index, offset};
+  CompleteComposeScrollToItemIfNeeded();
+  return GetScrollState();
+}
+
+void ListContainerImpl::CompleteComposeScrollToItemIfNeeded() {
+  if (!compose_scroll_target_ || completing_compose_scroll_ ||
+      intercept_depth_ != 0) {
+    return;
+  }
+  const int index = ClampScrollTargetIndex(compose_scroll_target_->index);
+  ItemHolder* target =
+      index != kInvalidIndex ? GetItemHolderForIndex(index) : nullptr;
   if (!target) {
-    return {};
+    compose_scroll_target_.reset();
+    PublishComposeScrollState();
+    return;
   }
-  const auto weak_target = target->WeakFromThis();
-  should_flush_finish_layout_ = true;
-  // Top alignment subtracts its offset. Keep before-content padding visible,
-  // and let a positive Compose offset advance into the target item. The item's
-  // own gap is already included in GetStart, so it is not added a second time.
-  list_layout_manager_->ScrollToPosition(
-      index,
-      list_layout_manager_->orientation_helper()->GetStartAfterPadding() -
-          offset,
-      static_cast<int>(ScrollingInfoAlignment::kTop), false);
-  target = weak_target.get();
-  const auto result = PublishComposeScrollState();
-  if (!target || list_adapter_->IsRemoved(target)) {
-    return {};
+  auto is_measured = [this](const ItemHolder* item) {
+    return list_adapter_->IsFinishedBinding(item) ||
+           list_adapter_->IsRecycled(item);
+  };
+  auto* orientation = list_layout_manager_->orientation_helper();
+  const float padding = orientation->GetStartAfterPadding();
+  const float max_offset =
+      std::max(0.f, list_layout_manager_->content_size() -
+                        list_layout_manager_->main_axis_size());
+  const float aligned = std::clamp(
+      orientation->GetStart(target) - padding + compose_scroll_target_->offset,
+      0.f, max_offset);
+  if (!is_measured(target) ||
+      !base::FloatsEqual(list_layout_manager_->content_offset(), aligned)) {
+    // Binding an edge item already performs its real layout. Avoid starting
+    // another ScrollToPosition once aligned, as it would recycle that edge
+    // item while its visible neighbor is still binding.
+    base::AutoReset<bool> guard(&completing_compose_scroll_, true);
+    should_flush_finish_layout_ = true;
+    // Top alignment subtracts its offset. Keep before-content padding visible,
+    // and let a positive Compose offset advance into the target item. The
+    // item's own gap is already included in GetStart.
+    list_layout_manager_->ScrollToPosition(
+        index, padding - compose_scroll_target_->offset,
+        static_cast<int>(ScrollingInfoAlignment::kTop), false);
+    if (!compose_scroll_target_) {
+      PublishComposeScrollState();
+      return;
+    }
+    const int settled_index =
+        ClampScrollTargetIndex(compose_scroll_target_->index);
+    target = settled_index != kInvalidIndex
+                 ? GetItemHolderForIndex(settled_index)
+                 : nullptr;
   }
-  return result;
+  if (!target || (is_measured(target) && AreOnScreenItemsReady())) {
+    compose_scroll_target_.reset();
+  }
+  PublishComposeScrollState();
 }
 
 void ListContainerImpl::ScrollToPosition(int index, float offset, int align,
