@@ -58,6 +58,7 @@ class ComputedCSSStyleCssTextHelper {
   V(ZIndex)                                              \
   V(Filter)                                              \
   V(Direction)                                           \
+  V(PointerEvents)                                       \
   V(BackgroundPosition)                                  \
   V(Padding)                                             \
   V(PaddingTop)                                          \

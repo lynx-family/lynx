@@ -143,6 +143,63 @@ TEST(ComputedCSSStyleCssTextHelperTest, GetComputedStyleByPropertyID) {
             "0.5");
 }
 
+TEST(ComputedCSSStyleCssTextHelperTest, PointerEventsDefaultCSSText) {
+  ComputedCSSStyleCssTextHelper helper;
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                kPropertyIDPointerEvents, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "auto");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, PointerEventsAutoCSSText) {
+  ComputedCSSStyleCssTextHelper helper;
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  computed_css_style.SetValue(kPropertyIDPointerEvents,
+                              CSSValue(starlight::PointerEventsType::kAuto));
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                kPropertyIDPointerEvents, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "auto");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, PointerEventsNoneCSSText) {
+  ComputedCSSStyleCssTextHelper helper;
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  computed_css_style.SetValue(kPropertyIDPointerEvents,
+                              CSSValue(starlight::PointerEventsType::kNone));
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                kPropertyIDPointerEvents, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "none");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, PointerEventsResetCSSText) {
+  ComputedCSSStyleCssTextHelper helper;
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  computed_css_style.SetValue(kPropertyIDPointerEvents,
+                              CSSValue(starlight::PointerEventsType::kNone));
+  computed_css_style.SetValue(kPropertyIDPointerEvents, CSSValue(), true);
+  EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                kPropertyIDPointerEvents, &computed_css_style,
+                starlight::LayoutResultForRendering()),
+            "auto");
+}
+
+TEST(ComputedCSSStyleCssTextHelperTest, PointerEventsUpdateCSSText) {
+  ComputedCSSStyleCssTextHelper helper;
+  starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
+  for (auto value : {starlight::PointerEventsType::kAuto,
+                     starlight::PointerEventsType::kNone,
+                     starlight::PointerEventsType::kAuto}) {
+    computed_css_style.SetValue(kPropertyIDPointerEvents, CSSValue(value));
+    EXPECT_EQ(helper.GetComputedStyleByPropertyID(
+                  kPropertyIDPointerEvents, &computed_css_style,
+                  starlight::LayoutResultForRendering()),
+              value == starlight::PointerEventsType::kAuto ? "auto" : "none");
+  }
+}
+
 TEST(ComputedCSSStyleCssTextHelperTest, ZIndexCSSText) {
   auto helper = ComputedCSSStyleCssTextHelper();
   starlight::ComputedCSSStyle computed_css_style{1.f, 1.f};
