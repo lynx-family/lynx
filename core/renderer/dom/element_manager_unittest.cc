@@ -19,6 +19,7 @@
 #include "core/renderer/css/ng/style/cascade_layer_map.h"
 #include "core/renderer/css/shared_css_fragment.h"
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_layout_node_manager.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
@@ -28,6 +29,7 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/shell/tasm_operation_queue.h"
+#include "core/shell/testing/mock_layout_platform.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -136,6 +138,14 @@ const InitialLynxUITreeNodeForReplay* FindInitialTreeNode(
   return nullptr;
 }
 
+class RecordingLayoutPlatform
+    : public ::testing::NiceMock<test::MockPlatformImpl> {
+ public:
+  void ScheduleLayout() override { ++schedule_layout_count; }
+
+  int schedule_layout_count{0};
+};
+
 class ElementManagerTest : public ::testing::Test {
  public:
   ElementManagerTest() {}
@@ -146,7 +156,9 @@ class ElementManagerTest : public ::testing::Test {
 
   void SetUp() override { CreateManager(); }
 
-  void CreateManager(const PageOptions& page_options = PageOptions()) {
+  void CreateManager(const PageOptions& page_options = PageOptions(),
+                     std::unique_ptr<LayoutCtxPlatformImpl>
+                         platform_layout_context = nullptr) {
     manager.reset();
     LynxEnvConfig lynx_env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
                                   kDefaultPhysicalPixelsPerLayoutUnit);
@@ -157,7 +169,8 @@ class ElementManagerTest : public ::testing::Test {
     painting_context = painting_context_impl.get();
     manager = std::make_unique<lynx::tasm::ElementManager>(
         std::move(painting_context_impl), tasm_mediator.get(), lynx_env_config,
-        page_options);
+        page_options, tasm::report::kUnknownInstanceId, nullptr,
+        std::move(platform_layout_context));
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
     manager->SetConfig(config);
@@ -1230,6 +1243,99 @@ TEST_F(ElementManagerTest,
   // The shared intrinsic fragment itself must remain unmarked; only the
   // per-LynxView ElementManager tracks the resolved state.
   EXPECT_FALSE(shared.HasFontFacesResolved());
+}
+
+TEST_F(ElementManagerTest,
+       LayoutInElementPatchFlushDoesNotSchedulePlatformLayout) {
+  PageOptions page_options;
+  page_options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT));
+  auto layout_platform = std::make_unique<RecordingLayoutPlatform>();
+  auto* layout_platform_ptr = layout_platform.get();
+  CreateManager(page_options, std::move(layout_platform));
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberView();
+  page->InsertNode(child);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  layout_platform_ptr->schedule_layout_count = 0;
+  painting_context->ResetFlushFlag();
+  manager->need_layout_ = false;
+
+  child->SetAttribute("progress", lepus::Value(0.25));
+  auto no_layout_options = std::make_shared<PipelineOptions>();
+  no_layout_options->trigger_layout_ = false;
+  bool no_layout_has_patch = true;
+  manager->OnPatchFinishForFiber(
+      no_layout_options,
+      [&](bool has_patch) { no_layout_has_patch = has_patch; }, page.get());
+
+  EXPECT_FALSE(no_layout_has_patch);
+  EXPECT_EQ(layout_platform_ptr->schedule_layout_count, 0);
+  EXPECT_TRUE(painting_context->HasFlushed());
+
+  child->SetAttribute("progress", lepus::Value(0.5));
+  auto layout_options = std::make_shared<PipelineOptions>();
+  layout_options->trigger_layout_ = true;
+  bool layout_has_patch = false;
+  manager->OnPatchFinishForFiber(
+      layout_options, [&](bool has_patch) { layout_has_patch = has_patch; },
+      page.get());
+
+  EXPECT_TRUE(layout_has_patch);
+  EXPECT_EQ(layout_platform_ptr->schedule_layout_count, 0);
+}
+
+TEST_F(ElementManagerTest, LayoutNodeManagerMarkDirtySchedulesPlatformLayout) {
+  PageOptions page_options;
+  page_options.SetEmbeddedMode(static_cast<EmbeddedMode>(
+      EmbeddedMode::EMBEDDED_MODE_BASE | EmbeddedMode::LAYOUT_IN_ELEMENT));
+  auto layout_platform = std::make_unique<RecordingLayoutPlatform>();
+  auto* layout_platform_ptr = layout_platform.get();
+  CreateManager(page_options, std::move(layout_platform));
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto child = manager->CreateFiberView();
+  auto text = manager->CreateFiberNode("text");
+  auto inline_text = manager->CreateFiberNode("inline-text");
+  page->InsertNode(child);
+  page->InsertNode(text);
+  text->InsertNode(inline_text);
+  page->FlushActionsAsRoot();
+  page->Layout(std::make_shared<PipelineOptions>());
+
+  ASSERT_FALSE(page->slnode()->IsDirty());
+  ASSERT_FALSE(child->slnode()->IsDirty());
+  ASSERT_FALSE(text->slnode()->IsDirty());
+  ASSERT_TRUE(inline_text->is_virtual());
+  layout_platform_ptr->schedule_layout_count = 0;
+
+  manager->layout_node_manager_->MarkDirtyAndRequestLayout(child->impl_id());
+  EXPECT_TRUE(child->slnode()->IsDirty());
+  EXPECT_TRUE(page->slnode()->IsDirty());
+  EXPECT_EQ(layout_platform_ptr->schedule_layout_count, 1);
+
+  manager->layout_node_manager_->MarkDirtyAndForceLayout(child->impl_id());
+  EXPECT_EQ(layout_platform_ptr->schedule_layout_count, 2);
+
+  page->Layout(std::make_shared<PipelineOptions>());
+  ASSERT_FALSE(page->slnode()->IsDirty());
+  ASSERT_FALSE(text->slnode()->IsDirty());
+  layout_platform_ptr->schedule_layout_count = 0;
+
+  manager->layout_node_manager_->MarkDirtyAndRequestLayout(
+      inline_text->impl_id());
+  EXPECT_TRUE(text->slnode()->IsDirty());
+  EXPECT_TRUE(page->slnode()->IsDirty());
+  EXPECT_EQ(layout_platform_ptr->schedule_layout_count, 1);
 }
 
 }  // namespace testing

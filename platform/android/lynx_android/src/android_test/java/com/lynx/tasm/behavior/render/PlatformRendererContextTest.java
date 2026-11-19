@@ -591,6 +591,35 @@ public class PlatformRendererContextTest {
   }
 
   @Test
+  public void testUpdatePlatformRendererFrameSkipsRequestLayoutWhenFrameUnchanged() {
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    FrameLayout view = spy(new FrameLayout(context));
+    Renderer renderer = spy(new Renderer(rendererContext, 1));
+    IRendererHost host = createHost(view, renderer);
+    renderer.setRenderHost(host);
+    rendererContext.mViewHolder.put(1, host);
+
+    rendererContext.updatePlatformRendererFrame(
+        1, true, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    verify(view, times(1)).requestLayout();
+    verify(renderer, times(1))
+        .invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+
+    rendererContext.updatePlatformRendererFrame(
+        1, true, 1, 2, 3, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    verify(view, times(1)).requestLayout();
+    verify(renderer, times(2)).setLynxFrame(true, 1, 2, 1 + 3, 2 + 4, 5, 6);
+    verify(renderer, times(2))
+        .invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+
+    rendererContext.updatePlatformRendererFrame(
+        1, true, 1, 2, 3, 5, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    verify(view, times(2)).requestLayout();
+    verify(renderer, times(3))
+        .invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+  }
+
+  @Test
   public void testUpdatePlatformRendererFrameUpdatesFallbackLayoutWithRenderOffset() {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     FrameLayout view = spy(new FrameLayout(context));
