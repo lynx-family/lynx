@@ -148,6 +148,10 @@ public class LynxEngine {
     LynxEnginePool.getInstance().registerReuseEngineWrapper(this);
   }
 
+  public void markLoadedForCache() {
+    updateLynxEngineState(LynxEngineState.READY_BE_REUSED);
+  }
+
   public void destroy() {
     updateLynxEngineState(LynxEngineState.DESTROYED);
     LynxEnginePool.getInstance().delete(this);

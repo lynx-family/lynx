@@ -5086,6 +5086,7 @@ public class com::lynx::tasm::LynxEngine :  {
   public synchronized boolean com.lynx.tasm.LynxEngine.tryBeReusing();
   public void com.lynx.tasm.LynxEngine.attachCurrentTemplateRender(LynxTemplateRender templateRender);
   public void com.lynx.tasm.LynxEngine.registerLynxEngineReused();
+  public void com.lynx.tasm.LynxEngine.markLoadedForCache();
   public void com.lynx.tasm.LynxEngine.destroy();
   public String com.lynx.tasm.LynxEngine.toString();
 }
