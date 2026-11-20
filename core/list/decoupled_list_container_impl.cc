@@ -561,6 +561,11 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     // enable-dynamic-span-count
     enable_dynamic_span_count_ = value.Bool();
     should_set_props = false;
+  } else if (key_str == kPropExperimentalOptimizeWaterfallScrollFill &&
+             value.IsBool()) {
+    // experimental-optimize-waterfall-scroll-fill
+    optimize_waterfall_scroll_fill_ = value.Bool();
+    should_set_props = false;
   } else if ((key_str == kPropSpanCount || key_str == kPropColumnCount) &&
              value.IsNumber()) {
     // span-count / column-count

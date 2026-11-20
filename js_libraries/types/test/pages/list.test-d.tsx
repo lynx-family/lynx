@@ -44,6 +44,9 @@ const handleListAnimationUpdate = (event: ListAnimationUpdateEvent) => {
   }}
 />;
 
+<list list-type="waterfall" experimental-optimize-waterfall-scroll-fill={true} />;
+// @ts-expect-error the scroll fill flag requires a boolean
+<list list-type="waterfall" experimental-optimize-waterfall-scroll-fill="true" />;
 // @ts-expect-error implementation selection requires a boolean
 <list experimental-use-new-update-animation="true" />;
 // @ts-expect-error start handlers receive no progress field

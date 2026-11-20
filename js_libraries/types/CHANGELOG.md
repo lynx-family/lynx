@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.6.0
+
+- Add the `experimental-optimize-waterfall-scroll-fill` boolean prop to `<list>`. When enabled, a scrolling C++ waterfall list uses the target viewport to select items to bind. It defaults to `false`.
+
 ## 4.4.7
 
 - Add `text-spacing-trim` CSS typings.
