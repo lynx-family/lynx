@@ -12,6 +12,7 @@
 #include <limits>
 #include <string>
 
+#include "base/include/algorithm.h"
 #include "base/include/float_comparison.h"
 #include "base/include/platform/harmony/harmony_vsync_manager.h"
 #include "base/trace/native/trace_event.h"
@@ -21,6 +22,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_component/list/list_types.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/auto_scroller.h"
@@ -81,6 +83,10 @@ UIList::UIList(LynxContext* context, int sign, const std::string& tag)
 }
 
 UIList::~UIList() {
+  if (list_state_scroll_listener_registered_) {
+    NodeManager::Instance().UnregisterNodeEvent(
+        node_, NODE_SCROLL_EVENT_ON_DID_SCROLL);
+  }
   for (auto eventType : LIST_NODE_EVENT_TYPES) {
     NodeManager::Instance().UnregisterNodeEvent(node_, eventType);
   }
@@ -234,13 +240,91 @@ void UIList::OnNodeReady() {
         context_->GetListEngineProxy().get());
   }
   BaseScrollContainer::OnNodeReady();
+  if (GetPlatformRenderer() && !list_state_scroll_listener_registered_) {
+    NodeManager::Instance().RegisterNodeEvent(
+        node_, NODE_SCROLL_EVENT_ON_DID_SCROLL, this);
+    list_state_scroll_listener_registered_ = true;
+  }
   UpdateStickyView();
+  PublishScrollState();
+}
+
+void UIList::PublishScrollState() {
+  if (auto* renderer = GetPlatformRenderer()) {
+    const auto offset = GetScrollOffset();
+    renderer->UpdateScrollOffset(offset.first, offset.second);
+  }
+}
+
+void UIList::PublishListItemState(UIComponent* child, bool is_on_tree) {
+  auto* renderer = child->GetPlatformRenderer();
+  if (!GetPlatformRenderer() || !renderer) return;
+  renderer->UpdateIsOnTree(is_on_tree);
+  if (is_on_tree) {
+    renderer->UpdateLayoutPosition(child->left_, child->top_);
+    renderer->UpdateStickyOffset(-child->OffsetXForCalcPosition(),
+                                 -child->OffsetYForCalcPosition(), true);
+  }
+  // Detaching preserves the relative order of the remaining items.
+  list_item_order_dirty_ |= is_on_tree;
+}
+
+void UIList::PublishStickyItemState(UIComponent* child, bool sticky) {
+  auto* renderer = child->GetPlatformRenderer();
+  if (!GetPlatformRenderer() || !renderer) return;
+  renderer->UpdateStickyOffset(sticky ? -child->OffsetXForCalcPosition() : 0.f,
+                               sticky ? -child->OffsetYForCalcPosition() : 0.f,
+                               sticky);
+  int32_t z_index = 0;
+  NodeManager::Instance().GetAttributeValues(child->DrawNode(), NODE_Z_INDEX,
+                                             &z_index);
+  const int32_t next_z =
+      sticky ? std::numeric_limits<int32_t>::max() : child->z_index();
+  list_item_order_dirty_ |= z_index != next_z;
+}
+
+void UIList::OnListItemZIndexChanged() {
+  if (!GetPlatformRenderer()) return;
+  list_item_order_dirty_ = true;
+  PublishListItemOrder();
+}
+
+void UIList::PublishListItemOrder() {
+  if (!GetPlatformRenderer() || !list_item_order_dirty_) return;
+  list_item_order_dirty_ = false;
+  auto& manager = NodeManager::Instance();
+  std::unordered_map<ArkUI_NodeHandle, PlatformRenderer*> renderers;
+  for (auto* child : children_) {
+    if (auto* renderer = child->GetPlatformRenderer()) {
+      renderers.emplace(child->DrawNode(), renderer);
+    }
+  }
+  std::vector<std::pair<PlatformRenderer*, int32_t>> items;
+  for (auto node = manager.GetFirstChild(container_layout_); node;
+       node = manager.GetNextSibling(node)) {
+    if (auto it = renderers.find(node); it != renderers.end()) {
+      int32_t z_index = 0;
+      manager.GetAttributeValues(node, NODE_Z_INDEX, &z_index);
+      items.emplace_back(it->second, z_index);
+    }
+  }
+  // Stable sorting retains native child order for equal Z values.
+  base::InsertionSort(items.data(), items.size(),
+                      [](const auto& left, const auto& right) {
+                        return left.second < right.second;
+                      });
+  list_item_max_z_ = items.empty() ? 0 : items.back().second;
+  list_item_next_order_ = static_cast<int32_t>(items.size());
+  for (size_t i = 0; i < items.size(); ++i) {
+    items[i].first->UpdateSiblingOrder(static_cast<int32_t>(i));
+  }
 }
 
 void UIList::UpdateStickyView() {
   std::pair result = GetScrollOffset();
   UpdateStickyStartView(result.first, result.second);
   UpdateStickyEndView(result.first, result.second);
+  PublishListItemOrder();
 }
 
 void UIList::AutoScrollStopped() {
@@ -425,14 +509,17 @@ void UIList::AddChild(lynx::tasm::harmony::UIBase* child, int index) {
     children_.insert(children_.begin() + index, child);
   }
   child->SetParent(this);
+  PublishListItemState(static_cast<UIComponent*>(child), false);
 }
 
 void UIList::RemoveChild(lynx::tasm::harmony::UIBase* child) {
+  PublishListItemState(static_cast<UIComponent*>(child), false);
   child->SetParent(nullptr);
   NodeManager::Instance().RemoveNode(container_layout_, child->DrawNode());
   children_.erase(std::remove(children_.begin(), children_.end(), child),
                   children_.end());
   static_cast<UIComponent*>(child)->SetNodeReadyListener(nullptr);
+  PublishListItemOrder();
 }
 
 void UIList::OnComponentNodeReady(UIComponent* ui_component) {
@@ -455,6 +542,7 @@ void UIList::OnComponentNodeReady(UIComponent* ui_component) {
       UpdateStickyItemMap(ui_component, sticky_bottom_item_map_, false);
     }
   }
+  PublishListItemOrder();
 }
 
 void UIList::UpdateStickyItemMap(
@@ -567,7 +655,10 @@ void UIList::OnNodeEvent(ArkUI_NodeEvent* event) {
                                  type == NODE_SCROLL_EVENT_ON_WILL_SCROLL)) {
     return;
   }
-  if (type == NODE_SCROLL_EVENT_ON_SCROLL_START) {
+  if (type == NODE_SCROLL_EVENT_ON_DID_SCROLL) {
+    PublishScrollState();
+    PublishListItemOrder();
+  } else if (type == NODE_SCROLL_EVENT_ON_SCROLL_START) {
     HandleScrollStartEvent();
   } else if (type == NODE_SCROLL_EVENT_ON_SCROLL) {
     GestureRecognized();
@@ -1096,6 +1187,7 @@ void UIList::HandleWillScrollEvent(ArkUI_NodeEvent* event) {
     delta_offset_ = 0;
     UpdateStickyStartView(scroll_offset_x, scroll_offset_y);
     UpdateStickyEndView(scroll_offset_x, scroll_offset_y);
+    PublishListItemOrder();
     context_->NotifyUIScroll();
   }
 }
@@ -1219,6 +1311,7 @@ void UIList::ApplyListScrollState(float scroll_x, float scroll_y,
   if (content_size_changed) UpdateContentSize(content_width, content_height);
   BaseScrollContainer::ScrollTo(scroll_x, scroll_y, false);
   UpdateStickyView();
+  PublishScrollState();
 }
 
 void UIList::ScheduleComposeScrollProjection() {
@@ -1353,8 +1446,12 @@ void UIList::InsertListItemNode(lynx::tasm::harmony::UIComponent* child) {
       UpdateStickyComponentInfoForUpdateAction(child);
     }
   }
-  if (NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(),
-                                         -1)) {
+  auto& manager = NodeManager::Instance();
+  const bool can_append =
+      GetPlatformRenderer() && !list_item_order_dirty_ &&
+      list_item_next_order_ > 0 &&
+      manager.GetParent(child->DrawNode()) != container_layout_;
+  if (manager.InsertNode(container_layout_, child->DrawNode(), -1)) {
     // PlatformRendererHarmony::OnAddChild calls InsertUI and then
     // OnAttachedToFragmentLayerTree. For lists, InsertUI does not attach the
     // list-item view, so that notification cannot reorder it in the native
@@ -1362,6 +1459,23 @@ void UIList::InsertListItemNode(lynx::tasm::harmony::UIComponent* child) {
     // of the container. Notify attachment again after insertion to restore its
     // drawing order.
     child->OnAttachedToFragmentLayerTree();
+  }
+  if (GetPlatformRenderer() && NodeManager::Instance().GetParent(
+                                   child->DrawNode()) == container_layout_) {
+    PublishListItemState(child, true);
+    int32_t z_index = 0;
+    manager.GetAttributeValues(child->DrawNode(), NODE_Z_INDEX, &z_index);
+    if (can_append && !manager.GetNextSibling(child->DrawNode()) &&
+        z_index >= list_item_max_z_ &&
+        list_item_next_order_ < std::numeric_limits<int32_t>::max() &&
+        child->GetPlatformRenderer()) {
+      // Appending above the published Z range does not change existing ranks.
+      child->GetPlatformRenderer()->UpdateSiblingOrder(list_item_next_order_++);
+      list_item_max_z_ = z_index;
+      list_item_order_dirty_ = false;
+    } else {
+      PublishListItemOrder();
+    }
   }
 }
 
@@ -1400,6 +1514,11 @@ void UIList::RemoveListItemNode(lynx::tasm::harmony::UIComponent* child) {
     }
   }
   NodeManager::Instance().RemoveNode(container_layout_, child->DrawNode());
+  if (GetPlatformRenderer() && NodeManager::Instance().GetParent(
+                                   child->DrawNode()) != container_layout_) {
+    PublishListItemState(child, false);
+    PublishListItemOrder();
+  }
 }
 
 void UIList::OnLayoutFinish(UIBase* base, int64_t operation_id) {
@@ -1456,6 +1575,7 @@ void UIList::UpdateStickyComponentForRemoveAction(UIComponent* component) {
 
 void UIList::ResetStickyItem(UIComponent* component) {
   if (component) {
+    PublishStickyItemState(component, false);
     NodeManager::Instance().SetAttributeWithNumberValue(
         component->DrawNode(), NODE_TRANSLATE, 0, 0, 0);
     NodeManager::Instance().SetAttributeWithNumberValue(
@@ -1562,6 +1682,7 @@ void UIList::UpdateStickyStartView(float scroll_offset_x,
           sticky_start_item->DrawNode(), NODE_TRANSLATE, sticky_x_offset, 0, 0);
     }
 
+    PublishStickyItemState(sticky_start_item, true);
     NodeManager::Instance().SetAttributeWithNumberValue(
         sticky_start_item->DrawNode(), NODE_Z_INDEX,
         std::numeric_limits<int32_t>::max());
@@ -1658,6 +1779,7 @@ void UIList::UpdateStickyEndView(float scroll_offset_x, float scroll_offset_y) {
           sticky_end_item->DrawNode(), NODE_TRANSLATE, sticky_x_offset, 0, 0);
     }
 
+    PublishStickyItemState(sticky_end_item, true);
     NodeManager::Instance().SetAttributeWithNumberValue(
         sticky_end_item->DrawNode(), NODE_Z_INDEX,
         std::numeric_limits<int32_t>::max());
