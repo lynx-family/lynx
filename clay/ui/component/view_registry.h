@@ -49,6 +49,13 @@ using ViewCreator = std::function<BaseView*(int id, PageView* page_view)>;
 using ShadowNodeCreator = std::function<ShadowNode*(
     int id, ShadowNodeOwner* owner, const std::string& tag_name)>;
 
+// Raw function pointer types used in Mach-O sections. Keep them POD-only to
+// avoid static initialization ordering issues when traversed from background
+// prewarm threads.
+using ViewCreatorRaw = BaseView* (*)(int id, PageView* page_view);
+using ShadowNodeCreatorRaw = ShadowNode* (*)(int id, ShadowNodeOwner* owner,
+                                             const std::string& tag_name);
+
 template <typename T>
 inline ViewCreator GetViewCreator() {
   return [](int id, PageView* page_view) { return new T(id, page_view); };
@@ -66,10 +73,31 @@ inline ShadowNodeCreator GetShadowNodeCreator<void>() {
   return nullptr;
 }
 
+// Raw creators used for section-based registration on Apple platforms.
+template <typename T>
+constexpr ViewCreatorRaw GetViewCreatorRaw() {
+  return [](int id, PageView* page_view) -> BaseView* {
+    return new T(id, page_view);
+  };
+}
+
+template <typename T>
+constexpr ShadowNodeCreatorRaw GetShadowNodeCreatorRaw() {
+  return [](int id, ShadowNodeOwner* owner,
+            const std::string& tag_name) -> ShadowNode* {
+    return new T(owner, tag_name, id);
+  };
+}
+
+template <>
+constexpr ShadowNodeCreatorRaw GetShadowNodeCreatorRaw<void>() {
+  return nullptr;
+}
+
 struct ViewRegistryDescription {
-  std::string_view name;
-  ViewCreator view_creator;
-  ShadowNodeCreator shadow_node_creator;
+  const char* name;
+  ViewCreatorRaw view_creator;
+  ShadowNodeCreatorRaw shadow_node_creator;
 };
 
 #if (defined(OS_OSX) || defined(OS_IOS))
@@ -89,7 +117,7 @@ extern "C" const ViewRegistryDescription __stop_clayview[] __asm(
   extern "C" __attribute__((no_sanitize_address))         \
   __attribute__((used, section(CLAYVIEW_SEC_STR)))        \
   const ViewRegistryDescription UNIQUE_NAME(VIEW##_desc){ \
-      TAG, GetViewCreator<VIEW>(), GetShadowNodeCreator<SHADOW_NODE>()};
+      TAG, GetViewCreatorRaw<VIEW>(), GetShadowNodeCreatorRaw<SHADOW_NODE>()};
 #else
 #define REGISTER_CLAY_ELEMENT REGISTER_VIEW_TAG
 #endif
