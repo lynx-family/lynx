@@ -35,6 +35,9 @@ class PerfControllerProxyImpl : public PerfControllerProxy {
 
   void RunTaskInReportThread(base::closure task) override;
 
+  bool IsUIMemoryMonitoringEnabled() const override;
+  void UpdateUIMemoryUsage(tasm::UIMemoryUsageByTag usage) override;
+
   void OnEvent(tasm::report::MoveOnlyEvent&& event) override;
 
  protected:

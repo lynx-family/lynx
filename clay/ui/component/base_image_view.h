@@ -85,7 +85,7 @@ class BaseImageView : public WithTypeInfo<BaseImageView, BaseView>,
 
   void TryDecodeImmediately();
 
-  int64_t GetMemoryUsageBytes();
+  int64_t GetMemoryUsageBytes() override;
 
 #ifndef NDEBUG
   std::string ToString() const override;
