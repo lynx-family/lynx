@@ -52,6 +52,9 @@ class RenderScroll : public RenderBox {
   // Clip each direct child to its own bounds before painting.
   void SetClipChildrenToBounds(bool value) { clip_children_to_bounds_ = value; }
 
+  void SetFadingEdgeLength(float length);
+  float FadingEdgeLength() const { return fading_edge_length_; }
+
  private:
   // If overscroll is enabled, we can keep scrolling regardless of whether
   // exceeding the overflow rect.
@@ -69,6 +72,7 @@ class RenderScroll : public RenderBox {
   ScrollDirection scroll_direction_;
   bool in_scroll_animation_ = false;
   bool clip_children_to_bounds_ = false;
+  float fading_edge_length_ = 0.f;
 };
 
 }  // namespace clay
