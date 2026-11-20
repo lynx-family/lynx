@@ -171,8 +171,8 @@ devtool_source_set("lynx_tasm_recorder_for_devtool") {
   deps = [ "//third_party/zlib" ]
 
   sources = [
-    "../../../core/services/recorder/fixture_native_module_mock.cc",
-    "../../../core/services/recorder/fixture_native_module_mock.h",
+    "../../../core/services/recorder/fixture_native_module_matcher.cc",
+    "../../../core/services/recorder/fixture_native_module_matcher.h",
     "../../../core/services/recorder/fixture_writer.cc",
     "../../../core/services/recorder/fixture_writer.h",
     "../../../core/services/recorder/native_module_recorder.cc",

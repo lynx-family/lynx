@@ -10,7 +10,7 @@
 #include <cstdio>
 
 #include "core/base/json/json_util.h"
-#include "core/services/recorder/fixture_native_module_mock.h"
+#include "core/services/recorder/fixture_native_module_matcher.h"
 #include "third_party/modp_b64/modp_b64.h"
 #include "third_party/rapidjson/document.h"
 
@@ -656,7 +656,7 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
     fixture << "\n";
   }
 
-  // NativeModule mock matcher.
+  // NativeModule call matcher.
   ScriptBuilder ignored_keys;
   ignored_keys << "[";
   bool first_key = true;
@@ -676,10 +676,10 @@ bool WriteFixtureZip(const std::string& zip_path, const FixtureData& data) {
     }
   }
   ignored_keys << "]";
-  fixture << BuildNativeModuleMockScript(ignored_keys.str());
+  fixture << BuildNativeModuleMatcherScript(ignored_keys.str());
   fixture << "\n";
 
-  // Mock handlers.
+  // NativeModule handlers.
   // Recording order can differ across threads. Select the next group by key so
   // equal recordings produce byte-identical archives. Group counts are small;
   // the quadratic scan avoids a temporary vector and sorting machinery.

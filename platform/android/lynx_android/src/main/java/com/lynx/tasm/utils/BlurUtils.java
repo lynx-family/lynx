@@ -58,11 +58,6 @@ public class BlurUtils {
       return false;
     }
 
-    // a null receiver makes Method.invoke throw an uncaught NullPointerException
-    if (v == null) {
-      return false;
-    }
-
     if (!prepareViewSetMethod()) {
       sSupportRenderEffect = false;
       return false;
@@ -86,11 +81,6 @@ public class BlurUtils {
 
     // if radius<=0 no need to invoke blur method
     if (radius <= 0) {
-      return false;
-    }
-
-    // a null receiver makes Method.invoke throw an uncaught NullPointerException
-    if (node == null) {
       return false;
     }
 
@@ -126,11 +116,6 @@ public class BlurUtils {
    */
   public static boolean removeEffect(View v) {
     if (!isSupportRenderEffect()) {
-      return false;
-    }
-
-    // a null receiver makes Method.invoke throw an uncaught NullPointerException
-    if (v == null) {
       return false;
     }
 
