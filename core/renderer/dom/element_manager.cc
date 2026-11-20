@@ -2121,6 +2121,17 @@ bool ElementManager::ResolveSubtree(Element *root) {
   return need_layout_;
 }
 
+void ElementManager::ResolveSubtreeForLayout(Element *root,
+                                             bool prepare_for_layout) {
+  // Subtree resolve waits for the parallel style work it submits.
+  base::AutoReset<bool> suppress_host_layout(&suppress_host_layout_, true);
+  base::AutoReset<bool> layout_request(&need_layout_, need_layout_);
+  ResolveSubtree(root);
+  if (prepare_for_layout) {
+    root->DispatchLayoutBeforeRecursively();
+  }
+}
+
 void ElementManager::Repaint() {
   need_repaint_.store(false, std::memory_order_relaxed);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
@@ -2235,6 +2246,7 @@ void ElementManager::SetPageOptions(const PageOptions &options) {
 }
 
 void ElementManager::ScheduleLayout() {
+  if (suppress_host_layout_) return;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_SCHEDULE_LAYOUT);
   if (platform_layout_context_) {
     platform_layout_context_->ScheduleLayout();

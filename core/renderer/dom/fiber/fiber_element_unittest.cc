@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstring>
 #include <functional>
@@ -28660,6 +28661,63 @@ TEST_P(FiberElementTest, ResolveElementSubtreeMeasuresNativeBox) {
       EXPECT_FLOAT_EQ(leaf->GetBorderBoundTopFromParentPaddingBound(), 0);
     }
   }
+}
+
+TEST_P(FiberElementTest,
+       ResolveElementSubtreeReusesCurrentLayoutForModifierUpdate) {
+  class CountingLayoutPlatform : public test::MockPlatformImpl {
+   public:
+    void ScheduleLayout() override { ++schedule_count; }
+    std::atomic<int> schedule_count{0};
+  };
+  PrepareCustomLayoutBackend(this, true);
+  auto layout_platform = std::make_unique<CountingLayoutPlatform>();
+  auto* platform = layout_platform.get();
+  manager->platform_layout_context_ = std::move(layout_platform);
+
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto owner = CreateComposeViewHandle(manager);
+  auto child = CreateComposeViewHandle(manager);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  runtime->SetGlobalData("owner", lepus::Value(owner));
+  runtime->SetGlobalData("child", lepus::Value(child));
+  ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+    const updateModifier = translationY => {
+      __SetComposeModifier(child, {op: 7, start: 2, top: 2, end: 2, bottom: 2,
+        previous: {op: 11, resolve: () => ({translationY, alpha: 0.8})}});
+    };
+    updateModifier(0);
+    __SetInlineStyles(child, "width:30px;height:16px;box-sizing:border-box");
+    __SetCustomLayout(owner, () => {
+      updateModifier(20);
+      __SetInlineStyles(child,
+          "width:36px;height:16px;box-sizing:border-box;" +
+          "border-width:1px;border-style:solid");
+      __ResolveElementSubtree(child, true);
+      return __MeasureElement(owner, child, 0, 100, 0, 100);
+    }, () => true);
+  )"));
+  ASSERT_NE(child->mount_root(), child->content_element());
+  owner->content_element()->InsertNode(child->mount_root());
+  page->InsertNode(owner->mount_root());
+  page->FlushActionsAsRoot();
+  ASSERT_NE(owner->custom_layout(), nullptr);
+
+  platform->schedule_count = 0;
+  manager->need_layout_ = false;
+  const auto result = owner->custom_layout()->Measure({0, 100, 0, 100}, true);
+  EXPECT_FLOAT_EQ(result.width_, 40);
+  EXPECT_FLOAT_EQ(result.height_, 20);
+  EXPECT_FLOAT_EQ(
+      child->content_element()->slnode()->GetLayoutBorderLeftWidth(), 1);
+  EXPECT_EQ(platform->schedule_count.load(), 0);
+  EXPECT_FALSE(manager->need_layout_);
+
+  child->content_element()->SetStyle(kPropertyIDWidth, lepus::Value("56px"));
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page.get());
+  EXPECT_TRUE(options->has_layout);
+  EXPECT_GT(platform->schedule_count.load(), 0);
 }
 
 TEST_P(FiberElementTest, ResolveElementSubtreeDoesNotSubmitOuterPatch) {

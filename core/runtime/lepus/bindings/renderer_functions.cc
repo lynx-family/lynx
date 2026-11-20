@@ -5473,8 +5473,7 @@ RENDERER_FUNCTION_CC(FiberResolveElementSubtree) {
   }
   // Do not enter OnPatchFinish or mutate its PipelineOptions: this work belongs
   // to the current layout, and must be ready before a nested measure returns.
-  manager->ResolveSubtree(element.get());
-  if (prepare_for_layout) element->DispatchLayoutBeforeRecursively();
+  manager->ResolveSubtreeForLayout(element.get(), prepare_for_layout);
   RETURN_UNDEFINED();
 }
 
