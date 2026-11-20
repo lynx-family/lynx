@@ -2,9 +2,6 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-// cspell:ignore endcond
-/** @cond */
-
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
@@ -22,6 +19,11 @@ typedef NS_ENUM(NSInteger, LynxUnifiedGestureInputType) {
   LynxUnifiedGestureInputTypeCancel,
 };
 
+typedef NS_OPTIONS(NSUInteger, LynxUnifiedGestureRegistration) {
+  LynxUnifiedGestureRegistrationHasDetector = 1 << 0,
+  LynxUnifiedGestureRegistrationHasNativeDetector = 1 << 1,
+};
+
 @interface LynxUnifiedGestureArena : NSObject
 
 - (instancetype)initWithUIOwner:(LynxUIOwner *)uiOwner;
@@ -29,6 +31,8 @@ typedef NS_ENUM(NSInteger, LynxUnifiedGestureInputType) {
             (NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *)gestureDetectors
                       forMember:(NSInteger)memberId;
 - (void)removeMember:(NSInteger)memberId;
+- (LynxUnifiedGestureRegistration)registrationForDetectors:
+    (nullable NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *)gestureDetectors;
 - (BOOL)containsMember:(NSInteger)memberId;
 - (BOOL)containsGesture:(NSInteger)gestureId memberId:(NSInteger)memberId;
 - (void)setGestureDetectorState:(NSInteger)gestureId
@@ -51,5 +55,3 @@ typedef NS_ENUM(NSInteger, LynxUnifiedGestureInputType) {
 @end
 
 NS_ASSUME_NONNULL_END
-
-/** @endcond */

@@ -119,6 +119,7 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
 
 @implementation LynxUICollection {
   NSMutableArray *_listDelegates;
+  BOOL _scrollDisabledByProps;
 }
 #pragma mark - LynxUI LifeCycle & Utils
 
@@ -621,6 +622,11 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
 }
 
 #pragma mark - LynxNewGesture
+
+- (void)setScrollEnabledByProps:(BOOL)enabled {
+  _scrollDisabledByProps = !enabled;
+  self.view.scrollEnabled = enabled;
+}
 
 - (void)gestureDidSet {
   if (!self.context.enableNewGesture) {

@@ -251,6 +251,7 @@ subspec_target("lynx") {
     "gesture/LynxNativeGestureHandler.m",
     "gesture/LynxPanGestureHandler.m",
     "gesture/LynxTapGestureHandler.m",
+    "gesture/LynxUnifiedGestureArena.h",
     "hero_transitions/CALayer+LynxHeroTransition.m",
     "hero_transitions/LynxHeroAnimator.m",
     "hero_transitions/LynxHeroModifiers.m",
