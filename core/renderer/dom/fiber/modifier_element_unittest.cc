@@ -2409,11 +2409,14 @@ TEST_P(ModifierElementTest, ReplacingGradientClearsPreviousBackgroundImage) {
   }
 }
 
-TEST_P(ModifierElementTest, UsesDefaultElementBehaviorWithViewTag) {
+TEST_P(ModifierElementTest, UsesViewIdentityForModifierAndItsChildren) {
   auto element = manager->CreateFiberModifierElement();
 
   EXPECT_TRUE(element->GetTag().IsEqual(kElementViewTag));
-  EXPECT_FALSE(element->is_view());
+  EXPECT_TRUE(element->is_view());
+  auto child = manager->CreateFiberView();
+  element->InsertNode(child);
+  EXPECT_FALSE(child->is_direct_child_of_compatible_component());
   EXPECT_FALSE(element->is_wrapper());
 
   const auto& styles = element->GetCurrentRawInlineStyles();
