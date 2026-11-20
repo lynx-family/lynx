@@ -10,9 +10,11 @@
 #include "base/include/closure.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/timing_key.h"
+#include "core/public/ui_memory_usage.h"
 
 namespace lynx {
 namespace tasm {
+
 namespace report {
 struct MoveOnlyEvent;
 }  // namespace report
@@ -65,6 +67,11 @@ class PerfControllerProxy {
    * @param task The async task
    */
   virtual void RunTaskInReportThread(base::closure task) = 0;
+
+  // Check before walking the UI tree.
+  virtual bool IsUIMemoryMonitoringEnabled() const { return false; }
+  // Posts UI memory records by tag to the report thread.
+  virtual void UpdateUIMemoryUsage(tasm::UIMemoryUsageByTag usage) {}
 
   /**
    * @brief Interface to report an event

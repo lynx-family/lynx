@@ -9,6 +9,8 @@
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/tasm/config.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/memory_monitor/memory_monitor.h"
+#include "core/services/performance/memory_monitor/memory_record.h"
 #include "core/services/trace/service_trace_event_def.h"
 
 namespace lynx {
@@ -82,6 +84,25 @@ void PerfControllerProxyImpl::RunTaskInReportThread(base::closure task) {
   perf_actor_->ActAsync([task = std::move(task)](auto& controller) mutable {
     if (task) {
       task();
+    }
+  });
+}
+
+bool PerfControllerProxyImpl::IsUIMemoryMonitoringEnabled() const {
+  return perf_actor_ &&
+         tasm::performance::MemoryMonitor::GetSettings().lynx_ui.enabled;
+}
+
+void PerfControllerProxyImpl::UpdateUIMemoryUsage(
+    tasm::UIMemoryUsageByTag usage) {
+  if (!IsUIMemoryMonitoringEnabled()) {
+    return;
+  }
+  perf_actor_->ActAsync([usage = std::move(usage)](auto& controller) {
+    auto& monitor = controller->GetMemoryMonitor();
+    for (const auto& [tag, entry] : usage) {
+      monitor.UpdateMemoryUsage(tasm::performance::MemoryRecord(
+          tag, entry.size_bytes, entry.instance_count, nullptr));
     }
   });
 }

@@ -535,7 +535,7 @@ class BaseView : public TypeIdentifiable<BaseView>,
   }
   PageView* page_view() const { return page_view_; }
   bool attach_to_tree() const { return attach_to_tree_; }
-  int64_t GetMemoryUsageBytes() { return sizeof(BaseView); }
+  virtual int64_t GetMemoryUsageBytes() { return sizeof(BaseView); }
 
   // physical_width & physical_height can be zero.
   // It happens when the app just starts, the activity is not created but the

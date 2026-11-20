@@ -534,6 +534,7 @@ void LynxTemplateRenderer::OnDataUpdated() {
 }
 
 void LynxTemplateRenderer::OnPageChanged(bool is_first_page) {
+  ui_delegate_->OnPageChanged(is_first_page);
   for (auto* client : clients_) {
     client->OnPageChanged(is_first_page);
   }

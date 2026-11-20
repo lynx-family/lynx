@@ -72,6 +72,8 @@ class UIDelegate {
   void SetInstanceId(int32_t id) { instance_id_ = id; }
   int32_t GetInstanceId() const { return instance_id_; }
   virtual void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) {}
+  // Called on the UI thread for the first screen and later page updates.
+  virtual void OnPageChanged(bool is_first_screen) {}
   virtual void TakeSnapshot(
       size_t max_width, size_t max_height, int quality,
       const std::string& format, float screen_scale_factor,
