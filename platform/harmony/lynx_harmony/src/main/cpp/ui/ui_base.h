@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/base_value.h"
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/lynx_export.h"
@@ -44,6 +45,7 @@
 namespace lynx {
 namespace tasm {
 class DisplayList;
+class PlatformRenderer;
 class PropBundleHarmony;
 
 namespace harmony {
@@ -127,6 +129,12 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void AttachFragmentLayerRenderer(std::shared_ptr<LynxRendererContext> context,
                                    int32_t sign);
   void DetachFragmentLayerRenderer();
+  void SetPlatformRenderer(const fml::WeakPtr<PlatformRenderer>& renderer) {
+    platform_renderer_ = renderer;
+  }
+  PlatformRenderer* GetPlatformRenderer() const {
+    return renderer_ ? platform_renderer_.get() : nullptr;
+  }
   void UpdateFragmentLayerDisplayList(const DisplayList* display_list);
   void SetFragmentLayerClipBounds(bool need_clip, bool overflow_x,
                                   bool overflow_y);
@@ -421,6 +429,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   std::unique_ptr<BackgroundDrawable> background_drawable_{nullptr};
   std::unique_ptr<BackgroundDrawable> mask_drawable_{nullptr};
   std::unique_ptr<LynxRenderer> renderer_;
+  fml::WeakPtr<PlatformRenderer> platform_renderer_;
   fml::RefPtr<const gfx::Path> fragment_owner_path_;
   gfx::PathFillRule fragment_owner_fill_{gfx::PathFillRule::kNonzero};
   float fragment_owner_x_{0}, fragment_owner_y_{0};
