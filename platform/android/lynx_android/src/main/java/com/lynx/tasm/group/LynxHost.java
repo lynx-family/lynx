@@ -10,6 +10,7 @@ import androidx.annotation.UiThread;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxHostEnvironment;
+import com.lynx.tasm.LynxPageOption;
 import com.lynx.tasm.LynxPageView;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.behavior.BehaviorRegistry;
@@ -18,7 +19,6 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.ArrayList;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Owns the shared configuration and lifetime of independent surface pages.
@@ -26,11 +26,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * Configure modules and behaviors on the builder before creating the host.
  */
 public final class LynxHost {
-  private static final AtomicLong sNextHostId = new AtomicLong();
-
   private final LynxHostEnvironment mEnvironment;
   private final int mEmbeddedMode;
-  private final String mSharedJSContextGroupId;
   // Accessed on the UI thread; abandoned surfaces are not retained by the host.
   private final WeakHashMap<LynxPageView, Boolean> mSurfaces = new WeakHashMap<>();
   private final AtomicBoolean mReleased = new AtomicBoolean();
@@ -46,22 +43,20 @@ public final class LynxHost {
       behaviors.setBuiltInBehaviors(BuiltInUIRegistry.getInstance().getBuiltInUIBehaviors());
     }
     mEnvironment = new LynxHostEnvironment(builder.lynxRuntimeOptions, behaviors);
-    LynxGroup group = mEnvironment.getRuntimeOptions().getLynxGroup();
-    String groupId = group == null ? null : group.getID();
-    mSharedJSContextGroupId = groupId != null && !LynxGroup.SINGNLE_GROUP.equals(groupId)
-        ? groupId
-        : "lynx-surface-" + sNextHostId.getAndIncrement();
+    if (mEnvironment.getRuntimeOptions().getLynxGroup() == null) {
+      mEnvironment.getRuntimeOptions().setLynxGroup(new LynxGroup.LynxGroupBuilder().build());
+    }
   }
 
   /**
    * Creates a page using the supplied Android context, with its own native shell.
-   * Pages share a JS context, including when the
-   * configured LynxGroup requests isolated contexts. The supplied LynxGroup is not modified.
+   * Pages follow the configured LynxGroup's JS context sharing policy. When no group is supplied,
+   * the host creates a default group that shares a JS context. The supplied group is not modified.
    * No template is loaded; use the surface's loadTemplate method after creation.
    */
   @UiThread
   @NonNull
-  public LynxPageView createPageView(@NonNull Context context) {
+  public LynxPageView createPageView(@NonNull Context context, @NonNull LynxPageOption option) {
     UIThreadUtils.assertOnUiThread();
     if (mReleased.get()) {
       throw new IllegalStateException("Cannot create a surface from a released host");
@@ -69,7 +64,7 @@ public final class LynxHost {
     LynxPageView surface;
     TraceEvent.beginSection("LynxPageView.create");
     try {
-      surface = new LynxPageView(context);
+      surface = new LynxPageView(context, this, option);
     } finally {
       TraceEvent.endSection("LynxPageView.create");
     }
