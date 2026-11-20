@@ -71,6 +71,16 @@ class LynxViewTest : public ::testing::Test {
   bool logbox_enabled_ = false;
 };
 
+TEST_F(LynxViewTest, CreationFailsWithoutUIRenderer) {
+  lynx::pub::LynxView::Builder builder;
+  builder.SetEnableJSRuntime(false);
+  lynx::embedder::TestLynxUIRenderer::SetCreationEnabled(false);
+  using View = std::unique_ptr<lynx_view_t, decltype(&lynx_view_release)>;
+  View view(lynx_view_create(builder.Impl(), nullptr), lynx_view_release);
+  lynx::embedder::TestLynxUIRenderer::SetCreationEnabled(true);
+  EXPECT_EQ(view, nullptr);
+}
+
 TEST_F(LynxViewTest, SendGlobalEventReachesMTSWithAndWithoutRuntimeProxy) {
   class RecordingRuntimeProxy : public lynx::shell::LynxBTSRuntimeProxyImpl {
    public:
@@ -279,6 +289,39 @@ TEST_F(LynxViewTest, FontScaleV2UpdatesEngineAndPreservesLegacyBehavior) {
   expect_scale(0.75f);
 }
 
+#if ENABLE_EMBEDDER_LITE
+TEST_F(LynxViewTest, UnsupportedCustomVSyncKeepsPlatformSource) {
+  int finalized = 0;
+  auto* monitor = lynx_vsync_monitor_create_with_finalizer(
+      &finalized, [](auto*, void* data) { ++*static_cast<int*>(data); });
+  EXPECT_EQ(monitor, nullptr);
+  EXPECT_EQ(lynx_vsync_monitor_get_user_data(monitor), nullptr);
+  lynx_vsync_monitor_bind_request_vsync_func(
+      monitor, [](auto*, auto, void*) { ADD_FAILURE(); });
+  lynx::pub::LynxView::Builder builder;
+  builder.SetEnableJSRuntime(false);
+  lynx_view_builder_set_custom_vsync_monitor(builder.Impl(), monitor);
+  class UnsupportedMonitor : public lynx::pub::LynxVSyncMonitor {
+   public:
+    UnsupportedMonitor() : LynxVSyncMonitor(nullptr) {}
+    void RequestVSync(std::function<void(int64_t, int64_t)>) override {
+      ADD_FAILURE();
+    }
+  };
+  auto cpp_monitor = std::make_shared<UnsupportedMonitor>();
+  builder.SetCustomVSyncMonitor(cpp_monitor);
+  EXPECT_EQ(cpp_monitor->GetCMonitor(), nullptr);
+  view_ = builder.Build();
+  ASSERT_NE(view_, nullptr);
+  ASSERT_NE(view_->Impl(), nullptr);
+  EXPECT_EQ(view_->Impl()
+                ->lynx_template_renderer->GetSettings()
+                .vsync_monitor_platform_impl,
+            nullptr);
+  view_.reset();
+  EXPECT_EQ(finalized, 0);
+}
+#else
 TEST_F(LynxViewTest, CustomVSyncSurvivesBuilderReplacementAndViewSharing) {
   struct State {
     int requests = 0;
@@ -353,6 +396,7 @@ TEST_F(LynxViewTest, CustomVSyncSurvivesBuilderReplacementAndViewSharing) {
   lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
   EXPECT_EQ(replacement.finalized, 1);
 }
+#endif
 
 TEST_F(LynxViewTest, LoadsBundleAndRendersFirstScreen) {
   // Encode with the current build's codec instead of storing a binary fixture.

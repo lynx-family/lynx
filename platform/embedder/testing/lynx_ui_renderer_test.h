@@ -27,6 +27,8 @@ struct TestPaintingState {
 
 class TestLynxUIRenderer : public LynxUIRenderer {
  public:
+  static void SetCreationEnabled(bool enabled);
+
   explicit TestLynxUIRenderer(lynx_view_builder_t* builder);
   ~TestLynxUIRenderer() override;
 

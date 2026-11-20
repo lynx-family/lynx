@@ -35,9 +35,11 @@ group("default") {
   if (enable_unittests) {
     deps += [
       "platform/common:custom_vsync_monitor_unittests",
-      "platform/embedder:lynx_vsync_monitor_unittests",
       "tools/gn_tools/test:gn_tools_test",
     ]
+    if (!enable_embedder_lite) {
+      deps += [ "platform/embedder:lynx_vsync_monitor_unittests" ]
+    }
     if (is_mac || is_linux) {
       deps += [ "platform/harmony/lynx_harmony/src/main/cpp/gesture/testing:harmony_gesture_baseline_unittests_exec" ]
     }

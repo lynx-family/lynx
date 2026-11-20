@@ -16,6 +16,8 @@ lynx_core_source_set("resource") {
     sources += [ "js_source_loader_desktop.cc" ]
   } else if (is_mac || is_ios) {
     sources += [ "js_source_loader_desktop.mm" ]
+  } else if (is_harmony) {
+    sources += [ "js_source_loader_fallback.cc" ]
   }
   deps = [ "../fetcher:fetcher" ]
 }

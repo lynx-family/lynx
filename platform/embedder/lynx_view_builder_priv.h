@@ -11,10 +11,13 @@
 #include <unordered_map>
 #include <utility>
 
+#if !ENABLE_EMBEDDER_LITE
 #include "platform/embedder/lynx_vsync_monitor_priv.h"
+#endif
 #include "platform/embedder/public/capi/lynx_env_capi.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_group_capi.h"
+#include "platform/embedder/public/capi/lynx_native_view_capi.h"
 #include "platform/embedder/public/capi/lynx_view_builder_capi.h"
 #if defined(ENABLE_WINDOWLESS)
 #include "platform/embedder/windowless/lynx_windowless_renderer_priv.h"
@@ -34,7 +37,9 @@ struct lynx_view_builder_t {
   } frame;
   float font_scale = 1.0;
   std::optional<uint32_t> default_background_color;
+#if !ENABLE_EMBEDDER_LITE
   std::shared_ptr<lynx::embedder::LynxVSyncMonitor> custom_vsync_monitor;
+#endif
 
   bool enable_js_runtime = true;
   bool enable_software_rendering = false;

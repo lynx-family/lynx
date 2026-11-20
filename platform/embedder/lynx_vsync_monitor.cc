@@ -2,6 +2,26 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#if ENABLE_EMBEDDER_LITE
+
+#include "platform/embedder/public/capi/lynx_vsync_monitor_capi.h"
+
+// Preserve the C ABI without custom VSync support in Lite builds.
+LYNX_EXTERN_C lynx_vsync_monitor_t* lynx_vsync_monitor_create_with_finalizer(
+    void* user_data, void (*finalizer)(lynx_vsync_monitor_t*, void*)) {
+  return nullptr;
+}
+
+LYNX_EXTERN_C void* lynx_vsync_monitor_get_user_data(
+    lynx_vsync_monitor_t* monitor) {
+  return nullptr;
+}
+
+LYNX_EXTERN_C void lynx_vsync_monitor_bind_request_vsync_func(
+    lynx_vsync_monitor_t* monitor, lynx_vsync_monitor_request_vsync func) {}
+
+#else
+
 #include <unordered_map>
 
 #include "base/include/log/logging.h"
@@ -35,7 +55,7 @@ namespace {
 struct PendingRequests {
   std::mutex mutex;
   uintptr_t next_id = 0;
-  std::unordered_map<uintptr_t, std::weak_ptr<LynxVSyncMonitor>> monitors;
+  std::unordered_map<uintptr_t, std::weak_ptr<LynxVSyncMonitor> > monitors;
 };
 
 PendingRequests& GetPendingRequests() {
@@ -126,3 +146,5 @@ void LynxVSyncMonitor::OnVSync(void* user_data, int64_t frame_start_time,
 
 }  // namespace embedder
 }  // namespace lynx
+
+#endif  // ENABLE_EMBEDDER_LITE

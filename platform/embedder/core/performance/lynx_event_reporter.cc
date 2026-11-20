@@ -12,8 +12,10 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "platform/embedder/core/performance/generic_info_storage.h"
+#if !ENABLE_EMBEDDER_LITE
 #include "platform/embedder/public/capi/lynx_event_reporter_service_capi.h"
 #include "platform/embedder/public/capi/lynx_service_center_capi.h"
+#endif
 
 namespace lynx {
 namespace embedder {
@@ -34,10 +36,13 @@ static void RunTaskInReportThread(base::closure task) {
 // only be used in report thread
 static std::unordered_map<uint64_t, std::weak_ptr<LynxEventReporterObserver>>
     observers;
+#if !ENABLE_EMBEDDER_LITE
 static std::shared_ptr<LynxEventReporterObserver>
     event_report_service_observer = nullptr;
+#endif
 }  // namespace
 
+#if !ENABLE_EMBEDDER_LITE
 // build-in LynxEventReporte observer,
 // which is a wrapper of LynxEventReporterService
 class LynxReporterServiceObserver : public LynxEventReporterObserver {
@@ -60,9 +65,12 @@ class LynxReporterServiceObserver : public LynxEventReporterObserver {
     }
   }
 };
+#endif
 
 void LynxEventReporter::OnEvent(tasm::report::MoveOnlyEvent&& event) {
+#if !ENABLE_EMBEDDER_LITE
   LynxEventReporter::InitLynxReporterServiceObserverIfNeeded();
+#endif
 
   RunTaskInReportThread([event = std::move(event)]() {
     auto map_value =
@@ -235,6 +243,7 @@ void LynxEventReporter::RemoveEventReporterObserver(uint32_t token) {
   RunTaskInReportThread([token]() { observers.erase(token); });
 }
 
+#if !ENABLE_EMBEDDER_LITE
 void LynxEventReporter::InitLynxReporterServiceObserverIfNeeded() {
   static std::once_flag flag;
   std::call_once(flag, []() {
@@ -243,6 +252,7 @@ void LynxEventReporter::InitLynxReporterServiceObserverIfNeeded() {
     AddEventReporterObserver(event_report_service_observer);
   });
 }
+#endif
 
 }  // namespace embedder
 }  // namespace lynx

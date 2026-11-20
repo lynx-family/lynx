@@ -3,13 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <cstring>
+#include <utility>
 
 #include "platform/embedder/fetcher/lynx_resource_response_priv.h"
 
 lynx_resource_response_t* lynx_resource_response_create_internal(
     ResourceCallback callback) {
   lynx_resource_response_t* response = new lynx_resource_response_t();
-  response->callback = callback;
+  response->callback = std::move(callback);
   return response;
 }
 
@@ -21,7 +22,7 @@ LYNX_EXTERN_C lynx_resource_response_t* lynx_resource_response_create(
       c_callback(response, user_data);
     };
   }
-  return lynx_resource_response_create_internal(cpp_callback);
+  return lynx_resource_response_create_internal(std::move(cpp_callback));
 }
 
 void lynx_resource_response_release_data(lynx_resource_response_t* response) {
