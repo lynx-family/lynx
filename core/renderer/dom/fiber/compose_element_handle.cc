@@ -200,8 +200,8 @@ bool ComposeElementHandle::SetCustomLayout(
     std::shared_ptr<CustomLayout> layout) {
   auto& owner = *content_element_;
   if (!owner.EnableLayoutInElementMode() || owner.will_destroy() ||
-      (layout && !owner.GetEnableZIndex()) || owner.GetTag() != "view" ||
-      owner.IsShadowNodeCustom() || (layout && &layout->owner() != &owner) ||
+      (layout && !owner.GetEnableZIndex()) || owner.IsShadowNodeCustom() ||
+      (layout && &layout->owner() != &owner) ||
       (custom_layout_ && custom_layout_->IsExecuting()))
     return false;
   // A pending clear can leave the previous SL hooks installed until Flush.

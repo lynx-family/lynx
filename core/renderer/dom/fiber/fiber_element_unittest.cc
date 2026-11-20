@@ -4841,6 +4841,35 @@ TEST_P(FiberElementTest, CustomLayoutPolicyChangesFollowElementFlush) {
   EXPECT_EQ(node->GetContext(), nullptr);
 }
 
+TEST_P(FiberElementTest, CustomLayoutMeasuresComposeLeavesWithoutTagWhitelist) {
+  PrepareLayoutInElementFirstScreenTest(this);
+  auto page = CreateComposeLayoutInElementPage(this);
+  auto runtime = CreateCustomLayoutRuntime(tasm.get());
+  for (auto kind : {ComposeElementKind::kImage, ComposeElementKind::kCustom}) {
+    auto handle = fml::AdoptRef<ComposeElementHandle>(
+        new ComposeElementHandle(manager, kind, "custom-leaf"));
+    auto owner = handle->content_element();
+    page->InsertNode(owner);
+    runtime->SetGlobalData("owner", lepus::Value(handle));
+    ASSERT_TRUE(EvalCustomLayout(runtime, R"(
+      __SetCustomLayout(owner, () => ({width: 24, height: 12}), () => true);
+    )"));
+    ASSERT_TRUE(handle->custom_layout());
+    page->FlushActionsAsRoot();
+    auto* node = owner->slnode();
+    ASSERT_NE(node, nullptr);
+    starlight::Constraints constraints{
+        starlight::OneSideConstraint::AtMost(80),
+        starlight::OneSideConstraint::AtMost(80)};
+    node->ReLayoutWithConstraints(constraints);
+    EXPECT_FLOAT_EQ(24, node->GetBorderBoundWidth());
+    EXPECT_FLOAT_EQ(12, node->GetBorderBoundHeight());
+    ASSERT_TRUE(
+        EvalCustomLayout(runtime, "__SetCustomLayout(owner, null, null)"));
+    EXPECT_FALSE(handle->custom_layout());
+  }
+}
+
 TEST_P(FiberElementTest, CustomLayoutRejectsPendingElementFunctions) {
   PrepareLayoutInElementFirstScreenTest(this);
   auto page = CreateLayoutInElementPage(this);
