@@ -97,6 +97,9 @@ declare_args() {
   # Whether enable relocations packing optimization
   enable_packrel = false
 
+  # Whether to wait for asynchronous VSync consumers before completing a tick.
+  enable_frame_tick_fence = false
+
   # compiler optimization level
   compiler_optimization_level = "Oz"
 

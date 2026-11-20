@@ -35,6 +35,9 @@ config("config") {
     "../../base/include/value",
   ]
   defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+  if (enable_frame_tick_fence) {
+    defines += [ "ENABLE_FRAME_TICK_FENCE" ]
+  }
   if (is_win) {
     # enable dllexport for public APIs.
     defines += [ "lynx_EXPORTS" ]
@@ -106,6 +109,12 @@ lynx_core_source_set("embedder") {
     "lynx_vsync_monitor_priv.h",
     "memory/lynx_memory.cc",
   ]
+  if (enable_frame_tick_fence) {
+    sources += [
+      "frame_tick_fence.cc",
+      "frame_tick_fence.h",
+    ]
+  }
   if (is_win || is_mac) {
     sources += [
       "native_view/lynx_texture_view.cc",
@@ -293,6 +302,14 @@ if (enable_unittests) {
       "public/capi/lynx_export.h",
       "public/capi/lynx_vsync_monitor_capi.h",
     ]
+    if (enable_frame_tick_fence) {
+      sources += [
+        "frame_tick_fence.cc",
+        "frame_tick_fence.h",
+        "frame_tick_fence_unittests.cc",
+      ]
+      defines = [ "ENABLE_FRAME_TICK_FENCE" ]
+    }
     deps = [
       "../../base/src:base_public_headers",
       "../../base/src:base_static",
