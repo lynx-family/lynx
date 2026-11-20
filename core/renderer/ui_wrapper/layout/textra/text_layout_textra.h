@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/geometry/rect.h"
 #include "base/include/vector.h"
 #include "core/public/text_layout_impl.h"
 #include "core/renderer/css/css_property_bitset.h"
@@ -25,11 +26,17 @@ class TextLayoutAPI;
 class ParagraphBuilder;
 class Paragraph;
 class ParagraphListener;
+
+// Optional entry point supplied separately by TextService so the existing
+// TextLayoutAPI vtable remains compatible with older service binaries.
+using TextLayoutRangeRects =
+    base::Vector<base::geometry::FloatRect> (*)(Paragraph*, int32_t, int32_t);
 }  // namespace text
 
 class TextLayoutTextra : public TextLayoutImpl {
  public:
-  explicit TextLayoutTextra(intptr_t textra);
+  explicit TextLayoutTextra(intptr_t textra,
+                            text::TextLayoutRangeRects range_rects = nullptr);
   ~TextLayoutTextra() override;
 
   LayoutResult Measure(Element* element, float width, int width_mode,
@@ -50,10 +57,9 @@ class TextLayoutTextra : public TextLayoutImpl {
   void BuildParagraphRecursively(Element* element, bool& has_inline_view);
 
  private:
-  std::optional<LayoutResult> MeasureInternal(Element* element, float width,
-                                              int width_mode, float height,
-                                              int height_mode,
-                                              bool publish_text_bundle);
+  std::optional<LayoutResult> MeasureInternal(
+      Element* element, float width, int width_mode, float height,
+      int height_mode, PlatformTextEventTargetRegions* mounted_regions);
   void ApplyTextStyle(TextElement* element);
   void ApplyTextStyle(Element* element, const CSSIDBitset& property_bits);
   void ApplyParagraphStyle(TextElement* element);
@@ -73,6 +79,7 @@ class TextLayoutTextra : public TextLayoutImpl {
   // TODO(linxiaosong): align API destruction with the TextService boundary,
   // since the implementation is created by TextService.
   text::TextLayoutAPI* api_{nullptr};
+  const text::TextLayoutRangeRects range_rects_;
   text::ParagraphBuilder* paragraph_builder_{nullptr};
   bool building_inline_truncation_{false};
   Element* truncation_{nullptr};

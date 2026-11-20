@@ -312,10 +312,13 @@ void PaintingContextDarwin::ResumeExposure() {
   Enqueue([uiOwner]() { [uiOwner.uiContext resumeExposure]; });
 }
 
-PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, void* textra) : uiOwner_(owner) {
+PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, void* textra, void* range_rects)
+    : uiOwner_(owner) {
   platform_ref_ = std::make_shared<PaintingContextDarwinRef>(owner);
   if (textra != 0) {
-    text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
+    text_layout_impl_ = std::make_unique<TextLayoutTextra>(
+        reinterpret_cast<intptr_t>(textra),
+        reinterpret_cast<text::TextLayoutRangeRects>(range_rects));
   } else if ([owner isLayoutInElementModeOn]) {
     text_layout_impl_ =
         std::make_unique<TextLayoutDarwin>(owner.textRenderManager, owner.fontFaceContext);

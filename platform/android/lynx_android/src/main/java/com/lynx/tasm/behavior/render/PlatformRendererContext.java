@@ -34,6 +34,7 @@ import com.lynx.tasm.behavior.shadow.ShadowNodeType;
 import com.lynx.tasm.behavior.shadow.TextLayout;
 import com.lynx.tasm.behavior.shadow.TextMeasurerProvider;
 import com.lynx.tasm.behavior.shadow.text.EventTargetSpan;
+import com.lynx.tasm.behavior.shadow.text.InlineTextGeometry;
 import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -1120,6 +1121,13 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   Page getTextBundle(int sign) {
     return (Page) mExtraDatas.get(sign);
+  }
+
+  @Override
+  public float[] getInlineTextRegions(int sign, int[] ranges) {
+    return mTextMeasurer != null
+        ? InlineTextGeometry.getRegions(mTextMeasurer.takeTextLayout(sign), ranges)
+        : new float[0];
   }
 
   private static void appendTextEventTargetRegion(

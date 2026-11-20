@@ -29,7 +29,7 @@ class NativePaintingCtxDarwin : public PaintingCtxPlatformImpl, public NativePai
  public:
   const gfx::PathImplFactory &GetPathImplFactory() const override { return path_impl_factory_; }
   NativePaintingCtxDarwin(LynxUIOwner *owner, LynxComponentScopeRegistry *component_registry,
-                          void *textra);
+                          void *textra, void *range_rects = nullptr);
   ~NativePaintingCtxDarwin() override = default;
 
   NativePaintingCtxDarwin(const NativePaintingCtxDarwin &) = delete;

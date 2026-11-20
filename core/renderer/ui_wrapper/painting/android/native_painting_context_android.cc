@@ -31,11 +31,12 @@
 // TODO: implement necessary functions for native ui renderer.
 jlong CreatePaintingContext(JNIEnv *env, jobject jcaller, jobject jThis,
                             jlong platformRendererContextPtr,
-                            jobject textLayout, jlong textra) {
+                            jobject textLayout, jlong textra,
+                            jlong range_rects) {
   // This native object will be managed by NativePaintingContextAndroid with
   // unique_ptr.
   return reinterpret_cast<jlong>(new lynx::tasm::NativePaintingCtxAndroid(
-      env, textLayout, textra,
+      env, textLayout, textra, range_rects,
       reinterpret_cast<lynx::tasm::PlatformRendererContext *>(
           platformRendererContextPtr)));
 }
@@ -330,15 +331,16 @@ std::array<float, 4> CopyMetrics(const float *source) {
 }  // namespace
 
 NativePaintingCtxAndroid::NativePaintingCtxAndroid(
-    JNIEnv *env, jobject text_layout, jlong textra,
+    JNIEnv *env, jobject text_layout, jlong textra, jlong range_rects,
     PlatformRendererContext *view_manager)
     : view_manager_(view_manager) {
   platform_ref_ = std::make_shared<NativePaintingCtxAndroidRef>(
       std::make_unique<PlatformRendererAndroidFactory>(view_manager_),
       std::unique_ptr<PlatformRendererContext>(view_manager_));
   if (textra != 0) {
-    text_layout_impl_ =
-        std::make_unique<TextLayoutTextra>(static_cast<intptr_t>(textra));
+    text_layout_impl_ = std::make_unique<TextLayoutTextra>(
+        static_cast<intptr_t>(textra),
+        reinterpret_cast<text::TextLayoutRangeRects>(range_rects));
   } else {
     text_layout_impl_ = std::make_unique<TextLayoutAndroid>(env, text_layout);
   }
