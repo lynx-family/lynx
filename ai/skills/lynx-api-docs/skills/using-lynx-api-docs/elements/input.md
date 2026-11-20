@@ -86,6 +86,21 @@ This guide covers the current native Android, iOS, and Harmony `<input>` element
 | `caret-color` | iOS, Android, Harmony | Controls cursor color |
 | `text-align` | iOS, Android, Harmony | Controls horizontal alignment |
 
+Use `-x-placeholder-color` in CSS for placeholder styling. The style engine resolves
+CSS variables before delivering the numeric color to the input component:
+
+```css
+.editor {
+  --editor-placeholder-color: #999999;
+  -x-placeholder-color: var(--editor-placeholder-color);
+  color: #333333;
+}
+```
+
+Direct `color` and `placeholder-color` attributes are a separate input-component
+path. On Android and iOS they accept numeric ARGB or literal color strings. Write
+`var(...)` in CSS declarations so the style engine can resolve the variable.
+
 ### Partial and platform-specific props
 
 | Prop | Platforms | What It Does |
