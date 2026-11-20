@@ -95,7 +95,8 @@ inline void JsCacheManagerFacade::PostCacheGenerationTaskQuickJs(
   std::vector<std::unique_ptr<cache::CacheGenerator> > generators;
   for (const auto& iter : js_contents) {
     generators.push_back(std::make_unique<cache::QuickjsCacheGenerator>(
-        std::move(iter.first), std::move(iter.second.GetBuffer())));
+        std::move(iter.first), std::move(iter.second.GetBuffer()),
+        iter.second.GetSourceLineOffset()));
   }
   JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
       template_url, std::move(generators), false, std::move(callback));

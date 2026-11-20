@@ -208,7 +208,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   std::shared_ptr<Buffer> GetBytecode(
       const std::shared_ptr<const Buffer> &buffer,
-      const std::string &source_url) const;
+      const std::string &source_url, int start_line_offset = 0) const;
 
   std::string AddPrefixToUrlIfNeeded(const std::string &url) override;
 

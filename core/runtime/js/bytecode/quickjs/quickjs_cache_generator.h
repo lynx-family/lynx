@@ -20,7 +20,8 @@ namespace cache {
 class QuickjsCacheGenerator : public CacheGenerator {
  public:
   QuickjsCacheGenerator(std::string source_url,
-                        std::shared_ptr<const Buffer> src_buffer);
+                        std::shared_ptr<const Buffer> src_buffer,
+                        int start_line_offset = 0);
 
   std::shared_ptr<Buffer> GenerateCache() override;
   std::shared_ptr<Buffer> GenerateCache(LEPUSContext *, LEPUSValue &);
@@ -40,6 +41,7 @@ class QuickjsCacheGenerator : public CacheGenerator {
                        std::string &contents);
 
   bool enable_strip_{false};
+  int start_line_offset_{0};
 };
 
 }  // namespace cache
