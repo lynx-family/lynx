@@ -18,7 +18,6 @@
 #include "clay/gfx/geometry/sticky_info.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
-#include "clay/ui/component/base_image_view.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/component.h"
 #include "clay/ui/component/intersection_observer_manager.h"
@@ -73,14 +72,8 @@ static bool IsInternalPlatformViewTag(const std::string& tag) {
   return tags.find(tag) != tags.end();
 }
 
-static int64_t GetExternalMemoryUsageBytes(BaseView* view) {
-  return view->Is<BaseImageView>()
-             ? static_cast<BaseImageView*>(view)->GetMemoryUsageBytes()
-             : view->GetMemoryUsageBytes();
-}
-
 static int64_t GetExternalMemoryUsageBytesRecursively(BaseView* view) {
-  int64_t size = GetExternalMemoryUsageBytes(view);
+  int64_t size = view->GetMemoryUsageBytes();
   for (auto* child : view->GetChildren()) {
     if (child != nullptr) {
       size += GetExternalMemoryUsageBytesRecursively(child);
@@ -809,6 +802,18 @@ void ViewContext::UpdateNodeReadyPatching(
   }
 }
 
+lynx::tasm::UIMemoryUsageByTag ViewContext::GetViewMemoryUsageByTag() const {
+  lynx::tasm::UIMemoryUsageByTag usage;
+  for (const auto& [id, view] : view_map_) {
+    if (view != nullptr) {
+      auto& entry = usage[view->GetName()];
+      entry.size_bytes += view->GetMemoryUsageBytes();
+      ++entry.instance_count;
+    }
+  }
+  return usage;
+}
+
 lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
   lynx::tasm::ExternalMemorySnapshot snapshot;
   // Keep candidates for the lifetime of their holder entries. Parented
@@ -829,12 +834,10 @@ lynx::tasm::ExternalMemorySnapshot ViewContext::GetExternalMemorySnapshot() {
         GetExternalMemoryUsageBytesRecursively(view->second);
     ++candidate_it;
   }
-  for (const auto& entry : view_map_) {
-    auto* view = entry.second;
-    if (view == nullptr) {
-      continue;
+  for (const auto& [id, view] : view_map_) {
+    if (view != nullptr) {
+      snapshot.total_size += view->GetMemoryUsageBytes();
     }
-    snapshot.total_size += GetExternalMemoryUsageBytes(view);
   }
   return snapshot;
 }

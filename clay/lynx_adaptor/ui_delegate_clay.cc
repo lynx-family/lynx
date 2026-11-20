@@ -5,9 +5,11 @@
 #include "clay/lynx_adaptor/ui_delegate_clay.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
+#include "build/build_config.h"
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
@@ -83,8 +85,28 @@ void UIDelegateClay::OnLynxCreate(
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
     const fml::RefPtr<fml::TaskRunner>& layout_task_runner, int32_t instance_id,
     bool is_embedded_mode) {
-  perf_controller_ =
-      std::make_shared<PerfControllerClay>(perf_controller_proxy, instance_id);
+  PerfControllerClay::UIMemoryReader read_ui_memory;
+
+  // Register the UI memory reader on desktop first. Extend collection to
+  // mobile once the desktop path is stable.
+#if defined(ENABLE_SKITY) && (defined(OS_MAC) || defined(OS_WIN))
+  const auto weak_delegate = GetWeakFlag();
+  read_ui_memory = [weak_delegate](const PerfControllerClay& controller)
+      -> std::optional<UIMemoryUsageByTag> {
+    const auto flag = weak_delegate.lock();
+    if (!flag) {
+      return std::nullopt;
+    }
+    auto* delegate = static_cast<UIDelegateClay*>(flag->ui_delegate);
+    // The delegate can be reused with a new shell.
+    if (delegate->perf_controller_.get() != &controller) {
+      return std::nullopt;
+    }
+    return delegate->view_context_->GetViewMemoryUsageByTag();
+  };
+#endif
+  perf_controller_ = std::make_shared<PerfControllerClay>(
+      perf_controller_proxy, instance_id, std::move(read_ui_memory));
   if (platform_enable_fluency_monitor_.has_value()) {
     perf_controller_->SetEnableFluencyMonitor(
         platform_enable_fluency_monitor_.value());
@@ -235,6 +257,12 @@ std::vector<float> UIDelegateClay::GetTransformValue(
   }
 
   return res;
+}
+
+void UIDelegateClay::OnPageChanged(bool) {
+  if (perf_controller_) {
+    perf_controller_->ScheduleUIMemoryCollection();
+  }
 }
 
 void UIDelegateClay::OnPageConfigDecoded(

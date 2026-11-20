@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/include/fml/task_runner.h"
+#include "base/include/fml/time/time_delta.h"
 #include "base/trace/native/trace_event.h"
 #if defined(OS_IOS)
 #include "core/renderer/utils/lynx_env.h"
@@ -25,6 +26,9 @@ inline constexpr const char* const kHostPlatformSurface = "Clay";
 constexpr int32_t kMinSessionDurationInMs = 200;  // 200ms
 constexpr int32_t kMaxSessionDurationInSec = 10;  // 10s
 constexpr std::string_view kLynxFluencyEvent = "lynxsdk_fluency_event";
+// Use the native Android and iOS UI memory collection delay to allow async
+// resources to load before sampling.
+constexpr auto kUIMemoryCollectionDelay = fml::TimeDelta::FromSeconds(2);
 // iOS native renderer posts paintEnd from SetNeedMarkPaintEndTiming. Keep Clay
 // iOS aligned with that timing point; other platforms still report at draw-end.
 #if defined(OS_IOS)
@@ -46,12 +50,43 @@ uint64_t GenerateSessionID() {
 
 PerfControllerClay::PerfControllerClay(
     const std::shared_ptr<shell::PerfControllerProxy>& controller,
-    int32_t instance_id)
-    : perf_controller_proxy_(controller), instance_id_(instance_id) {
+    int32_t instance_id, UIMemoryReader read_ui_memory)
+    : perf_controller_proxy_(controller),
+      read_ui_memory_(std::move(read_ui_memory)),
+      instance_id_(instance_id) {
   if (perf_controller_proxy_) {
     perf_controller_proxy_->SetHostPlatformType(
         perf_controller_proxy_->GetPlatform() + kHostPlatformSurface);
   }
+}
+
+void PerfControllerClay::ScheduleUIMemoryCollection() {
+  if (!read_ui_memory_ || !ui_task_runner_) {
+    return;
+  }
+  DCHECK(ui_task_runner_->RunsTasksOnCurrentThread());
+  if (ui_memory_collection_pending_ || !perf_controller_proxy_ ||
+      !perf_controller_proxy_->IsUIMemoryMonitoringEnabled()) {
+    return;
+  }
+  ui_memory_collection_pending_ = true;
+  ui_task_runner_->PostDelayedTask(
+      [weak_self = weak_from_this()] {
+        const auto self = weak_self.lock();
+        if (!self) {
+          return;
+        }
+        self->ui_memory_collection_pending_ = false;
+        if (!self->perf_controller_proxy_->IsUIMemoryMonitoringEnabled()) {
+          return;
+        }
+
+        auto usage = self->read_ui_memory_(*self);
+        if (usage && !usage->empty()) {
+          self->perf_controller_proxy_->UpdateUIMemoryUsage(std::move(*usage));
+        }
+      },
+      kUIMemoryCollectionDelay);
 }
 
 void PerfControllerClay::SetNeedMarkPaintEndTiming(

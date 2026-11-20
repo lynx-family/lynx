@@ -6,8 +6,10 @@
 #define CLAY_LYNX_ADAPTOR_PERF_CONTROLLER_CLAY_H_
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -28,9 +30,14 @@ class PerfControllerClay
       public clay::PipelineTimingDelegate,
       public clay::ScrollFluencyMonitorDelegate {
  public:
+  // The controller identifies the shell binding. Return nullopt if the UI
+  // source is unavailable.
+  using UIMemoryReader = std::function<std::optional<UIMemoryUsageByTag>(
+      const PerfControllerClay&)>;
+
   PerfControllerClay(
       const std::shared_ptr<shell::PerfControllerProxy>& controller,
-      int32_t instance_id);
+      int32_t instance_id, UIMemoryReader read_ui_memory = {});
   ~PerfControllerClay() override = default;
 
   void SetUITaskRunner(fml::RefPtr<fml::TaskRunner> ui_task_runner) {
@@ -39,6 +46,10 @@ class PerfControllerClay
 
   void SetPageConfigProbability(double probability);
   void SetEnableFluencyMonitor(bool enable);
+
+  // Call on the UI thread. The first request starts the collection delay.
+  // Later requests are coalesced into the same sample.
+  void ScheduleUIMemoryCollection();
 
   /**
    * @brief Mark paint-end timing event
@@ -103,17 +114,20 @@ class PerfControllerClay
   void UpdateEnableFluencyMonitor();
 
   const std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
+  const UIMemoryReader read_ui_memory_;
 
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
 
   std::vector<tasm::PipelineID> pipeline_id_list_;
-  std::atomic<int32_t> instance_id_ = {-1};
 
   std::map<int, std::unique_ptr<clay::FpsTracer>> fps_tracers_;
   // Map to track session IDs for each fluency monitor
   std::map<int, uint64_t> fluency_monitor_session_ids_;
+
+  std::atomic<int32_t> instance_id_ = {-1};
   bool enable_fluency_monitor_ = false;
   bool default_enable_fluency_monitor_ = false;
+  bool ui_memory_collection_pending_ = false;
   ForceFluencyMonitorStatus force_fluency_monitor_status_ =
       ForceFluencyMonitorStatus::NON_FORCED;
   double page_config_probability_ = -1.0;
