@@ -12,7 +12,15 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 
-@interface LynxListItemHelper ()
+struct ListItemOrder {
+  CGFloat maxZ = 0;
+  int32_t nextOrder = 0;
+};
+
+@interface LynxListItemHelper () {
+  ListItemOrder _publishedItemOrder;
+  __weak UIView *_lastOrderedItem;
+}
 
 @property(nonatomic, weak) id<LynxListItemHelperOwner> owner;
 
@@ -22,6 +30,28 @@
       adjustLayersFrame:(BOOL)adjustLayersFrame;
 
 @end
+
+static ListItemOrder PublishListItemOrder(UIScrollView *scrollView) {
+  NSMutableArray<UIView *> *items = [NSMutableArray array];
+  for (UIView *view in scrollView.subviews) {
+    if ([LynxListItemHelper isCUIListItemView:view]) {
+      [items addObject:view];
+    }
+  }
+  // UIKit orders equal-Z siblings by their subview order.
+  [items sortWithOptions:NSSortStable
+         usingComparator:^NSComparisonResult(UIView *left, UIView *right) {
+           CGFloat leftZ = left.layer.zPosition;
+           CGFloat rightZ = right.layer.zPosition;
+           return leftZ < rightZ   ? NSOrderedAscending
+                  : leftZ > rightZ ? NSOrderedDescending
+                                   : NSOrderedSame;
+         }];
+  [items enumerateObjectsUsingBlock:^(UIView *view, NSUInteger index, BOOL *stop) {
+    [[(id<LynxRendererHost>)view renderer] publishSiblingOrder:(int32_t)index];
+  }];
+  return {items.lastObject.layer.zPosition, (int32_t)items.count};
+}
 
 @implementation LynxListItemHelper
 
@@ -67,6 +97,9 @@
     }
     LynxRenderer *renderer = [(id<LynxRendererHost>)component.view renderer];
     [renderer updateRendererLayoutFrame:frame];
+    [renderer publishLayoutPosition:component.frame.origin];
+    [renderer publishStickyOffset:CGPointMake(frame.origin.x - component.frame.origin.x,
+                                              frame.origin.y - component.frame.origin.y)];
     [renderer syncHostDecorationLayers];
     [CATransaction commit];
   } else {
@@ -77,7 +110,11 @@
 
 + (void)bringComponentToFront:(LynxUIComponent *)component inScrollView:(UIScrollView *)scrollView {
   if ([self isCUIListItem:component]) {
+    BOOL changedOrder = scrollView.subviews.lastObject != component.view;
     [scrollView bringSubviewToFront:component.view];
+    if (changedOrder) {
+      PublishListItemOrder(scrollView);
+    }
     [[(id<LynxRendererHost>)component.view renderer] reattachHostDecorationLayers];
   } else {
     [scrollView bringSubviewToFront:component.view.superview];
@@ -122,6 +159,8 @@
   }
   UIView *itemView = component.view;
   LynxRenderer *renderer = [(id<LynxRendererHost>)itemView renderer];
+  BOOL canAppend = itemView.superview != scrollView && _lastOrderedItem != nil &&
+                   scrollView.subviews.lastObject == _lastOrderedItem;
   // Attach the item if it is not already in the target list.
   if (itemView.superview != scrollView) {
     [renderer detachHostDecorationLayers];
@@ -136,28 +175,41 @@
     [self moveStickyItem:stickyEndItem toEndOfDrawOrder:drawOrder inScrollView:scrollView];
     orderedChildren = drawOrder;
   }
-  // Apply the list's CUI draw order even if the item is already attached.
+  // Apply native draw order before publishing the item's state.
   NSUInteger index = [orderedChildren indexOfObjectIdenticalTo:component];
-  if (index == NSNotFound) {
-    // Reattach decoration layers even if the item is not found in children.
-    [renderer reattachHostDecorationLayers];
-    return;
-  }
-  for (NSUInteger next = index + 1; next < orderedChildren.count; ++next) {
-    LynxUI *child = orderedChildren[next];
-    if (![child isKindOfClass:LynxUIComponent.class]) {
-      continue;
+  if (index != NSNotFound) {
+    BOOL inserted = NO;
+    for (NSUInteger next = index + 1; next < orderedChildren.count; ++next) {
+      LynxUI *child = orderedChildren[next];
+      if (![[self class] isCUIListItem:child]) {
+        continue;
+      }
+      UIView *siblingView = child.view;
+      if (siblingView.superview == scrollView) {
+        [scrollView insertSubview:itemView belowSubview:siblingView];
+        [[(id<LynxRendererHost>)siblingView renderer] reattachHostDecorationLayers];
+        inserted = YES;
+        break;
+      }
     }
-    LynxUIComponent *siblingChild = (LynxUIComponent *)child;
-    if ([[self class] isCUIListItem:siblingChild] && siblingChild.view.superview == scrollView) {
-      [scrollView insertSubview:itemView belowSubview:siblingChild.view];
-      [[(id<LynxRendererHost>)siblingChild.view renderer] reattachHostDecorationLayers];
-      [renderer reattachHostDecorationLayers];
-      return;
+    if (!inserted) {
+      [scrollView bringSubviewToFront:itemView];
     }
   }
-  [scrollView bringSubviewToFront:itemView];
   [renderer reattachHostDecorationLayers];
+  [renderer publishIsOnTree:itemView.superview == scrollView];
+  [renderer publishLayoutPosition:component.frame.origin];
+  CGFloat z = itemView.layer.zPosition;
+  UIView *lastView = scrollView.subviews.lastObject;
+  if (canAppend && lastView == itemView && z >= _publishedItemOrder.maxZ &&
+      _publishedItemOrder.nextOrder < INT32_MAX) {
+    // Existing ranks remain valid when a new item follows every published item.
+    [renderer publishSiblingOrder:_publishedItemOrder.nextOrder++];
+    _publishedItemOrder.maxZ = z;
+  } else {
+    _publishedItemOrder = PublishListItemOrder(scrollView);
+  }
+  _lastOrderedItem = lastView;
 }
 
 - (void)detachCUIComponent:(LynxUIComponent *)component {
@@ -166,6 +218,7 @@
   }
   UIScrollView *scrollView = [self.owner scrollViewForListItemHelper];
   UIView *itemView = component.view;
+  [[(id<LynxRendererHost>)itemView renderer] publishIsOnTree:NO];
   if (scrollView == nil || itemView.superview != scrollView) {
     return;
   }

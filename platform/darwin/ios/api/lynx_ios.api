@@ -3334,8 +3334,14 @@ public class LynxRenderer : NSObject {
   public void LynxRenderer::updatePlatformExtraBundle:(id data);
   public void LynxRenderer::onRebuildSubRenderers();
   public void LynxRenderer::onSetFrame:(CGRect frame);
+  public void LynxRenderer()::setPlatformRenderer:(const lynx::fml::WeakPtr< lynx::tasm::PlatformRenderer > &renderer);
   public void LynxRenderer()::updateDisplayList:(lynx::tasm::DisplayList *list);
   public lynx::tasm::DisplayList * LynxRenderer()::getDisplayList();
+  public void LynxRenderer()::publishLayoutPosition:(CGPoint position);
+  public void LynxRenderer()::publishScrollOffset:(CGPoint offset);
+  public void LynxRenderer()::publishStickyOffset:(CGPoint offset);
+  public void LynxRenderer()::publishIsOnTree:(BOOL isOnTree);
+  public void LynxRenderer()::publishSiblingOrder:(int32_t order);
   public void LynxRenderer()::detachHostDecorationLayers();
   public void LynxRenderer()::reattachHostDecorationLayers();
   public void LynxRenderer()::syncHostDecorationLayers();

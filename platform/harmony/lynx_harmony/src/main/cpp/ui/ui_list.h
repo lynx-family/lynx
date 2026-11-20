@@ -83,6 +83,7 @@ class UIList : public BaseScrollContainer,
   // --------------------   list-element -> ui-list   end    ---------------//
   void AutoScrollStopped() override;
   void OnComponentNodeReady(UIComponent* ui_component) override;
+  void OnListItemZIndexChanged();
 
  protected:
   UIList(LynxContext* context, int sign, const std::string& tag);
@@ -138,10 +139,18 @@ class UIList : public BaseScrollContainer,
   void SendScrollEndEvent();
   float GetScrollRange();
   void UpdateStickyView();
+  void PublishScrollState();
+  void PublishListItemState(UIComponent* child, bool is_on_tree);
+  void PublishStickyItemState(UIComponent* child, bool sticky);
+  void PublishListItemOrder();
   void ScheduleComposeScrollProjection();
   float GetListItemSnapScrollOffset(UIComponent* list_item) const;
 
  private:
+  bool list_item_order_dirty_{false};
+  int32_t list_item_max_z_{0};
+  int32_t list_item_next_order_{0};
+  bool list_state_scroll_listener_registered_{false};
   ArkUI_NodeHandle container_layout_{nullptr};
   UIComponent* prev_sticky_top_item_{nullptr};
   UIComponent* prev_sticky_bottom_item_{nullptr};
