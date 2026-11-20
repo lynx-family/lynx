@@ -43,6 +43,8 @@ class ScrollViewTest : public UITest {
   }
 
   void UITearDown() override {
+    // The wheel end callback can walk the parent chain.
+    page_->gesture_manager()->EndMouseWheelTransactionByForce();
     outer_view_.reset();
     inner_view_.reset();
     box_view_.reset();
