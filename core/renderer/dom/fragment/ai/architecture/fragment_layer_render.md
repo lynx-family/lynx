@@ -73,6 +73,26 @@ The operation type selects the matching payload:
 
 Unknown operation types can be skipped by advancing one fixed-size item.
 
+Linear gradients optionally exclude a recorded inner rounded rectangle. The
+`inner_clip_index_plus_one` field occupies byte 40 without changing the 56-byte
+stride: zero keeps a filled gradient, positive values reference a prior box at
+index `value - 1`. Native builders supply the sentinel or a valid recorded index.
+Android and Harmony difference-clip locally; Darwin applies an even-odd mask to
+the gradient layer, not to the host. Radial gradient fields are unchanged.
+
+Compose drawing callbacks accept only the `lynx.draw.recording` v1 envelope.
+The bounded compiler reads and validates the complete input while writing
+supported rectangle and rounded-rectangle paths, solid/Clamp linear paint, and
+uniform-inset border clips into scratch storage in the final `DisplayList`
+format. Modifier operation 12 uses the drawing-behind callback; operation 17
+uses the foreground callback;
+operation 18 records a singleton geometry as an explicit clip in its own
+modifier boundary. Its carrier keeps CSS overflow visible so ordinary DrawClip
+cannot replace the explicit mask. Only a successfully compiled list is appended
+after checking destination capacity. On Darwin, decorations preceding
+content remain below the host; commands following text, image, or native-child
+content retain foreground order inside the host.
+
 Background color is recorded before background images, using the bottommost
 CSS image layer's clip. Image layers are recorded from last to first, so the
 first CSS background is painted on top, as required by
@@ -169,6 +189,30 @@ typedef struct SubtreeProperty {
 ```
 
 Like `DisplayListItem`, its size and offsets are ABI-checked.
+
+### 2.5 Compose final-list cache
+
+Cache-aware callbacks receive the element and physical width/height, and return
+`[canReuse, encodedRecording]` outside the versioned recording envelope. The
+producer owns recording validity, including observed State, size, Density, build
+block and target changes. It retains the complete encoding and returns it on
+every call. Each installed native callback owns an immutable compiled
+`DisplayList`. A reusable recording skips decoding and geometry conversion when
+that list exists at the current physical pixel scale. A new binding or changed
+compilation scale decodes the supplied recording without rerunning producer work.
+
+`AppendDrawingContent` receives validated decoder-owned content or its immutable
+cached copy, distinct from the destination and without owner-layer properties or
+resources. The decoder constructs `RecordBox`, `Fill`, `Border`, `LinearGradient`,
+`BoxShadow` and `ClipRect` items with valid box references and aligned gradient
+data. Append counts boxes and checks destination capacity once before writing,
+because a warm cache hit may encounter a larger destination prefix. It then
+copies content and relocates box references and nonempty gradient-data offsets.
+Empty success replaces a prior cached list. Decode or append failure leaves
+destination content unchanged; append-capacity diagnostics are batch-level
+because cached items have no original wire-command mapping. Fragment shadow
+state is marked only after a successful append. A failed decode discards the
+previous compiled list, so an unsupported replacement cannot reuse stale content.
 
 ## 3. Build Flow
 
