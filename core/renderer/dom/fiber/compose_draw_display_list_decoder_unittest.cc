@@ -170,8 +170,8 @@ TEST_F(DrawDisplayListDecoderTest, DepthAndUtf8PayloadBoundariesAreExact) {
   Reject("payload-over", wire, Code::kCapacity);
 }
 
-// Temporary coverage for the value-only entry point; schema and command
-// validation replace these staging expectations in the following layers.
+// Temporary staging checks; complete command validation replaces these
+// deferred-capability expectations in the following layer.
 TEST_F(DrawDisplayListDecoderTest, EmptySuccessAndErrorsAreAtomic) {
   auto wire = Parse("[\"lynx.draw.recording\",1,0,[],[],[],[],[],[]]");
   ASSERT_FALSE(Run("empty", wire));
@@ -231,17 +231,65 @@ TEST_F(DrawDisplayListDecoderTest, ExactExpandedNodeBudget) {
   }
 }
 
-TEST_F(DrawDisplayListDecoderTest, ExactTablesDeferWithoutAcceptingSemantics) {
-  for (const auto& table : {std::pair<unsigned, unsigned>{3, 65536},
-                            {4, 65536},
-                            {5, 65536},
-                            {6, 4096}}) {
-    const auto wire =
-        Eval("(()=>{let w=['lynx.draw.recording',1,0,[],[],[],[],[],[]];w[" +
-             std::to_string(table.first) + "]=Array(" +
-             std::to_string(table.second) + ").fill([]);return w})()");
-    Reject("table-exact-deferred", wire, Code::kUnsupported);
+TEST_F(DrawDisplayListDecoderTest, ExactBoundaryCapabilityAndMetadataInputs) {
+  const auto wire = Wire("[[1,0,0]]", "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]");
+  Reject("elliptical-capability", Parse(wire), Code::kUnsupported);
+  Reject("late-malformed-metadata",
+         Parse(Wire("[[1,0,0]]", "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]",
+                    "[[42,0]]")),
+         Code::kMalformed);
+}
+
+TEST_F(DrawDisplayListDecoderTest, UnsupportedUnusedRowsStillValidate) {
+  for (const auto* paint :
+       {"[[2,0,0,10,10,[1,2,3],[0,0.75,0.5],0,[1,0,0,1,0,0]],[1,0,true,null],["
+        "1],[]]",
+        "[[3,0,0,1,[1,2],[0,1],0,[1,0,0,1,0,null]],[1,0,true,null],[1],[]]",
+        "[[1,1],[1,0,true,null],[2,2,0,0,4,[1,2,3,0],0,null],[]]",
+        "[[1,1],[1,0,true,null],[1],[[255,\"effect\",1,[\"text\",[1,2]],[]],"
+        "[255,\"effect\",1,[\"text\",{}],[]]]]"}) {
+    auto wire = Parse(Wire());
+    wire.GetProperty(5u).Array()->push_back(Parse(paint));
+    Reject("late-invalid-unused-paint", wire, Code::kMalformed);
   }
+  for (const auto* path :
+       {"[3,1,-1]", "[3,2,-1]", "[3,0,1]", "[3,0,2]", "[255,\"path\",1,[],[1]]",
+        "[255,\"path\",1,[],[2]]"}) {
+    auto wire = Parse(Wire());
+    wire.GetProperty(4u).Array()->push_back(Parse(path));
+    wire.GetProperty(4u).Array()->push_back(Parse("[1,0,0,10,10]"));
+    Reject("self-or-future-ref", wire, Code::kMalformed);
+  }
+  auto wire = Parse(Wire());
+  wire.GetProperty(4u).Array()->push_back(Parse("[4,0,[[1,0,0],[2,1,1],[6]]]"));
+  Reject("unused-valid-verbs", wire, Code::kUnsupported);
+  wire.GetProperty(4u).Array()->set(1, Parse("[4,0,[[2,1,1]]]"));
+  Reject("unused-invalid-verbs", wire, Code::kMalformed);
+}
+
+// Temporary table-only checks; command semantics are still deferred.
+TEST_F(DrawDisplayListDecoderTest, ValidTablesAndCapabilitiesWithoutCommands) {
+  ASSERT_FALSE(Run("supported-unused-tables", Parse(Wire("[]"))));
+  EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+  for (const char* paint :
+       {"[[3,0,0,1,[1,2],[0,1],0,[1,0,0,1,0,0]],[1,0,true,null],[1],[]]",
+        "[[4,0,0,[1,2],[0,1],[1,0,0,1,0,0]],[1,0,true,null],[1],[]]"}) {
+    auto wire = Parse(Wire("[]"));
+    wire.GetProperty(5u).Array()->set(0, Parse(paint));
+    Reject("unsupported-source", wire, Code::kUnsupported,
+           DrawRecordingError::kNoCommand,
+           paint[2] == '3' ? "paint.radial" : "paint.sweep");
+    wire.GetProperty(5u).Array()->push_back(
+        Parse("[[1,1],[1,0,true,null],[1],[42]]"));
+    Reject("malformed-paint-tail", wire, Code::kMalformed);
+  }
+  auto wire = Parse(Wire("[]"));
+  wire.GetProperty(6u).Array()->push_back(Parse("[\"resource\",1,[]]"));
+  Reject("unknown-resource", wire, Code::kUnsupported,
+         DrawRecordingError::kNoCommand, "resource");
+  wire.GetProperty(6u).Array()->push_back(Parse("[\"resource\",1,{}]"));
+  Reject("malformed-resource-tail", wire, Code::kMalformed);
+  Reject("state-deferred", Parse(Wire("[[2],[3]]")), Code::kUnsupported);
 }
 
 }  // namespace
