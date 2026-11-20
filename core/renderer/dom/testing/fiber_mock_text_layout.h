@@ -20,7 +20,6 @@ namespace lynx {
 namespace tasm {
 class Element;
 class TextElement;
-class ViewElement;
 class ImageElement;
 
 namespace testing {
@@ -70,8 +69,8 @@ class TextLayoutMock : public TextLayoutImpl {
                          PropArrayMock* props, bool* has_inline_view);
   static void AppendTextProps(TextElement* element, size_t pos_start,
                               size_t pos_end, PropArrayMock* props);
-  static void AppendViewProps(ViewElement* view_element, size_t start,
-                              size_t end, PropArrayMock* props);
+  static void AppendViewProps(Element* element, size_t start, size_t end,
+                              PropArrayMock* props);
   static void AppendImageProps(ImageElement* image_element, size_t start,
                                size_t end, PropArrayMock* props);
   std::unordered_map<int32_t, std::unique_ptr<PropArrayMock>>

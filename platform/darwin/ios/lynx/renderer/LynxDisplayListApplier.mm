@@ -134,6 +134,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   float top_offset_;
 
   std::stack<int32_t> sign_stack_;
+  CGSize host_recording_size_;
 
   base::Vector<RoundedRectangle> box_array_;
 
@@ -206,6 +207,9 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         // the host's local coordinate space and must be applied, including a
         // text content Begin that intentionally reuses the host text sign.
         bool record_offset = !sign_stack_.empty();
+        if (!record_offset) {
+          host_recording_size_ = CGSizeMake(item.payload.begin.w, item.payload.begin.h);
+        }
         sign_stack_.emplace(item.payload.begin.id);
 
         x_stack_.emplace(record_offset ? item.payload.begin.x : 0.f);
@@ -1216,10 +1220,13 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       [_hostBackgroundLayer addSublayer:layer];
       return;
     }
-    if (op == DisplayListOpType::kFill &&
-        !CGRectEqualToRect(layer.frame, (CGRect){CGPointZero, _view.bounds.size})) {
+    if ((op == DisplayListOpType::kFill || op == DisplayListOpType::kBorder) &&
+        !CGRectEqualToRect(layer.frame, (CGRect){CGPointZero, op == DisplayListOpType::kBorder
+                                                                  ? host_recording_size_
+                                                                  : _view.bounds.size})) {
       // Host property synchronization changes decoration bounds. Preserve a
-      // custom drawRect's offset and size in a child layer instead.
+      // custom fill or border's offset and size in a child layer instead.
+      // Borders covering the recorded host keep their CSS resize behavior.
       CALayer *container = [LynxHostDrawingContainerLayer layer];
       [container addSublayer:layer];
       layer = container;
