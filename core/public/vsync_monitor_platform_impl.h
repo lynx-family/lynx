@@ -5,7 +5,11 @@
 #ifndef CORE_PUBLIC_VSYNC_MONITOR_PLATFORM_IMPL_H_
 #define CORE_PUBLIC_VSYNC_MONITOR_PLATFORM_IMPL_H_
 
+#include <cstdint>
+#include <memory>
+
 #include "base/include/closure.h"
+#include "base/include/vsync_frame_tick_work.h"
 
 namespace lynx {
 namespace base {
@@ -16,6 +20,10 @@ class VSyncMonitorPlatformImpl {
   virtual ~VSyncMonitorPlatformImpl() {}
 
   virtual void RequestVSync(Callback callback) = 0;
+  virtual std::shared_ptr<VSyncFrameTickWork> AcquireFrameTickWork(
+      int64_t frame_start_time_ns) {
+    return nullptr;
+  }
 };
 
 }  // namespace base

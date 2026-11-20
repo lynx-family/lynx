@@ -18,6 +18,8 @@ typedef void (*lynx_vsync_monitor_on_vsync_callback)(void* user_data, int64_t,
 typedef void (*lynx_vsync_monitor_request_vsync)(
     lynx_vsync_monitor_t*, lynx_vsync_monitor_on_vsync_callback callback,
     void* user_data);
+typedef void (*lynx_vsync_monitor_frame_tick_complete)(
+    lynx_vsync_monitor_t*, uint64_t frame_id, int64_t frame_start_time);
 
 // Creates a lynx_vsync_monitor_t instance with a finalizer. It associates
 // the provided user data with the monitor, which can be retrieved later using
@@ -32,6 +34,12 @@ LYNX_CAPI_EXPORT void* lynx_vsync_monitor_get_user_data(lynx_vsync_monitor_t*);
 // to synchronize a Vsync signal.
 LYNX_CAPI_EXPORT void lynx_vsync_monitor_bind_request_vsync_func(
     lynx_vsync_monitor_t*, lynx_vsync_monitor_request_vsync func);
+
+// Called after all registered asynchronous consumers finish the tick. Requires
+// enable_frame_tick_fence; the timestamp is in nanoseconds. This does not wait
+// for presentation or pixel readback.
+LYNX_CAPI_EXPORT void lynx_vsync_monitor_bind_frame_tick_complete_func(
+    lynx_vsync_monitor_t*, lynx_vsync_monitor_frame_tick_complete func);
 
 LYNX_EXTERN_C_END
 
