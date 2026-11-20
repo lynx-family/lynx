@@ -175,7 +175,7 @@ void EmbedderPlatformHarmony::TakeSnapshot(
         screenshot_runner->PostTask(
             [result = std::move(result), callback = std::move(callback)]() {
               std::string str(result.data.begin(), result.data.end());
-              auto snapshot_data = modp_b64_encode(str);
+              auto snapshot_data = lynx_modp_b64_encode(str);
               float timestamp =
                   std::chrono::steady_clock::now().time_since_epoch().count();
               callback(std::move(snapshot_data), timestamp, result.width,

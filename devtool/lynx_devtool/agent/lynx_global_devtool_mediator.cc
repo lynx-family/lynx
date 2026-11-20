@@ -159,10 +159,10 @@ void LynxGlobalDevToolMediator::IORead(
         int total_read = FileStream::Read(std::stoi(handle_str),
                                           static_cast<char*>(buff.get()), size);
         if (total_read > 0) {
-          int encode_length = modp_b64_encode_len(total_read);
+          int encode_length = lynx_modp_b64_encode_len(total_read);
           std::unique_ptr<char[]> encode_buff =
               std::make_unique<char[]>(encode_length);
-          modp_b64_encode(encode_buff.get(), buff.get(), total_read);
+          lynx_modp_b64_encode(encode_buff.get(), buff.get(), total_read);
           Json::Value result = res;
           result["result"]["data"] =
               std::string(encode_buff.get(), encode_length - 1);

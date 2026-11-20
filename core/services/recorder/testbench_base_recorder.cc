@@ -43,10 +43,11 @@ std::unique_ptr<Byte[]> Compress(const char* source, size_t source_size,
 
 std::unique_ptr<char[]> ModpB64Encode(const char* source, size_t source_size,
                                       unsigned long* base64_size_in) {
-  *base64_size_in = modp_b64_encode_len(source_size);
+  *base64_size_in = lynx_modp_b64_encode_len(source_size);
   std::unique_ptr<char[]> base64_data =
       std::make_unique<char[]>(*base64_size_in);
-  *base64_size_in = modp_b64_encode(base64_data.get(), source, source_size);
+  *base64_size_in =
+      lynx_modp_b64_encode(base64_data.get(), source, source_size);
   return base64_data;
 }
 

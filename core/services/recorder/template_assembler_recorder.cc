@@ -34,9 +34,9 @@ void TemplateAssemblerRecorder::RecordLoadTemplate(
   auto source_size = static_cast<uint32_t>(source.size());
 
   const char* buff = reinterpret_cast<const char*>(source.data());
-  size_t encode_length = modp_b64_encode_len(source_size);
+  size_t encode_length = lynx_modp_b64_encode_len(source_size);
   std::unique_ptr<char[]> encode_buff = std::make_unique<char[]>(encode_length);
-  encode_length = modp_b64_encode(encode_buff.get(), buff, source_size);
+  encode_length = lynx_modp_b64_encode(encode_buff.get(), buff, source_size);
 
   rapidjson::Value source_val(rapidjson::kStringType);
   source_val.SetString(encode_buff.get(),
@@ -480,9 +480,9 @@ TemplateAssemblerRecorder::CreateJSONFromLoadComponentWithCallback(
 
   auto source_size = static_cast<uint32_t>(source.size());
   const char* buff = reinterpret_cast<char*>(source.data());
-  size_t encode_length = modp_b64_encode_len(source_size);
+  size_t encode_length = lynx_modp_b64_encode_len(source_size);
   std::unique_ptr<char[]> encode_buff = std::make_unique<char[]>(encode_length);
-  encode_length = modp_b64_encode(encode_buff.get(), buff, source_size);
+  encode_length = lynx_modp_b64_encode(encode_buff.get(), buff, source_size);
   rapidjson::Value source_val(rapidjson::kStringType);
   source_val.SetString(encode_buff.get(),
                        static_cast<rapidjson::SizeType>(encode_length),

@@ -25,7 +25,7 @@ NSData* convertJSIArrayBufferDataToNSData(uint8_t* data, int length) {
   if (@available(iOS 10.0, *)) {
     return [NSData dataWithBytes:data length:length];  // copy mode
   } else {
-    size_t len = modp_b64_decode_len(modp_b64_encode_len(length));
+    size_t len = lynx_modp_b64_decode_len(lynx_modp_b64_encode_len(length));
     if (len < 0) {
       len = 0;
     }

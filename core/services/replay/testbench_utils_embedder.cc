@@ -71,7 +71,7 @@ std::string TestBenchUtilsEmbedder::ParserTestBenchRecordData(
   // filter out trailing '\0'
   while (end_idx > 0 && source[end_idx - 1] == '\0') end_idx--;
   std::string input(source.begin(), source.begin() + end_idx);
-  modp_b64_decode(input);
+  lynx_modp_b64_decode(input);
   unsigned char* uncompress_data = nullptr;
   size_t uncompress_data_size = 0;
   int ret =
