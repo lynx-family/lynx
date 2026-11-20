@@ -13,6 +13,7 @@
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/to_underlying.h"
 #include "core/public/jsb/native_module_factory.h"
+#include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/js/bindings/event/context_proxy_in_js.h"
@@ -32,6 +33,7 @@
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
+#include "core/template_bundle/lynx_template_bundle.h"
 #include "lynx_sub_error_code.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -411,6 +413,76 @@ class AppTest : public JSITestBase {
 };
 
 TEST_P(AppTest, CreateAppTest) { EXPECT_TRUE(app); }
+
+TEST_P(AppTest, LynxMLBackgroundErrorPositions) {
+  if (rt.type() != JSRuntimeType::quickjs) {
+    GTEST_SKIP() << "Negative source offsets are enabled for PrimJS only.";
+  }
+  const char* xml = R"xml(<!doctype lynx>
+<lynx engine-version="4.2">
+<script thread="main">var main = 1;</script>
+<script thread="background">
+function btsLeaf() {
+  throw new Error("PROBE_BTS_RUNTIME");
+}
+function btsMiddle() {
+  btsLeaf();
+}
+function btsOuter() {
+  btsMiddle();
+}
+globalThis.runStackProbe = function() {
+  try { btsOuter(); } catch (e) {
+    globalThis.capturedStack = e.stack;
+    globalThis.nativeApp.reportException(e, {filename: "app-service"});
+  }
+};
+runStackProbe();
+</script>
+</lynx>)xml";
+  tasm::LynxTemplateBundle bundle;
+  ASSERT_TRUE(bundle.FromLynxML(xml, "stack-probe.lynxml").empty());
+  tasm::TasmRuntimeBundle card;
+  card.js_bundle = bundle.GetJsBundle();
+  app->LoadApp(std::move(card), lepus::Value(), tasm::PackageInstanceDSL::TT,
+               tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE,
+               "stack-probe.lynxml", 0);
+  rt.global().setProperty(
+      rt, "nativeApp",
+      Object::createFromHostObject(
+          rt,
+          std::make_shared<AppProxy>(runtime.GetWeakPtr(), app->GetWeakPtr())));
+  EXPECT_CALL(delegate_, GetJSContentFromExternal(::testing::_, ::testing::_,
+                                                  ::testing::_))
+      .Times(0);
+  EXPECT_CALL(delegate_, OnErrorOccurred(::testing::_))
+      .Times(2)
+      .WillRepeatedly([&](base::LynxError error) {
+        EXPECT_THAT(error.error_message_, ::testing::HasSubstr("\"lineno\":3"));
+        EXPECT_THAT(error.error_message_, ::testing::HasSubstr("\"colno\":39"));
+        RecordProperty("reported_error", error.error_message_);
+      });
+  auto result = app->LoadScript(tasm::DEFAULT_ENTRY_NAME, kAppServiceJSName, 0);
+  ASSERT_TRUE(result.has_value());
+  rt.global().setProperty(rt, "wrappedModule", std::move(*result));
+  ASSERT_TRUE(eval("wrappedModule.init({tt: {"
+                   "define: function(name, body) { this.body = body; },"
+                   "require: function() { this.body(); }"
+                   "}});")
+                  .has_value());
+  auto check_stack = [&]() {
+    auto stack = eval("capturedStack")->getString(rt).utf8(rt);
+    EXPECT_THAT(stack, ::testing::HasSubstr("btsLeaf (/app-service.js:3:39)"));
+    EXPECT_THAT(stack,
+                ::testing::HasSubstr("btsMiddle (/app-service.js:6:12)"));
+    EXPECT_THAT(stack, ::testing::HasSubstr("btsOuter (/app-service.js:9:14)"));
+    RecordProperty("raw_stack", stack);
+  };
+  check_stack();
+  // Invoke the callback again after module initialization has returned.
+  ASSERT_TRUE(eval("capturedStack = ''; runStackProbe();").has_value());
+  check_stack();
+}
 
 TEST_P(AppTest, GetMemoryUsageReturnsQueryStatus) {
   auto& settings = const_cast<tasm::performance::MemoryMonitor::Settings&>(

@@ -132,11 +132,13 @@ std::string LynxTemplateBundle::BuildFromLynxMLSources(
   context_bundle_ = std::move(context_bundle);
 
   std::string wrapped_background_thread_script = background_thread_script;
-  runtime::js::AddAppServiceWrapForJsContent(wrapped_background_thread_script);
+  const int source_line_offset = runtime::js::AddAppServiceWrapForJsContent(
+      wrapped_background_thread_script);
   js_bundle_.AddJsContent(
       runtime::kAppServiceJSName,
       runtime::js::JsContent(std::move(wrapped_background_thread_script),
-                             runtime::js::JsContent::Type::SOURCE));
+                             runtime::js::JsContent::Type::SOURCE,
+                             source_line_offset));
 
   return "";
 }
