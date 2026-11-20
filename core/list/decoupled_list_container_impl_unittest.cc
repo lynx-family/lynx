@@ -129,6 +129,26 @@ TEST_LIST_CONTAINER_RESOLVE_PROP(EnableDynamicSpanCount) {
   EXPECT_FALSE(list_container_impl_->enable_dynamic_span_count_);
 }
 
+// The flag defaults to false. Setting true, the string "false", and then the
+// boolean false leaves the flag at true, true, and false, respectively.
+// ResolveAttribute returns false for booleans because the C++ container
+// consumes them. It returns true for the string so the platform can handle it.
+TEST_LIST_CONTAINER_RESOLVE_PROP(ExperimentalOptimizeWaterfallScrollFill) {
+  EXPECT_FALSE(list_container_impl_->optimize_waterfall_scroll_fill());
+  LIST_CONTAINER_DEFINE_PROP_VALUE(ExperimentalOptimizeWaterfallScrollFill,
+                                   Bool, true);
+  EXPECT_FALSE(list_container_impl_->ResolveAttribute(*key, *value));
+  EXPECT_TRUE(list_container_impl_->optimize_waterfall_scroll_fill());
+
+  value = value_factory_->CreateString("false");
+  EXPECT_TRUE(list_container_impl_->ResolveAttribute(*key, *value));
+  EXPECT_TRUE(list_container_impl_->optimize_waterfall_scroll_fill());
+
+  value = value_factory_->CreateBool(false);
+  EXPECT_FALSE(list_container_impl_->ResolveAttribute(*key, *value));
+  EXPECT_FALSE(list_container_impl_->optimize_waterfall_scroll_fill());
+}
+
 TEST_LIST_CONTAINER_RESOLVE_PROP(SpanCount) {
   LIST_CONTAINER_DEFINE_PROP_VALUE(SpanCount, Number, 2);
   EXPECT_CALL(*mock_list_element_, MarkListElementLayoutDirty()).Times(1);
