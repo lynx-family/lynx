@@ -324,6 +324,10 @@
   _hasSelectedGestureHandlerImplementation = NO;
 }
 
+- (BOOL)isUsingUnifiedGestureHandler {
+  return self.eventHandler.touchRecognizer.unifiedGestureArena != nil;
+}
+
 - (void)setDefaultOverflowVisible:(BOOL)enable {
   _defaultOverflowVisible = enable;
 }

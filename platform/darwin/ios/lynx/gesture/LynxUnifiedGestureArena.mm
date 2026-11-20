@@ -70,6 +70,16 @@ GestureDefinition DefinitionFromDetector(LynxGestureDetectorDarwin *detector) {
   return definition;
 }
 
+std::vector<GestureDefinition> DefinitionsFromDetectors(
+    NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *detectors) {
+  std::vector<GestureDefinition> definitions;
+  definitions.reserve(detectors.count);
+  for (LynxGestureDetectorDarwin *detector in detectors.allValues) {
+    definitions.push_back(DefinitionFromDetector(detector));
+  }
+  return NormalizeGestureDefinitions(std::move(definitions));
+}
+
 LynxGestureHandlerState DarwinState(GestureState state) {
   switch (state) {
     case GestureState::kInit:
@@ -143,12 +153,7 @@ NSString *HandlerKey(MemberId memberId, uint32_t gestureId) {
   if (_invalidated || !_arena) {
     return;
   }
-  std::vector<GestureDefinition> definitions;
-  definitions.reserve(gestureDetectors.count);
-  for (LynxGestureDetectorDarwin *detector in gestureDetectors.allValues) {
-    definitions.push_back(DefinitionFromDetector(detector));
-  }
-  definitions = NormalizeGestureDefinitions(std::move(definitions));
+  auto definitions = DefinitionsFromDetectors(gestureDetectors);
   // Retain both C++ objects across callbacks that can invalidate the wrapper.
   auto delegate = _delegate;
   auto arena = _arena;
@@ -163,6 +168,24 @@ NSString *HandlerKey(MemberId memberId, uint32_t gestureId) {
   auto arena = _arena;
   arena->RemoveMember(memberId);
   [self removeActiveHandlersForMember:memberId];
+}
+
+- (LynxUnifiedGestureRegistration)registrationForDetectors:
+    (NSDictionary<NSNumber *, LynxGestureDetectorDarwin *> *)gestureDetectors {
+  if (_invalidated || !_arena) {
+    return 0;
+  }
+  // Dispatch membership can be invalidated while a replacement waits for a callback to return.
+  const auto definitions = DefinitionsFromDetectors(gestureDetectors);
+  if (definitions.empty()) {
+    return 0;
+  }
+  const bool hasNative =
+      std::any_of(definitions.begin(), definitions.end(), [](const GestureDefinition &definition) {
+        return definition.gesture_type == GestureType::NATIVE;
+      });
+  return LynxUnifiedGestureRegistrationHasDetector |
+         (hasNative ? LynxUnifiedGestureRegistrationHasNativeDetector : 0);
 }
 
 - (BOOL)containsMember:(NSInteger)memberId {
@@ -200,6 +223,21 @@ NSString *HandlerKey(MemberId memberId, uint32_t gestureId) {
   auto delegate = _delegate;
   auto arena = _arena;
   arena->SetGestureState(memberId, static_cast<uint32_t>(gestureId), command);
+}
+
+- (nullable id<LynxEventTarget>)flingTargetInChain:(id<LynxEventTarget>)target {
+  const auto memberId = _arena ? _arena->GetFlingMemberId() : std::nullopt;
+  if (!memberId) {
+    return nil;
+  }
+  LynxUI *flingTarget = [self uiForMember:*memberId];
+  for (id<LynxEventTarget> candidate = target; candidate != nil;
+       candidate = candidate.parentTarget) {
+    if (candidate == flingTarget) {
+      return candidate;
+    }
+  }
+  return nil;
 }
 
 - (void)handleTouch:(nullable UITouch *)touch

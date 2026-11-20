@@ -37,6 +37,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setEnableNewGesture:(BOOL)enable;
 - (void)setEnableUnifiedGestureHandler:(BOOL)enable;
 - (void)resetGestureHandlerImplementationSelection;
+- (BOOL)isUsingUnifiedGestureHandler;
 - (void)setEnableExposureUIMargin:(BOOL)enable;
 - (void)setEnableTextLanguageAlignment:(BOOL)enable;
 - (void)setEnableXTextLayoutReused:(BOOL)enable;

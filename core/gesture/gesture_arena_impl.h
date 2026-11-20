@@ -108,6 +108,10 @@ class GestureArenaImpl {
 
   bool ContainsGesture(MemberId member_id, uint32_t gesture_id) const;
 
+  std::optional<MemberId> GetFlingMemberId() const {
+    return fling_active_ ? CurrentWinner() : std::nullopt;
+  }
+
   void HandleInput(const InputEvent &input,
                    const std::vector<MemberId> &response_chain);
 

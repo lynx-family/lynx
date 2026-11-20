@@ -21,6 +21,9 @@
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxGestureArenaManager.h"
+#import "LynxUIContext+Internal.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 #include <stdint.h>
 
@@ -66,6 +69,7 @@ static BOOL LynxGestureMatchesPanInterceptClasses(UIGestureRecognizer* gesture, 
 - (BOOL)shouldInterceptSystemBackGesture:(UIGestureRecognizer*)gesture
                            withDirection:(enum LynxPanInterceptDirection)direction
                        andInterceptScope:(enum LynxPanInterceptScope)scope;
+- (BOOL)hasActivePlatformGesture;
 
 @end
 
@@ -1067,6 +1071,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
 - (void)updateUiOwner:(LynxUIOwner*)owner eventEmitter:(LynxEventEmitter*)eventEmitter {
   _uiOwner = owner;
   _eventEmitter = eventEmitter;
+  _touchRecognizer.unifiedGestureArena = owner.unifiedGestureArena;
 }
 
 - (NSInteger)setGestureArenaManagerAndGetIndex:(nullable LynxGestureArenaManager*)manager {
@@ -1300,8 +1305,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
     switch (status) {
       case LynxGestureHandlerStateBegin:
         [self->_customPlatformDelegate clearOtherGestures];
-        self->_customPlatformDelegate.platformGestureActive =
-            [self.gestureArenaManager hasActivePlatformGesture];
+        self->_customPlatformDelegate.platformGestureActive = [self hasActivePlatformGesture];
         [self.customPlatformGesture beginGesture];
         break;
       case LynxGestureHandlerStateActive:
@@ -1312,7 +1316,7 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
       case LynxGestureHandlerStateFail:
       case LynxGestureHandlerStateEnd:
       case LynxGestureHandlerStateCancel:
-        if ([self.gestureArenaManager hasActivePlatformGesture]) {
+        if ([self hasActivePlatformGesture]) {
           break;
         }
         self->_customPlatformDelegate.platformGestureActive = NO;
@@ -1331,6 +1335,13 @@ static const NSInteger kLynxFragmentLayerDefaultRootSign = 10;
   } else {
     dispatch_async(dispatch_get_main_queue(), work);
   }
+}
+
+- (BOOL)hasActivePlatformGesture {
+  if (_uiOwner.uiContext.enableUnifiedGestureHandler) {
+    return [_uiOwner.unifiedGestureArena hasActiveGesture];
+  }
+  return [self.gestureArenaManager hasActivePlatformGesture];
 }
 
 - (void)onGestureRecognizedByEventTarget:(id<LynxEventTarget>)ui {
