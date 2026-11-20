@@ -1651,6 +1651,82 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqual(invalidView.contentMode, UIViewContentModeScaleToFill);
 }
 
+- (void)testCustomSolidBorderKeepsGeometryAfterHostSynchronization {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 60)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 60);
+  AppendRecordBox(list, 10, 12, 40, 20);
+  AppendRecordBox(list, 12, 14, 36, 16);
+  AppendBorder(list, 0, 1);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+
+  CALayer *decoration = parent.layer.sublayers.firstObject;
+  CALayer *border = decoration.sublayers.firstObject ?: decoration;
+  XCTAssertEqualWithAccuracy(border.borderWidth, 2, 0.001);
+  XCTAssertTrue(CGRectEqualToRect(border.frame, CGRectMake(10, 12, 40, 20)));
+  XCTAssertTrue(CGRectEqualToRect([border convertRect:border.bounds toLayer:parent.layer],
+                                  CGRectMake(30, 42, 40, 20)));
+
+  host.frame = CGRectMake(40, 50, 120, 80);
+  host.bounds = CGRectMake(7, 9, 120, 80);
+  host.alpha = 0.5;
+  [applier syncHostDecorationLayers];
+  XCTAssertTrue(CGRectEqualToRect(border.frame, CGRectMake(10, 12, 40, 20)));
+  XCTAssertTrue(CGRectEqualToRect([border convertRect:border.bounds toLayer:parent.layer],
+                                  CGRectMake(50, 62, 40, 20)));
+  XCTAssertEqualWithAccuracy(decoration.opacity, 0.5, 0.001);
+}
+
+- (void)testFullSizeCSSSolidBorderKeepsDirectLayerFastPath {
+  UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 60)];
+  [host createRendererWithSign:1 andContext:nil];
+  [parent addSubview:host];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  const float outerRadii[8] = {12, 12, 12, 12, 12, 12, 12, 12};
+  const float innerRadii[8] = {10, 10, 10, 10, 10, 10, 10, 10};
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 60);
+  AppendRecordBox(list, 0, 0, 100, 60, true, outerRadii);
+  AppendRecordBox(list, 2, 2, 96, 56, true, innerRadii);
+  AppendBorder(list, 0, 1);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+
+  XCTAssertEqual(parent.layer.sublayers.count, 2u);
+  CALayer *border = parent.layer.sublayers.firstObject;
+  XCTAssertFalse([border isKindOfClass:CAShapeLayer.class]);
+  XCTAssertEqual(border.sublayers.count, 0u);
+  XCTAssertEqualWithAccuracy(border.borderWidth, 2, 0.001);
+  XCTAssertEqualWithAccuracy(border.cornerRadius, 12, 0.001);
+  XCTAssertTrue(CGRectEqualToRect(border.frame, host.frame));
+
+  host.bounds = CGRectMake(7, 9, 120, 80);
+  host.alpha = 0.5;
+  [applier syncHostDecorationLayers];
+  XCTAssertEqual(parent.layer.sublayers.count, 2u);
+  XCTAssertEqual(border.sublayers.count, 0u);
+  XCTAssertTrue(CGRectEqualToRect(border.bounds, host.layer.bounds));
+  XCTAssertTrue(CGPointEqualToPoint(border.position, host.layer.position));
+  XCTAssertEqualWithAccuracy(border.opacity, 0.5, 0.001);
+  [applier applyDisplayList:&list];
+  [applier syncHostDecorationLayers];
+  border = parent.layer.sublayers.firstObject;
+  XCTAssertEqual(parent.layer.sublayers.count, 2u);
+  XCTAssertEqual(border.sublayers.count, 0u);
+  XCTAssertEqualWithAccuracy(border.borderWidth, 2, 0.001);
+  XCTAssertTrue(CGRectEqualToRect(border.bounds, host.layer.bounds));
+}
+
 - (void)testProcessContentOperationsWithBorder {
   LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
