@@ -20,6 +20,7 @@
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
+#include "core/renderer/starlight/style/borders_data.h"
 
 namespace lynx::tasm::detail {
 namespace v1 {
@@ -61,6 +62,10 @@ struct PaintInfo {
   PaintCapability capability{PaintCapability::kSupported};
 };
 
+bool FitsFloat(double value) {
+  return std::isfinite(value) &&
+         std::abs(value) <= std::numeric_limits<float>::max();
+}
 bool NearlyEqual(double a, double b, double extent) {
   return std::abs(a - b) <=
          8 * std::numeric_limits<float>::epsilon() *
@@ -91,6 +96,60 @@ bool UniformInset(const PathInfo& outer, const PathInfo& inner) {
     if (!NearlyEqual(expected[i], inner.radii[i], extent)) return false;
   return true;
 }
+uint32_t FoldAlpha(uint32_t argb, double alpha) {
+  const auto byte = static_cast<uint32_t>(std::round((argb >> 24) * alpha));
+  return (argb & 0x00ffffffu) | (byte << 24);
+}
+bool LowerLinearPaint(const RoundedRectangle& clip, RoundedRectangle* tile,
+                      float* angle, base::Vector<uint32_t>* colors,
+                      base::Vector<float>* stops, const float endpoints[4]) {
+  const double left = std::min({clip.GetX(), endpoints[0], endpoints[2]});
+  const double top = std::min({clip.GetY(), endpoints[1], endpoints[3]});
+  const double right = std::max(
+      {static_cast<double>(clip.GetX()) + clip.GetWidth(),
+       static_cast<double>(endpoints[0]), static_cast<double>(endpoints[2])});
+  const double bottom = std::max(
+      {static_cast<double>(clip.GetY()) + clip.GetHeight(),
+       static_cast<double>(endpoints[1]), static_cast<double>(endpoints[3])});
+  if (!FitsFloat(right - left) || !FitsFloat(bottom - top)) return false;
+  tile->SetX(static_cast<float>(left));
+  tile->SetY(static_cast<float>(top));
+  tile->SetWidth(static_cast<float>(right - left));
+  tile->SetHeight(static_cast<float>(bottom - top));
+  const double dx = static_cast<double>(endpoints[2]) - endpoints[0];
+  const double dy = static_cast<double>(endpoints[3]) - endpoints[1];
+  if (!FitsFloat(dx) || !FitsFloat(dy)) return false;
+  const double degrees = 180.0 / std::acos(-1.0);
+  double degrees_angle = std::atan2(dx, -dy) * degrees;
+  if (degrees_angle < 0) degrees_angle += 360;
+  *angle = static_cast<float>(degrees_angle);
+  const double direction_x = std::sin(*angle / degrees);
+  const double direction_y = -std::cos(*angle / degrees);
+  const double width = tile->GetWidth(), height = tile->GetHeight();
+  const double span =
+      std::abs(width * direction_x) + std::abs(height * direction_y);
+  if (!FitsFloat(span) || span <= 0) return false;
+  const double center_x = tile->GetX() + width / 2;
+  const double center_y = tile->GetY() + height / 2;
+  const double start = ((endpoints[0] - center_x) * direction_x +
+                        (endpoints[1] - center_y) * direction_y + span / 2) /
+                       span;
+  const double scale = (dx * direction_x + dy * direction_y) / span;
+  if (!std::isfinite(start) || !std::isfinite(scale) || scale <= 0)
+    return false;
+  // V1 empty primitives still validate the actual projection before elision.
+  if (clip.GetWidth() == 0 || clip.GetHeight() == 0) return true;
+  // The caller already charged the two expanded endpoint entries.
+  for (auto& stop : (*stops))
+    stop = static_cast<float>(std::clamp(start + stop * scale, 0.0, 1.0));
+  const uint32_t first = (*colors).front(), last = (*colors).back();
+  (*colors).insert((*colors).begin(), first);
+  (*colors).push_back(last);
+  (*stops).insert((*stops).begin(), 0);
+  (*stops).push_back(1);
+  return true;
+}
+
 class V1Reader {
   // A cursor owns a runtime handle only during decoding. Its parent is an
   // active schema cursor (or a stable payload frame), never part of the IR.
@@ -133,7 +192,8 @@ class V1Reader {
   };
 
  public:
-  explicit V1Reader(ComposeDrawPhase phase) : phase_(phase) {}
+  V1Reader(double pixels, ComposeDrawPhase phase)
+      : pixels_(pixels), phase_(phase) {}
   std::optional<DrawRecordingError> Read(const lepus::Value& wire,
                                          DisplayList* out, bool* shadow) {
     if (!ChargeNodes(1, kMaxValueNodes, &snapshot_nodes_)) return error_;
@@ -687,7 +747,7 @@ class V1Reader {
       case 1: {
         int64_t path = 0, paint = 0;
         if (!Row(row, 3) || !DrawRefs(row, &path, &paint)) return false;
-        if (CanLower()) LowerFail(Code::kUnsupported);
+        if (CanLower()) Draw(path, paint);
         return true;
       }
       case 2:
@@ -714,7 +774,8 @@ class V1Reader {
               !paths_[path].IsBox()) {
             LowerFail(Code::kUnsupported, "drawing.clip");
           } else {
-            LowerFail(Code::kUnsupported);
+            RoundedRectangle clip;
+            if (Geometry(paths_[path], &clip)) scratch_.ClipRect(clip);
           }
         }
         return true;
@@ -754,7 +815,7 @@ class V1Reader {
               paints_[paint].source != 1)
             LowerFail(Code::kUnsupported);
           else
-            LowerFail(Code::kUnsupported);
+            Shadow(paths_[path], paints_[paint], x, y, blur, spread);
         }
         return true;
       }
@@ -795,7 +856,131 @@ class V1Reader {
       lower_error_ = DrawRecordingError{code, error_.command_index, ns};
     return false;
   }
+  bool ChargeData(size_t bytes) {
+    if (bytes > static_cast<size_t>(INT32_MAX) - bytes_)
+      return LowerFail(Code::kCapacity);
+    bytes_ += bytes;
+    return true;
+  }
+  bool Float(double physical, float* output) {
+    if (!FitsFloat(physical / pixels_)) return LowerFail(Code::kOverflow);
+    *output = static_cast<float>(physical / pixels_);
+    return true;
+  }
+  bool Geometry(const PathInfo& path, RoundedRectangle* output) {
+    const auto* b = &path.bounds;
+    float x, y, w, h;
+    if (!Float(b->x, &x) || !Float(b->y, &y) || !Float(b->width, &w) ||
+        !Float(b->height, &h))
+      return false;
+    if (!FitsFloat(b->x / pixels_ + b->width / pixels_) ||
+        !FitsFloat(b->y / pixels_ + b->height / pixels_) ||
+        !std::isfinite(x + w) || !std::isfinite(y + h))
+      return LowerFail(Code::kOverflow);
+    output->SetX(x);
+    output->SetY(y);
+    output->SetWidth(w);
+    output->SetHeight(h);
+    float r[4]{};
+    const auto& radii = path.radii;
+    for (size_t i = 0; i < 4; ++i) {
+      if (!Float(radii[i], &r[i])) return false;
+    }
+    output->SetRadiusXTopLeft(r[0]);
+    output->SetRadiusYTopLeft(r[0]);
+    output->SetRadiusXTopRight(r[1]);
+    output->SetRadiusYTopRight(r[1]);
+    output->SetRadiusXBottomRight(r[2]);
+    output->SetRadiusYBottomRight(r[2]);
+    output->SetRadiusXBottomLeft(r[3]);
+    output->SetRadiusYBottomLeft(r[3]);
+    return true;
+  }
+
+  bool Draw(int64_t path_ref, int64_t paint_ref) {
+    const auto* path = &paths_[path_ref];
+    RoundedRectangle clip, inner, tile;
+    const bool has_inner = path->tag == 3 && path->inner_ref != -1;
+    if (path->tag == 3) {
+      if (has_inner && !Geometry(paths_[path->inner_ref], &inner)) return false;
+      path = &paths_[path->outer_ref];
+    }
+    if (!Geometry(*path, &clip)) return false;
+    const auto& paint = paints_[paint_ref];
+    const bool empty = clip.GetWidth() == 0 || clip.GetHeight() == 0;
+    base::Vector<uint32_t> colors;
+    base::Vector<float> stops;
+    float angle = 180;
+    if (paint.source == 1) {
+      if (empty) return true;
+      const uint32_t color = FoldAlpha(paint.argb, paint.alpha);
+      int32_t clip_index;
+      scratch_.RecordBoxModel(clip, clip_index);
+      if (!has_inner) {
+        scratch_.Fill(color, clip_index);
+        return true;
+      }
+      int32_t inner_index;
+      scratch_.RecordBoxModel(inner, inner_index);
+      starlight::BordersData border;
+      border.color_top = border.color_right = border.color_bottom =
+          border.color_left = color;
+      border.style_top = border.style_right = border.style_bottom =
+          border.style_left = starlight::BorderStyleType::kSolid;
+      scratch_.Border(clip_index, inner_index, border);
+      return true;
+    }
+    const size_t n = paint.colors.size();
+    float endpoints[4];
+    if (!Float(paint.start[0], &endpoints[0]) ||
+        !Float(paint.start[1], &endpoints[1]) ||
+        !Float(paint.end[0], &endpoints[2]) ||
+        !Float(paint.end[1], &endpoints[3]))
+      return false;
+    if (endpoints[0] == endpoints[2] && endpoints[1] == endpoints[3])
+      return LowerFail(Code::kOverflow);
+    if (!empty) {
+      if (!ChargeData((n + 2) * 8)) return false;
+      colors.reserve(n + 2);
+      stops.reserve(n + 2);
+      for (uint32_t color : paint.colors)
+        colors.push_back(FoldAlpha(color, paint.alpha));
+      for (double stop : paint.stops) stops.push_back(static_cast<float>(stop));
+    }
+    if (!LowerLinearPaint(clip, &tile, &angle, &colors, &stops, endpoints))
+      return LowerFail(Code::kOverflow);
+    if (empty) return true;
+    int32_t clip_index, tile_index, inner_index = -1;
+    scratch_.RecordBoxModel(clip, clip_index);
+    scratch_.RecordBoxModel(tile, tile_index);
+    if (has_inner) scratch_.RecordBoxModel(inner, inner_index);
+    scratch_.LinearGradient(angle, colors, stops, tile_index, clip_index, 1, 1,
+                            inner_index);
+    return true;
+  }
+  bool Shadow(const PathInfo& path, const PaintInfo& paint, double offset_x,
+              double offset_y, double blur_physical, double spread_physical) {
+    RoundedRectangle clip, shadow;
+    float x, y, blur, spread;
+    if (!Geometry(path, &clip) || !Float(offset_x, &x) ||
+        !Float(offset_y, &y) || !Float(blur_physical, &blur) ||
+        !Float(spread_physical, &spread))
+      return false;
+    if (!Fragment::PrepareCustomOutsetShadow(clip, x, y, spread, &shadow))
+      return LowerFail(Code::kOverflow);
+    if (clip.GetWidth() == 0 || clip.GetHeight() == 0) return true;
+    int32_t clip_index, shadow_index;
+    scratch_.RecordBoxModel(clip, clip_index);
+    scratch_.RecordBoxModel(shadow, shadow_index);
+    scratch_.BoxShadow(shadow_index, clip_index,
+                       FoldAlpha(paint.argb, paint.alpha), blur,
+                       DisplayListBuilder::BoxShadowClipMode::kOutset);
+    has_shadow_ = true;
+    return true;
+  }
+  double pixels_;
   ComposeDrawPhase phase_;
+  size_t bytes_{0};
   DisplayListBuilder scratch_;
   base::Vector<PathInfo> paths_;
   base::Vector<PaintInfo> paints_;
@@ -817,7 +1002,7 @@ std::optional<DrawRecordingError> DecodeV1DrawDisplayList(
     const lepus::Value& input, double pixels, ComposeDrawPhase phase,
     DisplayList* output, bool* has_outset_shadow) {
   if (!std::isfinite(pixels) || pixels <= 0) return DrawRecordingError{};
-  return v1::V1Reader(phase).Read(input, output, has_outset_shadow);
+  return v1::V1Reader(pixels, phase).Read(input, output, has_outset_shadow);
 }
 }  // namespace lynx::tasm::detail
 
