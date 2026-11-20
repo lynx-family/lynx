@@ -91,6 +91,9 @@ static constexpr const char* const kPropEnableInsertPlatformViewOperation =
 static constexpr const char* const kPropBounces = "bounces";
 static constexpr const char* const kPropEnableDynamicSpanCount =
     "enable-dynamic-span-count";
+static constexpr const char* const
+    kPropExperimentalOptimizeWaterfallScrollFill =
+        "experimental-optimize-waterfall-scroll-fill";
 static constexpr const char* const kPropStickyBufferCount =
     "sticky-buffer-count";
 static constexpr const char* const kPropNeedVisibleItemInfo =

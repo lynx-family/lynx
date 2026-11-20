@@ -624,19 +624,57 @@ void StaggeredGridLayoutManager::ScrollByInternal(float content_offset,
   float content_offset_before_adjustment =
       from_platform ? content_offset : content_offset_;
   list_container_->StartInterceptListElementUpdated();
-  // Fill
-  LayoutState layout_state(span_count_, delta > 0
-                                            ? LayoutDirection::kLayoutToEnd
-                                            : LayoutDirection::kLayoutToStart);
-  UpdateStartAndEndLinesStatus(layout_state);
-  SetContentOffset(content_offset);
+
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
                     GRID_LAYOUT_MANAGER_SCROLL_BY_INTERNAL_FILL);
-  Fill(layout_state);
+  if (list_container_->optimize_waterfall_scroll_fill()) {
+    // Use the target viewport to select a visible scroll anchor.
+    SetContentOffset(content_offset);
+    list_children_helper_->UpdateOnScreenChildren(
+        list_orientation_helper_.get(), content_offset_);
+    ListAnchorManager::AnchorInfo anchor_info;
+    // At or above the top, skip anchor compensation so relayout keeps the
+    // content offset at zero.
+    if (content_offset > 0.f) {
+      UpdateScrollAnchorInfo(anchor_info);
+    }
+    auto layout_and_adjust = [this, &anchor_info]() {
+      // TODO: The fill loop runs layout from index 0 at least twice even when
+      // the layout does not change. Track layout changes across binding and
+      // call LayoutInvalidItemHolder only when the layout is invalidated.
+      LayoutInvalidItemHolder(0);
+      content_size_ = GetTargetContentSize();
+      // TODO: When Compose supports waterfall layout, account for anchor
+      // adjustments across fill passes. SetContentOffsetFromAnchor adds the
+      // difference between the requested and current offsets before clamping.
+      // If items at the end measure shorter, the current offset is clamped to
+      // the new limit, but the anchor may still request the old offset. Later
+      // passes can count that difference again even when the anchor stays put,
+      // underreporting the consumed delta and overreporting the remaining
+      // delta.
+      list_anchor_manager_->AdjustContentOffsetWithAnchor(anchor_info,
+                                                          content_offset_);
+    };
+    // Bind items in the target viewport, then relayout and bind any newly
+    // exposed items.
+    BindAllVisibleItemHolders();
+    do {
+      layout_and_adjust();
+    } while (BindAllVisibleItemHolders());
+    layout_and_adjust();
+  } else {
+    LayoutState layout_state(span_count_,
+                             delta > 0 ? LayoutDirection::kLayoutToEnd
+                                       : LayoutDirection::kLayoutToStart);
+    UpdateStartAndEndLinesStatus(layout_state);
+    SetContentOffset(content_offset);
+    Fill(layout_state);
+    content_size_ = GetTargetContentSize();
+  }
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
-  content_size_ = GetTargetContentSize();
-  UpdateStickyItems();
+
   // TODO(fangzhou.fz) adjust offset for sticky-item
+  UpdateStickyItems();
   FlushContentSizeAndOffsetToPlatform(content_offset_before_adjustment, false);
   list_children_helper_->UpdateOnScreenChildren(list_orientation_helper_.get(),
                                                 content_offset_);
@@ -655,6 +693,66 @@ void StaggeredGridLayoutManager::OnScrollAfter(float original_offset) {
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
   SendScrollEvents(scroll_delta, original_offset, EventSource::kScroll);
+}
+
+void StaggeredGridLayoutManager::UpdateScrollAnchorInfo(
+    ListAnchorManager::AnchorInfo& anchor_info) const {
+  anchor_info.Reset();
+  ListAdapter* list_adapter = list_container_->list_adapter();
+  ItemHolder* anchor_item = nullptr;
+  float closest_start =
+      content_offset_ + list_orientation_helper_->GetMeasurement();
+  list_children_helper_->ForEachChild(
+      list_children_helper_->on_screen_children(),
+      [&](ItemHolder* item_holder) {
+        if (!item_holder || list_adapter->IsRemoved(item_holder) ||
+            !IsItemHolderNotAtStickyPosition(item_holder)) {
+          return false;
+        }
+        // Prefer a visible item that has finished binding. When the old and new
+        // viewports overlap, this preserves an already measured item's
+        // position.
+        if (list_adapter->IsFinishedBinding(item_holder)) {
+          anchor_item = item_holder;
+          return true;
+        }
+        // Keep the first eligible visible item as a fallback. A tall item can
+        // cover the viewport even when no item starts inside it.
+        if (!anchor_item) {
+          anchor_item = item_holder;
+        }
+        // If no visible item has finished binding, prefer the item whose start
+        // is inside and closest to the viewport top. Relayout can preserve this
+        // screen offset even if the measured item is shorter than estimated.
+        //
+        // Screen y       Column 0    Column 1
+        //     -500    +-----------+-----------+
+        //             | Item 90   | Item 91   |
+        //        0    |...........|...........|  Viewport top
+        //     +100    +-----------+           |  Item 92 starts
+        //             | Item 92   |           |
+        //     +250    |           +-----------+  Item 93 starts
+        //             |           | Item 93   |
+        //     +650    |...........|...........|  Viewport bottom
+        //
+        // All four items are unbound. Items 92 and 93 start inside the
+        // viewport. Item 92 is closer to the top, so preserve its screen offset
+        // of +100.
+        const float start = list_orientation_helper_->GetStart(item_holder);
+        if (start >= content_offset_ && start < closest_start) {
+          closest_start = start;
+          anchor_item = item_holder;
+        }
+        return false;
+      });
+  if (anchor_item) {
+    anchor_info.item_holder_ = anchor_item;
+    anchor_info.index_ = anchor_item->index();
+    anchor_info.start_offset_ = list_orientation_helper_->GetStart(anchor_item);
+    anchor_info.start_alignment_delta_ =
+        anchor_info.start_offset_ - content_offset_;
+    anchor_info.valid_ = true;
+  }
 }
 
 float StaggeredGridLayoutManager::GetTargetContentSize() {
