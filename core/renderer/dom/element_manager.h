@@ -1137,6 +1137,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   // pass.
   bool ResolveSubtree(Element *root);
 
+  // Resolve mutations for the current layout and prepare native measurement.
+  void ResolveSubtreeForLayout(Element *root, bool prepare_for_layout);
+
   /**
    * Used By RunPixelPipeline Process.
    *
@@ -1532,6 +1535,9 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Indicate if need to do layout for current OnPatchFinish process
   bool need_layout_{false};
+
+  bool suppress_host_layout_{false};
+
   // Parallel resolve completion synchronizes fragment state before the engine
   // thread reads or clears this flag, so relaxed atomic accesses are
   // sufficient.

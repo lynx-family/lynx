@@ -1522,9 +1522,6 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   if (plan.has_draw_callbacks) {
     BindModifierDrawCallbacks(plan, handle->mount_root().get(),
                               content_element.get(), registration_context);
-    // Request layout for the newly installed chain. Redrawing an existing
-    // layer through InvalidateElement does not go through this Apply path.
-    content_element->RequestLayout();
   }
 
   return {true, 0, {}};
