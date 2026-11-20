@@ -33,14 +33,6 @@ struct DrawRecordingError {
 };
 
 namespace detail {
-// Temporary internal entry point while v1 validation and lowering are
-// introduced independently of the legacy Fragment callback protocol. Errors
-// preserve both outputs; success transfers a complete standalone compiled
-// display list.
-std::optional<DrawRecordingError> DecodeV1DrawDisplayList(
-    const lepus::Value& input, double pixels, ComposeDrawPhase phase,
-    DisplayList* output, bool* has_outset_shadow);
-
 // Compile into standalone storage under fixed SDK limits. Every error leaves
 // both outputs unchanged; success transfers the complete list and shadow
 // effect.
