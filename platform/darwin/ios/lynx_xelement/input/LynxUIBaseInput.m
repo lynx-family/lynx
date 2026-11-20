@@ -44,6 +44,16 @@
 
 static const NSTimeInterval kLynxInputKeyboardDefaultAnimationDuration = 0.3;
 
+static UIColor *LynxInputColorFromPropValue(id value) {
+  if ([value isKindOfClass:[UIColor class]]) {
+    return value;
+  }
+  if ([value isKindOfClass:[NSString class]]) {
+    return [LynxColorUtils convertNSStringToUIColor:value];
+  }
+  return [LynxConverter toUIColor:value];
+}
+
 @interface LynxContext (LynxInputKeyboardAvoidDispatcher)
 
 @property(nonatomic, weak, readonly) LynxKeyboardEventDispatcher *keyboardEventDispatcher;
@@ -207,15 +217,17 @@ LYNX_PROP_SETTER("-x-placeholder-font-family", setXPlaceholderFontFamily, NSStri
   [self setPlaceholderFontFamily:value requestReset:requestReset];
 }
 
-LYNX_PROP_SETTER("color", setColor, UIColor*) {
-  self.inputAttrs[NSForegroundColorAttributeName] = value ? : [UIColor blackColor];
+LYNX_PROP_SETTER("color", setColor, id) {
+  UIColor *color = LynxInputColorFromPropValue(value);
+  self.inputAttrs[NSForegroundColorAttributeName] = color ? : [UIColor blackColor];
 }
 
-LYNX_PROP_SETTER("placeholder-color", setPlaceHolderColor, UIColor*) {
-  self.placeholderAttrs[NSForegroundColorAttributeName] = value ? : [UIColor colorWithRed:0.235 green:0.263 blue:0.235 alpha:0.3];
+LYNX_PROP_SETTER("placeholder-color", setPlaceHolderColor, id) {
+  UIColor *color = LynxInputColorFromPropValue(value);
+  self.placeholderAttrs[NSForegroundColorAttributeName] = color ? : [UIColor colorWithRed:0.235 green:0.263 blue:0.235 alpha:0.3];
 }
 
-LYNX_PROP_SETTER("-x-placeholder-color", setXPlaceHolderColor, UIColor*) {
+LYNX_PROP_SETTER("-x-placeholder-color", setXPlaceHolderColor, id) {
   [self setPlaceHolderColor:value requestReset:requestReset];
 }
 
