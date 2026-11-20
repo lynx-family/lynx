@@ -136,6 +136,9 @@ class ListContainerImpl : public ContainerDelegate {
   }
   bool enable_parallel_element() const { return enable_parallel_element_; }
   bool enable_batch_render() const { return enable_batch_render_; }
+  bool optimize_waterfall_scroll_fill() const {
+    return optimize_waterfall_scroll_fill_;
+  }
   bool enable_insert_platform_view_operation() const {
     return enable_insert_platform_view_operation_;
   }
@@ -181,6 +184,7 @@ class ListContainerImpl : public ContainerDelegate {
 
  private:
   bool enable_dynamic_span_count_{true};
+  bool optimize_waterfall_scroll_fill_{false};
   bool enable_insert_platform_view_operation_{false};
   bool span_count_changed_{false};
   bool batch_adapter_initialized_{false};
