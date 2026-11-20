@@ -36,6 +36,7 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
 
   CGRect layout_frame_;
   int32_t sign_;
+  lynx::fml::WeakPtr<lynx::tasm::PlatformRenderer> platform_renderer_;
 }
 
 - (instancetype)initWithRenderHost:(UIView<LynxRendererHost>*)host
@@ -49,6 +50,40 @@ void UseTopLeftAnchorAtLayoutOrigin(UIView* view, CGPoint layout_origin) {
     layout_frame_ = host != nil ? host.frame : CGRectZero;
   }
   return self;
+}
+
+- (void)setPlatformRenderer:(const lynx::fml::WeakPtr<lynx::tasm::PlatformRenderer>&)renderer {
+  platform_renderer_ = renderer;
+}
+
+- (void)publishLayoutPosition:(CGPoint)position {
+  if (auto* renderer = platform_renderer_.get()) {
+    renderer->UpdateLayoutPosition(position.x, position.y);
+  }
+}
+
+- (void)publishScrollOffset:(CGPoint)offset {
+  if (auto* renderer = platform_renderer_.get()) {
+    renderer->UpdateScrollOffset(offset.x, offset.y);
+  }
+}
+
+- (void)publishStickyOffset:(CGPoint)offset {
+  if (auto* renderer = platform_renderer_.get()) {
+    renderer->UpdateStickyOffset(offset.x, offset.y, true);
+  }
+}
+
+- (void)publishIsOnTree:(BOOL)isOnTree {
+  if (auto* renderer = platform_renderer_.get()) {
+    renderer->UpdateIsOnTree(isOnTree);
+  }
+}
+
+- (void)publishSiblingOrder:(int32_t)order {
+  if (auto* renderer = platform_renderer_.get()) {
+    renderer->UpdateSiblingOrder(order);
+  }
 }
 
 - (int32_t)sign {
