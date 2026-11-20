@@ -127,6 +127,59 @@ TEST_F(DrawDisplayListDecoderTest,
   }
 }
 
+TEST_F(DrawDisplayListDecoderTest, CompilesIndependentFinalStorage) {
+  DisplayList output;
+  bool shadow = false;
+  ASSERT_FALSE(detail::DecodeV1DrawDisplayList(
+      Parse(Wire()), 2, ComposeDrawPhase::kBehind, &output, &shadow));
+  EXPECT_FALSE(shadow);
+
+  EXPECT_EQ(output.GetContentItemsSize(), 2u);
+  DisplayListReader reader(output);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& box = reader.Next();
+  ASSERT_EQ(box.type, DisplayListOpType::kRecordBox);
+  EXPECT_FLOAT_EQ(box.payload.record_box.w, 20);
+  EXPECT_FLOAT_EQ(box.payload.record_box.h, 10);
+  ASSERT_TRUE(reader.HasNext());
+  const auto& fill = reader.Next();
+  ASSERT_EQ(fill.type, DisplayListOpType::kFill);
+  EXPECT_EQ(fill.payload.fill.clip_index, 0);
+}
+TEST_F(DrawDisplayListDecoderTest, DemandConversionAndPhysicalDoubleInset) {
+  for (double pixels : {1., 2., 3.}) {
+    const std::string paths = "[[1,0,0,40,20],[1,1e40,0,40,20]]";
+    ASSERT_FALSE(
+        Run("unused-float-overflow", Parse(Wire("[[1,0,0]]", paths)), pixels));
+    EXPECT_EQ(output_.GetContentItemsSize(), 2u);
+    const auto overflow = Run("referenced-float-overflow",
+                              Parse(Wire("[[1,0,0],[1,1,0]]", paths)), pixels);
+    ASSERT_TRUE(overflow);
+    EXPECT_EQ(overflow->code, Code::kOverflow);
+    EXPECT_EQ(overflow->command_index, 1u);
+    ASSERT_FALSE(Run("double-uniform-inset",
+                     Parse(Wire("[[1,2,0]]",
+                                "[[1,10000000000,10000000000,40,20],"
+                                "[1,10000000002,10000000002,36,16],[3,0,1]]")),
+                     pixels));
+    EXPECT_EQ(output_.GetContentItemsSize(), 3u);
+  }
+  Reject("double-nonuniform-inset",
+         Parse(Wire("[[1,2,0]]",
+                    "[[1,10000000000,10000000000,40,20],"
+                    "[1,10000000002,10000000003,36,16],[3,0,1]]")),
+         Code::kUnsupported);
+}
+
+TEST_F(DrawDisplayListDecoderTest, SolidBorderDoesNotRequireGradientStorage) {
+  const auto wire = Parse(Wire("[[1,2,0]]",
+                               "[[2,0,0,40,20,8,8,8,8,8,8,8,8],"
+                               "[2,2,2,36,16,6,6,6,6,6,6,6,6],[3,0,1]]"));
+  ASSERT_FALSE(Run("solid-border", wire));
+  EXPECT_EQ(output_.GetContentItemsSize(), 3u);
+  EXPECT_EQ(output_.GetContentDataSize(), 0u);
+}
+
 TEST_F(DrawDisplayListDecoderTest, SemanticAndCapabilityPrecedence) {
   const std::string ellipse = "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]";
   Reject("late-metadata-before-path",
@@ -190,6 +243,84 @@ TEST_F(DrawDisplayListDecoderTest, UnsupportedUnusedRowsStillValidate) {
   Reject("unused-invalid-verbs", wire, Code::kMalformed);
 }
 
+TEST_F(DrawDisplayListDecoderTest, MultipleGradientsOwnExpandedStops) {
+  auto wire = Parse(Wire("[[1,0,0],[1,0,0]]"));
+  wire.GetProperty(5u).Array()->set(
+      0, Parse("[[2,32,-8,-8,32,[2164195328,4278255360,4278190335,1073742079],"
+               "[0,0.5,0.5,1],0,[1,0,0,1,0,0]],[0.5,0,true,null],[1],[]]"));
+  ASSERT_FALSE(Run("expanded-stops", wire));
+  EXPECT_EQ(output_.GetContentItemsSize(), 6u);
+  EXPECT_EQ(output_.GetContentDataSize(), 96u);
+  DisplayListReader reader(output_);
+  unsigned gradients = 0;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type != DisplayListOpType::kLinearGradient) continue;
+    ++gradients;
+    EXPECT_FLOAT_EQ(item.payload.linear_gradient.angle, 225);
+    ASSERT_EQ(item.payload.linear_gradient.color_count, 6u);
+    EXPECT_EQ(reader.Colors(item)[0], 0x40ff0000u);
+    EXPECT_EQ(reader.Colors(item)[2], 0x8000ff00u);
+    EXPECT_EQ(reader.Colors(item)[3], 0x800000ffu);
+    EXPECT_EQ(reader.Colors(item)[5], 0x200000ffu);
+    EXPECT_FLOAT_EQ(reader.Stops(item)[0], 0);
+    EXPECT_FLOAT_EQ(reader.Stops(item)[2], reader.Stops(item)[3]);
+    EXPECT_FLOAT_EQ(reader.Stops(item)[5], 1);
+  }
+  EXPECT_EQ(gradients, 2u);
+}
+
+TEST_F(DrawDisplayListDecoderTest, EmptyPrimitivesValidateBeforeElision) {
+  for (const char* endpoints : {"-3,0,3,0", "-3e38,0,3e38,0"}) {
+    auto wire = Parse(Wire("[[1,0,0]]", "[[1,0,0,0,20]]"));
+    wire.GetProperty(5u).Array()->set(
+        0, Parse(std::string("[[2,") + endpoints +
+                 ",[1,2],[0,1],0,[1,0,0,1,0,0]],[1,0,true,null],[1],[]]"));
+    const auto error = Run("empty-linear", wire);
+    if (std::strstr(endpoints, "e38")) {
+      ASSERT_TRUE(error);
+      EXPECT_EQ(error->code, Code::kOverflow);
+      EXPECT_EQ(error->command_index, 0u);
+    } else {
+      ASSERT_FALSE(error);
+      EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+    }
+  }
+  auto clip = Parse(
+      "[\"lynx.draw.recording\",1,0,[[5,0,0,true]],[[1,0,0,0,0]],[],[],[],[]]");
+  ASSERT_FALSE(Run("empty-clip", clip, 1, ComposeDrawPhase::kClip));
+  ASSERT_EQ(output_.GetContentItemsSize(), 1u);
+  DisplayListReader reader(output_);
+  EXPECT_EQ(reader.Next().type, DisplayListOpType::kClipRect);
+  ASSERT_FALSE(Run("identity-state", Parse(Wire("[[2],[4,1,0,0,1,0,0],[3]]"))));
+  EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+  for (const char* geometry :
+       {"1.401298464324817e-45,1.401298464324817e-45,1,1,1,1,1,1,1,1",
+        "1,1,2e38,2e38,2e38,2e38,2e38,2e38,2e38,2e38"}) {
+    const auto error =
+        Run("shadow-derived-overflow",
+            Parse(Wire("[[9,0,0,0,0,1,1,0,1]]",
+                       std::string("[[2,0,0,") + geometry + "]]")));
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->code, Code::kOverflow);
+    EXPECT_EQ(error->command_index, 0u);
+  }
+  for (double pixels : {2., 3.}) {
+    ASSERT_FALSE(Run("shadow-underflow-empty",
+                     Parse(Wire("[[9,0,0,0,0,1,1,0,1]]",
+                                "[[2,0,0,1.401298464324817e-45,1."
+                                "401298464324817e-45,1,1,1,1,1,1,1,1]]")),
+                     pixels));
+    EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+    EXPECT_FALSE(shadow_);
+  }
+  ASSERT_FALSE(Run(
+      "empty-shadow",
+      Parse(Wire("[[9,0,0,0,0,1,1,0,1]]", "[[2,0,0,0,20,1,1,1,1,1,1,1,1]]"))));
+  EXPECT_FALSE(shadow_);
+  EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+}
+
 TEST_F(DrawDisplayListDecoderTest, CyclesRejectAndSharedDagRemainsValid) {
   auto cycle = Eval(
       "(()=>{let a=[];a.push(a);return "
@@ -200,97 +331,6 @@ TEST_F(DrawDisplayListDecoderTest, CyclesRejectAndSharedDagRemainsValid) {
       "['lynx.draw.recording',1,0,[],[],[],[],[],[['k',a]]]})()");
   ASSERT_FALSE(Run("shared-dag", dag));
   EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-}
-
-// These schema-only cases are replaced by the complete direct compiler suites
-// when primitive lowering is introduced.
-TEST_F(DrawDisplayListDecoderTest,
-       EmptyAndBalancedStateReplaceOutputAtomically) {
-  for (const char* commands : {"[]", "[[2],[4,1,0,0,1,0,0],[3]]"}) {
-    ASSERT_FALSE(Run("empty-state", Parse(Wire(commands))));
-    EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-    EXPECT_EQ(output_.GetContentDataSize(), 0u);
-  }
-  DisplayListBuilder sentinel;
-  Prefix(&sentinel);
-  auto output = sentinel.Build();
-  const Bytes before(output);
-  bool shadow = true;
-  const auto error = detail::DecodeV1DrawDisplayList(
-      Parse(Wire()), 1, ComposeDrawPhase::kBehind, &output, &shadow);
-  ASSERT_TRUE(error);
-  EXPECT_EQ(error->code, Code::kUnsupported);
-  EXPECT_EQ(error->command_index, 0u);
-  EXPECT_TRUE(shadow);
-  before.Expect(output);
-}
-
-TEST_F(DrawDisplayListDecoderTest,
-       EnvelopeAndSemanticTailsPrecedeBackendErrors) {
-  Reject("legacy", Parse("[]"), Code::kMalformed);
-  auto wire = Parse(Wire());
-  wire.Array()->set(1, Value(2));
-  Reject("major", wire, Code::kVersion);
-  Reject("late-command", Parse(Wire("[[1,0,0],[1,0,-1]]")), Code::kMalformed,
-         1);
-  Reject("duplicate-metadata",
-         Parse(Wire("[[1,0,0]]", "[[1,0,0,40,20]]", "[[\"k\",0],[\"k\",1]]")),
-         Code::kMalformed);
-  for (const char* features : {"null", "[1]", "[[]]", "[{}]"}) {
-    auto input = Parse(Wire());
-    input.Array()->set(7, Parse(features));
-    Reject("malformed-features", input, Code::kMalformed);
-  }
-  wire = Parse(Wire());
-  wire.GetProperty(4u).GetProperty(0u).Array()->set(
-      1, Value(std::numeric_limits<double>::infinity()));
-  Reject("nonfinite", wire, Code::kMalformed);
-}
-
-TEST_F(DrawDisplayListDecoderTest,
-       RuntimeTablesAndExpandedDagHaveFixedBudgets) {
-  for (const auto& table : {std::pair<unsigned, unsigned>{3, 65536},
-                            {4, 65536},
-                            {5, 65536},
-                            {6, 4096}}) {
-    const auto wire =
-        Eval("(()=>{let w=['lynx.draw.recording',1,0,[],[],[],[],[],[]];w[" +
-             std::to_string(table.first) + "]=Array(" +
-             std::to_string(table.second + 1) + ").fill([]);return w})()");
-    Reject("table-budget", wire, Code::kCapacity);
-  }
-  auto dag = Eval(
-      "(()=>{let a=[];for(let i=0;i<19;i++)a=[a,a];return "
-      "['lynx.draw.recording',1,0,[],[],[],[],[],[['k',a]]]})()");
-  Reject("expanded-dag-budget", dag, Code::kCapacity);
-}
-
-TEST_F(DrawDisplayListDecoderTest, DepthAndUtf8PayloadBoundariesAreExact) {
-  for (unsigned depth : {64u, 65u}) {
-    const auto wire =
-        Eval("(()=>{let a=[];for(let i=4;i<" + std::to_string(depth) +
-             ";i++)a=[a];return "
-             "['lynx.draw.recording',1,0,[],[],[],[],[],[['k',a]]]})()");
-    if (depth == 64) {
-      ASSERT_FALSE(Run("depth-64", wire));
-      EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-    } else {
-      Reject("depth-65", wire, Code::kCapacity);
-    }
-  }
-  // Envelope scalars and the metadata key consume 36 bytes of the SDK budget.
-  std::string payload(16 * 1024 * 1024 - 38, 'x');
-  payload += "α";
-  auto wire = Parse("[\"lynx.draw.recording\",1,0,[],[],[],[],[],[]]");
-  auto entry = lepus::CArray::Create();
-  entry->push_back(Value("k"));
-  entry->push_back(Value(payload));
-  wire.GetProperty(8u).Array()->push_back(Value(entry));
-  ASSERT_FALSE(Run("payload-exact", wire));
-  EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-  payload += 'x';
-  entry->set(1, Value(payload));
-  Reject("payload-over", wire, Code::kCapacity);
 }
 
 }  // namespace
