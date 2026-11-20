@@ -5,6 +5,7 @@
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <Lynx/UIScrollView+Lynx.h>
@@ -654,7 +655,9 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)oriPoint withEvent:(UIEvent *)event {
-  [self resetInterceptGesture];
+  if (![self.context isUsingUnifiedGestureHandler]) {
+    [self resetInterceptGesture];
+  }
   LynxUI *guard = nil;
   NSMutableArray<LynxUI *> *array = [[NSMutableArray alloc] init];
 

@@ -186,8 +186,8 @@ LYNX_PROP_DEFINE("update-animation", setUpdateAnimation, NSString *) {
   [self.view.collectionViewLayout invalidateLayoutWithContext:context];
 }
 
-LYNX_PROP_DEFINE("enable-scroll", setScrollEnabled, BOOL) { self.view.scrollEnabled = value; }
-LYNX_PROP_DEFINE("touch-scroll", setTouchEnabled, BOOL) { self.view.scrollEnabled = value; }
+LYNX_PROP_DEFINE("enable-scroll", setScrollEnabled, BOOL) { [self setScrollEnabledByProps:value]; }
+LYNX_PROP_DEFINE("touch-scroll", setTouchEnabled, BOOL) { [self setScrollEnabledByProps:value]; }
 
 LYNX_PROP_DEFINE("sticky", setEnableSticky, BOOL) { [self.layout setEnableSticky:value]; }
 
