@@ -74,6 +74,7 @@ bool PlatformRendererHarmony::InitializeUIOwnerRenderer(
   if (ui == nullptr || ui->Node() == nullptr) {
     return false;
   }
+  ui->SetPlatformRenderer(WeakFromThis());
   host_ = ui->weak_from_this();
   return true;
 }
@@ -94,6 +95,7 @@ bool PlatformRendererHarmony::AttachRendererToUI(harmony::UIBase* ui) {
     return false;
   }
   ui->AttachFragmentLayerRenderer(context_, GetId());
+  ui->SetPlatformRenderer(WeakFromThis());
   host_ = ui->weak_from_this();
   return true;
 }
@@ -189,11 +191,18 @@ void PlatformRendererHarmony::OnAddChild(PlatformRenderer* child, int index,
   if (ui_owner != nullptr && child_host->Parent() != host.get()) {
     child_host->RemoveFromParent();
     ui_owner->InsertUI(GetId(), harmony_child->GetId(), index);
+    if (!host->IsList() &&
+        harmony_child->GetPlatformState()->is_on_tree.has_value()) {
+      harmony_child->UpdateIsOnTree(true);
+    }
     child_host->OnAttachedToFragmentLayerTree();
   }
 }
 
 void PlatformRendererHarmony::OnRemoveFromParent(bool should_update_ui_owner) {
+  if (GetPlatformState()->is_on_tree.has_value()) {
+    UpdateIsOnTree(false);
+  }
   auto* parent = static_cast<PlatformRendererHarmony*>(GetParent());
   auto host = host_.lock();
   auto parent_host = parent != nullptr ? parent->host_.lock() : nullptr;

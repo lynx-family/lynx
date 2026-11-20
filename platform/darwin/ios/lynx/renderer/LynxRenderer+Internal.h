@@ -4,16 +4,25 @@
 
 #import <Lynx/LynxRenderer.h>
 #ifdef __cplusplus
+#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "gfx/public/display_list.h"
 #endif
 
 @interface LynxRenderer ()
 
 #ifdef __cplusplus
+- (void)setPlatformRenderer:(const lynx::fml::WeakPtr<lynx::tasm::PlatformRenderer> &)renderer;
+
 - (void)updateDisplayList:(lynx::tasm::DisplayList *)list;
 
 - (lynx::tasm::DisplayList *)getDisplayList;
 #endif
+
+- (void)publishLayoutPosition:(CGPoint)position;
+- (void)publishScrollOffset:(CGPoint)offset;
+- (void)publishStickyOffset:(CGPoint)offset;
+- (void)publishIsOnTree:(BOOL)isOnTree;
+- (void)publishSiblingOrder:(int32_t)order;
 
 - (void)detachHostDecorationLayers;
 

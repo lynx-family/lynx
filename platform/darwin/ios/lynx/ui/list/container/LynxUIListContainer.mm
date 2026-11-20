@@ -49,6 +49,14 @@ static const NSInteger kDefaultMaxSnapCount = 1;
 
 @implementation LynxListContainerView
 
+- (void)layoutSubviews {
+  [super layoutSubviews];
+  LynxRenderer *renderer = [(id<LynxRendererHost>)self renderer];
+  if (renderer != nil) {
+    [renderer publishScrollOffset:self.contentOffset];
+  }
+}
+
 - (void)willMoveToWindow:(UIWindow *)newWindow {
   [super willMoveToWindow:newWindow];
   if (!newWindow) {
@@ -253,6 +261,8 @@ LYNX_REGISTER_UI("list-container")
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
   if ([self isCUIList] && [LynxListItemHelper isCUIListItem:component]) {
     if (component.view.superview == self.view) {
+      [[(id<LynxRendererHost>)component.view renderer]
+          publishLayoutPosition:component.frame.origin];
       [self.stickyManager didLayoutComponent:component];
     }
     return;
@@ -321,8 +331,9 @@ LYNX_REGISTER_UI("list-container")
     // Clear sticky state on recycling even if the display list has already
     // removed the view.
     [self.stickyManager willDetachComponent:component];
-    if (component.view.superview == self.view) {
-      [self.itemHelper detachCUIComponent:component];
+    BOOL wasAttached = component.view.superview == self.view;
+    [self.itemHelper detachCUIComponent:component];
+    if (wasAttached) {
       [self.delegate removeListComponent:component];
     }
     return;
@@ -741,6 +752,9 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  if (scrollView == self.view && [self isCUIList]) {
+    [((id<LynxRendererHost>)self.view).renderer publishScrollOffset:scrollView.contentOffset];
+  }
   if (scrollView == self.view &&
       ![self.view respondToScrollViewDidScroll:self.view.gestureConsumer]) {
     return;

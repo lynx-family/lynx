@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/cast_util.h"
 #include "base/include/float_comparison.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/log/logging.h"
@@ -30,6 +31,7 @@
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "core/renderer/ui_wrapper/painting/harmony/path_harmony.h"
+#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "core/runtime/lepus/lepus_date.h"
 #include "gfx/public/display_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/animation/animation_info.h"
@@ -43,6 +45,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_frame.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
@@ -382,6 +385,11 @@ void UIBase::UpdateLayout(float left, float top, float width, float height,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_UPDATE_LAYOUT);
   left_ = left;
   top_ = top;
+  if (parent_ && parent_->IsList()) {
+    if (auto* renderer = GetPlatformRenderer()) {
+      renderer->UpdateLayoutPosition(left_, top_);
+    }
+  }
   padding_left_ = paddings[0];
   padding_top_ = paddings[1];
   padding_right_ = paddings[2];
@@ -1225,10 +1233,22 @@ void UIBase::ApplyTransform() {
                                         0.f, 0.f, 0.f, 0.f, 0.f);
     ArkUI_AttributeItem item{.value = values, .size = 16};
     manager.SetAttribute(DrawNode(), NODE_TRANSFORM, &item);
+    auto* list = GetPlatformRenderer() && parent_ && parent_->IsList()
+                     ? static_cast<UIList*>(parent_)
+                     : nullptr;
+    int32_t previous_z = 0;
+    if (list) {
+      manager.GetAttributeValues(DrawNode(), NODE_Z_INDEX, &previous_z);
+    }
     // Match native transform ordering, including resetting translation to zero.
     translation_z_ = values[Transform::kIndexTranslationZ].f32;
     manager.SetAttributeWithNumberValue(DrawNode(), NODE_Z_INDEX,
                                         translation_z_);
+    // Compare the existing f32 payload as the native i32 attribute reads it.
+    const int32_t next_z = base::BitCast<int32_t>(translation_z_);
+    if (list && previous_z != next_z) {
+      list->OnListItemZIndexChanged();
+    }
     return;
   }
 
@@ -1490,6 +1510,7 @@ void UIBase::DetachFragmentLayerRenderer() {
   fragment_owner_path_ = nullptr;
   ApplyFragmentLayerOwnerClip();
   renderer_.reset();
+  platform_renderer_.reset();
   if (!fragment_content_clip_path_.empty()) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
     fragment_content_clip_path_.clear();

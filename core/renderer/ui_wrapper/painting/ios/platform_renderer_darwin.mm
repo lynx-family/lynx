@@ -206,6 +206,12 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
   }
 
   auto* child_renderer = static_cast<PlatformRendererDarwin*>(child);
+  if (GetPlatformRendererType() == PlatformRendererType::kList) {
+    // List items are attached later by the native list, after their renderer relation is created.
+    child_renderer->UpdateIsOnTree(false);
+  } else if (child_renderer->GetPlatformState()->is_on_tree.has_value()) {
+    child_renderer->UpdateIsOnTree(true);
+  }
   UIView<LynxRendererHost>* child_view = child_renderer->GetUIView();
   LynxUIOwner* owner = ui_owner_;
   if (should_update_ui_owner && owner != nil && HasUIOwnerNode(GetId()) &&
@@ -279,6 +285,9 @@ void PlatformRendererDarwin::OnAddChild(PlatformRenderer* child, int index,
 }
 
 void PlatformRendererDarwin::OnRemoveFromParent(bool should_update_ui_owner) {
+  if (GetPlatformState()->is_on_tree.has_value()) {
+    UpdateIsOnTree(false);
+  }
   LynxUIOwner* owner = ui_owner_;
   if (should_update_ui_owner && ShouldDetachThroughUIOwner(owner, GetId())) {
     [owner detachNode:GetId()];
@@ -476,6 +485,7 @@ void PlatformRendererDarwin::InitializeRendererForView(UIView<LynxRendererHost>*
   }
   LynxRenderer* renderer = [view createRendererWithSign:GetId()
                                              andContext:context_->GetRendererContext()];
+  [renderer setPlatformRenderer:WeakFromThis()];
   [view setRenderer:renderer];
   if (initial_props != nil) {
     ApplyNativeInteractionEnabled(view, initial_props);
