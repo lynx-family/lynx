@@ -58,23 +58,24 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
   if (!native_module && extension_module_factory_) {
     native_module = extension_module_factory_->CreateModule(name);
   }
-  if (native_module) {
-    auto lynx_jsi_module =
-        std::make_shared<LynxJSIModule>(name, delegate, native_module);
-    lynx_jsi_module->SetLogContext(log_context_);
-    // set delegate & proxy
-    native_module->SetDelegate(lynx_jsi_module);
-    native_module->SetRuntimeProxy(runtime_proxy);
-    native_module->SetContextID(context_id_);
-    // set interceptor
-    lynx_jsi_module->SetModuleInterceptor(group_interceptor_);
-    lynx_jsi_module->SetNativeModuleRecordObserver(
-        native_module_record_observer_);
-    lynx_jsi_module->SetRecordID(record_id_);
-    itr = module_map_.emplace(name, std::move(lynx_jsi_module)).first;
-    return itr->second;
-  }
-  return std::shared_ptr<LynxModule>(nullptr);
+  if (!native_module) return nullptr;
+  return module_map_
+      .emplace(name, WrapNativeModule(name, delegate, native_module))
+      .first->second;
+}
+
+std::shared_ptr<LynxModule> LynxModuleManager::WrapNativeModule(
+    const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate,
+    const std::shared_ptr<LynxNativeModule> &native_module) {
+  auto module = std::make_shared<LynxJSIModule>(name, delegate, native_module);
+  module->SetLogContext(log_context_);
+  native_module->SetDelegate(module);
+  native_module->SetRuntimeProxy(runtime_proxy);
+  native_module->SetContextID(context_id_);
+  module->SetModuleInterceptor(group_interceptor_);
+  module->SetNativeModuleRecordObserver(native_module_record_observer_);
+  module->SetRecordID(record_id_);
+  return module;
 }
 
 LynxModuleProviderFunction LynxModuleManager::BindingFunc(
@@ -83,9 +84,17 @@ LynxModuleProviderFunction LynxModuleManager::BindingFunc(
   return [weak_manager, delegate](const std::string &name) {
     auto manager = weak_manager.lock();
     if (manager) {
-      auto ptr = manager->GetModule(name, delegate);
-      if (ptr != nullptr) {
-        return ptr;
+      if (auto real = manager->GetModule(name, delegate)) return real;
+      const auto &group = manager->group_interceptor_;
+      if (group && group->HasInvocationHooks()) {
+        auto mock = group->ResolveMissingModule(
+            name, manager->log_context_.view_id, delegate);
+        if (mock.module) {
+          // A later lookup must still prefer a real registration.
+          auto module = manager->WrapNativeModule(name, delegate, mock.module);
+          module->MarkMockOnly(std::move(mock.subscription));
+          return module;
+        }
       }
     }
     // ptr == nullptr

@@ -6,6 +6,7 @@
 #define CORE_RUNTIME_JS_BINDINGS_MODULES_LYNX_MODULE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -79,6 +80,14 @@ class LynxModule : public HostObject,
     group_interceptor_ = std::move(interceptor);
   }
 
+  void MarkMockOnly(std::weak_ptr<const void> subscription) {
+    mock_subscription_.emplace(std::move(subscription));
+  }
+  bool IsMockOnly() const { return mock_subscription_.has_value(); }
+  bool IsMockActive() const {
+    return mock_subscription_ && !mock_subscription_->expired();
+  }
+
   virtual void SetRecordID(int64_t record_id) { record_id_ = record_id; }
   int64_t GetRecordID() { return record_id_; }
 
@@ -94,6 +103,7 @@ class LynxModule : public HostObject,
 
  private:
   base::LogContext log_context_;
+  std::optional<std::weak_ptr<const void>> mock_subscription_;
   static const std::unordered_set<std::string>& MethodAllowList();
 };
 

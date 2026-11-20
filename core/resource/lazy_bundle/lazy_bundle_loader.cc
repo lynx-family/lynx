@@ -9,6 +9,7 @@
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/resource/lynx_resource_load_hook.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/shell/lynx_engine.h"
 #include "core/template_bundle/template_codec/magic_number.h"
@@ -199,9 +200,11 @@ void LazyBundleLoader::RequireTemplate(RadonLazyComponent* lazy_bundle,
   }
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
-  resource_loader_->LoadResource(
-      request, [url, weak_self = weak_from_this(), lazy_bundle,
-                instance_id](pub::LynxResourceResponse& response) {
+  pub::LoadResourceWithContext(
+      *resource_loader_, request, view_id_.load(std::memory_order_relaxed),
+      shell::HostScriptDomain::kMTS,
+      [url, weak_self = weak_from_this(), lazy_bundle,
+       instance_id](pub::LynxResourceResponse& response) {
         auto self = weak_self.lock();
         if (!self) {
           return;
@@ -236,7 +239,8 @@ void LazyBundleLoader::PreloadTemplates(const std::vector<std::string>& urls) {
 }
 
 void LazyBundleLoader::FetchBundle(
-    lazy_bundle::LynxLazyBundleRequest bundle_request) {
+    lazy_bundle::LynxLazyBundleRequest bundle_request,
+    shell::HostScriptDomain domain) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_FETCH_BUNDLE, "url",
               bundle_request.url);
 
@@ -252,10 +256,12 @@ void LazyBundleLoader::FetchBundle(
   }
   auto request = pub::LynxResourceRequest{
       bundle_request.url, pub::LynxResourceType::kLazyBundle, false};
-  resource_loader_->LoadResource(
-      request, [bundle_request = std::move(bundle_request),
-                weak_self = weak_from_this()](
-                   pub::LynxResourceResponse& response) mutable {
+  pub::LoadResourceWithContext(
+      *resource_loader_, request, view_id_.load(std::memory_order_relaxed),
+      domain,
+      [bundle_request = std::move(bundle_request),
+       weak_self =
+           weak_from_this()](pub::LynxResourceResponse& response) mutable {
         auto self = weak_self.lock();
         if (!self) {
           return;

@@ -27,6 +27,9 @@ enum class InterceptKind {
   kCallback,
   kCreate,
   kUpdateViewport,
+  kResourceFetch,
+  kResourceComplete,
+  kResolveModule,
   kCount
 };
 
@@ -41,6 +44,8 @@ struct InterceptResult {
   bool cancelled = false;
   // Start waiting once the native callback registrations are ready.
   std::function<void(InterceptCompletion)> pending;
+  // A replay module is callable while the resolver subscription is active.
+  std::weak_ptr<const void> subscription;
 };
 
 // Optional thread-affine extension. Only callback delivery may be deferred.
@@ -63,6 +68,7 @@ class LYNX_EXPORT Interceptor {
   static void Detach(const Interceptor* provider);
   // Select one provider for a call with multiple observation stages. Report
   // missing coverage at most once, using the first registered stage.
+  // An empty stages list probes the current provider without reporting a gap.
   static std::shared_ptr<Interceptor> Current(
       std::initializer_list<InterceptKind> kinds, Domain domain);
   static void HandlerAdded(InterceptKind kind, Domain domain = Domain::kUI);

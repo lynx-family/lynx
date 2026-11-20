@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
+#include "core/resource/lynx_resource_load_hook.h"
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -25,9 +27,10 @@ struct HostScriptRuntimeCallbacks {
   runtime::js::ModuleInterceptor* (*create_module_interceptor)();
   void (*register_view)(int32_t view);
   void (*destroy_view)(int32_t view);
+  pub::ResourceLoadHook load_resource;
 };
 
-constexpr uint32_t kHostScriptRuntimeAbiVersion = 7;
+constexpr uint32_t kHostScriptRuntimeAbiVersion = 10;
 // Engine-owned executor allocation isolates replay/recorder field differences.
 // Shared inline types still require matching build features.
 constexpr uint32_t kHostScriptExecutorFeatures =

@@ -17,6 +17,7 @@
 
 namespace lynx {
 namespace runtime {
+class LynxNativeModule;
 namespace js {
 /**
  * Result for ModuleMethodInterceptor.
@@ -46,6 +47,11 @@ struct ModuleInterceptorResult {
  */
 class ModuleInterceptor {
  public:
+  struct MockModule {
+    std::shared_ptr<LynxNativeModule> module;
+    std::weak_ptr<const void> subscription;
+  };
+
   virtual ModuleInterceptorResult InterceptModuleMethod(
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
@@ -93,6 +99,11 @@ class ModuleInterceptor {
                                  ModuleCallback* callback) {}
   virtual ~ModuleInterceptor() = default;
   virtual void SetTemplateUrl(const std::string& url) {}
+  virtual MockModule ResolveMissingModule(
+      const std::string& name, base::LynxEntityId view,
+      const std::shared_ptr<ModuleDelegate>& delegate) {
+    return {};
+  }
 };
 
 /**
@@ -130,6 +141,9 @@ class GroupInterceptor : public ModuleInterceptor {
   void OnCallbackInvoked(const NativeModuleInfoCollectorPtr& timing,
                          ModuleCallback* callback) override;
   void SetTemplateUrl(const std::string& url) override;
+  MockModule ResolveMissingModule(
+      const std::string& name, base::LynxEntityId view,
+      const std::shared_ptr<ModuleDelegate>& delegate) override;
 
   // Legacy interceptors use only BeforeInvokeMethod, InterceptModuleMethod and
   // OnCallbackInvoked. Opt in to enable argument/result/callback rewriting and

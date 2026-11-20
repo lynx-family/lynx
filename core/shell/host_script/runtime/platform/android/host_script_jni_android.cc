@@ -6,6 +6,7 @@
 
 #include "core/shell/host_script/runtime/host_script_module_interceptor.h"
 #include "core/shell/host_script/runtime/interceptor.h"
+#include "core/shell/host_script/runtime/platform/android/host_script_resource_interceptor.h"
 #include "core/shell/host_script/runtime/platform/android/host_script_runtime_callbacks.h"
 #include "core/shell/host_script/runtime/platform/android/host_script_task_runners.h"
 #include "core/shell/host_script/runtime/platform/android/process_runtime_android.h"
@@ -32,7 +33,8 @@ static jlong Install(JNIEnv*, jclass, jboolean commit) {
         return new hsr::HostScriptModuleInterceptor();
       },
       hsr::Interceptor::RegisterView,
-      hsr::Interceptor::DestroyView};
+      hsr::Interceptor::DestroyView,
+      hsr::InterceptResourceLoad};
   const auto* transport = hsr::GetStandaloneHostScriptTransport();
   if (!hsr::GetHostScriptEngine()->set_provider(&callbacks, commit)) return 0;
   return reinterpret_cast<jlong>(transport);
