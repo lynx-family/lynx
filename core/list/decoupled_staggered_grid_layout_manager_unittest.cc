@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <random>
+#include <vector>
 
 #include "base/include/string/string_utils.h"
 #include "core/list/decoupled_list_container_impl.h"
@@ -24,6 +25,7 @@ namespace list {
 
 using ::testing::_;
 using ::testing::Return;
+using ::testing::UnorderedElementsAre;
 
 using LayoutState = StaggeredGridLayoutManager::LayoutState;
 
@@ -156,6 +158,41 @@ class StaggeredGridLayoutManagerTest : public ::testing::Test {
     list_container_impl_->PropsUpdateFinish();
   }
 
+  // Set up a 200 x 200 viewport with two columns. Use estimated_sizes before
+  // binding and measure newly bound items synchronously at 100 x 100. Clear
+  // the initial layout's binding requests before recording scroll requests.
+  void InitOptimizedWaterfall(const std::vector<int>& estimated_sizes,
+                              std::vector<uint32_t>& bind_requests) {
+    InitLayoutAttrs("waterfall", 2, "vertical", 0.f, 0.f, 200.f, 200.f);
+    LIST_CONTAINER_DEFINE_PROP_VALUE(ExperimentalOptimizeWaterfallScrollFill,
+                                     Bool, true);
+    list_container_impl_->ResolveAttribute(*key, *value);
+    InitFiberDataSource(static_cast<int>(estimated_sizes.size()),
+                        estimated_sizes, false);
+    EXPECT_CALL(*mock_list_element_, ComponentAtIndex(_, _, _))
+        .WillRepeatedly([this, &bind_requests](uint32_t index,
+                                               int64_t operation_id, bool) {
+          bind_requests.push_back(index);
+          const auto& item_key =
+              list_container_impl_->GetItemHolderForIndex(index)->item_key();
+          if (!mock_list_element_->GetListItemElement(item_key)) {
+            auto item = std::make_unique<MockListItemElement>(100 + index);
+            item->width_ = 100.f;
+            item->height_ = 100.f;
+            mock_list_element_->AddListItemElement(item_key, std::move(item));
+          }
+          auto options = std::make_shared<tasm::PipelineOptions>();
+          options->operation_id = operation_id;
+          options->has_layout = true;
+          list_container_impl_->FinishBindItemHolder(
+              mock_list_element_->GetListItemElement(item_key), options);
+          return true;
+        });
+    list_container_impl_->OnLayoutChildren(
+        std::make_shared<tasm::PipelineOptions>());
+    bind_requests.clear();
+  }
+
   BaseLayoutResult GenerateBaseLayoutResult(int data_count, int span_count,
                                             int min_item_size,
                                             int max_item_size,
@@ -219,6 +256,94 @@ TEST_F(StaggeredGridLayoutManagerTest, LayoutInvalidItemHolder) {
       EXPECT_EQ(test_span_index[j], basic_span_index[j]);
     }
   }
+}
+
+// The viewport covers [50, 150). Prefer bound item 1 at screen offset -50.
+// When it is pinned or removed, use unbound item 2 at screen offset +50.
+//
+// Content y  Column 0 Column 1   Layout before pinning
+//       0    +--------+--------+  Item 1 starts at screen y = -50
+//            |   0    |   1    |
+//      50    |........|........|  Viewport top
+//     100    |   0    +--------+  Item 2 starts at screen y = +50
+//            |   0    |   2    |
+//     150    +--------+........|  Viewport bottom (item 3 starts in column 0)
+TEST_F(StaggeredGridLayoutManagerTest,
+       ScrollAnchorPrefersBoundItemAndSkipsPinnedOrRemovedItems) {
+  InitLayoutAttrs("waterfall", 2, "vertical", 0.f, 0.f, 100.f, 200.f);
+  LIST_CONTAINER_DEFINE_PROP_VALUE(Sticky, Bool, true);
+  list_container_impl_->ResolveAttribute(*key, *value);
+  InitFiberDataSource(4, {150, 100, 100, 100}, false);
+  auto* manager = GetStaggeredGridLayoutManager();
+  manager->LayoutInvalidItemHolder(0);
+  manager->ResetContentOffsetAndContentSize(50.f,
+                                            manager->GetTargetContentSize());
+  list_container_impl_->list_children_helper()->UpdateOnScreenChildren(
+      GetOrientationHelper(), manager->content_offset_);
+
+  auto* bound_item = list_container_impl_->GetItemHolderForIndex(1);
+  mock_list_element_->AddListItemElement(
+      bound_item->item_key(), std::make_unique<MockListItemElement>(2));
+  bound_item->SetItemDelegate(
+      mock_list_element_->GetListItemElement(bound_item->item_key()));
+  bound_item->MarkDirty(false);
+  ListAnchorManager::AnchorInfo anchor;
+  manager->UpdateScrollAnchorInfo(anchor);
+  ASSERT_TRUE(anchor.valid_);
+  EXPECT_EQ(anchor.item_holder_, bound_item);
+  EXPECT_FLOAT_EQ(anchor.start_alignment_delta_, -50.f);
+
+  auto* visible_item = list_container_impl_->GetItemHolderForIndex(2);
+  bound_item->SetSticky(true, false);
+  manager->UpdateScrollAnchorInfo(anchor);
+  ASSERT_TRUE(anchor.valid_);
+  EXPECT_EQ(anchor.item_holder_, visible_item);
+  EXPECT_FLOAT_EQ(anchor.start_alignment_delta_, 50.f);
+
+  bound_item->SetSticky(false, false);
+  bound_item->MarkRemoved(true);
+  manager->UpdateScrollAnchorInfo(anchor);
+  ASSERT_TRUE(anchor.valid_);
+  EXPECT_EQ(anchor.item_holder_, visible_item);
+  EXPECT_FLOAT_EQ(anchor.start_alignment_delta_, 50.f);
+}
+
+// With no item start inside [200, 300), fall back to the unbound item covering
+// the viewport. Its screen offset is -200. Removing it invalidates the anchor
+// and clears the holder and index in the reused AnchorInfo.
+//
+// Content y  Column 0 Column 1
+//       0    +--------+           Item 0 starts
+//            |   0    |  (empty)
+//     200    |........|.........  Viewport top
+//            |   0    |
+//     300    |........|.........  Viewport bottom
+//            |   0    |
+//     500    +--------+
+TEST_F(StaggeredGridLayoutManagerTest, ScrollAnchorFallsBackToSingleTallItem) {
+  InitLayoutAttrs("waterfall", 2, "vertical", 0.f, 0.f, 100.f, 200.f);
+  InitFiberDataSource(1, {500}, false);
+  auto* manager = GetStaggeredGridLayoutManager();
+  manager->LayoutInvalidItemHolder(0);
+  manager->ResetContentOffsetAndContentSize(200.f,
+                                            manager->GetTargetContentSize());
+  list_container_impl_->list_children_helper()->UpdateOnScreenChildren(
+      GetOrientationHelper(), manager->content_offset_);
+
+  ListAnchorManager::AnchorInfo anchor;
+  manager->UpdateScrollAnchorInfo(anchor);
+  auto* tall_item = list_container_impl_->GetItemHolderForIndex(0);
+  ASSERT_TRUE(anchor.valid_);
+  EXPECT_EQ(anchor.item_holder_, tall_item);
+  EXPECT_EQ(anchor.index_, 0);
+  EXPECT_FLOAT_EQ(anchor.start_offset_, 0.f);
+  EXPECT_FLOAT_EQ(anchor.start_alignment_delta_, -200.f);
+
+  tall_item->MarkRemoved(true);
+  manager->UpdateScrollAnchorInfo(anchor);
+  EXPECT_FALSE(anchor.valid_);
+  EXPECT_EQ(anchor.item_holder_, nullptr);
+  EXPECT_EQ(anchor.index_, kInvalidIndex);
 }
 
 TEST_F(StaggeredGridLayoutManagerTest, LayoutInvalidItemHolder1) {
@@ -468,6 +593,161 @@ TEST_F(StaggeredGridLayoutManagerTest, GetItemIndexBeforeTargetIndex) {
       }
     }
   }
+}
+
+// With two columns, 100 items of height 100, and a viewport height of 200,
+// jump from offset 0 to 4000 and back. Each jump requests bindings only for
+// its destination. The return to offset 0 also recycles items 80 through 83.
+//
+// Content y  Column 0 Column 1
+//       0       0        1        [0, 200) is visible after jumping back
+//     100       2        3
+//     200          ...            Items 4 through 79 are skipped
+//    4000      80       81        [4000, 4200) is visible after jumping down
+//    4100      82       83
+TEST_F(StaggeredGridLayoutManagerTest, LargeScrollBindsOnlyDestinationItems) {
+  std::vector<uint32_t> bind_requests;
+  InitOptimizedWaterfall(std::vector<int>(100, 100), bind_requests);
+
+  // Jump to row 40 (zero-based). The viewport covers rows 40 and 41.
+  list_container_impl_->ScrollByPlatformContainer(0.f, 4000.f, 0.f, 4000.f);
+  ASSERT_THAT(bind_requests, UnorderedElementsAre(80, 81, 82, 83));
+  bind_requests.clear();
+
+  // Jump back to the top. Count all binding requests so intermediate items
+  // are detected even if they are recycled before the scroll finishes.
+  list_container_impl_->ScrollByPlatformContainer(0.f, 0.f, 0.f, 0.f);
+  EXPECT_THAT(bind_requests, UnorderedElementsAre(0, 1, 2, 3));
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), 0.f);
+  for (int index = 80; index <= 83; ++index) {
+    EXPECT_TRUE(list_adapter_->IsRecycled(
+        list_container_impl_->GetItemHolderForIndex(index)))
+        << index;
+  }
+}
+
+// With platform view insertion enabled, scroll to [200, 400).
+//
+// 1. The first binding pass uses estimated heights. Each box shows an item
+//    index. Items 8 and 9 are partially visible, so both bind.
+//           Col 0   Col 1
+// y=200   +-------+-------+  Viewport top
+//         |   4   |   5   |  Estimated height of 50
+// y=250   +-------+-------+
+//         |   6   |   7   |
+//         |       |       |
+// y=350   +-------+-------+  Items 8 and 9 start here
+//         |   8   |   9   |
+// y=400   |.......|.......|  Viewport bottom crosses both items
+//         |       |       |
+// y=450   +-------+-------+
+//
+// 2. Items 4 and 5 measure 100. The row grows by 50 and moves each later
+//    row down by 50. Items 8 and 9 remain unrecycled when the scroll returns.
+//           Col 0   Col 1
+// y=200   +-------+-------+  Viewport top stays at 200
+//         |   4   |   5   |
+//         |       |       |
+// y=300   +-------+-------+
+//         |   6   |   7   |
+//         |       |       |
+// y=400   +-------+-------+  Viewport bottom meets the top of items 8 and 9
+//         |   8   |   9   |  Both items are fully offscreen
+//         |       |       |
+// y=500   +-------+-------+
+TEST_F(StaggeredGridLayoutManagerTest,
+       InsertPlatformViewDoesNotRecycleNewlyOffscreenItems) {
+  list_container_impl_->EnableInsertPlatformView();
+  std::vector<int> estimated_sizes(10, 100);
+  estimated_sizes[4] = 50;
+  estimated_sizes[5] = 50;
+  std::vector<uint32_t> bind_requests;
+  InitOptimizedWaterfall(estimated_sizes, bind_requests);
+
+  list_container_impl_->ScrollByPlatformContainer(0.f, 200.f, 0.f, 200.f);
+
+  ASSERT_FLOAT_EQ(list_layout_manager_->content_offset(), 200.f);
+  for (uint32_t index : {8u, 9u}) {
+    SCOPED_TRACE(index);
+    ASSERT_THAT(bind_requests, ::testing::Contains(index));
+    auto* holder = list_container_impl_->GetItemHolderForIndex(index);
+    ASSERT_NE(holder, nullptr);
+    ASSERT_FALSE(list_layout_manager_->ItemHolderVisibleInList(holder));
+    // TODO: Expect recycling once the scroll-result handler also visits
+    // items that were bound during this scroll and are now offscreen.
+    EXPECT_FALSE(list_adapter_->IsRecycled(holder));
+  }
+}
+
+// Start with the target viewport [750, 950). Items 4 through 7 have estimated
+// heights of 600, 650, 600, and 600. Each measures 100 after binding.
+// Item 6 starts at content y = 800, so keep its screen offset of +50.
+// After relayout it starts at y = 300, and the viewport moves to [250, 450).
+// Items 8 and 9 become visible, so the scroll binds only items 4 through 9.
+//
+// Screen y  Before binding           After relayout
+//           Viewport at 750          Viewport at 250
+//           Column 0 Column 1        Column 0 Column 1
+//       0   |...4....|...5....|      |...4....|...5....|  Viewport top
+//     +50   +--------+   5    |      +--------+--------+  Item 6 starts
+//           |   6    |   5    |      |   6    |   7    |
+//    +100   |   6    +--------+      |   6    |   7    |
+//           |   6    |   7    |      |   6    |   7    |
+//    +150   |   6    |   7    |      +--------+--------+  Items 8 and 9 enter
+//           |   6    |   7    |      |   8    |   9    |
+//    +200   |........|........|      |........|........|  Viewport bottom
+TEST_F(StaggeredGridLayoutManagerTest, ShrinkingItemsPreserveVisibleAnchor) {
+  std::vector<int> estimated_sizes(30, 100);
+  // Items 4 and 5 both start at 200. Their different estimates put items 6
+  // and 7 at 800 and 850, respectively.
+  std::fill(estimated_sizes.begin() + 4, estimated_sizes.begin() + 8, 600);
+  estimated_sizes[5] = 650;
+  std::vector<uint32_t> bind_requests;
+  InitOptimizedWaterfall(estimated_sizes, bind_requests);
+  auto* anchor = list_container_impl_->GetItemHolderForIndex(6);
+  ASSERT_FLOAT_EQ(GetOrientationHelper()->GetStart(anchor), 800.f);
+
+  list_container_impl_->ScrollByPlatformContainer(0.f, 750.f, 0.f, 750.f);
+
+  // After binding items 4 through 7, the viewport [250, 450) intersects
+  // items 8 and 9, which both start at 400.
+  EXPECT_FLOAT_EQ(GetOrientationHelper()->GetStart(anchor), 300.f);
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), 250.f);
+  EXPECT_THAT(bind_requests, UnorderedElementsAre(4, 5, 6, 7, 8, 9));
+}
+
+// Scroll to 100 to recycle the first row. Change the measured heights of items
+// 0 and 1 from 100 to 150, then jump to offset 0. Only those two items rebind.
+// The second row moves from y = 100 to y = 150 and the offset stays at zero.
+//
+// Content y  Before rebinding         After rebinding
+//       0    +--------+--------+      +--------+--------+  Viewport top
+//            |   0    |   1    |      |   0    |   1    |
+//     100    +--------+--------+      |   0    |   1    |
+//            |   2    |   3    |      |   0    |   1    |
+//     150    |   2    |   3    |      +--------+--------+  Second row starts
+//            |   2    |   3    |      |   2    |   3    |
+//     200    +--------+--------+      |........|........|  Viewport bottom
+TEST_F(StaggeredGridLayoutManagerTest, ScrollToTopIgnoresAnchorCompensation) {
+  std::vector<uint32_t> bind_requests;
+  InitOptimizedWaterfall(std::vector<int>(10, 100), bind_requests);
+  list_container_impl_->ScrollByPlatformContainer(0.f, 100.f, 0.f, 100.f);
+  for (int index : {0, 1}) {
+    auto* holder = list_container_impl_->GetItemHolderForIndex(index);
+    ASSERT_TRUE(list_adapter_->IsRecycled(holder));
+    auto* item = mock_list_element_->GetListItemElement(holder->item_key());
+    ASSERT_NE(item, nullptr);
+    item->height_ = 150.f;
+  }
+  bind_requests.clear();
+
+  list_container_impl_->ScrollByPlatformContainer(0.f, 0.f, 0.f, 0.f);
+
+  EXPECT_THAT(bind_requests, UnorderedElementsAre(0, 1));
+  EXPECT_FLOAT_EQ(GetOrientationHelper()->GetStart(
+                      list_container_impl_->GetItemHolderForIndex(2)),
+                  150.f);
+  EXPECT_FLOAT_EQ(list_layout_manager_->content_offset(), 0.f);
 }
 
 }  // namespace list

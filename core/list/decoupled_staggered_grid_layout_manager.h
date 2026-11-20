@@ -83,6 +83,7 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
  private:
   // Update layout state
   void UpdateStartAndEndLinesStatus(LayoutState& layout_state);
+  void UpdateScrollAnchorInfo(ListAnchorManager::AnchorInfo& anchor_info) const;
 
   void OnLayoutChildrenInternal(ListAnchorManager::AnchorInfo& anchor_info,
                                 LayoutState& layout_state);

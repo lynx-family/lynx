@@ -624,6 +624,16 @@ export interface ListProps extends StandardProps, ScrollbarProps {
   'list-type'?: 'single' | 'flow' | 'waterfall';
 
   /**
+   * Uses the target viewport to select which items to bind during a C++
+   * waterfall list scroll.
+   * @Android 4.6
+   * @iOS 4.6
+   * @Harmony 4.6
+   * @defaultValue false
+   */
+  'experimental-optimize-waterfall-scroll-fill'?: boolean;
+
+  /**
    * Whether to allow scrolling for a list.
    * @Android 1.6
    * @iOS 1.6

@@ -58,6 +58,14 @@ describe('ListItemProps type test', () => {
     });
   });
 
+  it('check experimental-optimize-waterfall-scroll-fill', () => {
+    assertType<ListProps>({ 'experimental-optimize-waterfall-scroll-fill': false });
+    assertType<ListProps>({
+      // @ts-expect-error the scroll fill flag requires a boolean
+      'experimental-optimize-waterfall-scroll-fill': 'true',
+    });
+  });
+
   it('check span-count', () => {
     assertType<ListProps>({
       'span-count': 2,
