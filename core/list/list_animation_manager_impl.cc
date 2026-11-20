@@ -72,7 +72,7 @@ void ListAnimationManagerImpl::InitializeAnimator() {
   // basic animator requires a shared_ptr.
   animator_ = std::make_shared<animation::basic::LynxBasicAnimator>(
       std::move(data),
-      list_container_impl_->list_delegate()->GetCustomVSyncMonitor());
+      list_container_impl_->list_delegate()->GetAnimationVSyncMonitor());
 }
 
 void ListAnimationManagerImpl::InitializeAnimatorEvent() {

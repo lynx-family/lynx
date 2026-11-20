@@ -345,11 +345,16 @@ void TasmMediator::OnCardConfigDataChanged(const lepus::Value& data) {
 
 void TasmMediator::InitVSyncMonitorIfNeeded() {
   if (!vsync_monitor_) {
-    vsync_monitor_ =
-        vsync_monitor_platform_impl_
-            ? std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_)
-            : base::VSyncMonitor::Create(lynx::tasm::LynxEnv::GetInstance()
-                                             .EnableAnimationVsyncOnUIThread());
+    if (vsync_monitor_platform_impl_) {
+      vsync_monitor_ =
+          std::make_shared<base::VSyncMonitor>(vsync_monitor_platform_impl_);
+    } else if (tasm_platform_invoker_) {
+      vsync_monitor_ = tasm_platform_invoker_->CreatePageVSyncMonitor();
+    }
+    if (!vsync_monitor_) {
+      vsync_monitor_ = base::VSyncMonitor::Create(
+          tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
+    }
     vsync_monitor_->BindTaskRunner(GetLepusTimedTaskRunner());
     vsync_monitor_->BindToCurrentThread();
     vsync_monitor_->Init();

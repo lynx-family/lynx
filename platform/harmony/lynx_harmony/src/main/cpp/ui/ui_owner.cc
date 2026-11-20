@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -24,6 +25,7 @@
 #include "core/base/harmony/harmony_function_loader.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
@@ -56,6 +58,54 @@ struct UIOwner::PositionChangeDispatchState {
   UIOwner* owner;
   bool pending{false};
 };
+
+namespace {
+
+struct PendingAnimationFrame {
+  std::weak_ptr<LynxContext> context;
+  UIOwner::AnimationFrameCallback callback;
+};
+
+void FailAnimationFrameRequest(napi_env env,
+                               UIOwner::AnimationFrameCallback callback) {
+  bool pending = false;
+  if (napi_is_exception_pending(env, &pending) == napi_ok && pending) {
+    napi_value exception;
+    napi_get_and_clear_last_exception(env, &exception);
+  }
+  if (callback) {
+    callback(std::nullopt);
+  }
+}
+
+napi_value OnAnimationFrame(napi_env env, napi_callback_info info) {
+  DCHECK(base::UIThread::GetRunner()->RunsTasksOnCurrentThread());
+  size_t argc = 1;
+  napi_value argv[1];
+  PendingAnimationFrame* pending = nullptr;
+  if (napi_get_cb_info(env, info, &argc, argv, nullptr,
+                       reinterpret_cast<void**>(&pending)) != napi_ok ||
+      !pending || !pending->callback) {
+    return nullptr;
+  }
+  auto callback = std::move(pending->callback);
+  auto context = pending->context.lock();
+  auto* owner = context ? context->GetUIOwner() : nullptr;
+  if (!owner || owner->Destroyed()) {
+    return nullptr;
+  }
+  int64_t frame_start_time;
+  if (argc == 1 &&
+      napi_get_value_int64(env, argv[0], &frame_start_time) == napi_ok &&
+      frame_start_time > 0) {
+    callback(frame_start_time);
+  } else {
+    FailAnimationFrameRequest(env, std::move(callback));
+  }
+  return nullptr;
+}
+
+}  // namespace
 
 ImageService* UIOwner::image_service = nullptr;
 
@@ -1935,6 +1985,53 @@ const std::shared_ptr<base::VSyncMonitor>& UIOwner::VSyncMonitor() {
   }
 
   return vsync_monitor_;
+}
+
+void UIOwner::RequestAnimationFrame(AnimationFrameCallback callback) {
+  DCHECK(base::UIThread::GetRunner()->RunsTasksOnCurrentThread());
+  if (destroyed_ || !callback) {
+    return;
+  }
+  const auto env = env_;
+  if (!env) {
+    callback(std::nullopt);
+    return;
+  }
+
+  base::NapiHandleScope scope(env);
+  napi_value receiver = base::NapiUtil::GetReferenceNapiValue(env, js_this_);
+  napi_value request_frame;
+  if (!receiver ||
+      napi_get_named_property(env, receiver, "postAnimationFrameCallback",
+                              &request_frame) != napi_ok) {
+    FailAnimationFrameRequest(env, std::move(callback));
+    return;
+  }
+
+  auto pending = std::make_unique<PendingAnimationFrame>();
+  pending->context = context_;
+  pending->callback = std::move(callback);
+  napi_value on_frame;
+  if (napi_create_function(env, "onAnimationFrame", NAPI_AUTO_LENGTH,
+                           OnAnimationFrame, pending.get(),
+                           &on_frame) != napi_ok ||
+      napi_wrap(
+          env, on_frame, pending.get(),
+          [](napi_env, void* data, void*) {
+            delete static_cast<PendingAnimationFrame*>(data);
+          },
+          nullptr, nullptr) != napi_ok) {
+    FailAnimationFrameRequest(env, std::move(pending->callback));
+    return;
+  }
+  auto* holder = pending.release();
+
+  if (napi_call_function(env, receiver, request_frame, 1, &on_frame, nullptr) !=
+      napi_ok) {
+    // If ArkTS posted the callback before throwing, consume it here so the
+    // late frame cannot complete the request a second time.
+    FailAnimationFrameRequest(env, std::move(holder->callback));
+  }
 }
 
 void UIOwner::MarkHasUIOperations(UIBase* ui) {

@@ -135,6 +135,17 @@ class ListItemSchedulerAdapterTest : public ::testing::TestWithParam<int32_t> {
   }
 };
 
+TEST_P(ListItemSchedulerAdapterTest, ListAnimationUsesOptedInPageVSync) {
+  auto list = CreateListElement();
+  auto& mediator = *list->list_mediator_;
+
+  EXPECT_EQ(mediator.GetAnimationVSyncMonitor(), nullptr);
+  manager->SetSharePageVSyncWithList(true);
+
+  EXPECT_EQ(mediator.GetAnimationVSyncMonitor(), vsync_monitor_);
+  EXPECT_FALSE(vsync_monitor_->UsesCustomVSync());
+}
+
 TEST_P(ListItemSchedulerAdapterTest, ListItemResolveSubtreePropertyTest) {
   // css related
   StyleMap indexAttributes;

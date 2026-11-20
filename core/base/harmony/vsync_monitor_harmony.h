@@ -18,8 +18,9 @@ class VSyncMonitorHarmony : public base::VSyncMonitor {
 
   static void OnUpdateRefreshRate(int64_t refresh_rate);
 
- private:
+ protected:
   void RequestVSync() override;
+  void OnUIFrame(int64_t frame_start_time);
 };
 
 }  // namespace base
