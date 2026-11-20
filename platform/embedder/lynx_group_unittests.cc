@@ -47,3 +47,33 @@ TEST(LynxGroup, SetEnableWhiteBoard) {
   EXPECT_EQ(group->white_board, nullptr);
   lynx_group_release(group);
 }
+
+TEST(LynxGroup, SetJSGroupThreadName) {
+  auto* group = lynx_group_create_with_id("group", "shared-group");
+  EXPECT_TRUE(group->js_group_thread_name.empty());
+  std::string name = "shared-thread";
+  lynx_group_set_js_group_thread_name(group, name.c_str());
+  name.clear();
+  EXPECT_EQ(group->js_group_thread_name, "shared-thread");
+  EXPECT_EQ(group->id, "shared-group");
+  EXPECT_FALSE(group->enable_js_group_thread);
+  lynx_group_set_js_group_thread_name(group, "");
+  EXPECT_TRUE(group->js_group_thread_name.empty());
+  lynx_group_set_js_group_thread_name(group, "other-thread");
+  lynx_group_set_js_group_thread_name(group, nullptr);
+  EXPECT_TRUE(group->js_group_thread_name.empty());
+  lynx_group_release(group);
+}
+
+TEST(LynxGroup, SetPreloadJSPathsCopiesStrings) {
+  auto* group = lynx_group_create_with_id("group", "shared-group");
+  std::string path = "test://preload.js";
+  const char* paths[] = {path.c_str()};
+  lynx_group_set_preload_js_paths(group, paths, 1);
+  path.clear();
+  ASSERT_EQ(group->preload_js_paths.size(), 1u);
+  EXPECT_EQ(group->preload_js_paths[0], "test://preload.js");
+  lynx_group_set_preload_js_paths(group, nullptr, 0);
+  EXPECT_TRUE(group->preload_js_paths.empty());
+  lynx_group_release(group);
+}

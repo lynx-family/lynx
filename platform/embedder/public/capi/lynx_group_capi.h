@@ -34,6 +34,12 @@ LYNX_CAPI_EXPORT void lynx_group_set_preload_js_paths(lynx_group_t*,
 LYNX_CAPI_EXPORT void lynx_group_set_enable_js_group_thread(lynx_group_t*,
                                                             int enable);
 
+// Sets the JavaScript group thread name. Null or empty uses the group ID.
+// Only takes effect when the JavaScript group thread is enabled. The string is
+// copied; groups with the same name share a thread, independently of their IDs.
+LYNX_CAPI_EXPORT void lynx_group_set_js_group_thread_name(lynx_group_t*,
+                                                          const char* name);
+
 // Enables or disables the shared white board for a lynx group. When enabled,
 // Lynx views in the same group share one white board instance.
 LYNX_CAPI_EXPORT void lynx_group_set_enable_white_board(lynx_group_t*,

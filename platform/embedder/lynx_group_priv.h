@@ -21,6 +21,7 @@ struct lynx_group_t {
   std::string id;
   std::vector<std::string> preload_js_paths;
   bool enable_js_group_thread = false;
+  std::string js_group_thread_name;
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;
 };
 

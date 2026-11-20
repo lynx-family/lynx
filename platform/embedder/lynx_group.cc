@@ -55,4 +55,9 @@ LYNX_EXTERN_C void lynx_group_set_enable_white_board(lynx_group_t* group,
   group->white_board = nullptr;
 }
 
+LYNX_EXTERN_C void lynx_group_set_js_group_thread_name(lynx_group_t* group,
+                                                       const char* name) {
+  group->js_group_thread_name = name ? name : "";
+}
+
 LYNX_EXTERN_C void lynx_group_release(lynx_group_t* group) { delete group; }
