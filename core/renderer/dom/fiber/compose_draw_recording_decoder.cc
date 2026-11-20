@@ -6,8 +6,11 @@
 
 #include "core/renderer/dom/fiber/compose_draw_recording_decoder.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstring>
+#include <iterator>
 #include <limits>
 #include <utility>
 
@@ -26,6 +29,68 @@ constexpr size_t kMaxDepth = 64;
 constexpr size_t kMaxPayloadBytes = 16 * 1024 * 1024;
 constexpr size_t kMaxValueNodes = 262144;
 using Code = DrawRecordingError::Code;
+using Transform = std::array<double, 6>;
+constexpr Transform kIdentity{1, 0, 0, 1, 0, 0};
+struct RectBounds {
+  double x{0}, y{0}, width{0}, height{0};
+};
+struct PathInfo {
+  uint32_t tag{0};
+  RectBounds bounds;
+  double radii[4]{};
+  int64_t outer_ref{0}, inner_ref{-1};
+  size_t depth{1};
+  bool supported{false};
+  bool IsBox() const { return tag == 1 || tag == 2; }
+};
+enum class PaintCapability {
+  kSupported,
+  kUnsupported,
+  kStroke,
+  kRadial,
+  kSweep
+};
+struct PaintInfo {
+  uint32_t source{0};
+  uint32_t argb{0};
+  double alpha{1};
+  double start[2]{}, end[2]{};
+  base::Vector<uint32_t> colors;
+  base::Vector<double> stops;
+  bool stroke{false};
+  PaintCapability capability{PaintCapability::kSupported};
+};
+
+bool NearlyEqual(double a, double b, double extent) {
+  return std::abs(a - b) <=
+         8 * std::numeric_limits<float>::epsilon() *
+             std::max({1.0, extent, std::abs(a), std::abs(b)});
+}
+bool UniformInset(const PathInfo& outer, const PathInfo& inner) {
+  const auto& o = outer.bounds;
+  const auto& in = inner.bounds;
+  const double inset = in.x - o.x, extent = std::max(o.width, o.height);
+  if (!std::isfinite(inset) || inset <= 0 || in.width <= 0 || in.height <= 0 ||
+      !NearlyEqual(in.y - o.y, inset, extent) ||
+      !NearlyEqual(o.width - in.width, 2 * inset, extent) ||
+      !NearlyEqual(o.height - in.height, 2 * inset, extent))
+    return false;
+  double expected[4];
+  std::copy(std::begin(outer.radii), std::end(outer.radii), expected);
+  for (auto& r : expected) r = std::max(r - inset, 0.0);
+  const double side = std::min(in.width, in.height);
+  for (int i = 0; i < 2; ++i) {
+    const int j = 3 - i;
+    const double sum = expected[i] + expected[j];
+    if (sum > side) {
+      expected[i] *= side / sum;
+      expected[j] *= side / sum;
+    }
+  }
+  for (int i = 0; i < 4; ++i)
+    if (!NearlyEqual(expected[i], inner.radii[i], extent)) return false;
+  return true;
+}
 class V1Reader {
   // A cursor owns a runtime handle only during decoding. Its parent is an
   // active schema cursor (or a stable payload frame), never part of the IR.
@@ -93,16 +158,59 @@ class V1Reader {
     if (!Table(commands) || !Table(paths) || !Table(paints) ||
         !Table(resources))
       return error_;
-    // Table schemas are introduced separately. All contents still cross the
-    // same bounded value boundary before a deferred capability is reported.
-    if (!ValidateValue(paths) || !ValidateValue(resources) ||
-        !ValidateValue(paints) || !ValidateValue(commands))
-      return error_;
+    resource_count_ = static_cast<size_t>(resources.GetLength());
+    paths_.reserve(paths.GetLength());
+    paints_.reserve(paints.GetLength());
+    clip_phase_error_ = phase_ == ComposeDrawPhase::kClip &&
+                        (commands.GetLength() != 1 || paints.GetLength() != 0);
+    for (uint32_t i = 0; i < static_cast<uint32_t>(paths.GetLength()); ++i)
+      if (!Path(paths.GetProperty(i))) return error_;
+    for (uint32_t i = 0; i < resource_count_; ++i) {
+      const auto row = resources.GetProperty(i);
+      std::string name;
+      uint32_t version;
+      if (!Row(row, 3) || !Text(row.GetProperty(0u), &name, true) ||
+          !UInt(row.GetProperty(1u), &version) ||
+          !ValidateValue(row.GetProperty(2u)))
+        return error_;
+      Unknown(std::move(name));
+    }
+    for (uint32_t i = 0; i < static_cast<uint32_t>(paints.GetLength()); ++i) {
+      PaintInfo paint;
+      if (!Paint(paints.GetProperty(i), &paint)) return error_;
+      if (paint.capability != PaintCapability::kSupported) {
+        if (paint_capability_ == PaintCapability::kSupported)
+          paint_capability_ = paint.capability;
+        const bool stroke = paint.stroke;
+        const auto capability = paint.capability;
+        paint = {};
+        paint.stroke = stroke;
+        paint.capability = capability;
+      }
+      paints_.push_back(std::move(paint));
+    }
+    // Command semantics are introduced separately. Validate the complete
+    // bounded runtime contents before reporting the deferred capability.
+    if (!ValidateValue(commands)) return error_;
     if (!Metadata(input.GetProperty(8u))) return error_;
+    if (!unknown_.empty()) {
+      return DrawRecordingError{Code::kUnsupported,
+                                DrawRecordingError::kNoCommand,
+                                std::move(unknown_)};
+    }
     if (!Features(input.GetProperty(7u)) || failed_) return error_;
-    if (commands.GetLength() || paths.GetLength() || paints.GetLength() ||
-        resources.GetLength() || phase_ == ComposeDrawPhase::kClip)
-      return DrawRecordingError{Code::kUnsupported};
+    if (path_capability_error_) return DrawRecordingError{Code::kUnsupported};
+    if (paint_capability_ != PaintCapability::kSupported) {
+      const char* ns =
+          paint_capability_ == PaintCapability::kStroke   ? "paint.stroke"
+          : paint_capability_ == PaintCapability::kRadial ? "paint.radial"
+          : paint_capability_ == PaintCapability::kSweep  ? "paint.sweep"
+                                                          : "";
+      return DrawRecordingError{Code::kUnsupported,
+                                DrawRecordingError::kNoCommand, ns};
+    }
+    if (clip_phase_error_) return DrawRecordingError{Code::kUnsupported};
+    if (commands.GetLength()) return DrawRecordingError{Code::kUnsupported};
     *out = scratch_.Build();
     *shadow = false;
     return std::nullopt;
@@ -125,11 +233,23 @@ class V1Reader {
     *out = v.Number();
     return true;
   }
+  bool Nonnegative(const Value& v, double* out, bool positive = false) {
+    return Number(v, out) && ((*out >= 0 && (!positive || *out > 0)) || Fail());
+  }
   bool UInt(const Value& v, uint32_t* out) {
     double n;
     if (!Number(v, &n) || n < 0 || n > UINT32_MAX || std::trunc(n) != n)
       return Fail();
     *out = static_cast<uint32_t>(n);
+    return true;
+  }
+  bool Tag(const Value& row, uint32_t* tag) {
+    if (!row.IsArrayOrJSArray() || row.GetLength() < 1) return Fail();
+    return UInt(row.GetProperty(0u), tag);
+  }
+  bool Boolean(const Value& v, bool* out) {
+    if (!v.IsBool()) return Fail();
+    *out = v.Bool();
     return true;
   }
   bool Text(const Value& v, std::string* out, bool nonempty = false) {
@@ -139,6 +259,44 @@ class V1Reader {
     out->assign(text.data(), text.size());
     return true;
   }
+  template <typename Enum>
+  bool EnumValue(const Value& v, uint32_t max, Enum* out) {
+    uint32_t n;
+    if (!UInt(v, &n)) return false;
+    if (n > max) return Fail(Code::kUnsupported);
+    *out = static_cast<Enum>(n);
+    return true;
+  }
+  bool Ref(const Value& v, size_t bound, int64_t* out, bool optional = false) {
+    double n;
+    if (!Number(v, &n) || std::trunc(n) != n) return Fail();
+    if (optional && n == -1) {
+      *out = -1;
+      return true;
+    }
+    if (n < 0 || n >= static_cast<double>(bound)) return Fail();
+    *out = static_cast<int64_t>(n);
+    return true;
+  }
+  bool Bounds(const Value& a, uint32_t start, RectBounds* b) {
+    return Number(a.GetProperty(start), &b->x) &&
+           Number(a.GetProperty(start + 1), &b->y) &&
+           Nonnegative(a.GetProperty(start + 2), &b->width) &&
+           Nonnegative(a.GetProperty(start + 3), &b->height) &&
+           ((std::isfinite(b->x + b->width) &&
+             std::isfinite(b->y + b->height)) ||
+            Fail(Code::kOverflow));
+  }
+  template <typename Array>
+  bool Numbers(const Value& a, uint32_t start, Array* values) {
+    for (uint32_t i = 0; i < std::size(*values); ++i)
+      if (!Number(a.GetProperty(start + i), &(*values)[i])) return false;
+    return true;
+  }
+  bool Matrix(const Value& a, Transform* matrix) {
+    return Row(a, 6) && Numbers(a, 0, matrix);
+  }
+
   bool ChargeNodes(size_t added, size_t limit, size_t* used) {
     if (added > limit - *used) return Fail(Code::kCapacity);
     *used += added;
@@ -217,6 +375,264 @@ class V1Reader {
     }
     return true;
   }
+  void Unknown(std::string name) {
+    if (unknown_.empty()) unknown_ = std::move(name);
+  }
+  bool Extension(const Value& row, size_t ref_bound, bool tagged = false,
+                 size_t* path_depth = nullptr) {
+    uint32_t tag, version;
+    std::string name;
+    if (!Row(row, 5) || (!tagged && (!Tag(row, &tag) || tag != 255)) ||
+        !Text(row.GetProperty(1u), &name, true) ||
+        !UInt(row.GetProperty(2u), &version))
+      return false;
+    const auto refs = row.GetProperty(4u);
+    if (!Table(refs)) return false;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(refs.GetLength()); ++i) {
+      int64_t ref;
+      if (!Ref(refs.GetProperty(i), ref_bound, &ref)) return false;
+      if (path_depth)
+        *path_depth = std::max(*path_depth, paths_[ref].depth + 1);
+    }
+    if (!ValidateValue(row.GetProperty(3u))) return false;
+    Unknown(std::move(name));
+    return true;
+  }
+  bool Path(const Value& row) {
+    PathInfo path;
+    if (!Tag(row, &path.tag)) return false;
+    switch (path.tag) {
+      case 1:
+        if (!Row(row, 5) || !Bounds(row, 1, &path.bounds)) return false;
+        path.supported = true;
+        break;
+      case 2: {
+        double radii[8]{};
+        if (!Row(row, 13) || !Bounds(row, 1, &path.bounds)) return false;
+        for (uint32_t i = 0; i < 8; ++i)
+          if (!Nonnegative(row.GetProperty(i + 5), &radii[i])) return false;
+        for (const auto& pair : {std::pair{0, 2}, {6, 4}, {1, 7}, {3, 5}})
+          if (!std::isfinite(radii[pair.first] + radii[pair.second]))
+            return Fail(Code::kOverflow);
+        path.supported = true;
+        for (size_t i = 0; i < 4; ++i) {
+          path.radii[i] = radii[2 * i];
+          path.supported &= radii[2 * i] == radii[2 * i + 1];
+        }
+        break;
+      }
+      case 3:
+        if (!Row(row, 3) ||
+            !Ref(row.GetProperty(1u), paths_.size(), &path.outer_ref) ||
+            !Ref(row.GetProperty(2u), paths_.size(), &path.inner_ref, true))
+          return false;
+        path.depth += paths_[path.outer_ref].depth;
+        path.supported = paths_[path.outer_ref].IsBox();
+        if (path.inner_ref != -1) {
+          path.depth = std::max(path.depth, paths_[path.inner_ref].depth + 1);
+          path.supported =
+              path.supported && paths_[path.inner_ref].IsBox() &&
+              UniformInset(paths_[path.outer_ref], paths_[path.inner_ref]);
+        }
+        break;
+      case 4: {
+        uint32_t fill_rule;
+        if (!Row(row, 3) || !EnumValue(row.GetProperty(1u), 1, &fill_rule))
+          return false;
+        const auto verbs = row.GetProperty(2u);
+        if (!Table(verbs)) return false;
+        bool open = false;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(verbs.GetLength());
+             ++i) {
+          const auto verb = verbs.GetProperty(i);
+          uint32_t tag;
+          if (!Tag(verb, &tag)) return false;
+          uint32_t coordinates;
+          switch (tag) {
+            case 1:
+            case 2:
+              coordinates = 2;
+              break;
+            case 3:
+              coordinates = 4;
+              break;
+            case 4:
+              coordinates = 6;
+              break;
+            case 5:
+              coordinates = 5;
+              break;
+            case 6:
+              coordinates = 0;
+              break;
+            default:
+              return Fail(Code::kUnsupported);
+          }
+          if (!Row(verb, coordinates + 1) || (!open && tag != 1)) return Fail();
+          for (uint32_t j = 0; j < coordinates; ++j) {
+            double value;
+            if (!Number(verb.GetProperty(j + 1), &value)) return false;
+            if (tag == 5 && j == 4 && value <= 0) return Fail();
+          }
+          open = tag != 6;
+        }
+        break;
+      }
+      case 255:
+        if (!Extension(row, paths_.size(), true, &path.depth)) return false;
+        break;
+      default:
+        return Fail(Code::kUnsupported);
+    }
+    if (path.depth > kMaxDepth) return Fail(Code::kCapacity);
+    path_capability_error_ |= !path.supported;
+    paths_.push_back(path);
+    return true;
+  }
+  bool Stops(const Value& colors, const Value& stops, PaintInfo* paint) {
+    if (!Table(colors) || !Table(stops)) return false;
+    if (colors.GetLength() < 2 || colors.GetLength() != stops.GetLength())
+      return Fail();
+    if (paint) {
+      paint->colors.reserve(colors.GetLength());
+      paint->stops.reserve(stops.GetLength());
+    }
+    double previous = 0;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(colors.GetLength()); ++i) {
+      uint32_t color;
+      double stop = 0;
+      if (!UInt(colors.GetProperty(i), &color) ||
+          !Number(stops.GetProperty(i), &stop) || stop < previous || stop > 1)
+        return Fail();
+      previous = stop;
+      if (paint) {
+        paint->colors.push_back(color);
+        paint->stops.push_back(stop);
+      }
+    }
+    return true;
+  }
+  bool Source(const Value& row, PaintInfo* paint) {
+    if (!Tag(row, &paint->source)) return false;
+    switch (paint->source) {
+      case 1:
+        return Row(row, 2) && UInt(row.GetProperty(1u), &paint->argb);
+      case 2: {
+        uint32_t tile = 0;
+        Transform transform;
+        if (!Row(row, 9) || !Numbers(row, 1, &paint->start) ||
+            !Numbers(row, 3, &paint->end))
+          return false;
+        if (paint->start[0] == paint->end[0] &&
+            paint->start[1] == paint->end[1])
+          return Fail();
+        if (!Stops(row.GetProperty(5u), row.GetProperty(6u), paint) ||
+            !EnumValue(row.GetProperty(7u), 3, &tile) ||
+            !Matrix(row.GetProperty(8u), &transform))
+          return false;
+        if (tile != 0 || transform != kIdentity)
+          paint->capability = PaintCapability::kUnsupported;
+        return true;
+      }
+      case 3: {
+        double center[2];
+        double radius;
+        uint32_t tile = 0;
+        Transform transform;
+        if (!Row(row, 8) || !Numbers(row, 1, &center) ||
+            !Nonnegative(row.GetProperty(3u), &radius, true) ||
+            !Stops(row.GetProperty(4u), row.GetProperty(5u), nullptr) ||
+            !EnumValue(row.GetProperty(6u), 3, &tile) ||
+            !Matrix(row.GetProperty(7u), &transform))
+          return false;
+        paint->capability = PaintCapability::kRadial;
+        return true;
+      }
+      case 4: {
+        double center[2];
+        Transform transform;
+        if (!Row(row, 6) || !Numbers(row, 1, &center) ||
+            !Stops(row.GetProperty(3u), row.GetProperty(4u), nullptr) ||
+            !Matrix(row.GetProperty(5u), &transform))
+          return false;
+        paint->capability = PaintCapability::kSweep;
+        return true;
+      }
+      case 255:
+        paint->capability = PaintCapability::kUnsupported;
+        return Extension(row, resource_count_, true);
+      default:
+        return Fail(Code::kUnsupported);
+    }
+  }
+  bool Filter(const Value& row) {
+    if (row.IsNil()) return true;
+    uint32_t tag;
+    if (!Tag(row, &tag)) return false;
+    switch (tag) {
+      case 1: {
+        uint32_t color, blend;
+        return Row(row, 3) && UInt(row.GetProperty(1u), &color) &&
+               EnumValue(row.GetProperty(2u), 2, &blend);
+      }
+      case 2: {
+        const auto matrix = row.GetProperty(1u);
+        double values[20];
+        return Row(row, 2) && Row(matrix, 20) && Numbers(matrix, 0, &values);
+      }
+      case 255:
+        return Extension(row, resource_count_, true);
+      default:
+        return Fail(Code::kUnsupported);
+    }
+  }
+  bool Style(const Value& row, PaintInfo* paint) {
+    uint32_t tag;
+    if (!Tag(row, &tag)) return false;
+    if (tag == 1) return Row(row, 1);
+    if (tag != 2) return Fail(Code::kUnsupported);
+    paint->stroke = true;
+    double width, miter, phase;
+    uint32_t cap, join;
+    if (!Row(row, 8) || !Nonnegative(row.GetProperty(1u), &width) ||
+        !EnumValue(row.GetProperty(2u), 2, &cap) ||
+        !EnumValue(row.GetProperty(3u), 2, &join) ||
+        !Nonnegative(row.GetProperty(4u), &miter, true) ||
+        !Number(row.GetProperty(6u), &phase))
+      return false;
+    const auto dashes = row.GetProperty(5u);
+    if (!Table(dashes) || dashes.GetLength() % 2 != 0) return Fail();
+    for (uint32_t i = 0; i < static_cast<uint32_t>(dashes.GetLength()); ++i) {
+      double value;
+      if (!Nonnegative(dashes.GetProperty(i), &value, true)) return false;
+    }
+    const auto effect = row.GetProperty(7u);
+    return effect.IsNil() || Extension(effect, resource_count_);
+  }
+  bool Paint(const Value& row, PaintInfo* paint) {
+    if (!Row(row, 4) || !Source(row.GetProperty(0u), paint)) return false;
+    const auto options = row.GetProperty(1u);
+    uint32_t blend = 0;
+    bool antialias = false;
+    if (!Row(options, 4) || !Number(options.GetProperty(0u), &paint->alpha) ||
+        !EnumValue(options.GetProperty(1u), 2, &blend) ||
+        !Boolean(options.GetProperty(2u), &antialias))
+      return false;
+    const auto filter = options.GetProperty(3u);
+    if (!Filter(filter) || !Style(row.GetProperty(2u), paint)) return false;
+    paint->alpha = std::clamp(paint->alpha, 0.0, 1.0);
+    const auto effects = row.GetProperty(3u);
+    if (!Table(effects)) return false;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(effects.GetLength()); ++i)
+      if (!Extension(effects.GetProperty(i), resource_count_)) return false;
+    if (paint->stroke)
+      paint->capability = PaintCapability::kStroke;
+    else if (paint->capability == PaintCapability::kSupported &&
+             (blend != 0 || !antialias || !filter.IsNil() ||
+              effects.GetLength()))
+      paint->capability = PaintCapability::kUnsupported;
+    return true;
+  }
   bool Metadata(const Value& rows) {
     if (!Table(rows)) return false;
     base::LinkedHashMap<std::string, bool> keys;
@@ -240,9 +656,15 @@ class V1Reader {
 
   ComposeDrawPhase phase_;
   DisplayListBuilder scratch_;
+  base::Vector<PathInfo> paths_;
+  base::Vector<PaintInfo> paints_;
   DrawRecordingError error_;
+  PaintCapability paint_capability_{PaintCapability::kSupported};
+  std::string unknown_;
+  size_t resource_count_{0};
   size_t snapshot_nodes_{0}, payload_bytes_{0};
   bool failed_{false}, input_failed_{false};
+  bool path_capability_error_{false}, clip_phase_error_{false};
 };
 }  // namespace v1
 
