@@ -1495,6 +1495,74 @@ TEST_F_UI(TextTest, SingleLineVerticalAlignMapsTopCenterAndBottom) {
   }
 }
 
+#ifdef CLAY_ENABLE_TTTEXT
+TEST_F_UI(TextTest, TTTextDistinguishesMiddleFromCenter) {
+  auto middle_style = text_shadow_node_->text_style_;
+  middle_style->align_type = kVerticalAlignMiddle;
+  TextParagraphBuilder middle_builder(true, middle_style);
+  middle_builder.PushStyle(*middle_style);
+  const auto& middle = middle_builder.PeekStyleForTesting();
+  EXPECT_EQ(middle.align_type,
+            ttoffice::tttext::CharacterVerticalAlignment::kMiddle);
+  EXPECT_TRUE(middle.use_parent_x_height_for_middle);
+
+  auto center_style = text_shadow_node_->text_style_;
+  center_style->align_type = kVerticalAlignCenter;
+  TextParagraphBuilder center_builder(true, center_style);
+  center_builder.PushStyle(*center_style);
+  const auto& center = center_builder.PeekStyleForTesting();
+  EXPECT_EQ(center.align_type,
+            ttoffice::tttext::CharacterVerticalAlignment::kMiddle);
+  EXPECT_FALSE(center.use_parent_x_height_for_middle);
+}
+
+TEST_F_UI(TextTest, MiddlePlaceholderKeepsTTTextVerticalAlign) {
+  TestLayoutDelegate delegate;
+  delegate.measure_width = 30.f;
+  delegate.measure_height = 30.f;
+  owner_->SetLayoutDelegate(&delegate);
+  auto inline_view = std::make_unique<InlineViewShadowNode>(owner_, "view", 7);
+  text_shadow_node_->AddChild(inline_view.get());
+  raw_text_shadow_node_->SetText("x");
+  clay::Value::Array align;
+  align.emplace_back(static_cast<int>(kVerticalAlignMiddle));
+  align.emplace_back(0.f);
+  inline_view->SetAttribute("vertical-align", clay::Value(std::move(align)));
+
+  MeasureConstraint constraint{1000, MeasureMode::kDefinite, 0,
+                               MeasureMode::kIndefinite};
+  text_shadow_node_->Measure(constraint);
+  const auto* paragraph = text_shadow_node_->GetCacheParagraph();
+  ASSERT_NE(paragraph, nullptr);
+  const auto actual_boxes = paragraph->GetRectsForRange(
+      inline_view->StartGlyph(), inline_view->EndGlyph(),
+      txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(actual_boxes.size(), 1u);
+
+  inline_view->EnsureDefaultStyle();
+  auto builder =
+      std::make_unique<TextParagraphBuilder>(true, inline_view->text_style_);
+  builder->PushStyle(*inline_view->text_style_);
+  txt::PlaceholderRun placeholder(30.f, 30.f,
+                                  txt::PlaceholderAlignment::kBaseline,
+                                  txt::TextBaseline::kAlphabetic, 30.f);
+  builder->AddPlaceholder(placeholder);
+  builder->Pop();
+  auto expected = Build(std::move(builder));
+  expected->Layout(1000);
+  const auto expected_boxes = expected->GetRectsForPlaceholders();
+  ASSERT_EQ(expected_boxes.size(), 1u);
+
+  EXPECT_NEAR(actual_boxes.front().rect.Top(),
+              expected_boxes.front().rect.Top(), 0.01f);
+  EXPECT_NEAR(actual_boxes.front().rect.Bottom(),
+              expected_boxes.front().rect.Bottom(), 0.01f);
+  EXPECT_EQ(inline_view->text_style_->align_type, kVerticalAlignMiddle);
+  owner_->SetLayoutDelegate(nullptr);
+}
+#endif
+
 TEST_F_UI(TextTest, AlignInlineViewsToOriginResetsInlineViewState) {
   TestLayoutDelegate delegate;
   owner_->SetLayoutDelegate(&delegate);

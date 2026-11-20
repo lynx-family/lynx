@@ -36,7 +36,9 @@ void ParagraphBuilderTTText::AddText(const std::u16string& text) {
 }
 void ParagraphBuilderTTText::AddPlaceholder(PlaceholderRun& span) {
   CreateParagraph();
-  paragraph_->AddPlaceholder(run_style_stack_.back(), span, false);
+  paragraph_->AddPlaceholder(
+      run_style_stack_.back(), span, false,
+      text_style_stack_.back().use_parent_x_height_for_middle);
 }
 std::unique_ptr<Paragraph> ParagraphBuilderTTText::Build() {
   CreateParagraph();

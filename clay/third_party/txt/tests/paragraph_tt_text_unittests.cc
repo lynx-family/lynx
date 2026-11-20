@@ -71,7 +71,8 @@ std::shared_ptr<FontCollection> CreateFixtureFontCollection(
   auto font_manager =
       std::make_shared<AssetFontManager>(std::move(font_provider));
   auto font_collection = std::make_shared<FontCollection>();
-  font_collection->SetDefaultFontManager(std::move(font_manager));
+  font_collection->SetupDefaultFontManager(0);
+  font_collection->SetAssetFontManager(std::move(font_manager));
   return font_collection;
 }
 
@@ -188,6 +189,49 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
       (rect.Top() + rect.Bottom()) / 2.f - paragraph.GetAlphabeticBaseline();
   EXPECT_NEAR(actual_center_from_baseline, expected_center_from_baseline,
               0.01f);
+}
+
+TEST(ParagraphTTTextTest, CssMiddleUsesParentXHeightForAnyObjectBaseline) {
+  constexpr float kFontSize = 40.f;
+  constexpr float kObjectHeight = 30.f;
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::Style style;
+  tttext::FontDescriptor font_descriptor;
+  font_descriptor.font_family_list_ = {kFixtureFontFamily};
+  font_descriptor.font_style_ = tttext::FontStyle::Bold();
+  style.SetFontDescriptor(font_descriptor);
+  style.SetTextSize(kFontSize);
+  style.SetVerticalAlignment(tttext::CharacterVerticalAlignment::kMiddle);
+
+  auto tt_font_collection = font_collection->GetIFontCollection(nullptr);
+  auto typefaces = tt_font_collection.findTypefaces(style.GetFontDescriptor());
+  ASSERT_FALSE(typefaces.empty());
+  ASSERT_NE(typefaces.front(), nullptr);
+  const auto glyph = typefaces.front()->UnicharToGlyph('x');
+  ASSERT_NE(glyph, 0);
+  float bounds[4] = {};
+  typefaces.front()->GetWidthBound(bounds, glyph, kFontSize);
+  const float parent_x_height = -bounds[1];
+  ASSERT_GT(parent_x_height, 0.f);
+
+  for (const float object_baseline : {5.f, 25.f}) {
+    tttext::ParagraphStyle paragraph_style;
+    ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+    PlaceholderRun placeholder(kObjectHeight, kObjectHeight,
+                               PlaceholderAlignment::kBaseline,
+                               TextBaseline::kAlphabetic, object_baseline);
+    paragraph.AddPlaceholder(style, placeholder, false, true);
+    paragraph.Layout(100.f);
+
+    const auto boxes = paragraph.GetRectsForPlaceholders();
+    ASSERT_EQ(boxes.size(), 1u);
+    const auto& rect = boxes.front().rect;
+    const float center_from_baseline =
+        (rect.Top() + rect.Bottom()) / 2.f - paragraph.GetAlphabeticBaseline();
+    EXPECT_NEAR(center_from_baseline, -parent_x_height / 2.f, 0.01f);
+  }
 }
 #endif
 
