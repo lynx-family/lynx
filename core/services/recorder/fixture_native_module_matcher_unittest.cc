@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/services/recorder/fixture_native_module_mock.h"
+#include "core/services/recorder/fixture_native_module_matcher.h"
 
 #include <memory>
 #include <string>
@@ -15,10 +15,10 @@ namespace tasm {
 namespace recorder {
 namespace {
 
-bool EvaluateNativeModuleMock(const std::string& ignored_keys_json,
-                              const std::string& test_body) {
+bool EvaluateNativeModuleMatcher(const std::string& ignored_keys_json,
+                                 const std::string& test_body) {
   std::string script = "(function() {\n";
-  script.append(BuildNativeModuleMockScript(ignored_keys_json));
+  script.append(BuildNativeModuleMatcherScript(ignored_keys_json));
   script.append(test_body);
   script.append("\n})();");
 
@@ -26,13 +26,13 @@ bool EvaluateNativeModuleMock(const std::string& ignored_keys_json,
   runtime::js::Scope scope(*runtime);
   auto result = runtime->evaluateJavaScript(
       std::make_unique<runtime::js::StringBuffer>(script),
-      "fixture-native-module-mock.js");
+      "fixture-native-module-matcher.js");
   return result.has_value() && result.value().isBool() &&
          result.value().getBool();
 }
 
-TEST(FixtureNativeModuleMock, MatchesObjectsAndOwnProperties) {
-  EXPECT_TRUE(EvaluateNativeModuleMock(R"(["timestamp"])", R"JS(
+TEST(FixtureNativeModuleMatcher, MatchesObjectsAndOwnProperties) {
+  EXPECT_TRUE(EvaluateNativeModuleMatcher(R"(["timestamp"])", R"JS(
     var recorded = [{
       args: [{
         hasOwnProperty: 7,
@@ -58,8 +58,8 @@ TEST(FixtureNativeModuleMock, MatchesObjectsAndOwnProperties) {
   )JS"));
 }
 
-TEST(FixtureNativeModuleMock, MatchesSpecialValuesUrlsAndCallbacks) {
-  EXPECT_TRUE(EvaluateNativeModuleMock(R"(["timestamp"])", R"JS(
+TEST(FixtureNativeModuleMatcher, MatchesSpecialValuesUrlsAndCallbacks) {
+  EXPECT_TRUE(EvaluateNativeModuleMatcher(R"(["timestamp"])", R"JS(
     var recorded = [
       {args: ["function"], returnValue: "function-string"},
       {args: ["undefined"], returnValue: "undefined-string"},

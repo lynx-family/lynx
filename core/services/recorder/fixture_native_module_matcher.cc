@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/services/recorder/fixture_native_module_mock.h"
+#include "core/services/recorder/fixture_native_module_matcher.h"
 
 namespace lynx {
 namespace tasm {
@@ -10,13 +10,13 @@ namespace recorder {
 
 namespace {
 
-constexpr const char* kNativeModuleMockPrefix =
-    R"JS(  // --- NativeModule mock matching (mirrors V1 strict matcher) ---
+constexpr const char* kNativeModuleMatcherPrefix =
+    R"JS(  // --- NativeModule call matching (mirrors V1 strict matcher) ---
   var __ignoredKeys = )JS";
 
 // This script defines the replay matching contract. Keep it readable so changes
 // can be reviewed against the JSON recorder behavior.
-constexpr const char* kNativeModuleMockSuffix = R"JS(;
+constexpr const char* kNativeModuleMatcherSuffix = R"JS(;
   function __isIgnored(key) {
     return __ignoredKeys.indexOf(key) !== -1;
   }
@@ -119,10 +119,11 @@ constexpr const char* kNativeModuleMockSuffix = R"JS(;
 
 }  // namespace
 
-std::string BuildNativeModuleMockScript(const std::string& ignored_keys_json) {
-  std::string script(kNativeModuleMockPrefix);
+std::string BuildNativeModuleMatcherScript(
+    const std::string& ignored_keys_json) {
+  std::string script(kNativeModuleMatcherPrefix);
   script.append(ignored_keys_json);
-  script.append(kNativeModuleMockSuffix);
+  script.append(kNativeModuleMatcherSuffix);
   return script;
 }
 
