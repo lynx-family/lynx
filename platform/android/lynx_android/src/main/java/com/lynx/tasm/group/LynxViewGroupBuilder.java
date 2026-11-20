@@ -66,9 +66,10 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
 
   /**
    * Builds a host from the configured modules, behaviors, resources, runtime options,
-   * and embedded mode. Context is supplied when creating a surface. Builder context, global
-   * properties, template, engine-cache, logic-executor and shared-module settings apply only to
-   * build(). This does not create a LynxViewGroup.
+   * and embedded mode. Context and LynxPageOption are supplied
+   * when creating a surface. Builder context, global properties, template, engine-cache,
+   * logic-executor and shared-module settings apply only to build(). This does not create a
+   * LynxViewGroup.
    */
   public LynxHost buildHost() {
     return new LynxHost(this);
