@@ -17,7 +17,6 @@
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/text_props.h"
-#include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_compact_array_buffer.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context.h"
@@ -451,8 +450,7 @@ void TextLayoutAndroid::AppendTextContent(Element* element,
         AppendImageProps(static_cast<ImageElement*>(child), start,
                          buffer.length, &buffer.props);
       } else {
-        AppendViewProps(static_cast<ViewElement*>(child), start, buffer.length,
-                        &buffer.props);
+        AppendViewProps(child, start, buffer.length, &buffer.props);
         buffer.has_inline_view = true;
       }
     }
@@ -793,17 +791,17 @@ void TextLayoutAndroid::AppendTextProps(Element* element, size_t pos_start,
     props->AddProp(static_cast<int>(pos_end));
   }
 }
-void TextLayoutAndroid::AppendViewProps(ViewElement* view_element, size_t start,
+void TextLayoutAndroid::AppendViewProps(Element* element, size_t start,
                                         size_t end, PropArrayAndroid* props) {
   // range start
   props->AddProp(kPropInlineStart);
   props->AddProp(static_cast<int>(start));
 
   props->AddProp(kPropInlineViewSign);
-  props->AddProp(view_element->impl_id());
+  props->AddProp(element->impl_id());
 
   const auto& text_attributes =
-      view_element->computed_css_style()->GetTextAttributes();
+      element->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value() &&
       text_attributes->vertical_align !=
           starlight::DefaultComputedStyle::DEFAULT_VERTICAL_ALIGN) {
