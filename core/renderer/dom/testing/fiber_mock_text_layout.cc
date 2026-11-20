@@ -17,7 +17,6 @@
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/text_props.h"
-#include "core/renderer/dom/fiber/view_element.h"
 
 namespace lynx {
 namespace tasm {
@@ -114,8 +113,7 @@ void TextLayoutMock::ProcessChildProps(Element* child, std::string& output,
     // inline view
     output += kInlinePlaceHolder;
     current_length += 1;  // placeholder's length is 1
-    AppendViewProps(static_cast<ViewElement*>(child), current_length - 1,
-                    current_length, props);
+    AppendViewProps(child, current_length - 1, current_length, props);
     *has_inline_view = true;
   } else if (child->is_wrapper()) {
     auto* wrap_child = child->first_render_child();
@@ -355,17 +353,17 @@ void TextLayoutMock::AppendTextProps(TextElement* element, size_t pos_start,
   }
 }
 // static
-void TextLayoutMock::AppendViewProps(ViewElement* view_element, size_t start,
-                                     size_t end, PropArrayMock* props) {
+void TextLayoutMock::AppendViewProps(Element* element, size_t start, size_t end,
+                                     PropArrayMock* props) {
   // range start
   props->AddProp(kPropInlineStart);
   props->AddProp(static_cast<int>(start));
 
   props->AddProp(kPropInlineViewSign);
-  props->AddProp(view_element->impl_id());
+  props->AddProp(element->impl_id());
 
   const auto& text_attributes =
-      view_element->computed_css_style()->GetTextAttributes();
+      element->computed_css_style()->GetTextAttributes();
   if (text_attributes.has_value() &&
       text_attributes->vertical_align !=
           starlight::DefaultComputedStyle::DEFAULT_VERTICAL_ALIGN) {
