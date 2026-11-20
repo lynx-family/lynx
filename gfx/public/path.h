@@ -5,6 +5,7 @@
 #ifndef GFX_PUBLIC_PATH_H_
 #define GFX_PUBLIC_PATH_H_
 #include <memory>
+#include <optional>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "gfx/public/path_impl.h"
@@ -69,9 +70,12 @@ class PathBuilder {
                           float y);
   GFX_EXPORT void Close();
   // Adapts the drawing methods to the shared C interface, reopening a closed
-  // subpath at its start when drawing continues. Elliptic arcs are
-  // unsupported. Check parser errors before publishing preceding segments.
+  // subpath at its start when drawing continues. Elliptic arcs become cubic
+  // segments. Check parser errors before publishing preceding segments.
   GFX_EXPORT LBSPathConsumer GetConsumer();
+  // Ends the last open subpath and transfers immutable geometry to a PathSource
+  // without allocating a backend PathImpl or consuming a global path key.
+  GFX_EXPORT std::optional<PathSource> BuildSource();
   // Ends the last open subpath and transfers immutable storage to the Path.
   GFX_EXPORT fml::RefPtr<Path> Build(const PathImplFactory& factory);
 

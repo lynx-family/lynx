@@ -4,11 +4,14 @@
 package com.lynx.tasm.behavior.render;
 
 import android.graphics.Matrix;
+import android.graphics.Path;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.os.Build;
 import android.text.Layout;
 import android.text.Spanned;
 import android.util.DisplayMetrics;
+import android.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -54,6 +57,7 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.Runnable;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -101,6 +105,55 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   private final HashMap<Integer, ImageUIMethodTarget> mImageUIMethodTargets = new HashMap<>();
   private final HashMap<Integer, Integer> mImageUIMethodSignsByKey = new HashMap<>();
+
+  static final int OWNER_CLIP_PATH_INDEX = -1;
+  private static final int MAX_CACHED_PATHS = 256;
+  private static final int PATH_KIND_RECT = 0;
+  private static final int PATH_KIND_ROUNDED_RECT = 1;
+  private static final int PATH_KIND_COMMANDS = 2;
+  private static final int PATH_VERB_BEGIN = 0;
+  private static final int PATH_VERB_LINE = 1;
+  private static final int PATH_VERB_QUAD = 2;
+  private static final int PATH_VERB_CUBIC = 3;
+  private static final int PATH_VERB_CLOSE = 4;
+  private static final int PATH_VERB_END = 5;
+
+  private static final class PathEntry {
+    private Path mWinding;
+    private Path mEvenOdd;
+
+    PathEntry(@Nullable Path path, int rule) {
+      if (path == null) {
+        return;
+      }
+      if (rule == 1) {
+        path.setFillType(Path.FillType.EVEN_ODD);
+        mEvenOdd = path;
+      } else {
+        path.setFillType(Path.FillType.WINDING);
+        mWinding = path;
+      }
+    }
+
+    @Nullable
+    Path get(int rule) {
+      if (rule == 1) {
+        if (mEvenOdd == null && mWinding != null) {
+          mEvenOdd = new Path(mWinding);
+          mEvenOdd.setFillType(Path.FillType.EVEN_ODD);
+        }
+        return mEvenOdd;
+      }
+      if (mWinding == null && mEvenOdd != null) {
+        mWinding = new Path(mEvenOdd);
+        mWinding.setFillType(Path.FillType.WINDING);
+      }
+      return mWinding;
+    }
+  }
+
+  private static final PathEntry FAILED_PATH = new PathEntry(null, 0);
+  private final LruCache<Long, PathEntry> mPaths = new LruCache<>(MAX_CACHED_PATHS);
 
   @Nullable private PlatformFocusTarget mFocusedTarget = null;
 
@@ -1329,8 +1382,156 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     return makeReadOnlyDisplayListBuffer(nativeGetDisplayListDataBuffer(mNativePtr, id));
   }
 
+  @Nullable
+  static Path decodePath(@Nullable byte[] data) {
+    if (data == null || data.length < 4) {
+      return null;
+    }
+    ByteBuffer buffer = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
+    int kind = buffer.getInt();
+    Path path = new Path();
+    if (kind == PATH_KIND_RECT) {
+      if (data.length != 20) {
+        return null;
+      }
+      float x = buffer.getFloat();
+      float y = buffer.getFloat();
+      float width = buffer.getFloat();
+      float height = buffer.getFloat();
+      path.addRect(x, y, x + width, y + height, Path.Direction.CW);
+    } else if (kind == PATH_KIND_ROUNDED_RECT) {
+      if (data.length != 52) {
+        return null;
+      }
+      float x = buffer.getFloat();
+      float y = buffer.getFloat();
+      float width = buffer.getFloat();
+      float height = buffer.getFloat();
+      float[] radii = new float[8];
+      for (int i = 0; i < 8; i++) {
+        radii[i] = buffer.getFloat();
+      }
+      path.addRoundRect(new RectF(x, y, x + width, y + height), radii, Path.Direction.CW);
+    } else if (kind == PATH_KIND_COMMANDS) {
+      if (data.length < 12) {
+        return null;
+      }
+      int pointCount = buffer.getInt();
+      int commandCount = buffer.getInt();
+      if (pointCount < 0 || commandCount < 0) {
+        return null;
+      }
+      long expectedBytes = 12L + (long) pointCount * 8L + (long) commandCount * 4L;
+      if (expectedBytes != data.length) {
+        return null;
+      }
+      int pointOffset = 12;
+      int pointsEnd = pointOffset + pointCount * 8;
+      int commandOffset = pointsEnd;
+      for (int i = 0; i < commandCount; i++) {
+        int verb = buffer.getInt(commandOffset + i * 4);
+        switch (verb) {
+          case PATH_VERB_BEGIN:
+            if (pointOffset + 8 > pointsEnd) {
+              return null;
+            }
+            path.moveTo(buffer.getFloat(pointOffset), buffer.getFloat(pointOffset + 4));
+            pointOffset += 8;
+            break;
+          case PATH_VERB_LINE:
+            if (pointOffset + 8 > pointsEnd) {
+              return null;
+            }
+            path.lineTo(buffer.getFloat(pointOffset), buffer.getFloat(pointOffset + 4));
+            pointOffset += 8;
+            break;
+          case PATH_VERB_QUAD:
+            if (pointOffset + 16 > pointsEnd) {
+              return null;
+            }
+            path.quadTo(buffer.getFloat(pointOffset), buffer.getFloat(pointOffset + 4),
+                buffer.getFloat(pointOffset + 8), buffer.getFloat(pointOffset + 12));
+            pointOffset += 16;
+            break;
+          case PATH_VERB_CUBIC:
+            if (pointOffset + 24 > pointsEnd) {
+              return null;
+            }
+            path.cubicTo(buffer.getFloat(pointOffset), buffer.getFloat(pointOffset + 4),
+                buffer.getFloat(pointOffset + 8), buffer.getFloat(pointOffset + 12),
+                buffer.getFloat(pointOffset + 16), buffer.getFloat(pointOffset + 20));
+            pointOffset += 24;
+            break;
+          case PATH_VERB_CLOSE:
+            path.close();
+            break;
+          case PATH_VERB_END:
+            break;
+          default:
+            return null;
+        }
+      }
+      if (pointOffset != pointsEnd) {
+        return null;
+      }
+    } else {
+      return null;
+    }
+    path.setFillType(Path.FillType.WINDING);
+    return path;
+  }
+
+  abstract static class PathBytesLoader {
+    @Nullable abstract byte[] load();
+  }
+
+  @Nullable
+  Path getPath(int id, int index, int fillRule) {
+    UIThreadUtils.assertOnUiThread();
+    if (mDestroyed || mNativePtr == 0 || fillRule < 0 || fillRule > 1) {
+      return null;
+    }
+    long key = nativeGetPathKey(mNativePtr, id, index);
+    if (key == 0) {
+      return null;
+    }
+    PathEntry entry = mPaths.get(key);
+    if (entry == null) {
+      Path built = decodePath(nativeGetPath(mNativePtr, id, index));
+      if (mDestroyed) {
+        return null;
+      }
+      entry = built == null ? FAILED_PATH : new PathEntry(built, fillRule);
+      mPaths.put(key, entry);
+    }
+    return entry.get(fillRule);
+  }
+
+  @Nullable
+  Path getOrBuildPath(long key, int fillRule, PathBytesLoader loader) {
+    UIThreadUtils.assertOnUiThread();
+    if (mDestroyed || key == 0 || fillRule < 0 || fillRule > 1) {
+      return null;
+    }
+    PathEntry entry = mPaths.get(key);
+    if (entry == null) {
+      Path built = decodePath(loader != null ? loader.load() : null);
+      if (mDestroyed) {
+        return null;
+      }
+      entry = built == null ? FAILED_PATH : new PathEntry(built, fillRule);
+      mPaths.put(key, entry);
+    }
+    return entry.get(fillRule);
+  }
+
+  @Nullable
+  Path getOwnerClipPath(int id, int fillRule) {
+    return getPath(id, OWNER_CLIP_PATH_INDEX, fillRule);
+  }
+
   static ByteBuffer makeReadOnlyDisplayListBuffer(ByteBuffer buffer) {
-    return buffer == null ? null : buffer.asReadOnlyBuffer();
+    return buffer == null ? null : buffer.asReadOnlyBuffer().order(ByteOrder.nativeOrder());
   }
 
   public TextLayout getTextLayout() {
@@ -1382,8 +1583,9 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   private native ByteBuffer nativeGetDisplayListItemsBuffer(
       long nativePtr, int id, int expectedItemSize);
-
   private native ByteBuffer nativeGetDisplayListDataBuffer(long nativePtr, int id);
+  private native long nativeGetPathKey(long nativePtr, int id, int index);
+  private native byte[] nativeGetPath(long nativePtr, int id, int index);
 
   native void nativeDestroy(long nativePtr);
 
@@ -1404,6 +1606,7 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     mViewHolder.clear();
     mImageUIMethodTargets.clear();
     mImageUIMethodSignsByKey.clear();
+    mPaths.evictAll();
 
     for (Object value : mExtraDatas.values()) {
       if (value instanceof Page) {

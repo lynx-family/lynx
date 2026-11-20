@@ -194,4 +194,13 @@ TEST(LBSPathParserTest, RetainsPermissiveSeparatorsAndNoLengthLimit) {
   EXPECT_FALSE(error);
   EXPECT_TRUE(p.empty());
 }
+TEST(LBSPathParserTest, ArcFlagsMustBeZeroOrOne) {
+  for (const auto* data : {"M0 0 A1 1 0 2 1 10 10", "M0 0 A1 1 0 0 2 10 10"}) {
+    bool error;
+    const auto segments = Parse(data, &error);
+    EXPECT_TRUE(error) << data;
+    ASSERT_EQ(segments.size(), 1u);
+    EXPECT_EQ(segments[0].type, 'M');
+  }
+}
 }  // namespace

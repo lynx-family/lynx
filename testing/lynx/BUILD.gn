@@ -28,6 +28,7 @@ if (is_android) {
     deps = [
       ":lynx_test_jni_files",
       "../../core/renderer/dom/fragment:display_list",
+      "../../core/renderer/ui_wrapper/painting",
     ]
     if (lynx_in_debug && !enable_lynx_android_test && !enable_lynx_testing) {
       sources += [ "android/host_script_view_hooks_test.cc" ]

@@ -231,7 +231,7 @@ TEST(PathTest, AppendingPastPointLimitRejectsBuildAndAllowsReuse) {
   builder.MoveTo(5, 6);
   EXPECT_TRUE(builder.Build(GetTestPathImplFactory()));
 }
-TEST(PathTest, SharedConsumerBuildsCurvesAndRejectsUnsupportedArcs) {
+TEST(PathTest, SharedConsumerBuildsCurvesAndArcs) {
   PathBuilder builder;
   auto consumer = builder.GetConsumer();
   LBSParsePathWithConsumer("M1 2 Q3 4 5 6 C7 8 9 10 11 12 Z M13 14 L15 16",
@@ -248,7 +248,130 @@ TEST(PathTest, SharedConsumerBuildsCurvesAndRejectsUnsupportedArcs) {
   EXPECT_EQ(view.commands[6], PathVerb::kEnd);
   EXPECT_EQ(view.points[7].y, 16);
   LBSParsePathWithConsumer("M0 0 A1 2 30 0 1 3 4", &consumer);
+  ASSERT_EQ(consumer.error, 0);
+  auto arc = builder.Build(GetTestPathImplFactory());
+  ASSERT_TRUE(arc);
+  EXPECT_EQ(std::get<PathView>(arc->GetSourceView()).commands[1],
+            PathVerb::kCubic);
+}
+TEST(PathTest, SvgArcsPreserveEndpointsLargeFlagsAndSweepDirection) {
+  for (bool large : {false, true}) {
+    PathBuilder positive_builder, negative_builder;
+    auto positive = positive_builder.GetConsumer();
+    auto negative = negative_builder.GetConsumer();
+    positive.MoveToPoint(positive.ctx, 0, 0);
+    negative.MoveToPoint(negative.ctx, 0, 0);
+    positive.EllipticToPoint(positive.ctx, 0, 0, 10, 10, 0, large, true, 10, 0);
+    negative.EllipticToPoint(negative.ctx, 0, 0, 10, 10, 0, large, false, 10,
+                             0);
+    auto a = positive_builder.Build(GetTestPathImplFactory()),
+         b = negative_builder.Build(GetTestPathImplFactory());
+    ASSERT_TRUE(a);
+    ASSERT_TRUE(b);
+    const auto av = std::get<PathView>(a->GetSourceView());
+    const auto bv = std::get<PathView>(b->GetSourceView());
+    const uint32_t cubics = large ? 7 : 2;
+    ASSERT_EQ(av.header.command_count, cubics + 2);
+    ASSERT_EQ(av.header.point_count, 3 * cubics + 1);
+    ASSERT_EQ(bv.header.point_count, av.header.point_count);
+    for (uint32_t i = 1; i <= cubics; ++i)
+      EXPECT_EQ(av.commands[i], PathVerb::kCubic);
+    for (uint32_t i = 0; i < av.header.point_count; ++i) {
+      EXPECT_NEAR(av.points[i].x, bv.points[i].x, 1e-5);
+      EXPECT_NEAR(av.points[i].y, -bv.points[i].y, 1e-5);
+    }
+    EXPECT_EQ(av.points[av.header.point_count - 1].x, 10);
+    EXPECT_EQ(av.points[av.header.point_count - 1].y, 0);
+  }
+}
+TEST(PathTest, RotatedArcsCorrectSmallRadiiAndNormalizeTheirSigns) {
+  PathBuilder a, b;
+  auto ac = a.GetConsumer(), bc = b.GetConsumer();
+  LBSParsePathWithConsumer("m10 10 a1 2 37 01 10 0", &ac);
+  LBSParsePathWithConsumer("M10 10 A-1 -2 37 0 1 20 10", &bc);
+  ASSERT_EQ(ac.error, 0);
+  ASSERT_EQ(bc.error, 0);
+  auto ap = a.Build(GetTestPathImplFactory()),
+       bp = b.Build(GetTestPathImplFactory());
+  ASSERT_TRUE(ap);
+  ASSERT_TRUE(bp);
+  const auto av = std::get<PathView>(ap->GetSourceView());
+  const auto bv = std::get<PathView>(bp->GetSourceView());
+  ASSERT_GT(av.header.point_count, 3u);
+  ASSERT_EQ(av.header.point_count, bv.header.point_count);
+  for (uint32_t i = 0; i < av.header.point_count; ++i) {
+    EXPECT_TRUE(std::isfinite(av.points[i].x));
+    EXPECT_TRUE(std::isfinite(av.points[i].y));
+    EXPECT_EQ(av.points[i].x, bv.points[i].x);
+    EXPECT_EQ(av.points[i].y, bv.points[i].y);
+  }
+  EXPECT_EQ(av.points[av.header.point_count - 1].x, 20);
+  EXPECT_EQ(av.points[av.header.point_count - 1].y, 10);
+}
+TEST(PathTest, DegenerateArcsAndCloseContinuationPreserveSubpaths) {
+  PathBuilder builder;
+  auto consumer = builder.GetConsumer();
+  LBSParsePathWithConsumer("M1 2 L3 4 Z A0 5 0 0 1 9 10", &consumer);
+  ASSERT_EQ(consumer.error, 0);
+  auto line = builder.Build(GetTestPathImplFactory());
+  ASSERT_TRUE(line);
+  auto view = std::get<PathView>(line->GetSourceView());
+  ASSERT_EQ(view.header.command_count, 6u);
+  ASSERT_EQ(view.header.point_count, 4u);
+  EXPECT_EQ(view.commands[3], PathVerb::kBegin);
+  EXPECT_EQ(view.points[2].x, 1);
+  EXPECT_EQ(view.points[2].y, 2);
+  EXPECT_EQ(view.commands[4], PathVerb::kLine);
+  EXPECT_EQ(view.points[3].x, 9);
+  EXPECT_EQ(view.points[3].y, 10);
+  LBSParsePathWithConsumer("M1 2 A5 5 0 0 1 1 2", &consumer);
+  auto coincident = builder.Build(GetTestPathImplFactory());
+  ASSERT_TRUE(coincident);
+  EXPECT_EQ(std::get<PathView>(coincident->GetSourceView()).header.point_count,
+            1u);
+}
+TEST(PathTest, ArcConsumerRejectsInvalidAndUnrepresentableGeometry) {
+  for (float invalid : {std::numeric_limits<float>::infinity(),
+                        std::numeric_limits<float>::quiet_NaN()}) {
+    PathBuilder builder;
+    auto consumer = builder.GetConsumer();
+    consumer.MoveToPoint(consumer.ctx, 0, 0);
+    consumer.EllipticToPoint(consumer.ctx, 0, 0, 1, 1, invalid, false, true, 1,
+                             1);
+    EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
+    consumer.MoveToPoint(consumer.ctx, 0, 0);
+    consumer.EllipticToPoint(consumer.ctx, 0, 0, invalid, 1, 0, false, true, 1,
+                             1);
+    EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
+  }
+  PathBuilder builder;
+  auto consumer = builder.GetConsumer();
+  const float maximum = std::numeric_limits<float>::max();
+  consumer.MoveToPoint(consumer.ctx, 0, 0);
+  consumer.EllipticToPoint(consumer.ctx, 0, 0, maximum, 1, 0, false, true,
+                           maximum, maximum);
   EXPECT_FALSE(builder.Build(GetTestPathImplFactory()));
+  consumer.MoveToPoint(consumer.ctx, 1, 2);
+  EXPECT_TRUE(builder.Build(GetTestPathImplFactory()));
+}
+TEST(PathTest, BuildSourceTransfersPackedGeometryWithoutConsumingPathKey) {
+  auto before = Path::MakeRect(1, 1, GetTestPathImplFactory());
+  PathBuilder builder;
+  builder.MoveTo(1, 2);
+  builder.LineTo(3, 4);
+  builder.Close();
+  auto source = builder.BuildSource();
+  ASSERT_TRUE(source);
+  const auto view = std::get<PathView>(source->GetSourceView());
+  ASSERT_EQ(view.header.command_count, 3u);
+  ASSERT_EQ(view.header.point_count, 2u);
+  EXPECT_EQ(view.commands[0], PathVerb::kBegin);
+  EXPECT_EQ(view.commands[1], PathVerb::kLine);
+  EXPECT_EQ(view.commands[2], PathVerb::kClose);
+  EXPECT_EQ(view.points[1].x, 3);
+  EXPECT_EQ(view.points[1].y, 4);
+  auto after = Path::MakeRect(1, 1, GetTestPathImplFactory());
+  EXPECT_EQ(after->GetKey(), before->GetKey() + 1);
 }
 TEST(PathTest, ConsumerContinuesDrawingAfterClose) {
   const struct {
