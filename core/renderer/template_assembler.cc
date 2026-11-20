@@ -3463,16 +3463,16 @@ TemplateData TemplateAssembler::ProcessTemplateDataForFiber(
   TemplateData data;
   data.SetReadOnly(template_data ? template_data->IsReadOnly() : false);
 
-  // Call processData function with template data and processor name. If the
-  // result is object, let data be the result. Otherwise, let data be template
-  // data.
+  // Call processData if available with template data and processor name. If the
+  // result is an object, use it; otherwise, use the original template data.
   const auto& res =
       FindEntry(tasm::DEFAULT_ENTRY_NAME)
           ->GetVm()
-          ->Call(BASE_STATIC_STRING(kProcessData),
-                 template_data ? template_data->GetValue() : lepus::Value(),
-                 template_data ? lepus::Value(template_data->PreprocessorName())
-                               : lepus::Value(base::String()));
+          ->TryCall(BASE_STATIC_STRING(kProcessData),
+                    template_data ? template_data->GetValue() : lepus::Value(),
+                    template_data
+                        ? lepus::Value(template_data->PreprocessorName())
+                        : lepus::Value(base::String()));
   if (res.IsObject()) {
     data.SetValue(res);
   } else if (template_data) {
