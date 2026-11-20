@@ -1,8 +1,262 @@
 // Copyright 2026 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+// SIZE_OK: The bounded v1 compiler keeps semantic and backend error priority
+// at one atomic trust boundary.
 
 #include "core/renderer/dom/fiber/compose_draw_recording_decoder.h"
+
+#include <cmath>
+#include <cstring>
+#include <limits>
+#include <utility>
+
+#include "base/include/linked_hash_map.h"
+#include "base/include/value/base_value.h"
+#include "base/include/vector.h"
+#include "core/renderer/dom/fiber/compose_draw_behind.h"
+#include "core/renderer/dom/fragment/display_list_builder.h"
+#include "core/renderer/dom/fragment/fragment.h"
+
+namespace lynx::tasm::detail {
+namespace v1 {
+constexpr size_t kMaxTableEntries = 65536;
+constexpr size_t kMaxResources = 4096;
+constexpr size_t kMaxDepth = 64;
+constexpr size_t kMaxPayloadBytes = 16 * 1024 * 1024;
+constexpr size_t kMaxValueNodes = 262144;
+using Code = DrawRecordingError::Code;
+class V1Reader {
+  // A cursor owns a runtime handle only during decoding. Its parent is an
+  // active schema cursor (or a stable payload frame), never part of the IR.
+  class Value {
+   public:
+    Value(lepus::Value source, V1Reader* reader, const Value* parent = nullptr,
+          uint32_t slot = 9)
+        : source_(std::move(source)),
+          reader_(reader),
+          parent_(parent),
+          depth_(parent ? parent->depth_ + 1 : 1) {
+      valid_ = reader_->Observe(*this, slot);
+      if (!valid_) reader_->input_failed_ = true;
+    }
+    bool IsArrayOrJSArray() const {
+      return valid_ && source_.IsArrayOrJSArray();
+    }
+    bool IsString() const { return valid_ && source_.IsString(); }
+    bool IsNumber() const { return valid_ && source_.IsNumber(); }
+    bool IsBool() const { return valid_ && source_.IsBool(); }
+    bool IsNil() const { return valid_ && source_.IsNil(); }
+    auto StringView() const { return source_.StringView(); }
+    double Number() const { return source_.Number(); }
+    bool Bool() const { return source_.Bool(); }
+    int64_t GetLength() const { return valid_ ? length_ : -1; }
+    Value GetProperty(uint32_t slot) const {
+      return Value(valid_ && !reader_->failed_ ? source_.GetProperty(slot)
+                                               : lepus::Value(),
+                   reader_, this, slot);
+    }
+
+   private:
+    friend class V1Reader;
+    lepus::Value source_;
+    V1Reader* reader_;
+    const Value* parent_;
+    size_t depth_;
+    int64_t length_{-1};
+    bool valid_{false};
+  };
+
+ public:
+  explicit V1Reader(ComposeDrawPhase phase) : phase_(phase) {}
+  std::optional<DrawRecordingError> Read(const lepus::Value& wire,
+                                         DisplayList* out, bool* shadow) {
+    if (!ChargeNodes(1, kMaxValueNodes, &snapshot_nodes_)) return error_;
+    const Value input(wire, this);
+    if (!Row(input, 9)) return error_;
+    const auto discriminator = input.GetProperty(0u);
+    if (!discriminator.IsString() ||
+        discriminator.StringView() != "lynx.draw.recording") {
+      Fail(Code::kVersion);
+      return error_;
+    }
+    uint32_t major, minor;
+    if (!UInt(input.GetProperty(1u), &major) || major != 1) {
+      Fail(Code::kVersion);
+      return error_;
+    }
+    if (!UInt(input.GetProperty(2u), &minor)) return error_;
+    const auto commands = input.GetProperty(3u);
+    const auto paths = input.GetProperty(4u);
+    const auto paints = input.GetProperty(5u);
+    const auto resources = input.GetProperty(6u);
+    if (!Table(commands) || !Table(paths) || !Table(paints) ||
+        !Table(resources))
+      return error_;
+    // Table schemas are introduced separately. All contents still cross the
+    // same bounded value boundary before a deferred capability is reported.
+    if (!ValidateValue(paths) || !ValidateValue(resources) ||
+        !ValidateValue(paints) || !ValidateValue(commands))
+      return error_;
+    if (!Metadata(input.GetProperty(8u))) return error_;
+    if (!Features(input.GetProperty(7u)) || failed_) return error_;
+    if (commands.GetLength() || paths.GetLength() || paints.GetLength() ||
+        resources.GetLength() || phase_ == ComposeDrawPhase::kClip)
+      return DrawRecordingError{Code::kUnsupported};
+    *out = scratch_.Build();
+    *shadow = false;
+    return std::nullopt;
+  }
+
+ private:
+  bool Fail(Code code = Code::kMalformed) {
+    if (!input_failed_) error_.code = code;
+    failed_ = true;
+    return false;
+  }
+  bool Row(const Value& a, size_t size) {
+    return (a.IsArrayOrJSArray() &&
+            static_cast<size_t>(a.GetLength()) == size) ||
+           Fail();
+  }
+  bool Table(const Value& a) { return a.IsArrayOrJSArray() || Fail(); }
+  bool Number(const Value& v, double* out) {
+    if (!v.IsNumber()) return Fail();
+    *out = v.Number();
+    return true;
+  }
+  bool UInt(const Value& v, uint32_t* out) {
+    double n;
+    if (!Number(v, &n) || n < 0 || n > UINT32_MAX || std::trunc(n) != n)
+      return Fail();
+    *out = static_cast<uint32_t>(n);
+    return true;
+  }
+  bool Text(const Value& v, std::string* out, bool nonempty = false) {
+    if (!v.IsString()) return Fail();
+    auto text = v.StringView();
+    if (nonempty && text.empty()) return Fail();
+    out->assign(text.data(), text.size());
+    return true;
+  }
+  bool ChargeNodes(size_t added, size_t limit, size_t* used) {
+    if (added > limit - *used) return Fail(Code::kCapacity);
+    *used += added;
+    return true;
+  }
+  size_t SnapshotTableCapacity(uint32_t slot) const {
+    switch (slot) {
+      case 3:
+      case 4:
+      case 5:
+        return kMaxTableEntries;
+      case 6:
+        return kMaxResources;
+      default:
+        return std::numeric_limits<size_t>::max();
+    }
+  }
+  bool Observe(Value& value, uint32_t slot) {
+    if (failed_) return false;
+    const auto& source = value.source_;
+    if (source.IsArrayOrJSArray()) {
+      // Charge the entire child range before reading any child or reserving
+      // typed storage. Expanded DAG occurrences consume the same budget.
+      if (value.depth_ > kMaxDepth) return Fail(Code::kCapacity);
+      uint64_t identity;
+      std::memcpy(&identity, &source.value(), sizeof(identity));
+      for (auto* parent = value.parent_; parent; parent = parent->parent_) {
+        uint64_t ancestor;
+        std::memcpy(&ancestor, &parent->source_.value(), sizeof(ancestor));
+        if (identity == ancestor &&
+            source.IsJSValue() == parent->source_.IsJSValue() &&
+            (!source.IsJSValue() || source.env() == parent->source_.env()))
+          return Fail();
+      }
+      value.length_ = source.GetLength();
+      if (value.length_ < 0) return Fail();
+      const auto n = static_cast<size_t>(value.length_);
+      if (value.depth_ == 2 && n > SnapshotTableCapacity(slot))
+        return Fail(Code::kCapacity);
+      return ChargeNodes(n, kMaxValueNodes, &snapshot_nodes_);
+    }
+    size_t bytes = 8;
+    if (source.IsString())
+      bytes = source.StringView().size();
+    else if (source.IsNumber()) {
+      if (!std::isfinite(source.Number())) return Fail();
+    } else if (!source.IsNil() && !source.IsBool())
+      return Fail();
+    return ChargeNodes(bytes, kMaxPayloadBytes, &payload_bytes_);
+  }
+
+  bool ValidateValue(Value input) {
+    struct Frame {
+      Value source;
+      uint32_t next{0};
+    };
+    // Observe caps array depth, so parent cursors stay in this inline buffer.
+    base::InlineVector<Frame, kMaxDepth> stack;
+    const auto visit = [&](Value value) {
+      if (value.IsArrayOrJSArray()) {
+        stack.push_back(Frame{std::move(value), 0});
+      } else if (!value.IsString() && !value.IsBool() && !value.IsNumber() &&
+                 !value.IsNil()) {
+        return Fail();
+      }
+      return true;
+    };
+    if (!visit(std::move(input))) return false;
+    while (!stack.empty()) {
+      auto& frame = stack.back();
+      if (frame.next == static_cast<uint32_t>(frame.source.GetLength())) {
+        stack.pop_back();
+        continue;
+      }
+      if (!visit(frame.source.GetProperty(frame.next++))) return false;
+    }
+    return true;
+  }
+  bool Metadata(const Value& rows) {
+    if (!Table(rows)) return false;
+    base::LinkedHashMap<std::string, bool> keys;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(rows.GetLength()); ++i) {
+      const auto row = rows.GetProperty(i);
+      std::string key;
+      if (!Row(row, 2) || !Text(row.GetProperty(0u), &key)) return false;
+      if (!keys.insert_default_if_absent(std::move(key)).second) return Fail();
+      if (!ValidateValue(row.GetProperty(1u))) return false;
+    }
+    return true;
+  }
+  bool Features(const Value& rows) {
+    if (!Table(rows)) return false;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(rows.GetLength()); ++i) {
+      const auto name = rows.GetProperty(i);
+      if (!name.IsString()) return Fail();
+    }
+    return true;
+  }
+
+  ComposeDrawPhase phase_;
+  DisplayListBuilder scratch_;
+  DrawRecordingError error_;
+  size_t snapshot_nodes_{0}, payload_bytes_{0};
+  bool failed_{false}, input_failed_{false};
+};
+}  // namespace v1
+
+std::optional<DrawRecordingError> DecodeV1DrawDisplayList(
+    const lepus::Value& input, double pixels, ComposeDrawPhase phase,
+    DisplayList* output, bool* has_outset_shadow) {
+  if (!std::isfinite(pixels) || pixels <= 0) return DrawRecordingError{};
+  return v1::V1Reader(phase).Read(input, output, has_outset_shadow);
+}
+}  // namespace lynx::tasm::detail
+
+// Copyright 2026 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 
 #include <algorithm>
 #include <cmath>
@@ -10,6 +264,7 @@
 #include <utility>
 
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
+#include "core/renderer/dom/fiber/compose_draw_recording_decoder.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 
