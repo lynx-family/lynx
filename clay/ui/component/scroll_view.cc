@@ -867,7 +867,7 @@ void ScrollView::StartScrollInto(BaseView* node, std::string block,
   ScrollTo(is_smooth, scroll_offset);
 }
 
-void ScrollView::CorrectScrollOffset(bool use_logical_offset) {
+void ScrollView::CorrectScrollOffset() {
   if (skip_correct_scroll_offset_) {
     return;
   }
@@ -881,16 +881,13 @@ void ScrollView::CorrectScrollOffset(bool use_logical_offset) {
   if (!scroll->GetRenderer()) {
     return;
   }
-  // Ordinary scroll views correct from the painted position to avoid a jump
-  // when rendering and the logical offset differ. List content resizing has
-  // its own overscroll accounting and must instead clamp the logical position.
-  const auto correction_offset =
-      use_logical_offset ? scroll_offset_ : scroll->GetPaintOffsetForScroll();
-  const float max_offset = scroll_direction_ == ScrollDirection::kVertical
-                               ? scroll->MaxScrollHeight()
-                               : scroll->MaxScrollWidth();
+  // Use the paint offset to correct the scroll offset. If we correct it using
+  // scroll_offset_, the corrected scroll offset can get out of sync with the
+  // paint offset, causing flickering.
+  const auto paint_offset = scroll->GetPaintOffsetForScroll();
   if (scroll_direction_ == ScrollDirection::kVertical) {
-    const float target_offset = std::min(correction_offset.y(), max_offset);
+    const float target_offset =
+        std::min(paint_offset.y(), scroll->MaxScrollHeight());
     if (RoughlyNotZero(scroll_offset_.y() - target_offset)) {
       OnScrollUpdate(target_offset);
       return;
@@ -900,7 +897,8 @@ void ScrollView::CorrectScrollOffset(bool use_logical_offset) {
       last_scroll_offset_ = scroll->ScrollOffset();
     }
   } else {
-    const float target_offset = std::min(correction_offset.x(), max_offset);
+    const float target_offset =
+        std::min(paint_offset.x(), scroll->MaxScrollWidth());
     if (RoughlyNotZero(scroll_offset_.x() - target_offset)) {
       OnScrollUpdate(target_offset);
       return;
