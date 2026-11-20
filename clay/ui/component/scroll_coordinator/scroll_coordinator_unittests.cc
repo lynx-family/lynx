@@ -129,6 +129,112 @@ TEST_F_UI(ScrollCoordinatorTest, Layout) {
   EXPECT_EQ(scroll_view_->AbsoluteLocationWithScroll().y(), 200);
 }
 
+TEST_F_UI(ScrollCoordinatorTest,
+          GestureStateTracksHeaderScrollAndReturnToStart) {
+  EXPECT_FLOAT_EQ(scroll_coordinator_->ScrollY(), 0);
+  EXPECT_TRUE(scroll_coordinator_->IsAtBorder(true));
+  EXPECT_FALSE(scroll_coordinator_->IsAtBorder(false));
+
+  scroll_coordinator_->GetScrollView()->OnScrollUpdate(75);
+  EXPECT_FLOAT_EQ(scroll_coordinator_->ScrollY(), 75);
+  EXPECT_FALSE(scroll_coordinator_->IsAtBorder(true));
+  EXPECT_FALSE(scroll_coordinator_->IsAtBorder(false));
+
+  scroll_coordinator_->GetScrollView()->OnScrollUpdate(150);
+  EXPECT_FLOAT_EQ(scroll_coordinator_->ScrollY(), 150);
+  EXPECT_FALSE(scroll_coordinator_->IsAtBorder(true));
+  EXPECT_TRUE(scroll_coordinator_->IsAtBorder(false));
+
+  scroll_coordinator_->GetScrollView()->OnScrollUpdate(0);
+  EXPECT_FLOAT_EQ(scroll_coordinator_->ScrollY(), 0);
+  EXPECT_TRUE(scroll_coordinator_->IsAtBorder(true));
+  EXPECT_FALSE(scroll_coordinator_->IsAtBorder(false));
+}
+
+TEST_F_UI(ScrollCoordinatorTest, NativeConsumptionBlocksNestedContentDrag) {
+  scroll_coordinator_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+
+  DispatchDragEvent({150, 300}, {150, 160}, false);
+
+  EXPECT_EQ(scroll_coordinator_->GetScrollView()->GetScrollOffset().y(), 0);
+  EXPECT_EQ(scroll_view_->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(ScrollCoordinatorTest, NativeConsumptionResumesNestedContentDrag) {
+  scroll_coordinator_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kDownEvent, {150, 300})});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {150, 260}, {0, -40})});
+  EXPECT_EQ(scroll_coordinator_->GetScrollView()->GetScrollOffset().y(), 0);
+  EXPECT_EQ(scroll_view_->GetScrollOffset().y(), 0);
+
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  for (float y = 240; y >= -100; y -= 20) {
+    page_->DispatchPointerEvent({CreatePointer(
+        0, PointerEvent::EventType::kMoveEvent, {150, y}, {0, -20})});
+  }
+  EXPECT_EQ(scroll_coordinator_->GetScrollView()->GetScrollOffset().y(), 150);
+  EXPECT_GT(scroll_view_->GetScrollOffset().y(), 100);
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kUpEvent, {150, -100})});
+}
+
+TEST_F_UI(ScrollCoordinatorTest, NativeConsumptionBlocksHeaderDrag) {
+  scroll_coordinator_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  EXPECT_FALSE(scroll_coordinator_->ShouldConsumeGesture());
+
+  DispatchDragEvent({150, 100}, {150, 50}, false);
+
+  EXPECT_EQ(scroll_coordinator_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(ScrollCoordinatorTest, NativeConsumptionCanResumeDuringDrag) {
+  scroll_coordinator_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kDownEvent, {150, 150})});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {150, 130}, {0, -20})});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {150, 110}, {0, -20})});
+  const float offset =
+      scroll_coordinator_->GetScrollView()->GetScrollOffset().y();
+  EXPECT_GT(offset, 0);
+
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {150, 80}, {0, -30})});
+  EXPECT_EQ(scroll_coordinator_->GetScrollView()->GetScrollOffset().y(),
+            offset);
+
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {150, 50}, {0, -30})});
+  EXPECT_GT(scroll_coordinator_->GetScrollView()->GetScrollOffset().y(),
+            offset);
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kUpEvent, {150, 50})});
+}
+
+TEST_F_UI(ScrollCoordinatorTest,
+          ExternalInterceptionPreservesInnerConsumption) {
+  scroll_coordinator_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  scroll_coordinator_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  scroll_coordinator_->ConsumeGesture(
+      17, Value{{"inner", Value(false)}, {"consume", Value(false)}});
+
+  EXPECT_FALSE(scroll_coordinator_->ShouldConsumeGesture());
+  EXPECT_FALSE(scroll_coordinator_->GetScrollView()->ShouldConsumeGesture());
+}
+
 TEST_F_UI(ScrollCoordinatorTest, DragOnHeader) {
   DispatchDragEvent({150, 100}, {150, -100});
   // For now, we cannot pass the drag to the scroll view when dragging on the

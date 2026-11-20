@@ -87,6 +87,117 @@ class PaintingContextScrollTest : public UITest {
   ScrollWrapper* scroll_view_ = nullptr;
 };
 
+TEST_F_UI(PaintingContextScrollTest, PanHandlerBlocksWrappedNativeTouchScroll) {
+  scroll_view_->SetGestureDetectorMap({{1, {1, lynx::tasm::GestureType::PAN}}});
+
+  DispatchDragEvent({50, 80}, {50, 30}, false);
+
+  EXPECT_FLOAT_EQ(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest, NativeHandlerAllowsWrappedTouchScroll) {
+  scroll_view_->SetGestureDetectorMap(
+      {{1, {1, lynx::tasm::GestureType::NATIVE}}});
+
+  DispatchDragEvent({50, 80}, {50, 30}, false);
+
+  EXPECT_GT(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest, PanHandlerPreservesWheelScroll) {
+  scroll_view_->SetGestureDetectorMap({{1, {1, lynx::tasm::GestureType::PAN}}});
+
+  PointerEvent event(PointerEvent::EventType::kSignalEvent);
+  event.device = PointerEvent::kMouse;
+  event.signal_kind = PointerEvent::SignalKind::kStartScroll;
+  event.position = {50, 50};
+  event.scroll_delta_y = 50;
+  event.is_precise_scroll = true;
+  page_->DispatchPointerEvent({event});
+
+  EXPECT_GT(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest, PanHandlerPreservesTrackpadPanZoomScroll) {
+  scroll_view_->SetGestureDetectorMap({{1, {1, lynx::tasm::GestureType::PAN}}});
+
+  PointerEvent event(PointerEvent::EventType::kPanZoomStartEvent);
+  event.device = PointerEvent::kTrackpad;
+  event.position = {50, 50};
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kPanZoomUpdateEvent;
+  event.pan = {0, -25};
+  event.pan_delta = {0, -25};
+  page_->DispatchPointerEvent({event});
+  event.pan = {0, -50};
+  page_->DispatchPointerEvent({event});
+  event.type = PointerEvent::EventType::kPanZoomEndEvent;
+  page_->DispatchPointerEvent({event});
+
+  EXPECT_GT(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest,
+          RemovingHandlersRestoresWrappedTouchScroll) {
+  scroll_view_->SetGestureDetectorMap({{1, {1, lynx::tasm::GestureType::PAN}}});
+  scroll_view_->ConsumeGesture(1, Value{{"consume", Value(false)}});
+  scroll_view_->SetGestureDetectorMap({});
+
+  DispatchDragEvent({50, 80}, {50, 30}, false);
+
+  EXPECT_GT(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest,
+          RemovingHandlersPreservesExplicitScrollDisable) {
+  scroll_view_->SetAttribute("enable-scroll", Value(false));
+  scroll_view_->SetGestureDetectorMap({{1, {1, lynx::tasm::GestureType::PAN}}});
+  scroll_view_->SetGestureDetectorMap({});
+
+  DispatchDragEvent({50, 80}, {50, 30}, false);
+
+  EXPECT_FLOAT_EQ(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest, VerticalScrollReportsBoundaryRemainder) {
+  lynx::tasm::PaintingContextClay painting_context(view_context_.get());
+  EXPECT_EQ(painting_context.ScrollBy(1, 12.25f, 50.5f),
+            (std::vector<float>{0, 50.5f, 12.25f, 0}));
+  EXPECT_FLOAT_EQ(scroll_view_->GetScrollView()->GetScrollOffset().y(), 50.5f);
+  EXPECT_EQ(painting_context.ScrollBy(1, 0, 250),
+            (std::vector<float>{0, 149.5f, 0, 100.5f}));
+  EXPECT_FLOAT_EQ(scroll_view_->GetScrollView()->GetScrollOffset().y(), 200);
+  EXPECT_EQ(painting_context.ScrollBy(1, 0, -300),
+            (std::vector<float>{0, -200, 0, -100}));
+  EXPECT_FLOAT_EQ(scroll_view_->GetScrollView()->GetScrollOffset().y(), 0);
+}
+
+TEST_F_UI(PaintingContextScrollTest, HorizontalScrollPreservesLayoutUnits) {
+  auto metrics = page_->GetViewportMetrics();
+  metrics.device_pixel_ratio = 2.5;
+  page_->SetViewportMetrics(metrics);
+  scroll_view_->SetAttribute("scroll-x", Value(true));
+  scroll_view_->GetScrollView()->OnLayoutUpdated();
+  lynx::tasm::PaintingContextClay painting_context(view_context_.get());
+  EXPECT_EQ(painting_context.ScrollBy(1, 50.5f, 12.25f),
+            (std::vector<float>{50.5f, 0, 0, 12.25f}));
+  EXPECT_FLOAT_EQ(scroll_view_->GetScrollView()->GetScrollOffset().x(), 50.5f);
+}
+
+TEST_F_UI(PaintingContextScrollTest, NonScrollableViewReturnsUnconsumedDelta) {
+  lynx::tasm::PaintingContextClay painting_context(view_context_.get());
+  EXPECT_EQ(painting_context.ScrollBy(2, 12.25f, -50.5f),
+            (std::vector<float>{0, 0, 12.25f, -50.5f}));
+}
+
+TEST_F_UI(PaintingContextScrollTest, RemovedViewReturnsUnconsumedDelta) {
+  lynx::tasm::PaintingContextClay painting_context(view_context_.get());
+  view_context_->RemoveView(1, 0);
+  ASSERT_TRUE(view_context_->DestroyView(1));
+  EXPECT_EQ(painting_context.ScrollBy(1, 12.25f, -50.5f),
+            (std::vector<float>{0, 0, 12.25f, -50.5f}));
+}
+
 TEST_F_UI(ScrollViewTest, ScrollToId) {
   std::unique_ptr<View> view_a = std::make_unique<View>(-1, page_.get());
   view_a->SetBound(0, 0, 100, 100);
@@ -332,6 +443,48 @@ TEST_F_UI(ScrollViewTest, WrapperConsumeGestureResumeTrackpadDrag) {
   auto up = CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 0});
   up.device = PointerEvent::DeviceType::kTrackpad;
   page_->DispatchPointerEvent({up});
+}
+
+TEST_F_UI(ScrollViewTest, AncestorNativeConsumptionBlocksChildTouchScroll) {
+  outer_view_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  outer_view_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+
+  DispatchDragEvent({50, 50}, {-100, 50}, false);
+  EXPECT_EQ(inner_view_->GetScrollOffset().x(), 0);
+
+  outer_view_->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  DispatchDragEvent({50, 50}, {-100, 50}, false);
+  EXPECT_GT(inner_view_->GetScrollOffset().x(), 0);
+}
+
+TEST_F_UI(ScrollViewTest, WrapperConsumeGestureCanResumeDuringTouchDrag) {
+  auto scroll_wrapper = std::make_unique<ScrollWrapper>(
+      -1, ScrollDirection::kVertical, page_.get());
+  scroll_wrapper->SetBound(0, 0, 100, 100);
+  page_->AddChild(scroll_wrapper.get());
+  scroll_wrapper->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  auto* scroll_view = scroll_wrapper->GetScrollView();
+  scroll_view->SetTouchSlop(-1);
+  auto content_view = std::make_unique<View>(-1, page_.get());
+  content_view->SetBound(0, 0, 100, 500);
+  scroll_wrapper->AddChild(content_view.get());
+  scroll_view->OnLayoutUpdated();
+  scroll_wrapper->ConsumeGesture(17, Value{{"consume", Value(false)}});
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 80})});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {50, 40}, {0, -40})});
+  EXPECT_EQ(scroll_view->GetScrollOffset().y(), 0);
+
+  scroll_wrapper->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {50, 0}, {0, -40})});
+  EXPECT_GT(scroll_view->GetScrollOffset().y(), 0);
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 0})});
 }
 
 TEST_F_UI(ScrollViewTest, ScrollIntoView) {

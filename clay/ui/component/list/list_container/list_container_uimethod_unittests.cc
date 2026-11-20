@@ -30,6 +30,86 @@ class ListContainerUIMethodTest : public UITest {
 
 }  // namespace
 
+TEST_F_UI(ListContainerUIMethodTest,
+          NativeConsumptionCanResumeDuringTouchDrag) {
+  wrapper_->SetBound(0, 0, 100, 100);
+  page_->AddChild(wrapper_.get());
+  wrapper_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  auto* list_view = wrapper_->GetListContainerView();
+  list_view->SetTouchSlop(-1);
+  wrapper_->UpdateContentOffsetForListContainer(500, 0, 0);
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kDownEvent, {50, 80})});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {50, 60}, {0, -20})});
+  EXPECT_EQ(list_view->GetScrollOffset().y(), 0);
+
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {50, 40}, {0, -20})});
+  const float offset = list_view->GetScrollOffset().y();
+  EXPECT_GT(offset, 0);
+
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  page_->DispatchPointerEvent({CreatePointer(
+      0, PointerEvent::EventType::kMoveEvent, {50, 20}, {0, -20})});
+  EXPECT_EQ(list_view->GetScrollOffset().y(), offset);
+  page_->DispatchPointerEvent(
+      {CreatePointer(0, PointerEvent::EventType::kUpEvent, {50, 20})});
+}
+
+TEST_F_UI(ListContainerUIMethodTest,
+          NativeConsumptionReturnsUnconsumedGestureDelta) {
+  wrapper_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  wrapper_->UpdateContentOffsetForListContainer(500, 0, 0);
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  wrapper_->ConsumeGesture(
+      17, Value{{"inner", Value(false)}, {"consume", Value(false)}});
+
+  auto result = wrapper_->GestureScrollBy(0, 40);
+  EXPECT_EQ(result, (std::vector<float>{0, 0, 0, 40}));
+  EXPECT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().y(), 0);
+
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  result = wrapper_->GestureScrollBy(0, 40);
+  EXPECT_GT(wrapper_->GetListContainerView()->GetScrollOffset().y(), 0);
+  EXPECT_EQ(result[3], 0);
+}
+
+TEST_F_UI(ListContainerUIMethodTest,
+          AncestorConsumptionPreservesListStateAcrossResume) {
+  auto ancestor = std::make_unique<View>(2, page_.get());
+  ancestor->SetBound(0, 0, 100, 100);
+  ancestor->SetGestureDetectorMap(
+      {{18, {18, lynx::tasm::GestureType::NATIVE}}});
+  page_->AddChild(ancestor.get());
+  ancestor->AddChild(wrapper_.get());
+  wrapper_->SetGestureDetectorMap(
+      {{17, {17, lynx::tasm::GestureType::NATIVE}}});
+  wrapper_->UpdateContentOffsetForListContainer(500, 0, 0);
+
+  ancestor->ConsumeGesture(18, Value{{"consume", Value(false)}});
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(true)}});
+  EXPECT_EQ(wrapper_->GestureScrollBy(0, 40),
+            (std::vector<float>{0, 0, 0, 40}));
+  EXPECT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().y(), 0);
+
+  ancestor->ConsumeGesture(18, Value{{"consume", Value(true)}});
+  wrapper_->GestureScrollBy(0, 40);
+  EXPECT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().y(), 40);
+
+  wrapper_->ConsumeGesture(17, Value{{"consume", Value(false)}});
+  ancestor->ConsumeGesture(18, Value{{"consume", Value(false)}});
+  ancestor->ConsumeGesture(18, Value{{"consume", Value(true)}});
+  wrapper_->GestureScrollBy(0, 40);
+  EXPECT_EQ(wrapper_->GetListContainerView()->GetScrollOffset().y(), 40);
+  ancestor->RemoveChild(wrapper_.get());
+}
+
 TEST_F_UI(ListContainerUIMethodTest, GetScrollInfoReturnsCurrentSchema) {
   wrapper_->UpdateContentOffsetForListContainer(300, 0, 40);
 
