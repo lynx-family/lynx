@@ -262,10 +262,12 @@ final class LynxJNI {
     return buffer == null ? null : LepusBuffer.INSTANCE.decodeMessage(buffer);
   }
 
+  @SuppressWarnings("unchecked")
   @CalledByNative
-  static void dispatchHeapSnapshotResult(LynxConsumer<String> callback, String error) {
+  static void dispatchHeapSnapshotResult(Object callback, String error) {
+    // Keep the JNI signature stable when LynxConsumer is renamed by R8.
     if (callback != null) {
-      callback.accept(error);
+      ((LynxConsumer<String>) callback).accept(error);
     }
   }
 }
