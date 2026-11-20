@@ -35,7 +35,7 @@ struct DrawRecordingError {
 namespace detail {
 // Temporary internal entry point while v1 validation and lowering are
 // introduced independently of the legacy Fragment callback protocol. Errors
-// preserve both outputs; successful empty recordings replace the
+// preserve both outputs; successful empty/state-only recordings replace the
 // output atomically.
 std::optional<DrawRecordingError> DecodeV1DrawDisplayList(
     const lepus::Value& input, double pixels, ComposeDrawPhase phase,
