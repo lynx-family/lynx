@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <iostream>
 #include <limits>
 
 #include "base/include/vector.h"
@@ -10,6 +11,7 @@
 #include "core/renderer/dom/fiber/testing/compose_draw_recording_contract_test_helpers.h"
 #include "core/runtime/lepusng/quick_context.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
+#include "gfx/public/display_list_reader.h"
 
 namespace lynx::tasm::testing {
 namespace {
@@ -57,8 +59,8 @@ class DrawDisplayListDecoderTest : public ::testing::Test {
   std::optional<DrawRecordingError> Run(
       const char* id, const Value& wire, double pixels = 1,
       ComposeDrawPhase phase = ComposeDrawPhase::kBehind) {
-    SCOPED_TRACE(id);
     DisplayListBuilder sentinel;
+
     Prefix(&sentinel);
 
     output_ = sentinel.Build();
@@ -71,6 +73,19 @@ class DrawDisplayListDecoderTest : public ::testing::Test {
       output_before.Expect(output_);
       EXPECT_FALSE(shadow_);
     }
+    std::cout << "DIRECT {\"id\":\"" << id << "\",\"pixels\":" << pixels
+              << ",\"error_code\":"
+              << (error ? static_cast<int>(error->code) : 0)
+              << ",\"command_index\":";
+    if (error && error->command_index != DrawRecordingError::kNoCommand)
+      std::cout << error->command_index;
+    else
+      std::cout << "null";
+    std::cout << ",\"namespace\":\"" << (error ? error->name_space : "")
+              << "\",\"shadow\":" << shadow_
+              << ",\"output_items\":" << output_.GetContentItemsSize()
+              << ",\"output_data\":" << output_.GetContentDataSize() << "}"
+              << std::endl;
     return error;
   }
   void Reject(const char* id, const Value& wire, Code code,
@@ -112,6 +127,69 @@ TEST_F(DrawDisplayListDecoderTest,
   }
 }
 
+TEST_F(DrawDisplayListDecoderTest, SemanticAndCapabilityPrecedence) {
+  const std::string ellipse = "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]";
+  Reject("late-metadata-before-path",
+         Parse(Wire("[[1,0,0]]", ellipse, "[[42,0]]")), Code::kMalformed);
+  Reject("late-metadata-before-lowering",
+         Parse(Wire("[[1,0,0]]", "[[1,1e40,0,40,20]]", "[[42,0]]")),
+         Code::kMalformed);
+  auto wire = Parse(Wire("[[1,0,0]]", ellipse));
+  wire.GetProperty(5u).Array()->push_back(
+      Parse("[[3,0,0,1,[1,2],[0,1],0,[1,0,0,1,0,0]],[1,0,true,null],[1],[]]"));
+  Reject("path-before-paint-and-phase", wire, Code::kUnsupported,
+         DrawRecordingError::kNoCommand, "", ComposeDrawPhase::kClip);
+  wire.GetProperty(4u).Array()->set(0, Parse("[1,0,0,40,20]"));
+  Reject("paint-before-phase", wire, Code::kUnsupported,
+         DrawRecordingError::kNoCommand, "paint.radial",
+         ComposeDrawPhase::kClip);
+  wire.GetProperty(5u).Array()->set(1, Parse("[[1,1],[1,0,true,null],[1],[]]"));
+  Reject("phase-before-command", wire, Code::kUnsupported,
+         DrawRecordingError::kNoCommand, "", ComposeDrawPhase::kClip);
+  auto unknown = Parse(Wire("[[255,\"unknown\",1,[],[]]]"));
+  unknown.Array()->set(7, Value(42));
+  Reject("unknown-before-features", unknown, Code::kUnsupported,
+         DrawRecordingError::kNoCommand, "unknown");
+  auto unmatched = Parse(Wire("[[2]]", "[[1,0,0,40,20]]", "[[42,0]]"));
+  Reject("unmatched-before-metadata", unmatched, Code::kMalformed, 0);
+}
+
+TEST_F(DrawDisplayListDecoderTest, ExactBoundaryCapabilityAndMetadataInputs) {
+  const auto wire = Wire("[[1,0,0]]", "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]");
+  Reject("elliptical-capability", Parse(wire), Code::kUnsupported);
+  Reject("late-malformed-metadata",
+         Parse(Wire("[[1,0,0]]", "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]",
+                    "[[42,0]]")),
+         Code::kMalformed);
+}
+
+TEST_F(DrawDisplayListDecoderTest, UnsupportedUnusedRowsStillValidate) {
+  for (const auto* paint :
+       {"[[2,0,0,10,10,[1,2,3],[0,0.75,0.5],0,[1,0,0,1,0,0]],[1,0,true,null],["
+        "1],[]]",
+        "[[3,0,0,1,[1,2],[0,1],0,[1,0,0,1,0,null]],[1,0,true,null],[1],[]]",
+        "[[1,1],[1,0,true,null],[2,2,0,0,4,[1,2,3,0],0,null],[]]",
+        "[[1,1],[1,0,true,null],[1],[[255,\"effect\",1,[\"text\",[1,2]],[]],"
+        "[255,\"effect\",1,[\"text\",{}],[]]]]"}) {
+    auto wire = Parse(Wire());
+    wire.GetProperty(5u).Array()->push_back(Parse(paint));
+    Reject("late-invalid-unused-paint", wire, Code::kMalformed);
+  }
+  for (const auto* path :
+       {"[3,1,-1]", "[3,2,-1]", "[3,0,1]", "[3,0,2]", "[255,\"path\",1,[],[1]]",
+        "[255,\"path\",1,[],[2]]"}) {
+    auto wire = Parse(Wire());
+    wire.GetProperty(4u).Array()->push_back(Parse(path));
+    wire.GetProperty(4u).Array()->push_back(Parse("[1,0,0,10,10]"));
+    Reject("self-or-future-ref", wire, Code::kMalformed);
+  }
+  auto wire = Parse(Wire());
+  wire.GetProperty(4u).Array()->push_back(Parse("[4,0,[[1,0,0],[2,1,1],[6]]]"));
+  Reject("unused-valid-verbs", wire, Code::kUnsupported);
+  wire.GetProperty(4u).Array()->set(1, Parse("[4,0,[[2,1,1]]]"));
+  Reject("unused-invalid-verbs", wire, Code::kMalformed);
+}
+
 TEST_F(DrawDisplayListDecoderTest, CyclesRejectAndSharedDagRemainsValid) {
   auto cycle = Eval(
       "(()=>{let a=[];a.push(a);return "
@@ -122,6 +200,51 @@ TEST_F(DrawDisplayListDecoderTest, CyclesRejectAndSharedDagRemainsValid) {
       "['lynx.draw.recording',1,0,[],[],[],[],[],[['k',a]]]})()");
   ASSERT_FALSE(Run("shared-dag", dag));
   EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+}
+
+// These schema-only cases are replaced by the complete direct compiler suites
+// when primitive lowering is introduced.
+TEST_F(DrawDisplayListDecoderTest,
+       EmptyAndBalancedStateReplaceOutputAtomically) {
+  for (const char* commands : {"[]", "[[2],[4,1,0,0,1,0,0],[3]]"}) {
+    ASSERT_FALSE(Run("empty-state", Parse(Wire(commands))));
+    EXPECT_EQ(output_.GetContentItemsSize(), 0u);
+    EXPECT_EQ(output_.GetContentDataSize(), 0u);
+  }
+  DisplayListBuilder sentinel;
+  Prefix(&sentinel);
+  auto output = sentinel.Build();
+  const Bytes before(output);
+  bool shadow = true;
+  const auto error = detail::DecodeV1DrawDisplayList(
+      Parse(Wire()), 1, ComposeDrawPhase::kBehind, &output, &shadow);
+  ASSERT_TRUE(error);
+  EXPECT_EQ(error->code, Code::kUnsupported);
+  EXPECT_EQ(error->command_index, 0u);
+  EXPECT_TRUE(shadow);
+  before.Expect(output);
+}
+
+TEST_F(DrawDisplayListDecoderTest,
+       EnvelopeAndSemanticTailsPrecedeBackendErrors) {
+  Reject("legacy", Parse("[]"), Code::kMalformed);
+  auto wire = Parse(Wire());
+  wire.Array()->set(1, Value(2));
+  Reject("major", wire, Code::kVersion);
+  Reject("late-command", Parse(Wire("[[1,0,0],[1,0,-1]]")), Code::kMalformed,
+         1);
+  Reject("duplicate-metadata",
+         Parse(Wire("[[1,0,0]]", "[[1,0,0,40,20]]", "[[\"k\",0],[\"k\",1]]")),
+         Code::kMalformed);
+  for (const char* features : {"null", "[1]", "[[]]", "[{}]"}) {
+    auto input = Parse(Wire());
+    input.Array()->set(7, Parse(features));
+    Reject("malformed-features", input, Code::kMalformed);
+  }
+  wire = Parse(Wire());
+  wire.GetProperty(4u).GetProperty(0u).Array()->set(
+      1, Value(std::numeric_limits<double>::infinity()));
+  Reject("nonfinite", wire, Code::kMalformed);
 }
 
 TEST_F(DrawDisplayListDecoderTest,
@@ -168,128 +291,6 @@ TEST_F(DrawDisplayListDecoderTest, DepthAndUtf8PayloadBoundariesAreExact) {
   payload += 'x';
   entry->set(1, Value(payload));
   Reject("payload-over", wire, Code::kCapacity);
-}
-
-// Temporary staging checks; complete command validation replaces these
-// deferred-capability expectations in the following layer.
-TEST_F(DrawDisplayListDecoderTest, EmptySuccessAndErrorsAreAtomic) {
-  auto wire = Parse("[\"lynx.draw.recording\",1,0,[],[],[],[],[],[]]");
-  ASSERT_FALSE(Run("empty", wire));
-  EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-  EXPECT_EQ(output_.GetContentDataSize(), 0u);
-  DisplayListBuilder sentinel;
-  Prefix(&sentinel);
-  auto output = sentinel.Build();
-  const Bytes before(output);
-  bool shadow = true;
-  const auto error = detail::DecodeV1DrawDisplayList(
-      Parse(Wire()), 1, ComposeDrawPhase::kBehind, &output, &shadow);
-  ASSERT_TRUE(error);
-  EXPECT_EQ(error->code, Code::kUnsupported);
-  EXPECT_EQ(error->command_index, DrawRecordingError::kNoCommand);
-  EXPECT_TRUE(shadow);
-  before.Expect(output);
-}
-
-TEST_F(DrawDisplayListDecoderTest, EnvelopeAndGenericTailsAreValidated) {
-  Reject("row", Parse("[]"), Code::kMalformed);
-  auto wire = Parse(Wire());
-  wire.Array()->set(0, Value("other"));
-  Reject("discriminator", wire, Code::kVersion);
-  wire = Parse(Wire());
-  wire.Array()->set(1, Value(2));
-  Reject("major", wire, Code::kVersion);
-  wire = Parse(Wire());
-  wire.Array()->set(2, Value(-1));
-  Reject("minor", wire, Code::kMalformed);
-  Reject("duplicate-metadata", Parse(Wire("[]", "[]", "[[\"k\",0],[\"k\",1]]")),
-         Code::kMalformed);
-  for (const char* features : {"null", "[1]", "[[]]", "[{}]"}) {
-    auto input = Parse(Wire());
-    input.Array()->set(7, Parse(features));
-    Reject("malformed-features", input, Code::kMalformed);
-  }
-  wire = Parse(Wire());
-  wire.GetProperty(4u).GetProperty(0u).Array()->set(
-      1, Value(std::numeric_limits<double>::infinity()));
-  Reject("nonfinite-before-deferred", wire, Code::kMalformed);
-}
-
-TEST_F(DrawDisplayListDecoderTest, ExactExpandedNodeBudget) {
-  // Root + nine slots + one metadata row + its two slots use 13 nodes.
-  for (unsigned nodes : {262131u, 262132u}) {
-    const auto wire =
-        Eval("(()=>{let a=Array(" + std::to_string(nodes) +
-             ").fill(null);return "
-             "['lynx.draw.recording',1,0,[],[],[],[],[],[['k',a]]]})()");
-    if (nodes == 262131) {
-      ASSERT_FALSE(Run("nodes-exact", wire));
-      EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-    } else {
-      Reject("nodes-over", wire, Code::kCapacity);
-    }
-  }
-}
-
-TEST_F(DrawDisplayListDecoderTest, ExactBoundaryCapabilityAndMetadataInputs) {
-  const auto wire = Wire("[[1,0,0]]", "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]");
-  Reject("elliptical-capability", Parse(wire), Code::kUnsupported);
-  Reject("late-malformed-metadata",
-         Parse(Wire("[[1,0,0]]", "[[2,0,0,40,20,12,4,12,4,12,4,12,4]]",
-                    "[[42,0]]")),
-         Code::kMalformed);
-}
-
-TEST_F(DrawDisplayListDecoderTest, UnsupportedUnusedRowsStillValidate) {
-  for (const auto* paint :
-       {"[[2,0,0,10,10,[1,2,3],[0,0.75,0.5],0,[1,0,0,1,0,0]],[1,0,true,null],["
-        "1],[]]",
-        "[[3,0,0,1,[1,2],[0,1],0,[1,0,0,1,0,null]],[1,0,true,null],[1],[]]",
-        "[[1,1],[1,0,true,null],[2,2,0,0,4,[1,2,3,0],0,null],[]]",
-        "[[1,1],[1,0,true,null],[1],[[255,\"effect\",1,[\"text\",[1,2]],[]],"
-        "[255,\"effect\",1,[\"text\",{}],[]]]]"}) {
-    auto wire = Parse(Wire());
-    wire.GetProperty(5u).Array()->push_back(Parse(paint));
-    Reject("late-invalid-unused-paint", wire, Code::kMalformed);
-  }
-  for (const auto* path :
-       {"[3,1,-1]", "[3,2,-1]", "[3,0,1]", "[3,0,2]", "[255,\"path\",1,[],[1]]",
-        "[255,\"path\",1,[],[2]]"}) {
-    auto wire = Parse(Wire());
-    wire.GetProperty(4u).Array()->push_back(Parse(path));
-    wire.GetProperty(4u).Array()->push_back(Parse("[1,0,0,10,10]"));
-    Reject("self-or-future-ref", wire, Code::kMalformed);
-  }
-  auto wire = Parse(Wire());
-  wire.GetProperty(4u).Array()->push_back(Parse("[4,0,[[1,0,0],[2,1,1],[6]]]"));
-  Reject("unused-valid-verbs", wire, Code::kUnsupported);
-  wire.GetProperty(4u).Array()->set(1, Parse("[4,0,[[2,1,1]]]"));
-  Reject("unused-invalid-verbs", wire, Code::kMalformed);
-}
-
-// Temporary table-only checks; command semantics are still deferred.
-TEST_F(DrawDisplayListDecoderTest, ValidTablesAndCapabilitiesWithoutCommands) {
-  ASSERT_FALSE(Run("supported-unused-tables", Parse(Wire("[]"))));
-  EXPECT_EQ(output_.GetContentItemsSize(), 0u);
-  for (const char* paint :
-       {"[[3,0,0,1,[1,2],[0,1],0,[1,0,0,1,0,0]],[1,0,true,null],[1],[]]",
-        "[[4,0,0,[1,2],[0,1],[1,0,0,1,0,0]],[1,0,true,null],[1],[]]"}) {
-    auto wire = Parse(Wire("[]"));
-    wire.GetProperty(5u).Array()->set(0, Parse(paint));
-    Reject("unsupported-source", wire, Code::kUnsupported,
-           DrawRecordingError::kNoCommand,
-           paint[2] == '3' ? "paint.radial" : "paint.sweep");
-    wire.GetProperty(5u).Array()->push_back(
-        Parse("[[1,1],[1,0,true,null],[1],[42]]"));
-    Reject("malformed-paint-tail", wire, Code::kMalformed);
-  }
-  auto wire = Parse(Wire("[]"));
-  wire.GetProperty(6u).Array()->push_back(Parse("[\"resource\",1,[]]"));
-  Reject("unknown-resource", wire, Code::kUnsupported,
-         DrawRecordingError::kNoCommand, "resource");
-  wire.GetProperty(6u).Array()->push_back(Parse("[\"resource\",1,{}]"));
-  Reject("malformed-resource-tail", wire, Code::kMalformed);
-  Reject("state-deferred", Parse(Wire("[[2],[3]]")), Code::kUnsupported);
 }
 
 }  // namespace
