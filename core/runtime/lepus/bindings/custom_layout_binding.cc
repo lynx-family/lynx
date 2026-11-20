@@ -58,8 +58,7 @@ lepus::Value RendererFunctions::FiberSetCustomLayout(runtime::MTSContext* ctx,
   auto* runtime = runtime::MTSRuntime::ToContext(ctx);
   auto* handle = argc ? LayoutHandle(argv[0]) : nullptr;
   auto* owner = handle ? handle->content_element().get() : nullptr;
-  if (argc != 3 || !Owns(runtime, owner) || owner->GetTag() != "view")
-    return Error(runtime);
+  if (argc != 3 || !Owns(runtime, owner)) return Error(runtime);
   if (argv[1].IsNil() && argv[2].IsNil()) {
     if (!handle->SetCustomLayout(nullptr)) return Error(runtime);
     return lepus::Value();
