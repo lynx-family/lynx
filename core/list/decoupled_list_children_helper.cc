@@ -278,7 +278,10 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
   });
   // Handle insert.
   ForEachChild(new_added_children, insert_handler);
-  // Handle recycle.
+  // TODO: With batch rendering or platform view insertion, relayout can push
+  // waterfall items bound during this scroll offscreen. Recycle newly attached
+  // items that no longer need to be kept as well as those in
+  // last_binding_children_.
   ForEachChild(last_binding_children_, recycle_handler);
   // Update layout info to platform.
   last_binding_children_.clear();
