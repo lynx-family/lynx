@@ -301,6 +301,63 @@ class ParagraphTTTextReuseTest : public ::testing::Test {
   WordBreak word_break_ = WordBreak::kNormal;
 };
 
+TEST_F(ParagraphTTTextReuseTest, MinIntrinsicWidthIgnoresSoftWrapping) {
+  auto word = Build(u"elephant");
+  word->Layout(1000);
+  const double expected = word->GetLongestLine();
+  ASSERT_GT(expected, 0);
+  auto paragraph = Build(u"short elephant");
+  EXPECT_DOUBLE_EQ(paragraph->GetMinIntrinsicWidth(), 0);
+  paragraph->Layout(1000);
+  EXPECT_NEAR(paragraph->GetMinIntrinsicWidth(), expected, 0.01);
+  EXPECT_GT(paragraph->GetLongestLine(), expected);
+  paragraph->Layout(expected + 1);
+  EXPECT_NEAR(paragraph->GetMinIntrinsicWidth(), expected, 0.01);
+  EXPECT_EQ(paragraph->GetLineMetrics().size(), 2u);
+  paragraph->Layout(1000);
+  EXPECT_NEAR(paragraph->GetMinIntrinsicWidth(), expected, 0.01);
+}
+
+TEST_F(ParagraphTTTextReuseTest, MinIntrinsicWidthIncludesInlineObject) {
+  ParagraphBuilderTTText builder(style_, fonts_);
+  PlaceholderRun placeholder(90, 10, PlaceholderAlignment::kBaseline,
+                             TextBaseline::kAlphabetic, 10);
+  builder.AddPlaceholder(placeholder);
+  builder.AddText(u" ");
+  placeholder.width = 60;
+  builder.AddPlaceholder(placeholder);
+  auto paragraph = builder.Build();
+  for (double width : {1000.0, 100.0, 1000.0}) {
+    paragraph->Layout(width);
+    EXPECT_DOUBLE_EQ(paragraph->GetMinIntrinsicWidth(), 90);
+  }
+}
+
+TEST_F(ParagraphTTTextReuseTest,
+       MinIntrinsicWidthSeparatesAdjacentInlineObjects) {
+  ParagraphBuilderTTText builder(style_, fonts_);
+  PlaceholderRun placeholder(30, 10, PlaceholderAlignment::kBaseline,
+                             TextBaseline::kAlphabetic, 0);
+  for (int i = 0; i < 3; ++i) {
+    builder.AddPlaceholder(placeholder);
+  }
+  auto paragraph = builder.Build();
+  paragraph->Layout(40);
+  EXPECT_DOUBLE_EQ(paragraph->GetMinIntrinsicWidth(), 30);
+}
+
+TEST_F(ParagraphTTTextReuseTest, MinIntrinsicWidthHandlesEmptyAndHardBreaks) {
+  auto empty = Build(u"");
+  EXPECT_DOUBLE_EQ(empty->GetMinIntrinsicWidth(), 0);
+  empty->Layout(1000);
+  EXPECT_DOUBLE_EQ(empty->GetMinIntrinsicWidth(), 0);
+  auto word = Build(u"elephant");
+  word->Layout(1000);
+  auto paragraph = Build(u"short\nelephant");
+  paragraph->Layout(1000);
+  EXPECT_NEAR(paragraph->GetMinIntrinsicWidth(), word->GetLongestLine(), 0.01);
+}
+
 TEST_F(ParagraphTTTextReuseTest, ShrinkingPreservesRealLayoutGeometry) {
   // Compare independent real layouts with a fixture font, not mocked metrics.
   for (const std::u16string text :
