@@ -9,6 +9,7 @@ import com.lynx.jsbridge.network.HttpRequest
 import com.lynx.jsbridge.network.HttpResponse
 import com.lynx.jsbridge.network.HttpStreamingDelegate
 import com.lynx.react.bridge.JavaOnlyMap
+import com.lynx.tasm.service.ILynxHttpRequestOperation
 import com.lynx.tasm.service.ILynxHttpService
 import com.lynx.tasm.service.LynxHttpRequestCallback
 import okhttp3.Call
@@ -27,7 +28,7 @@ object LynxHttpService : ILynxHttpService {
     private val client = OkHttpClient()
     private const val deprecatedStreamingFlag = "useStreaming";
 
-    private fun requestInner(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate?) {
+    private fun requestInner(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate?): ILynxHttpRequestOperation {
         val okBody = if ("GET".equals(request.httpMethod, true)) null else request.httpBody.toRequestBody()
 
         val okRequest = Request.Builder()
@@ -41,7 +42,8 @@ object LynxHttpService : ILynxHttpService {
             it.statusCode = CODE_FAILED_INTERNALLY
         }
 
-        client.newCall(okRequest).enqueue(object : Callback {
+        val okCall = client.newCall(okRequest)
+        okCall.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 callback.invoke(httpResponse.also {
                     it.statusText = e.toString()
@@ -52,33 +54,46 @@ object LynxHttpService : ILynxHttpService {
                 response.use {
                     val httpHeaders = JavaOnlyMap()
                     response.headers.toMultimap().map { httpHeaders.put(it.key, it.value.joinToString(separator = ", ")) }
+                    val httpBody: ByteArray? = if (delegate == null) {
+                        try {
+                            response.body?.bytes() ?: byteArrayOf()
+                        } catch (e: IOException) {
+                            // e.g. the request is canceled while reading the body.
+                            onFailure(call, e)
+                            return
+                        }
+                    } else {
+                        null
+                    }
                     callback.invoke(httpResponse.also {
                         it.statusCode = response.code
                         it.statusText = response.message
                         it.httpHeaders = httpHeaders
-                        if (delegate == null) {
-                            it.httpBody = response.body?.bytes() ?: byteArrayOf()
-                        } 
+                        if (httpBody != null) {
+                            it.httpBody = httpBody
+                        }
                     })
 
                     if (delegate != null) {
-                        response.body?.let { body ->
-                            body.byteStream().use { inputStream ->
-                              val useDeprecatedStreamingConfig = request.customConfig.getBoolean(deprecatedStreamingFlag, false);  
-                              if (useDeprecatedStreamingConfig) {
-                                  delegate.deprecatedChunkedStreamingBody(inputStream);
-                              } else {
-                                  delegate.streamingBody(inputStream);
-                              }
-                                delegate.onEnd()
+                        try {
+                            response.body?.byteStream()?.use { inputStream ->
+                                val useDeprecatedStreamingConfig = request.customConfig.getBoolean(deprecatedStreamingFlag, false);
+                                if (useDeprecatedStreamingConfig) {
+                                    delegate.deprecatedChunkedStreamingBody(inputStream);
+                                } else {
+                                    delegate.streamingBody(inputStream);
+                                }
                             }
-                        } ?: run {
-                            delegate.onEnd()
+                        } catch (e: IOException) {
+                            // e.g. the request is canceled while reading the body.
+                            delegate.onError(e.toString())
                         }
+                        delegate.onEnd()
                     }
                 }
             }
         })
+        return ILynxHttpRequestOperation { okCall.cancel() }
     }
 
     override fun request(request: HttpRequest, callback: LynxHttpRequestCallback) {
@@ -87,5 +102,13 @@ object LynxHttpService : ILynxHttpService {
 
     override fun requestStreaming(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate) {
         requestInner(request, callback, delegate);
+    }
+
+    override fun requestCancelable(request: HttpRequest, callback: LynxHttpRequestCallback): ILynxHttpRequestOperation {
+        return requestInner(request, callback, null);
+    }
+
+    override fun requestStreamingCancelable(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate): ILynxHttpRequestOperation {
+        return requestInner(request, callback, delegate);
     }
 }

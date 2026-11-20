@@ -40,6 +40,8 @@ interface LynxModuleLoader {
 
 export class Lynx {
   static __registerSharedDataCounter: number = 0;
+  // Identifies a fetch request so that it can be canceled on the native side.
+  static __fetchRequestIdCounter: number = 0;
   __globalProps: GlobalProps;
   __presetData: Record<string, unknown>;
   _switches: Record<string, boolean>;
@@ -456,9 +458,25 @@ export class Lynx {
         return reject(signal.reason);
       }
 
-      signal.addEventListener('abort', (event) => {
+      const fetchModule = this.getApp().NativeModules.LynxFetchModule;
+      const requestId = String(++Lynx.__fetchRequestIdCounter);
+      // Whether the native request is still running, i.e. can be canceled.
+      let inFlight = true;
+      const onAbort = () => {
         reject(signal.reason);
-      });
+        if (inFlight) {
+          inFlight = false;
+          // Platforms which do not support cancellation do not expose `cancel`.
+          fetchModule.cancel?.(requestId);
+        }
+      };
+      // Must not be called from `onAbort`: removing a listener while the signal
+      // is dispatching makes it skip the next listener.
+      const onRequestEnd = () => {
+        inFlight = false;
+        signal.removeEventListener('abort', onAbort);
+      };
+      signal.addEventListener('abort', onAbort);
 
       const enableFetchAPIStandardStreaming = this.getApp().params
         ?.pageConfigSubset?.enableFetchAPIStandardStreaming;
@@ -466,6 +484,7 @@ export class Lynx {
         'enableFetchAPIStandardStreaming'
       ] = enableFetchAPIStandardStreaming;
       const fetchArg = {
+        requestId,
         method: request.method,
         url: request.url,
         origin: this.getNativeApp().__pageUrl,
@@ -476,9 +495,13 @@ export class Lynx {
       const useStreaming =
         request.lynxExtension['useStreaming'] ||
         enableFetchAPIStandardStreaming;
-      this.getApp().NativeModules.LynxFetchModule.fetch(
+      fetchModule.fetch(
         fetchArg,
         (response: any) => {
+          // A streaming request keeps running until its `onEnd` event.
+          if (!useStreaming) {
+            onRequestEnd();
+          }
           if (signal.aborted) {
             return;
           }
@@ -500,6 +523,7 @@ export class Lynx {
                   if (event === 'onData') {
                     streamingBodyReceiver.onData(result.data);
                   } else if (event === 'onEnd') {
+                    onRequestEnd();
                     streamingBodyReceiver.onEnd();
                   } else if (event === 'onError') {
                     streamingBodyReceiver.onError(result.error);
@@ -516,6 +540,7 @@ export class Lynx {
           }
         },
         (error: any) => {
+          onRequestEnd();
           if (signal.aborted) {
             return;
           }

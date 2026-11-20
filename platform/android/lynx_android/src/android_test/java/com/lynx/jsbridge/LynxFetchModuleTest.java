@@ -19,6 +19,7 @@ import com.lynx.jsbridge.network.HttpStreamingDelegate;
 import com.lynx.jsbridge.network.LynxFetchModuleEventSender;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
+import com.lynx.tasm.service.ILynxHttpRequestOperation;
 import com.lynx.tasm.service.ILynxHttpService;
 import com.lynx.tasm.service.LynxHttpRequestCallback;
 import com.lynx.tasm.service.LynxServiceCenter;
@@ -112,6 +113,29 @@ public class LynxFetchModuleTest {
     }
   }
 
+  private static class MockCancelableHttpService extends MockHttpService {
+    LynxHttpRequestCallback pendingCallback;
+    HttpStreamingDelegate pendingDelegate;
+    int cancelCount;
+
+    @Override
+    public ILynxHttpRequestOperation requestStreamingCancelable(
+        HttpRequest request, LynxHttpRequestCallback callback, HttpStreamingDelegate delegate) {
+      capturedRequest = request;
+      pendingCallback = callback;
+      pendingDelegate = delegate;
+      return () -> cancelCount++;
+    }
+
+    @Override
+    public ILynxHttpRequestOperation requestCancelable(
+        HttpRequest request, LynxHttpRequestCallback callback) {
+      capturedRequest = request;
+      pendingCallback = callback;
+      return () -> cancelCount++;
+    }
+  }
+
   private Context context;
   private MockEventSender sender;
   private MockHttpService httpService;
@@ -131,6 +155,12 @@ public class LynxFetchModuleTest {
   @After
   public void tearDown() {
     LynxServiceCenter.inst().unregisterService(ILynxHttpService.class);
+  }
+
+  private JavaOnlyMap createRequest(boolean streaming, String requestId) {
+    JavaOnlyMap request = createRequest(streaming);
+    request.putString("requestId", requestId);
+    return request;
   }
 
   private JavaOnlyMap createRequest(boolean streaming) {
@@ -198,6 +228,65 @@ public class LynxFetchModuleTest {
     assertEquals("onData", sender.streamingEvents.get(0).getString("event"));
     assertEquals("onData", sender.streamingEvents.get(1).getString("event"));
     assertEquals("onEnd", sender.streamingEvents.get(2).getString("event"));
+  }
+
+  @Test
+  public void testCancelPendingRequestCancelsOperationOnce() {
+    MockCancelableHttpService cancelableService = new MockCancelableHttpService();
+    LynxServiceCenter.inst().registerService(cancelableService);
+
+    module.fetch(createRequest(false, "1"), args -> {}, args -> {});
+    assertNotNull(cancelableService.pendingCallback);
+    module.cancel("unknown");
+    assertEquals(0, cancelableService.cancelCount);
+
+    module.cancel("1");
+    module.cancel("1");
+
+    assertEquals(1, cancelableService.cancelCount);
+  }
+
+  @Test
+  public void testCancelFinishedRequestIsNoOp() {
+    MockCancelableHttpService cancelableService = new MockCancelableHttpService();
+    LynxServiceCenter.inst().registerService(cancelableService);
+    final Object[][] resolved = new Object[1][];
+
+    module.fetch(createRequest(false, "1"), args -> resolved[0] = args, args -> {});
+    cancelableService.pendingCallback.invoke(createResponse(200, "response-body".getBytes()));
+    module.cancel("1");
+
+    assertNotNull(resolved[0]);
+    assertEquals(0, cancelableService.cancelCount);
+  }
+
+  @Test
+  public void testCancelStreamingRequestUntilEnd() {
+    MockCancelableHttpService cancelableService = new MockCancelableHttpService();
+    LynxServiceCenter.inst().registerService(cancelableService);
+
+    module.fetch(createRequest(true, "1"), args -> {}, args -> {});
+    // A streaming request is still in flight after the response is received.
+    cancelableService.pendingCallback.invoke(createResponse(200, new byte[0]));
+    module.cancel("1");
+    assertEquals(1, cancelableService.cancelCount);
+
+    module.fetch(createRequest(true, "2"), args -> {}, args -> {});
+    cancelableService.pendingCallback.invoke(createResponse(200, new byte[0]));
+    cancelableService.pendingDelegate.onEnd();
+    module.cancel("2");
+    assertEquals(1, cancelableService.cancelCount);
+  }
+
+  @Test
+  public void testCancelWithoutCancelableHttpServiceIsNoOp() {
+    httpService.response = createResponse(200, "response-body".getBytes());
+    final Object[][] resolved = new Object[1][];
+
+    module.fetch(createRequest(false, "1"), args -> resolved[0] = args, args -> {});
+    module.cancel("1");
+
+    assertNotNull(resolved[0]);
   }
 
   @Test

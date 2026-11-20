@@ -29,4 +29,29 @@ typedef void (^LynxHttpCallback)(LynxHttpResponse* result);
 
 - (BOOL)setHttpInterceptor:(id<LynxHttpInterceptor>)interceptor;
 
+@optional
+
+/**
+ Same as `invokeWithRequest:callback:`, except that the request can be canceled.
+ If implemented, it is used instead of `invokeWithRequest:callback:` by the Fetch API, and the
+ returned block is invoked when the `AbortSignal` of the fetch is aborted.
+
+ @return: A block which can cancel the request if it is not finished. nil if cancel action is not
+ supported.
+ */
+- (dispatch_block_t)invokeCancelableWithRequest:(LynxHttpRequest*)request
+                                       callback:(LynxHttpCallback)callback;
+
+/**
+ Same as `invokeStreamingWithRequest:callback:withDelegate:`, except that the request can be
+ canceled. If implemented, it is used instead of `invokeStreamingWithRequest:callback:withDelegate:`
+ by the Fetch API, and the returned block is invoked when the `AbortSignal` of the fetch is aborted.
+
+ @return: A block which can cancel the request if it is not finished. nil if cancel action is not
+ supported.
+ */
+- (dispatch_block_t)invokeCancelableStreamingWithRequest:(LynxHttpRequest*)request
+                                                callback:(LynxHttpCallback)callback
+                                            withDelegate:(LynxHttpStreamingDelegate*)delegate;
+
 @end
