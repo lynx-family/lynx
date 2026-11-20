@@ -225,6 +225,21 @@ NSString *HandlerKey(MemberId memberId, uint32_t gestureId) {
   arena->SetGestureState(memberId, static_cast<uint32_t>(gestureId), command);
 }
 
+- (nullable id<LynxEventTarget>)flingTargetInChain:(id<LynxEventTarget>)target {
+  const auto memberId = _arena ? _arena->GetFlingMemberId() : std::nullopt;
+  if (!memberId) {
+    return nil;
+  }
+  LynxUI *flingTarget = [self uiForMember:*memberId];
+  for (id<LynxEventTarget> candidate = target; candidate != nil;
+       candidate = candidate.parentTarget) {
+    if (candidate == flingTarget) {
+      return candidate;
+    }
+  }
+  return nil;
+}
+
 - (void)handleTouch:(nullable UITouch *)touch
              action:(LynxUnifiedGestureInputType)action
              target:(nullable id<LynxEventTarget>)target

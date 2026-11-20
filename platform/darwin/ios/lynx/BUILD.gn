@@ -140,7 +140,10 @@ subspec_target("Framework") {
 }
 
 subspec_target("lynx") {
-  deps = [ "../../../common:custom_vsync_monitor" ]
+  deps = [
+    "../../../../core/gesture:gesture",
+    "../../../common:custom_vsync_monitor",
+  ]
   sources = [
     "LUIConfigAdapter.h",
     "LUIConfigAdapter.mm",
@@ -251,7 +254,9 @@ subspec_target("lynx") {
     "gesture/LynxNativeGestureHandler.m",
     "gesture/LynxPanGestureHandler.m",
     "gesture/LynxTapGestureHandler.m",
+    "gesture/LynxUnifiedGestureArena+Internal.h",
     "gesture/LynxUnifiedGestureArena.h",
+    "gesture/LynxUnifiedGestureArena.mm",
     "hero_transitions/CALayer+LynxHeroTransition.m",
     "hero_transitions/LynxHeroAnimator.m",
     "hero_transitions/LynxHeroModifiers.m",

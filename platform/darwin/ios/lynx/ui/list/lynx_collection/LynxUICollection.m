@@ -26,6 +26,8 @@
 #import "LynxUI+Gesture.h"
 #import "LynxUI+Private.h"
 #import "LynxUIContext+Internal.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 static const CGFloat LynxUICollectionCompareLayoutUpdateEpsilon = 0.001;
 static const NSTimeInterval LynxUICollectionCellUpdateAnimationDefaultTime = 1.;
@@ -633,15 +635,37 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
     return;
   }
   [super gestureDidSet];
-  ((LynxUICollectionView *)self.view).gestureEnabled = YES;
+
+  LynxUICollectionView *collectionView = (LynxUICollectionView *)self.view;
+  if (self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena *arena = self.context.uiOwner.unifiedGestureArena;
+    LynxUnifiedGestureRegistration registration = [arena registrationForDetectors:self.gestureMap];
+    collectionView.gestureEnabled = (registration & LynxUnifiedGestureRegistrationHasDetector) != 0;
+    BOOL hasNativeGesture = (registration & LynxUnifiedGestureRegistrationHasNativeDetector) != 0;
+    if (!hasNativeGesture) {
+      self.gestureConsumer = nil;
+    } else if (!self.gestureConsumer) {
+      self.gestureConsumer = [[LynxGestureConsumer alloc] init];
+    }
+    [self enableIncreaseFrequencyIfNecessary];
+    return;
+  }
+
+  collectionView.gestureEnabled = YES;
   [self enableIncreaseFrequencyIfNecessary];
 
   [self ensureGestureConsumer];
 }
 
 - (void)enableIncreaseFrequencyIfNecessary {
-  if (((LynxUICollectionView *)self.view).gestureEnabled &&
-      ((LynxUICollectionView *)self.view).increaseFrequencyWithGesture) {
+  LynxUICollectionView *collectionView = (LynxUICollectionView *)self.view;
+  if (self.context.enableNewGesture && self.context.enableUnifiedGestureHandler) {
+    collectionView.scrollEnabled =
+        !_scrollDisabledByProps && (!collectionView.gestureEnabled || self.gestureConsumer ||
+                                    collectionView.increaseFrequencyWithGesture);
+    return;
+  }
+  if (collectionView.gestureEnabled && collectionView.increaseFrequencyWithGesture) {
     // Allow native scroll make sure that the CPU frequency will be increased during scroll
     self.view.scrollEnabled = YES;
   } else {
