@@ -768,9 +768,9 @@ void ScrollView::SetScrollToIndex(int index) {
 void ScrollView::AutoScroll(bool start, float rate) {
   if (start && IsScrollEnabled()) {
     if (rate > 0 && !auto_scroll_) {
-      const int rate_per_frame = static_cast<int>(std::max(1.f, (rate / 60)));
       auto_scroll_ = true;
-      auto_scroll_rate_ = rate_per_frame;
+      auto_scroll_rate_ = rate;
+      auto_scroll_last_tick_ = fml::TimePoint::Now();
       StartSmoothScroll();
     }
   } else {
@@ -791,8 +791,13 @@ void ScrollView::OnScrollAnimationEnd() {
 // TODO(liuguoliang): Check if ScrollStatus::kAnimating is needed.
 void ScrollView::StartSmoothScroll() {
   if (auto_scroll_) {
+    const auto now = fml::TimePoint::Now();
+    // The rate is a distance per second, independent of task scheduling.
+    const float delta =
+        auto_scroll_rate_ * (now - auto_scroll_last_tick_).ToSecondsF();
+    auto_scroll_last_tick_ = now;
     if (scroll_direction_ == ScrollDirection::kVertical) {
-      ScrollTo(false, auto_scroll_rate_ + scroll_offset_.y());
+      ScrollTo(false, delta + scroll_offset_.y());
       if (scroll_offset_.y() <
           static_cast<RenderScroll*>(render_object())->MaxScrollHeight()) {
         page_view()->GetTaskRunner()->PostDelayedTask(
@@ -807,8 +812,7 @@ void ScrollView::StartSmoothScroll() {
       }
     } else {
       float offset = 0.f;
-      offset = scroll_offset_.x() +
-               (IsRtlDirection() ? (-auto_scroll_rate_) : auto_scroll_rate_);
+      offset = scroll_offset_.x() + (IsRtlDirection() ? -delta : delta);
       ScrollTo(false, offset);
       bool has_space_to_scroll =
           IsRtlDirection()

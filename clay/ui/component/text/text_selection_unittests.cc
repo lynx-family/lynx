@@ -663,6 +663,38 @@ TEST_F_UI(TextSelectionTest, SetTextSelectionHidesVisualStartHandle) {
   EXPECT_EQ(text_view_->end_selection_handle_->GetHandleType(), kRight);
 }
 
+TEST_F_UI(TextSelectionTest, PointerEventsHitLastGlyphOfInlineText) {
+  const std::u16string value = u"inline text";
+  auto paragraph = CreateParagraph(value);
+  auto boxes = paragraph->GetRectsForRange(
+      value.size() - 1, value.size(), txt::Paragraph::RectHeightStyle::kTight,
+      txt::Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(boxes.size(), 1u);
+  const auto rect = boxes.front().rect;
+  const float y = (rect.Top() + rect.Bottom()) / 2;
+  text_view_->SetBound(0, 0, 1000, 100);
+  text_view_->SetParagraph(std::move(paragraph), value);
+  text_view_->SetAttribute("pointer-events", Value(uint32_t{1}));
+  auto inline_text = std::make_unique<InlineTextView>(2, page_.get());
+  inline_text->SetAttribute("pointer-events", Value(uint32_t{0}));
+  std::list<TextRange> ranges{TextRange(0, value.size())};
+  inline_text->SetTextRange(ranges);
+  text_view_->AddChild(inline_text.get());
+
+  BaseView* text = text_view_.get();
+  FloatPoint relative_position;
+  for (float fraction : {.1f, .9f}) {
+    const FloatPoint point(
+        rect.Left() + (rect.Right() - rect.Left()) * fraction, y);
+    EXPECT_EQ(text->GetTopViewToAcceptEvent(point, &relative_position),
+              inline_text.get());
+  }
+  EXPECT_EQ(text->GetTopViewToAcceptEvent(FloatPoint(rect.Right() + 2, y),
+                                          &relative_position),
+            nullptr);
+  text_view_->RemoveChild(inline_text.get());
+}
+
 #if defined(OS_WIN) || defined(OS_OSX)
 TEST_F_UI(TextSelectionTest, MouseDragDispatchesSelectionChanges) {
   const std::u16string text = u"mouse selection";
