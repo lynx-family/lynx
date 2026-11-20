@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdio>
 
+#include "base/include/file_utils.h"
 #include "core/base/json/json_util.h"
 #include "core/services/recorder/fixture_native_module_matcher.h"
 #include "third_party/modp_b64/modp_b64.h"
@@ -268,7 +269,7 @@ class ZipWriter {
     if (over_limit_) {
       return false;
     }
-    std::FILE* file = std::fopen(path.c_str(), "wb");
+    std::FILE* file = base::OpenFile(path, "wb");
     if (file == nullptr) {
       return false;
     }

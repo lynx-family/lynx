@@ -41,7 +41,6 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.PageReloadHelper;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.behavior.LynxUIOwner;
-import java.io.File;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
@@ -210,20 +209,12 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
     if (lynxView == null || lynxView.getLynxContext() == null) {
       return;
     }
-    File dir = lynxView.getLynxContext().getExternalFilesDir(null);
-    if (null == dir) {
-      dir = lynxView.getLynxContext().getFilesDir();
-    }
-    if (dir == null) {
-      return;
-    }
-
     Resources resources = lynxView.getContext().getResources();
     DisplayMetrics dm = resources.getDisplayMetrics();
     float screenWidth = dm.widthPixels;
     float screenHeight = dm.heightPixels;
     nativeInitRecorderConfig(
-        dir.getPath(), mLynxDevToolNG.getSessionId(), screenWidth, screenHeight, mRecordID);
+        "", mLynxDevToolNG.getSessionId(), screenWidth, screenHeight, mRecordID);
   }
 
   private void sendConsoleMessage(String text, int level, long timestamp) {

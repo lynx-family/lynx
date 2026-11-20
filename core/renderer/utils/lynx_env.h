@@ -67,7 +67,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_FLUENCY_TRACE,
     GLOBAL_QUICK_CONTEXT_POOL_SIZE,
     ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC,
-    STORAGE_DIR,
     VSYNC_TRIGGERED_FROM_UI_THREAD_ANDROID,
     CLIP_RADIUS_FLATTEN,
     ENABLE_ELEMENT_STATISTIC,
@@ -202,7 +201,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "js_blocking_report_interval_ms"},
             {Key::TIMING_MAP_EXCEEDED_SIZE, "timing_map_exceeded_size"},
             {Key::DEVTOOL_CONNECTED, "devtool_connected"},
-            {Key::STORAGE_DIR, "storage_dir"},
             {Key::ENABLE_QUICKJS_DEBUG, "enable_quickjs_debug"},
             {Key::ENABLE_TABLE_DEEP_CHECK, kLynxEnableTableDeepCheck},
             {Key::DISABLE_LEPUSNG_OPTIMIZE, "DISABLE_LEPUSNG_OPTIMIZE"},
@@ -430,13 +428,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   void SetGroupedEnv(const std::unordered_set<std::string>& new_group_values,
                      const std::string& group_key);
   std::unordered_set<std::string> GetGroupedEnv(const std::string& group_key);
-  inline std::string GetStorageDirectory() {
-    return GetLocalEnv(Key::STORAGE_DIR).value_or("");
-  }
-  inline void SetStorageDirectory(const std::string& path) {
-    SetLocalEnv(GetEnvKeyString(Key::STORAGE_DIR), path);
-  }
-
   bool ContainKey(const std::string& key);
 
   bool IsDevToolComponentAttach();
