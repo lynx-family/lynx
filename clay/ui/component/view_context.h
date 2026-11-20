@@ -36,6 +36,7 @@
 #include "clay/ui/shadow/shadow_node_owner.h"
 #include "clay/ui/window/viewport_metrics.h"
 #include "core/public/external_memory_snapshot.h"
+#include "core/public/ui_memory_usage.h"
 #include "gfx/geometry/transform_operations.h"
 
 namespace clay {
@@ -254,6 +255,8 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
                                bool should_cache_external_memory_candidates);
 
   fml::RefPtr<fml::TaskRunner> GetUITaskRunner() const;
+  // Reads the registered views on the UI thread, including detached views.
+  lynx::tasm::UIMemoryUsageByTag GetViewMemoryUsageByTag() const;
   lynx::tasm::ExternalMemorySnapshot GetExternalMemorySnapshot();
   void RequestExternalMemoryReport(int64_t delay_ms);
   const clay::TaskRunners& GetTaskRunners() const;

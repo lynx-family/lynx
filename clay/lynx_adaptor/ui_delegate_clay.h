@@ -84,6 +84,7 @@ class UIDelegateClay : public UIDelegate {
   void SetEnableFluencyMonitor(bool enable);
 
   void OnPageConfigDecoded(const std::shared_ptr<PageConfig>& config) override;
+  void OnPageChanged(bool is_first_screen) override;
 
   bool EnableNativeList() const override { return true; }
 
