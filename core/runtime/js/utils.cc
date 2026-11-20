@@ -6,6 +6,11 @@
 #include <memory>
 #include <utility>
 
+#if ENABLE_TRACE_PERFETTO
+#include <algorithm>
+#include <string_view>
+#endif
+
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
 #include "base/include/value/table.h"
@@ -19,6 +24,47 @@
 namespace lynx {
 namespace runtime {
 namespace js {
+
+#if ENABLE_TRACE_PERFETTO
+trace::LynxCoreBuildInfo ExtractLynxCoreBuildInfo(const Buffer& buffer) {
+  // Both release and dev banners fit in this prefix. Never scan the JS body.
+  constexpr size_t kMaxHeaderSize = 128;
+  if (buffer.size() == 0) {
+    return {};
+  }
+  std::string_view header(reinterpret_cast<const char*>(buffer.data()),
+                          std::min(buffer.size(), kMaxHeaderSize));
+  if (header.substr(0, 3) != "/**") {
+    return {};
+  }
+  const auto comment_end = header.find("*/");
+  if (comment_end == std::string_view::npos) {
+    return {};
+  }
+  header = header.substr(0, comment_end);
+  auto read_field = [&](std::string_view prefix) -> std::string {
+    const auto start = header.find(prefix);
+    if (start == std::string_view::npos) {
+      return {};
+    }
+    const auto value = header.substr(start + prefix.size());
+    return std::string(value.substr(0, value.find_first_of(", \t\r\n")));
+  };
+  trace::LynxCoreBuildInfo info{read_field("commit: "), read_field("target: "),
+                                read_field("mode: ")};
+  if (info.commit.empty()) {
+    return {};
+  }
+  if (info.mode.empty()) {
+    if (header.substr(0, 15) == "/** build time:") {
+      info.mode = "dev";
+    } else if (header.substr(0, 12) == "/** commit: ") {
+      info.mode = "release";
+    }
+  }
+  return info;
+}
+#endif
 
 const char* JSRuntimeTypeToString(JSRuntimeType type) {
   switch (type) {
@@ -47,6 +93,10 @@ bool EvaluatePreloadSources(
     }
     if (runtime::IsCoreJS(url)) {
       has_core_js = true;
+#if ENABLE_TRACE_PERFETTO
+      trace::TraceController::SetLynxCoreBuildInfo(
+          ExtractLynxCoreBuildInfo(*buffer));
+#endif
     }
   }
   return has_core_js;

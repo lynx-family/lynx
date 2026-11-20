@@ -6,10 +6,16 @@
 
 #include <chrono>
 #include <filesystem>
+#include <map>
 #include <string>
 
+#include "base/include/buffer.h"
 #include "base/include/file_utils.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+
+#if ENABLE_TRACE_PERFETTO
+#include "third_party/perfetto/sdk/perfetto.h"
+#endif
 
 namespace lynx {
 namespace trace {
@@ -122,6 +128,77 @@ TEST_F(TraceDirectoryTest, DirectoryAvailableWithoutDelegate) {
 }
 
 #if ENABLE_TRACE_PERFETTO
+TEST_F(TraceDirectoryTest, CoreBuildInfoAtTraceBeginAndEnd) {
+  namespace pbzero = ::perfetto::protos::pbzero;
+  const LynxCoreBuildInfo release{std::string(40, 'a'), "Android", "release"};
+  const LynxCoreBuildInfo dev{std::string(40, 'b'), "iOS", "dev"};
+  for (const auto& info :
+       {LynxCoreBuildInfo{}, release, dev, LynxCoreBuildInfo{}}) {
+    TraceController::SetLynxCoreBuildInfo(info);
+    auto* controller = TraceController::Instance();
+    auto config = std::make_shared<TraceConfig>();
+    const auto session = controller->StartTracing(config);
+    ASSERT_NE(session, -1);
+    const auto end_info = info.mode == "dev" ? LynxCoreBuildInfo{} : dev;
+    TraceController::SetLynxCoreBuildInfo(end_info);
+    ASSERT_TRUE(controller->StopTracing(session));
+    auto buffer = base::Buffer::ReadFromFile(config->file_path);
+    ASSERT_NE(buffer, nullptr);
+    pbzero::Trace::Decoder trace(buffer->data(), buffer->size());
+    std::map<uint32_t, std::map<uint64_t, std::string>> names;
+    bool found_begin = false;
+    bool found_end = false;
+    for (auto packets = trace.packet(); packets; ++packets) {
+      pbzero::TracePacket::Decoder packet(*packets);
+      auto& sequence_names = names[packet.trusted_packet_sequence_id()];
+      if (packet.sequence_flags() &
+          pbzero::TracePacket::SEQ_INCREMENTAL_STATE_CLEARED) {
+        sequence_names.clear();
+      }
+      pbzero::InternedData::Decoder interned(packet.interned_data());
+      for (auto entries = interned.event_names(); entries; ++entries) {
+        pbzero::EventName::Decoder name(*entries);
+        sequence_names[name.iid()] = name.name().ToStdString();
+      }
+      if (!packet.has_track_event()) {
+        continue;
+      }
+      pbzero::TrackEvent::Decoder event(packet.track_event());
+      const auto name = event.has_name() ? event.name().ToStdString()
+                                         : sequence_names[event.name_iid()];
+      EXPECT_NE(name, "LYNX_CORE_BUILD_INFO");
+      if (name != "TRACE_BEGIN" && name != "TRACE_END") {
+        continue;
+      }
+      const auto& expected = name == "TRACE_BEGIN" ? info : end_info;
+      std::map<std::string, std::string> values;
+      for (auto annotations = event.debug_annotations(); annotations;
+           ++annotations) {
+        pbzero::DebugAnnotation::Decoder annotation(*annotations);
+        values[annotation.name().ToStdString()] =
+            annotation.string_value().ToStdString();
+      }
+      EXPECT_EQ(values["lynx_core_commit"], expected.commit.empty()
+                                                ? "unknown_commit_hash"
+                                                : expected.commit);
+      EXPECT_EQ(values["lynx_core_target"],
+                expected.target.empty() ? "unknown" : expected.target);
+      EXPECT_EQ(values["lynx_core_mode"],
+                expected.mode.empty() ? "unknown" : expected.mode);
+      EXPECT_EQ(values.count("lynx_core_build_info"), 0u);
+      EXPECT_EQ(values.count("lynx_core_platform"), 0u);
+      if (name == "TRACE_BEGIN") {
+        found_begin = true;
+      } else {
+        found_end = true;
+      }
+    }
+    EXPECT_TRUE(found_begin);
+    EXPECT_TRUE(found_end);
+  }
+  TraceController::SetLynxCoreBuildInfo({});
+}
+
 TEST_F(TraceDirectoryTest, DefaultAndExplicitTracePaths) {
   auto* controller = TraceController::Instance();
   auto config = std::make_shared<TraceConfig>();

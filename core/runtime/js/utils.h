@@ -22,6 +22,10 @@
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
 
+#if ENABLE_TRACE_PERFETTO
+#include "base/trace/native/trace_controller.h"
+#endif
+
 namespace lynx {
 namespace runtime {
 namespace js {
@@ -38,6 +42,11 @@ std::optional<Array> arrayFromLepus(Runtime& runtime,
 bool EvaluatePreloadSources(
     Runtime& runtime,
     std::vector<std::pair<std::string, std::shared_ptr<Buffer>>>& sources);
+
+#if ENABLE_TRACE_PERFETTO
+// Reads at most 128 bytes, supporting release and dev build banners.
+trace::LynxCoreBuildInfo ExtractLynxCoreBuildInfo(const Buffer& buffer);
+#endif
 
 const char* JSRuntimeTypeToString(JSRuntimeType type);
 

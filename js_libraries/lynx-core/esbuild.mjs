@@ -92,7 +92,7 @@ const commonOptions = {
     outfile: 'output/lynx_core_dev.js',
     lineLimit: 80,
     banner: {
-      js: `/** build time: ${new Date().toUTCString()}, commit: ${commitHash} */`,
+      js: `/** commit: ${commitHash}, target: ${TARGET}, mode: dev */`,
     },
 
     // Optimization
@@ -116,6 +116,9 @@ const commonOptions = {
     ...commonOptions,
     // Output
     outfile: isWeb ?'output/web/lynx_core.js' :'output/lynx_core.js',
+    banner: {
+      js: `/** commit: ${commitHash}, target: ${TARGET}, mode: release */`,
+    },
 
     // Transformation
     target: isWeb ? ['esnext'] :TARGET.toLowerCase() === 'ios' ? ['ios11'] : ['es2015'],

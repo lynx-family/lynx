@@ -26,6 +26,64 @@ using runtime::js::JSValueCircularArray;
 using runtime::js::ParseJSValue;
 class UtilTests : public js::test::JSITestBase {};
 
+#if ENABLE_TRACE_PERFETTO
+TEST(UtilTraceTests, ExtractCoreCommitFromReleaseAndDevBanners) {
+  const std::string commit = "0123456789abcdef0123456789abcdef01234567";
+  for (const std::string& prefix :
+       {std::string("/** commit: "),
+        std::string(
+            "/** build time: Fri, 20 Nov 2026 00:00:00 GMT, commit: ")}) {
+    const std::string source = prefix + commit + " */\nvar lynx = {};";
+    // Do not require a null-terminated buffer.
+    const std::vector<uint8_t> bytes(source.begin(), source.end());
+    base::ByteRefBuffer buffer(bytes.data(), bytes.size());
+    const auto info = ExtractLynxCoreBuildInfo(buffer);
+    EXPECT_EQ(info.commit, commit);
+    EXPECT_EQ(info.mode, prefix == "/** commit: " ? "release" : "dev");
+    EXPECT_TRUE(info.target.empty());
+  }
+  StringBuffer unknown("/** commit: unknown_commit_hash */");
+  EXPECT_EQ(ExtractLynxCoreBuildInfo(unknown).commit, "unknown_commit_hash");
+}
+
+TEST(UtilTraceTests, ExtractCoreBuildInfoPreservesTarget) {
+  for (const std::string& target : {"android", "iOS", "WEB"}) {
+    for (const std::string& mode : {"dev", "release"}) {
+      const auto source = "/** commit: abc, target: " + target +
+                          ", mode: " + mode + " */\nvar lynx = {};";
+      const std::vector<uint8_t> bytes(source.begin(), source.end());
+      base::ByteRefBuffer buffer(bytes.data(), bytes.size());
+      const auto info = ExtractLynxCoreBuildInfo(buffer);
+      EXPECT_EQ(info.commit, "abc");
+      EXPECT_EQ(info.target, target);
+      EXPECT_EQ(info.mode, mode);
+    }
+  }
+}
+
+TEST(UtilTraceTests, IgnoreMissingTruncatedAndOutOfBoundsBanners) {
+  for (const std::string& source :
+       {std::string(), std::string("/**"), std::string("/** commit: abc"),
+        std::string("/** commit:  */"),
+        std::string("var text = 'commit: abc';"),
+        std::string("/** no version */\n/** commit: abc */"),
+        std::string(128, ' ') + "/** commit: abc */",
+        std::string("/**") + std::string(120, ' ') + "commit: abc */"}) {
+    SCOPED_TRACE(source);
+    StringBuffer buffer(source);
+    EXPECT_TRUE(ExtractLynxCoreBuildInfo(buffer).commit.empty());
+  }
+  base::ByteRefBuffer empty(nullptr, 0);
+  EXPECT_TRUE(ExtractLynxCoreBuildInfo(empty).commit.empty());
+
+  StringBuffer at_limit("/**" + std::string(109, ' ') + "commit: abcde */");
+  ASSERT_EQ(at_limit.size(), 128u);
+  EXPECT_EQ(ExtractLynxCoreBuildInfo(at_limit).commit, "abcde");
+  StringBuffer past_limit("/**" + std::string(110, ' ') + "commit: abcde */");
+  EXPECT_TRUE(ExtractLynxCoreBuildInfo(past_limit).commit.empty());
+}
+#endif
+
 TEST_P(UtilTests, EvaluatePreloadSourcesTest) {
   std::vector<std::pair<std::string, std::shared_ptr<js::Buffer>>> sources;
   sources.emplace_back(runtime::kLynxCoreJSName,

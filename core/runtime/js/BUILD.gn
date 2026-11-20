@@ -155,6 +155,7 @@ lynx_core_source_set("utils") {
   ]
   deps = [
     "../../../base/src:base_log_headers",
+    "../../../base/trace/native:trace_public_headers",
     "../../../third_party/rapidjson",
   ]
 }
@@ -168,4 +169,7 @@ unittest_set("utils_unittests_testset") {
   sources = [ "utils_unittest.cc" ]
 
   deps = [ ":utils" ]
+  if (enable_trace == "perfetto") {
+    deps += [ "../../../base/trace/native:trace" ]
+  }
 }

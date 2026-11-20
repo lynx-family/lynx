@@ -19,6 +19,14 @@ namespace trace {
 
 enum class RuntimeProfilerType { v8 = 0, quickjs };
 
+#if ENABLE_TRACE_PERFETTO
+struct LynxCoreBuildInfo {
+  std::string commit;
+  std::string target;
+  std::string mode;
+};
+#endif
+
 struct TRACE_EXPORT TraceConfig {
   static constexpr uint32_t kDefaultBufferSize = 40960;  // kb
   static constexpr uint32_t kDefaultFileWritePeriodMs = 3000;
@@ -86,6 +94,11 @@ class TRACE_EXPORT TraceController {
   TraceController& operator=(TraceController&&) = delete;
 
   static TraceController* Instance();
+
+#if ENABLE_TRACE_PERFETTO
+  // Records the most recently loaded core without initializing tracing.
+  static void SetLynxCoreBuildInfo(LynxCoreBuildInfo info);
+#endif
 
   void SetDelegate(std::unique_ptr<Delegate> delegate) {
     delegate_ = std::move(delegate);

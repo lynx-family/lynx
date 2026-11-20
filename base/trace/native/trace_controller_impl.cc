@@ -60,6 +60,29 @@ namespace trace {
 namespace {
 std::atomic<bool> g_trace_event_runtime_enabled{false};
 
+struct LynxCoreBuildInfoState {
+  std::mutex mutex;
+  LynxCoreBuildInfo value;
+};
+
+LynxCoreBuildInfoState& GetLynxCoreBuildInfo() {
+  static LynxCoreBuildInfoState state;
+  return state;
+}
+
+void WriteLynxCoreBuildInfo(lynx::perfetto::EventContext& ctx) {
+  auto& state = GetLynxCoreBuildInfo();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  const auto& info = state.value;
+  ctx.event()->add_debug_annotations(
+      "lynx_core_commit",
+      info.commit.empty() ? "unknown_commit_hash" : info.commit);
+  ctx.event()->add_debug_annotations(
+      "lynx_core_target", info.target.empty() ? "unknown" : info.target);
+  ctx.event()->add_debug_annotations("lynx_core_mode",
+                                     info.mode.empty() ? "unknown" : info.mode);
+}
+
 constexpr uint32_t kPostTraceMemorySampleIntervalMs = 100;
 constexpr uint32_t kPostTraceMemorySampleDurationMs = 3000;
 constexpr uint32_t kPostTraceMemoryPacketSequenceId = 0x6C796E78;  // "lynx"
@@ -228,6 +251,12 @@ void AppendPostTraceMemoryToTraceFile(const std::string& file_path,
   AppendTraceDataToFile(file_path, post_trace_memory_data);
 }
 }  // namespace
+
+void TraceController::SetLynxCoreBuildInfo(LynxCoreBuildInfo info) {
+  auto& state = GetLynxCoreBuildInfo();
+  std::lock_guard<std::mutex> lock(state.mutex);
+  state.value = std::move(info);
+}
 
 // Implementations of the definition of the
 // "base/trace/native/trace_event_utils_perfetto.h"
@@ -516,6 +545,7 @@ int TraceControllerImpl::StartTracing(
       nullptr, 0, [&](lynx::perfetto::EventContext ctx) {
         ctx.event()->add_debug_annotations(
             "enable_memory_trace", std::to_string(config->enable_memory_trace));
+        WriteLynxCoreBuildInfo(ctx);
       });
 
   // plugin
@@ -572,8 +602,10 @@ bool TraceControllerImpl::StopTracing(int session_id) {
   const auto complete_callbacks = session->complete_callbacks;
 
   // The last event before StopBlocking.
-  TraceEventImplementation(INTERNAL_TRACE_CATEGORY, "TRACE_END",
-                           TraceEventType::TYPE_INSTANT, nullptr, 0, nullptr);
+  TraceEventImplementation(
+      INTERNAL_TRACE_CATEGORY, "TRACE_END", TraceEventType::TYPE_INSTANT,
+      nullptr, 0,
+      [](lynx::perfetto::EventContext ctx) { WriteLynxCoreBuildInfo(ctx); });
 
   session->session_impl->StopBlocking();
   session->started = false;
