@@ -24,7 +24,6 @@ namespace lynx {
 namespace tasm {
 class PropArrayAndroid;
 class TextElement;
-class ViewElement;
 class ImageElement;
 
 class TextLayoutAndroid : public TextLayoutImpl {
@@ -54,8 +53,8 @@ class TextLayoutAndroid : public TextLayoutImpl {
   void AppendTextContent(Element* element, TextBuffer& buffer);
   void AppendTextProps(Element* element, size_t pos_start, size_t pos_end,
                        PropArrayAndroid* props);
-  static void AppendViewProps(ViewElement* view_element, size_t start,
-                              size_t end, PropArrayAndroid* props);
+  static void AppendViewProps(Element* element, size_t start, size_t end,
+                              PropArrayAndroid* props);
   void AppendImageProps(ImageElement* image_element, size_t start, size_t end,
                         PropArrayAndroid* props);
   void MeasureInlineViewRecursively(Element* element,

@@ -43,7 +43,7 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
                                                ComposeDrawPhase phase,
                                                bool supports_reuse) {
   CustomDrawFunctions functions;
-  auto draw = [runtime, callback, phase, supports_reuse,
+  auto draw = [runtime, callback = std::move(callback), phase, supports_reuse,
                cached = std::shared_ptr<const DisplayList>{},
                cached_pixels = 0., cached_has_shadow = false](
                   Fragment& fragment, DisplayListBuilder& builder) mutable {
@@ -55,20 +55,20 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
     const lepus::Value width(target->width() * pixels);
     const lepus::Value height(target->height() * pixels);
     const lepus::Value* args[] = {&element, &width, &height};
-    const auto value = runtime->GetMTSContext()
-                           ->CallClosureArgs(callback, args, 3)
-                           .ToLepusValue();
-    if (value.IsEmpty()) return;
+    auto recording = runtime->GetMTSContext()
+                         ->CallClosureArgs(callback, args, 3)
+                         .ToLepusValue();
+    if (recording.IsEmpty()) return;
     DisplayList decoded;
     const DisplayList* drawing = &decoded;
     bool has_shadow = false;
-    const bool can_reuse = supports_reuse && value.GetProperty(0).Bool();
+    const bool can_reuse = supports_reuse && recording.GetProperty(0).Bool();
     if (can_reuse && cached && cached_pixels == pixels) {
       drawing = cached.get();
       has_shadow = cached_has_shadow;
     } else {
       cached.reset();
-      const auto recording = supports_reuse ? value.GetProperty(1) : value;
+      if (supports_reuse) recording = recording.GetProperty(1);
       if (const auto error = detail::DecodeDrawDisplayList(
               recording, pixels, phase, &decoded, &has_shadow)) {
         LogError(phase, *error);
@@ -93,6 +93,7 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
     functions.draw_foreground = std::move(draw);
   else
     functions.draw_behind = std::move(draw);
+  functions.requires_layer = phase == ComposeDrawPhase::kClip;
   return functions;
 }
 
