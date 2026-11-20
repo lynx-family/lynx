@@ -44,6 +44,10 @@ Current spec files:
   - Normative contract for Clay iOS hybrid-composition overlay geometry
   - Covers visible overlay slices, local Metal backing surfaces, shared
     compositor mapping, and UIKit wrapper clipping
+- `spec/keywords_codegen_spec.md`
+  - Normative contract for build-time Clay keyword code generation
+  - Covers generated API compatibility, deterministic perfect hashing,
+    failure conditions, and host-versus-target toolchain ownership
 
 Relationship between the specs:
 
