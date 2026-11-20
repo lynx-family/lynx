@@ -7,6 +7,7 @@
 
 #include "clay/fml/logging.h"
 #include "clay/gfx/graphics_context.h"
+#include "clay/gfx/image/deferred_raster_image.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 
 namespace clay {
@@ -24,7 +25,8 @@ std::shared_ptr<StaticImage> StaticImage::Make(
 }
 
 void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
-  if (!unref_queue || !unref_queue->GetContext()) {
+  if (!unref_queue ||
+      (!use_software_rendering_ && !unref_queue->GetContext())) {
     FML_LOG(ERROR) << "StaticImage::Upload: unref_queue or context is null";
     return;
   }
@@ -35,9 +37,15 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
     }
 
     bool need_mipmapped = IsMipmapped() && HasResized();
-    auto image = skity::Image::MakeDeferredTextureImage(
-        skity::Texture::FormatFromColorType(image_->GetColorType()),
-        render_info_.width(), render_info_.height(), image_->GetAlphaType());
+    std::shared_ptr<skity::Image> image;
+    if (use_software_rendering_) {
+      image = std::make_shared<DeferredRasterImage>(
+          render_info_.width(), render_info_.height(), image_->GetAlphaType());
+    } else {
+      image = skity::Image::MakeDeferredTextureImage(
+          skity::Texture::FormatFromColorType(image_->GetColorType()),
+          render_info_.width(), render_info_.height(), image_->GetAlphaType());
+    }
     gpu_image_ = GPUObject(GraphicsImage::Make(image), unref_queue);
     unref_queue->GetTaskRunner()->PostTask(
         [context = unref_queue->GetContext(), image, render_info = render_info_,
@@ -46,6 +54,11 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
             auto pixmap = self->image_->ToBitmap(render_info);
             if (!pixmap) {
               FML_LOG(ERROR) << "StaticImage::Upload: Bitmap is null";
+              return;
+            }
+            if (!image->IsTextureBackend()) {
+              static_cast<DeferredRasterImage*>(image.get())
+                  ->SetPixmap(std::move(pixmap));
               return;
             }
             skity::TextureDescriptor desc{};
@@ -58,7 +71,8 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
             auto texture = context->CreateTextureWithDesc(&desc);
             if (texture) {
               texture->DeferredUploadImage(std::move(pixmap));
-              image->SetTexture(texture);
+              static_cast<skity::DeferredTextureImage*>(image.get())
+                  ->SetTexture(texture);
             }
           }
         });

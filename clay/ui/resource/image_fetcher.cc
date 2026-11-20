@@ -247,6 +247,7 @@ uint64_t ImageFetcher::FetchSVGImageWithContent(const std::string& content,
     return fetch_id;
   }
   auto svg_image = SVGImage::Make(weak_factory_.GetWeakPtr(), "", content);
+  svg_image->SetUseSoftwareRendering(use_software_rendering_);
   svg_image->SetCacheKeyHash(cache_key_hash);
   svg_image->SetContentMD5(content_md5);
   active_image_map_.insert({content_md5, svg_image});
@@ -290,6 +291,10 @@ void ImageFetcher::OnFetchFinish(const std::string& request_key,
                                  bool hit_cache) {
   url_loader_map_.erase(request_key);
   image_request_map_.erase(request_key);
+
+  if (image && !hit_cache) {
+    image->SetUseSoftwareRendering(use_software_rendering_);
+  }
 
   std::vector<ImageCallback> callbacks;
   auto range = image_callback_map_.equal_range(request_key);

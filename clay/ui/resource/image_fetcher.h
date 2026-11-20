@@ -65,6 +65,10 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
     animation_handler_ = std::move(handler);
   }
 
+  void SetUseSoftwareRendering(bool use_software_rendering) {
+    use_software_rendering_ = use_software_rendering;
+  }
+
  protected:
   fml::WeakPtr<ImageFetcher> GetWeakPtr() const {
     return weak_factory_.GetWeakPtr();
@@ -114,6 +118,7 @@ class ImageFetcher : public fml::RefCountedThreadSafe<ImageFetcher> {
     std::function<void()> cancel = {};
   };
   std::unordered_map<std::string, ImageRequest> image_request_map_;
+  bool use_software_rendering_ = false;
 };
 
 }  // namespace clay
