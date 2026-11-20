@@ -53,6 +53,8 @@ bool RasterFlingManager::StartAnimation(NestedScrollable* scrollable,
   }
   auto animator = std::make_unique<FlingAnimator>();
   animator->SetFriction(1.0f);
+  animator->SetDevicePixelRatio(
+      nested_scroll_manager_->page_view_->DevicePixelRatio());
   animator->SetDensity(
       nested_scroll_manager_->page_view_
           ->GetPixelRatio<kPixelTypeLogical, kPixelTypeClay>());
