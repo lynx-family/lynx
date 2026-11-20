@@ -8,6 +8,7 @@
 #include "core/renderer/ui_component/list/list_types.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 
 namespace lynx {
 namespace tasm {
@@ -29,12 +30,24 @@ void UIComponent::OnPropUpdate(const std::string& name,
 
 void UIComponent::OnNodeReady() {
   UIView::OnNodeReady();
-  if (parent_ && parent_->IsList()) {
+  auto* list =
+      parent_ && parent_->IsList() ? static_cast<UIList*>(parent_) : nullptr;
+  bool z_index_changed = false;
+  if (list) {
+    if (GetPlatformRenderer() && list->GetPlatformRenderer()) {
+      int32_t previous_z_index = 0;
+      NodeManager::Instance().GetAttributeValues(DrawNode(), NODE_Z_INDEX,
+                                                 &previous_z_index);
+      z_index_changed = previous_z_index != z_index_;
+    }
     NodeManager::Instance().SetAttributeWithNumberValue(DrawNode(),
                                                         NODE_Z_INDEX, z_index_);
   }
   if (node_ready_listener_) {
     node_ready_listener_->OnComponentNodeReady(this);
+  }
+  if (z_index_changed && parent_ == list) {
+    list->OnListItemZIndexChanged();
   }
 }
 

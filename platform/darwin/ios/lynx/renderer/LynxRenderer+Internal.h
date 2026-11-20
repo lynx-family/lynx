@@ -3,9 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxRenderer.h>
+#include "core/renderer/ui_wrapper/painting/platform_renderer.h"
 #include "gfx/public/display_list.h"
 
 @interface LynxRenderer ()
+
+- (void)setPlatformRenderer:(const lynx::fml::WeakPtr<lynx::tasm::PlatformRenderer> &)renderer;
+- (void)publishLayoutPosition:(CGPoint)position;
+- (void)publishScrollOffset:(CGPoint)offset;
+- (void)publishStickyOffset:(CGPoint)offset;
+- (void)publishIsOnTree:(BOOL)isOnTree;
+- (void)publishSiblingOrder:(int32_t)order;
 
 - (void)updateDisplayList:(lynx::tasm::DisplayList *)list;
 

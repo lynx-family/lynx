@@ -10,6 +10,7 @@
 #import <Lynx/LynxRenderer.h>
 #import <Lynx/LynxRendererContext.h>
 #import <Lynx/LynxRendererHost.h>
+#import <Lynx/LynxUIComponent.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIView.h>
 #import <Lynx/LynxView.h>
@@ -18,6 +19,7 @@
 #import <malloc/malloc.h>
 #include <objc/runtime.h>
 #include <utility>
+#import "../ui/list/container/LynxListItemHelper.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_context_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/platform_renderer_darwin.h"
@@ -47,6 +49,93 @@
 - (void)tearDown {
   // Put teardown code here. This method is called after the invocation of each test method in the
   // class.
+}
+
+- (void)testPublishedStateUsesWeakRendererAndIndependentFields {
+  using namespace lynx::tasm;
+  PlatformRendererContextDarwin context(nil, nil, nil);
+  LynxRenderer* hostRenderer;
+  {
+    PlatformRendererDarwin renderer(&context, 13, PlatformRendererType::kView);
+    hostRenderer = renderer.GetUIView().renderer;
+    [hostRenderer publishLayoutPosition:CGPointMake(10, 80)];
+    [hostRenderer publishScrollOffset:CGPointMake(0, 120)];
+    [hostRenderer publishStickyOffset:CGPointMake(0, 40)];
+    [hostRenderer publishSiblingOrder:3];
+    [hostRenderer publishIsOnTree:YES];
+    const auto* state = renderer.GetPlatformState();
+    XCTAssertEqual((*state->layout_position)[1], 80);
+    XCTAssertEqual((*state->scroll_offset)[1], 120);
+    XCTAssertEqual(state->sticky_offset[1], 40);
+    XCTAssertEqual(state->sibling_order.value(), 3);
+    [hostRenderer publishStickyOffset:CGPointZero];
+    XCTAssertEqual(state->sticky_offset[1], 0);
+    XCTAssertEqual((*state->scroll_offset)[1], 120);
+    [hostRenderer publishIsOnTree:NO];
+    XCTAssertFalse(state->layout_position.has_value());
+    XCTAssertFalse(state->scroll_offset.has_value());
+    XCTAssertFalse(state->sibling_order.has_value());
+    XCTAssertFalse(state->is_on_tree.value());
+  }
+  // A retained Objective-C renderer must tolerate destruction of its C++ counterpart.
+  [hostRenderer publishScrollOffset:CGPointMake(0, 200)];
+  [hostRenderer publishStickyOffset:CGPointMake(0, 20)];
+  [hostRenderer publishIsOnTree:YES];
+}
+
+- (void)testListItemStateTracksStickyResetAndReattachment {
+  using namespace lynx::tasm;
+  PlatformRendererContextDarwin context(nil, nil, nil);
+  PlatformRendererDarwin first(&context, 13, PlatformRendererType::kView);
+  PlatformRendererDarwin second(&context, 14, PlatformRendererType::kView);
+  UIScrollView* scrollView = [UIScrollView new];
+  id owner = OCMProtocolMock(@protocol(LynxListItemHelperOwner));
+  OCMStub([owner scrollViewForListItemHelper]).andReturn(scrollView);
+  LynxListItemHelper* helper = [[LynxListItemHelper alloc] initWithOwner:owner];
+  LynxUIComponent* firstItem = [[LynxUIComponent alloc] initWithView:first.GetUIView()];
+  LynxUIComponent* secondItem = [[LynxUIComponent alloc] initWithView:second.GetUIView()];
+  firstItem.frame = CGRectMake(0, 80, 100, 40);
+  secondItem.frame = CGRectMake(0, 120, 100, 40);
+  NSArray* children = @[ firstItem, secondItem ];
+  for (LynxUIComponent* item in children) {
+    [helper attachCUIComponent:item orderedChildren:children stickyStartItem:nil stickyEndItem:nil];
+  }
+  first.GetUIView().layer.transform = CATransform3DMakeTranslation(12, 0, 0);
+  [LynxListItemHelper applyLayoutForComponent:firstItem frame:CGRectMake(0, 120, 100, 40)];
+  [LynxListItemHelper bringComponentToFront:firstItem inScrollView:scrollView];
+  XCTAssertEqual((*first.GetPlatformState()->layout_position)[1], 80);
+  XCTAssertEqual(first.GetPlatformState()->sticky_offset[1], 40);
+  XCTAssertEqual((*first.GetPlatformState()->layout_position)[0], 0);
+  XCTAssertEqual(first.GetUIView().layer.transform.m41, 12);
+  XCTAssertGreaterThan(first.GetPlatformState()->sibling_order.value(),
+                       second.GetPlatformState()->sibling_order.value());
+  [LynxListItemHelper applyLayoutForComponent:firstItem frame:firstItem.frame];
+  [helper attachCUIComponent:firstItem
+             orderedChildren:children
+             stickyStartItem:nil
+               stickyEndItem:nil];
+  XCTAssertEqual(first.GetPlatformState()->sticky_offset[1], 0);
+  XCTAssertLessThan(first.GetPlatformState()->sibling_order.value(),
+                    second.GetPlatformState()->sibling_order.value());
+  first.GetUIView().layer.zPosition = 2;
+  [helper attachCUIComponent:firstItem
+             orderedChildren:children
+             stickyStartItem:nil
+               stickyEndItem:nil];
+  XCTAssertGreaterThan(first.GetPlatformState()->sibling_order.value(),
+                       second.GetPlatformState()->sibling_order.value());
+  [helper detachCUIComponent:firstItem];
+  XCTAssertFalse(first.GetPlatformState()->is_on_tree.value());
+  XCTAssertFalse(first.GetPlatformState()->layout_position.has_value());
+  XCTAssertFalse(first.GetPlatformState()->sibling_order.has_value());
+  firstItem.frame = CGRectMake(0, 240, 100, 40);
+  [helper attachCUIComponent:firstItem
+             orderedChildren:children
+             stickyStartItem:nil
+               stickyEndItem:nil];
+  XCTAssertTrue(first.GetPlatformState()->is_on_tree.value());
+  XCTAssertEqual((*first.GetPlatformState()->layout_position)[1], 240);
+  XCTAssertEqual(first.GetPlatformState()->sticky_offset[1], 0);
 }
 
 - (void)testUpdateDisplayList {
