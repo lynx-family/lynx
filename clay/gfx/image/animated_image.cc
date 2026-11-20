@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/image/deferred_raster_image.h"
 
 namespace clay {
 
@@ -97,7 +98,9 @@ fml::RefPtr<GraphicsImage> AnimatedImageInstance::GetGraphicsImage() const {
 void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
                                    Size size) const {
   (void)size;
-  if (!unref_queue || !unref_queue->GetContext()) {
+  auto image_resource = std::static_pointer_cast<AnimatedImage>(image_);
+  const bool use_software_rendering = image_resource->use_software_rendering_;
+  if (!unref_queue || (!use_software_rendering && !unref_queue->GetContext())) {
     FML_LOG(ERROR)
         << "AnimatedImageInstance::Upload: unref_queue or context is null";
     return;
@@ -106,7 +109,6 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
     return;
   }
   player_->EnsureAnimationScheduled();
-  auto image_resource = std::static_pointer_cast<AnimatedImage>(image_);
   ImageInfo render_info = image_resource->render_info_;
   if (render_info.isEmpty()) {
     render_info = image_resource->orig_info_;
@@ -117,11 +119,18 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
   gpu_image_.reset();
   bool need_mipmapped =
       image_resource->IsMipmapped() && image_resource->HasResized();
-  auto image = skity::Image::MakeDeferredTextureImage(
-      skity::Texture::FormatFromColorType(
-          image_resource->image_->GetColorType()),
-      render_info.width(), render_info.height(),
-      image_resource->image_->GetAlphaType());
+  std::shared_ptr<skity::Image> image;
+  if (use_software_rendering) {
+    image = std::make_shared<DeferredRasterImage>(
+        render_info.width(), render_info.height(),
+        image_resource->image_->GetAlphaType());
+  } else {
+    image = skity::Image::MakeDeferredTextureImage(
+        skity::Texture::FormatFromColorType(
+            image_resource->image_->GetColorType()),
+        render_info.width(), render_info.height(),
+        image_resource->image_->GetAlphaType());
+  }
   if (!image) {
     return;
   }
@@ -144,6 +153,11 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
           FML_LOG(ERROR) << "AnimatedImageInstance::Upload: Bitmap is null";
           return;
         }
+        if (!image->IsTextureBackend()) {
+          static_cast<DeferredRasterImage*>(image.get())
+              ->SetPixmap(std::move(pixmap));
+          return;
+        }
         skity::TextureDescriptor desc{};
         desc.format =
             skity::Texture::FormatFromColorType(pixmap->GetColorType());
@@ -154,7 +168,8 @@ void AnimatedImageInstance::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue,
         auto texture = context->CreateTextureWithDesc(&desc);
         if (texture) {
           texture->DeferredUploadImage(std::move(pixmap));
-          image->SetTexture(texture);
+          static_cast<skity::DeferredTextureImage*>(image.get())
+              ->SetTexture(texture);
         }
       });
 }

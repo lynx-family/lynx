@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "clay/gfx/image/deferred_raster_image.h"
 #include "clay/shell/platform/common/desktop/svg/skity_svg_canvas_delegate.h"
 #include "parser/SrSVGDOM.h"
 #include "platform/skity/SrSkityCanvas.h"
@@ -30,17 +31,19 @@ SkitySVGDom::~SkitySVGDom() = default;
 
 std::shared_ptr<skity::Image> SkitySVGDom::Render(
     int width, int height, fml::RefPtr<GPUUnrefQueue> unref_queue) {
-  if (width <= 0 || height <= 0 || !unref_queue || !unref_queue->GetContext()) {
+  if (width <= 0 || height <= 0 || !unref_queue || !svg_dom_) {
     return nullptr;
   }
 
-  if (!svg_dom_) {
-    return nullptr;
+  std::shared_ptr<skity::Image> image;
+  if (unref_queue->GetContext()) {
+    image = skity::Image::MakeDeferredTextureImage(
+        skity::TextureFormat::kRGBA, width, height,
+        skity::AlphaType::kPremul_AlphaType);
+  } else {
+    image = std::make_shared<DeferredRasterImage>(width, height);
   }
 
-  auto image = skity::Image::MakeDeferredTextureImage(
-      skity::TextureFormat::kRGBA, width, height,
-      skity::AlphaType::kPremul_AlphaType);
   if (!image) {
     return nullptr;
   }
@@ -65,19 +68,23 @@ std::shared_ptr<skity::Image> SkitySVGDom::Render(
       if (!dl) {
         return;
       }
-      // A raster task can run between frames, when no GL context (or another
-      // view's context) is current. Keep the binding alive through
-      // snapshotting.
-      auto context_switch = unref_queue->MakeCurrent();
-      if (!context_switch || !context_switch->GetResult()) {
-        FML_LOG(ERROR) << "Could not make the context current to render SVG.";
-        return;
+      std::unique_ptr<GLContextResult> context_switch;
+      GPUUnrefQueue::ContextPtr context;
+      if (image->IsTextureBackend()) {
+        // A raster task can run between frames, when no GL context (or another
+        // view's context) is current. Keep the binding alive through
+        // snapshotting.
+        context_switch = unref_queue->MakeCurrent();
+        if (!context_switch || !context_switch->GetResult()) {
+          FML_LOG(ERROR) << "Could not make the context current to render SVG.";
+          return;
+        }
+        context = unref_queue->GetContext();
+        if (!context) {
+          return;
+        }
       }
-      auto context = unref_queue->GetContext();
-      if (!context) {
-        return;
-      }
-      if (!delegate->CanUseSoftwareCanvas()) {
+      if (context && !delegate->CanUseSoftwareCanvas()) {
         skity::GPURenderTargetDescriptor desc;
         desc.width = width;
         desc.height = height;
@@ -90,18 +97,24 @@ std::shared_ptr<skity::Image> SkitySVGDom::Render(
         dl->Draw(render_target->GetCanvas());
         auto snapshot = context->MakeSnapshot(std::move(render_target));
         if (snapshot && snapshot->GetTexture() && *snapshot->GetTexture()) {
-          image->SetTexture(*snapshot->GetTexture());
+          static_cast<skity::DeferredTextureImage&>(*image).SetTexture(
+              *snapshot->GetTexture());
         }
       } else {
         auto bitmap = std::make_unique<skity::Bitmap>(
             width, height, skity::AlphaType::kPremul_AlphaType);
         auto canvas = skity::Canvas::MakeSoftwareCanvas(bitmap.get());
-        if (!canvas) {
+        if (!canvas || (!context && !bitmap->GetPixelAddr())) {
           return;
         }
         dl->Draw(canvas.get());
         auto pixmap = bitmap->GetPixmap();
         if (pixmap) {
+          if (!context) {
+            static_cast<DeferredRasterImage&>(*image).SetPixmap(
+                std::move(pixmap));
+            return;
+          }
           auto texture = context->CreateTexture(
               skity::Texture::FormatFromColorType(pixmap->GetColorType()),
               pixmap->Width(), pixmap->Height(), pixmap->GetAlphaType());
@@ -110,7 +123,7 @@ std::shared_ptr<skity::Image> SkitySVGDom::Render(
             return;
           }
           texture->DeferredUploadImage(std::move(pixmap));
-          image->SetTexture(texture);
+          static_cast<skity::DeferredTextureImage&>(*image).SetTexture(texture);
         }
       }
     }
