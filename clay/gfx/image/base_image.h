@@ -46,6 +46,10 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
                                : 0;
   }
 
+  void SetUseSoftwareRendering(bool use_software_rendering) {
+    use_software_rendering_ = use_software_rendering;
+  }
+
   void SetExpectSizeCalculator(
       std::function<skity::Vec2(skity::Vec2)> calculator,
       bool force_use_original_size);
@@ -82,6 +86,7 @@ class BaseImage : public std::enable_shared_from_this<BaseImage> {
   ImageInfo render_info_;
   ImageInfo orig_info_;
   bool mipmapped_ = false;
+  bool use_software_rendering_ = false;
 };
 
 }  // namespace clay

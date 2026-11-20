@@ -82,7 +82,8 @@ void SVGImage::NotifyImageChanged() {
 }
 
 void SVGImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
-  if (!unref_queue || !unref_queue->GetContext()) {
+  if (!unref_queue ||
+      (!use_software_rendering_ && !unref_queue->GetContext())) {
     FML_LOG(ERROR) << "SVGImage::Upload: unref_queue or context is null";
     return;
   }

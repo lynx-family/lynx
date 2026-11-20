@@ -2433,6 +2433,7 @@ fml::RefPtr<ImageFetcher> PageView::GetImageResourceFetcher() {
     image_resource_fetcher_ =
         ImageFetcher::Create(GetResourceLoaderIntercept(), GetTaskRunners(),
                              unref_queue_, GetServiceManager());
+    image_resource_fetcher_->SetUseSoftwareRendering(!UseTextureBackend());
     image_resource_fetcher_->SetAnimationHandler(
         animation_handler_->GetWeakPtr());
   }
