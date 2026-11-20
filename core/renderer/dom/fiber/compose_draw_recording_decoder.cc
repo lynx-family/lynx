@@ -189,9 +189,15 @@ class V1Reader {
       }
       paints_.push_back(std::move(paint));
     }
-    // Command semantics are introduced separately. Validate the complete
-    // bounded runtime contents before reporting the deferred capability.
-    if (!ValidateValue(commands)) return error_;
+    for (uint32_t i = 0; i < static_cast<uint32_t>(commands.GetLength()); ++i) {
+      error_.command_index = i;
+      if (!Command(commands.GetProperty(i), i)) return error_;
+    }
+    if (!state_.empty()) {
+      Fail();
+      return error_;
+    }
+    error_.command_index = DrawRecordingError::kNoCommand;
     if (!Metadata(input.GetProperty(8u))) return error_;
     if (!unknown_.empty()) {
       return DrawRecordingError{Code::kUnsupported,
@@ -210,9 +216,9 @@ class V1Reader {
                                 DrawRecordingError::kNoCommand, ns};
     }
     if (clip_phase_error_) return DrawRecordingError{Code::kUnsupported};
-    if (commands.GetLength()) return DrawRecordingError{Code::kUnsupported};
+    if (lower_error_) return lower_error_;
     *out = scratch_.Build();
-    *shadow = false;
+    *shadow = has_shadow_;
     return std::nullopt;
   }
 
@@ -633,6 +639,136 @@ class V1Reader {
       paint->capability = PaintCapability::kUnsupported;
     return true;
   }
+  struct State {
+    uint32_t tag;
+    Transform matrix;
+  };
+  bool Push(uint32_t tag) {
+    if (state_.size() >= kMaxDepth) return Fail(Code::kCapacity);
+    state_.push_back(State{tag, matrix_});
+    return true;
+  }
+  bool Pop(uint32_t tag) {
+    if (state_.empty() || state_.back().tag != tag) return Fail();
+    matrix_ = state_.back().matrix;
+    state_.pop_back();
+    return true;
+  }
+  bool Concat(const Transform& n) {
+    const auto& m = matrix_;
+    Transform next{
+        m[0] * n[0] + m[2] * n[1],        m[1] * n[0] + m[3] * n[1],
+        m[0] * n[2] + m[2] * n[3],        m[1] * n[2] + m[3] * n[3],
+        m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]};
+    for (double v : next)
+      if (!std::isfinite(v)) return Fail(Code::kOverflow);
+    matrix_ = next;
+    return true;
+  }
+
+  bool DrawRefs(const Value& row, int64_t* path, int64_t* paint) {
+    if (!Ref(row.GetProperty(1u), paths_.size(), path) ||
+        !Ref(row.GetProperty(2u), paints_.size(), paint))
+      return false;
+    if (paths_[*path].tag == 3 && paints_[*paint].stroke)
+      return Fail(Code::kUnsupported);
+    return true;
+  }
+  bool CanLower() const {
+    return !path_capability_error_ &&
+           paint_capability_ == PaintCapability::kSupported &&
+           !clip_phase_error_ && !lower_error_;
+  }
+  bool Command(const Value& row, size_t index) {
+    uint32_t tag;
+    if (!Tag(row, &tag)) return false;
+    if (phase_ == ComposeDrawPhase::kClip && tag != 5) clip_phase_error_ = true;
+    switch (tag) {
+      case 1: {
+        int64_t path = 0, paint = 0;
+        if (!Row(row, 3) || !DrawRefs(row, &path, &paint)) return false;
+        if (CanLower()) LowerFail(Code::kUnsupported);
+        return true;
+      }
+      case 2:
+        return Row(row, 1) && Push(2);
+      case 3:
+        return Row(row, 1) && Pop(2);
+      case 4: {
+        Transform transform;
+        if (!Row(row, 7) || !Numbers(row, 1, &transform) || !Concat(transform))
+          return false;
+        if (CanLower() && transform != kIdentity) LowerFail(Code::kUnsupported);
+        return true;
+      }
+      case 5: {
+        int64_t path = 0;
+        uint32_t op = 0;
+        bool antialias = false;
+        if (!Row(row, 4) || !Ref(row.GetProperty(1u), paths_.size(), &path) ||
+            !EnumValue(row.GetProperty(2u), 1, &op) ||
+            !Boolean(row.GetProperty(3u), &antialias))
+          return false;
+        if (CanLower()) {
+          if (phase_ != ComposeDrawPhase::kClip || op != 0 || !antialias ||
+              !paths_[path].IsBox()) {
+            LowerFail(Code::kUnsupported, "drawing.clip");
+          } else {
+            LowerFail(Code::kUnsupported);
+          }
+        }
+        return true;
+      }
+      case 6: {
+        const auto bounds = row.GetProperty(1u);
+        RectBounds box;
+        int64_t paint;
+        if (!Row(row, 3) || !Row(bounds, 4) || !Bounds(bounds, 0, &box) ||
+            !Ref(row.GetProperty(2u), paints_.size(), &paint) || !Push(6))
+          return false;
+        if (CanLower()) LowerFail(Code::kUnsupported);
+        return true;
+      }
+      case 7:
+        if (!Row(row, 1) || !Pop(6)) return false;
+        if (CanLower()) LowerFail(Code::kUnsupported);
+        return true;
+      case 8:
+        if (!Row(row, 1) || !content_) return Fail();
+        if (CanLower()) LowerFail(Code::kUnsupported);
+        return true;
+      case 9: {
+        int64_t path = 0, paint = 0;
+        double x = 0, y = 0, blur = 0, spread = 0;
+        uint32_t kind = 0, caster = 0;
+        if (!Row(row, 9) || !DrawRefs(row, &path, &paint) ||
+            !Number(row.GetProperty(3u), &x) ||
+            !Number(row.GetProperty(4u), &y) ||
+            !Nonnegative(row.GetProperty(5u), &blur) ||
+            !Number(row.GetProperty(6u), &spread) ||
+            !EnumValue(row.GetProperty(7u), 1, &kind) ||
+            !EnumValue(row.GetProperty(8u), 1, &caster))
+          return false;
+        if (CanLower()) {
+          if (!paths_[path].IsBox() || kind != 0 || caster != 1 ||
+              paints_[paint].source != 1)
+            LowerFail(Code::kUnsupported);
+          else
+            LowerFail(Code::kUnsupported);
+        }
+        return true;
+      }
+      case 10:
+        if (!Row(row, 1) || index != 0) return Fail();
+        content_ = true;
+        if (CanLower()) LowerFail(Code::kUnsupported);
+        return true;
+      case 255:
+        return Extension(row, resource_count_, true);
+      default:
+        return Fail(Code::kUnsupported);
+    }
+  }
   bool Metadata(const Value& rows) {
     if (!Table(rows)) return false;
     base::LinkedHashMap<std::string, bool> keys;
@@ -654,17 +790,26 @@ class V1Reader {
     return true;
   }
 
+  bool LowerFail(Code code = Code::kMalformed, const char* ns = "") {
+    if (!lower_error_)
+      lower_error_ = DrawRecordingError{code, error_.command_index, ns};
+    return false;
+  }
   ComposeDrawPhase phase_;
   DisplayListBuilder scratch_;
   base::Vector<PathInfo> paths_;
   base::Vector<PaintInfo> paints_;
+  base::Vector<State> state_;
+  Transform matrix_{kIdentity};
   DrawRecordingError error_;
+  std::optional<DrawRecordingError> lower_error_;
   PaintCapability paint_capability_{PaintCapability::kSupported};
   std::string unknown_;
   size_t resource_count_{0};
   size_t snapshot_nodes_{0}, payload_bytes_{0};
-  bool failed_{false}, input_failed_{false};
-  bool path_capability_error_{false}, clip_phase_error_{false};
+  bool failed_{false}, input_failed_{false}, content_{false};
+  bool path_capability_error_{false}, clip_phase_error_{false},
+      has_shadow_{false};
 };
 }  // namespace v1
 
