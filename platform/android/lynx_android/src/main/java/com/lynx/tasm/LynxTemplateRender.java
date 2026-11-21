@@ -472,11 +472,19 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     mEnableReuseEngine = EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mTemplateBundle != null;
 
     mThreadStrategyForRendering = mConfiguredThreadStrategy;
+    final boolean asyncRender =
+        mConfiguredThreadStrategy == ThreadStrategyForRendering.MULTI_THREADS
+        || mConfiguredThreadStrategy == ThreadStrategyForRendering.MOST_ON_TASM;
+    ThreadStrategyForRendering targetStrategy = mConfiguredThreadStrategy;
+    if (mForceLayoutOnBackgroundThread) {
+      targetStrategy = asyncRender ? ThreadStrategyForRendering.MULTI_THREADS
+                                   : ThreadStrategyForRendering.PART_ON_LAYOUT;
+    }
 
-    // try to get engine from LynxViewGroup;
     if (mCacheManager != null && mCacheManager.isEngineCacheEnabled()) {
       mEnableCacheEngine = true;
-      mLynxEngineRef = mCacheManager.getLynxEngine();
+      mThreadStrategyForRendering = targetStrategy;
+      mLynxEngineRef = mCacheManager.getLynxEngine(targetStrategy);
       ensureLynxEngine();
     } else if (mEnableReuseEngine) {
       reuseLynxEngine();
@@ -489,14 +497,8 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
     mLynxRuntimeOptions = mHostEnvironment.getRuntimeOptions();
 
-    mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
-        || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
-
-    // Force enabling layout thread when mForceLayoutOnBackgroundThread is enabled.
-    if (mForceLayoutOnBackgroundThread) {
-      mThreadStrategyForRendering = mAsyncRender ? ThreadStrategyForRendering.MULTI_THREADS
-                                                 : ThreadStrategyForRendering.PART_ON_LAYOUT;
-    }
+    mAsyncRender = asyncRender;
+    mThreadStrategyForRendering = targetStrategy;
 
     mHasEnvPrepared = LynxEnv.inst().isNativeLibraryLoaded();
     ensureViewId();

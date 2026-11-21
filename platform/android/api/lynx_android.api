@@ -2927,7 +2927,7 @@ public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setTemplateBundle(TemplateBundle bundle);
   public TemplateBundle com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getTemplateBundle();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setLynxEngine(LynxEngine lynxEngine);
-  public LynxEngine com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getLynxEngine();
+  public LynxEngine com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getLynxEngine(ThreadStrategyForRendering threadStrategy);
   public boolean com.lynx.tasm.group.ILynxViewRuntimeCacheManager.isEngineCacheEnabled();
   public void com.lynx.tasm.group.ILynxViewRuntimeCacheManager.setBitmapSizeCache(String source, int width, int height);
   public BitmapSize com.lynx.tasm.group.ILynxViewRuntimeCacheManager.getBitmapSizeCache(String source);
