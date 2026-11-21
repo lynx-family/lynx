@@ -293,6 +293,15 @@ public class LynxViewShellActivity extends AppCompatActivity {
     lynxView.updateGlobalProps(getGlobalProps(this, queryMap));
     extraTimingInfo.mPrepareTemplateStart = System.currentTimeMillis();
 
+    if (queryMap.getBoolean("transferPlayground", false)) {
+      mLynxView = lynxView;
+      mLynxContainer.addView(new TransferPlaygroundView(this, lynxView),
+          new FrameLayout.LayoutParams(
+              ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+      renderLynxViewWithUrl(lynxView, url);
+      return;
+    }
+
     renderLynxViewWithUrl(lynxView, url);
     mLynxContainer.addView(lynxView,
         new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
