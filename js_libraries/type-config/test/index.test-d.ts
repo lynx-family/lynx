@@ -41,6 +41,7 @@ describe('Test Config Types', () => {
     expectTypeOf<Config>().toHaveProperty('enableSimultaneousTap').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTextOverflow').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('enableTransformedTouchPosition').toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<Config>().toHaveProperty('fetchBundleInCurrentThread').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('fontScaleEffectiveOnlyOnSp').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('includeFontPadding').toEqualTypeOf<boolean | undefined>();
     expectTypeOf<Config>().toHaveProperty('keyboardCallbackPassRelativeHeight').toEqualTypeOf<boolean | undefined>();

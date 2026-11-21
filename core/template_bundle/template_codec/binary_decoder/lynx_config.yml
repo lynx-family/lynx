@@ -2081,3 +2081,13 @@ enableSkipEmptyPatch:
     - Android
     - HarmonyOS
     - iOS
+fetchBundleInCurrentThread:
+  description: Allows page fetchBundle calls to invoke the resource fetcher without an extra I/O thread dispatch. A cached bundle may complete inline. Cache misses can still complete asynchronously.
+  defaultValue: 'false'
+  valueType: bool
+  author: upupming
+  since: '4.3'
+  supportPlatform:
+    - Android
+    - iOS
+  export: true
