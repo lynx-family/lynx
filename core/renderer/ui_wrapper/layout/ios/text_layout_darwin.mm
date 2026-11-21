@@ -73,6 +73,25 @@ NSString* DecodeTextContentToNSString(const base::String& text) {
   return [NSString stringWithUTF8String:decoded_text.c_str()];
 }
 
+void CollectInlineTextRegions(LynxTextRenderer* renderer,
+                              const PlatformTextEventTargetRange* ranges, size_t count, bool token,
+                              PlatformTextEventTargetRegions* output) {
+  for (size_t i = 0; i < count; ++i) {
+    const auto& range = ranges[i];
+    if (range.start < 0 || range.end <= range.start) continue;
+    const int32_t sign = range.sign;
+    [renderer enumerateVisibleRectsForSourceRange:NSMakeRange(range.start, range.end - range.start)
+                                inTruncationToken:token
+                                       usingBlock:^(CGRect rect) {
+                                         output->push_back(PlatformTextEventTargetRegion{
+                                             sign, static_cast<float>(rect.origin.x),
+                                             static_cast<float>(rect.origin.y),
+                                             static_cast<float>(rect.size.width),
+                                             static_cast<float>(rect.size.height)});
+                                       }];
+  }
+}
+
 }  // namespace
 
 void TextLayoutDarwin::Destroy(Element* element) {
@@ -87,7 +106,12 @@ void TextLayoutDarwin::Destroy(Element* element) {
 
 LayoutResult TextLayoutDarwin::Measure(Element* element, float width, int width_mode, float height,
                                        int height_mode) {
-  return MeasureInternal(element, width, width_mode, height, height_mode).value_or(LayoutResult{});
+  PlatformTextEventTargetRegions inline_regions;
+  auto result = MeasureInternal(element, width, width_mode, height, height_mode, &inline_regions);
+  if (element && element->is_text()) {
+    static_cast<TextElement*>(element)->UpdateInlineTextGeometry(inline_regions);
+  }
+  return result.value_or(LayoutResult{});
 }
 
 std::optional<LayoutResult> TextLayoutDarwin::MeasureDetached(Element* element, float width,
@@ -96,12 +120,13 @@ std::optional<LayoutResult> TextLayoutDarwin::MeasureDetached(Element* element, 
   if (element == nullptr || prepared_detached_id_ != element->impl_id()) {
     return std::nullopt;
   }
-  return MeasureInternal(element, width, width_mode, height, height_mode);
+  return MeasureInternal(element, width, width_mode, height, height_mode,
+                         /*inline_regions=*/nullptr);
 }
 
-std::optional<LayoutResult> TextLayoutDarwin::MeasureInternal(Element* element, float width,
-                                                              int width_mode, float height,
-                                                              int height_mode) {
+std::optional<LayoutResult> TextLayoutDarwin::MeasureInternal(
+    Element* element, float width, int width_mode, float height, int height_mode,
+    PlatformTextEventTargetRegions* inline_regions) {
   if (element == nullptr || !element->is_text() || _textRenderManager == nil) {
     return std::nullopt;
   }
@@ -133,22 +158,23 @@ std::optional<LayoutResult> TextLayoutDarwin::MeasureInternal(Element* element, 
   if (renderer == nil) {
     return std::nullopt;
   }
-  if (auto it = truncation_event_ranges_.find(element->impl_id());
-      it != truncation_event_ranges_.end()) {
+  auto truncation = truncation_event_ranges_.find(element->impl_id());
+  if (truncation != truncation_event_ranges_.end() && element->EnableFragmentLayerRender() &&
+      element->element_manager()->painting_context()) {
     std::vector<PlatformTextEventTargetRange> ranges;
     if (renderer.truncationToken.length && renderer.ellipsisCount > 0) {
       // TextKit replaced the body suffix with the authored token.
       const auto cut =
           static_cast<int32_t>(renderer.textStorage.length - renderer.truncationToken.length);
-      for (auto range : it->second.token) {
+      for (auto range : truncation->second.token) {
         ranges.push_back({range.sign, cut + range.start, cut + range.end});
       }
-      for (auto range : it->second.body) {
+      for (auto range : truncation->second.body) {
         if (range.start < cut)
           ranges.push_back({range.sign, range.start, std::min(range.end, cut)});
       }
     } else {
-      ranges = it->second.body;
+      ranges = truncation->second.body;
     }
     element->element_manager()
         ->painting_context()
@@ -174,6 +200,14 @@ std::optional<LayoutResult> TextLayoutDarwin::MeasureInternal(Element* element, 
       NSDictionary* size = layoutInfo[@"size"];
       text_element->SetTextLayoutEventSize(
           FloatSize([size[@"width"] floatValue], [size[@"height"] floatValue]));
+    }
+  }
+  if (inline_regions) {
+    const auto& body = text_element->GetInlineTextRanges();
+    CollectInlineTextRegions(renderer, body.data(), body.size(), false, inline_regions);
+    if (truncation != truncation_event_ranges_.end() && renderer.ellipsisCount > 0) {
+      const auto& token = truncation->second.token;
+      CollectInlineTextRegions(renderer, token.data(), token.size(), true, inline_regions);
     }
   }
   return LayoutResult{(float)result.size.width, (float)result.size.height, (float)result.baseline};
@@ -272,12 +306,13 @@ void TextLayoutDarwin::DispatchLayoutBefore(Element* element) {
   if (is_detached_root) {
     prepared_detached_id_ = element->impl_id();
   }
+  text_element->SetInlineTextRanges(ranges.body);
   truncation_event_ranges_.erase(element->impl_id());
-  if (element->EnableFragmentLayerRender() && !is_detached_root) {
-    if (auto* manager = element->element_manager(); manager && manager->painting_context()) {
-      if (truncationString.length && (!ranges.body.empty() || !ranges.token.empty())) {
-        truncation_event_ranges_.emplace(element->impl_id(), std::move(ranges));
-      } else {
+  if (!is_detached_root) {
+    if (truncationString.length && (!ranges.body.empty() || !ranges.token.empty())) {
+      truncation_event_ranges_.emplace(element->impl_id(), std::move(ranges));
+    } else if (element->EnableFragmentLayerRender()) {
+      if (auto* manager = element->element_manager(); manager && manager->painting_context()) {
         manager->painting_context()->impl()->CastToNativeCtx()->UpdateTextEventTargetRanges(
             element->impl_id(), std::move(ranges.body));
       }
@@ -355,7 +390,7 @@ void TextLayoutDarwin::GenerateAttributedString(
     Boolean* hasViewOrImage, NSAttributedString* __strong* truncationString, EventRanges& ranges) {
   const NSUInteger start = attributedString.length;
   const bool clickable = element->is_inline_element() && element->HasEventListener("tap");
-  const bool collect_range = clickable && element->EnableFragmentLayerRender();
+  const bool collect_range = clickable && element->EnableLayoutInElementMode();
   NSAttributedString* previousToken = collect_range && truncationString ? *truncationString : nil;
   if (clickable) {
     // Inherit the outer target until a nested clickable text overrides it.

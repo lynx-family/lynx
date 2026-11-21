@@ -45,4 +45,9 @@ public interface TextMeasurerProvider {
    * Custom providers that retain per-sign data should override this method.
    */
   default void destroyText(int sign) {}
+
+  /** Returns measured inline rectangles [sign bits, left, top, width, height]. */
+  default float[] getInlineTextRegions(int sign, int[] ranges) {
+    return new float[0];
+  }
 }

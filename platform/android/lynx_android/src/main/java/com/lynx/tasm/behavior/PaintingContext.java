@@ -37,6 +37,7 @@ import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.recording.LynxFrameRecorder;
+import com.lynx.tasm.service.ILynxTextService;
 import com.lynx.tasm.service.ILynxTextService.Page;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
@@ -99,15 +100,19 @@ public final class PaintingContext implements IPaintingContext {
     mNeedCreateNodeAsyncCache = new ConcurrentHashMap<String, Boolean>();
     mNeedProcessDirectionCache = new ConcurrentHashMap<String, Boolean>();
 
-    if (mUIOwner.getContext().isLayoutInElementModeOn()) {
+    long rangeRects = 0;
+    LynxContext context = mUIOwner.getContext();
+    if (context.isLayoutInElementModeOn()) {
       mTextLayout = new TextLayout(uiOwner);
-      if (mUIOwner.getContext().isTextServiceModeOn()
-          && mUIOwner.getContext().getTextService() != null) {
-        mTextra = mUIOwner.getContext().getTextService().createTextLayoutAPI(mUIOwner.getContext());
+      ILynxTextService textService =
+          context.isTextServiceModeOn() ? context.getTextService() : null;
+      if (textService != null) {
+        mTextra = textService.createTextLayoutAPI(context);
+        rangeRects = textService.getTextLayoutRangeRects();
       }
     }
     mNativePaintingContextPtr = nativeCreatePaintingContext(
-        this, mTextLayout, mTextra, threadStrategy, mUIOwner.isContextFree());
+        this, mTextLayout, mTextra, rangeRects, threadStrategy, mUIOwner.isContextFree());
   }
 
   private int getInstanceId() {
@@ -1122,5 +1127,5 @@ public final class PaintingContext implements IPaintingContext {
   private native void nativeInvokeCallback(long context, int callback, WritableArray array);
 
   private native long nativeCreatePaintingContext(Object paintingContext, Object textLayout,
-      long textra, int threadStrategy, boolean isContextFree);
+      long textra, long rangeRects, int threadStrategy, boolean isContextFree);
 }

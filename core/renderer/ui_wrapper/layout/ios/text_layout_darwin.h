@@ -46,7 +46,8 @@ class TextLayoutDarwin : public TextLayoutImpl {
 
  private:
   std::optional<LayoutResult> MeasureInternal(Element* element, float width, int width_mode,
-                                              float height, int height_mode);
+                                              float height, int height_mode,
+                                              PlatformTextEventTargetRegions* inline_regions);
 
   static void ApplyTextStyle(TextElement* text_element, LynxTextStyle* textStyle);
   static void ApplyTextStyle(Element* element, const CSSIDBitset& property_bits,

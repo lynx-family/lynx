@@ -75,7 +75,7 @@ LynxURL *CreateImageURL(const base::String &url, CGSize image_size,
 
 NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner,
                                                  LynxComponentScopeRegistry *component_registry,
-                                                 void *textra)
+                                                 void *textra, void *range_rects)
     : context_(std::make_unique<PlatformRendererContextDarwin>([owner tryGetContainerView], owner,
                                                                component_registry)) {
   platform_ref_ = std::make_shared<NativePaintingCtxPlatformDarwinRef>(
@@ -83,7 +83,9 @@ NativePaintingCtxDarwin::NativePaintingCtxDarwin(LynxUIOwner *owner,
 
   context_->GetRendererContext().uiContext = owner.uiContext;
   if (textra != 0) {
-    text_layout_impl_ = std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(textra));
+    text_layout_impl_ = std::make_unique<TextLayoutTextra>(
+        reinterpret_cast<intptr_t>(textra),
+        reinterpret_cast<text::TextLayoutRangeRects>(range_rects));
   } else {
     context_->GetRendererContext().textRenderManager = owner.textRenderManager;
     text_layout_impl_ =

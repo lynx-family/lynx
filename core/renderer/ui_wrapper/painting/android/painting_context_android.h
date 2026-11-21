@@ -75,7 +75,7 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
 class PaintingContextAndroid : public PaintingCtxPlatformImpl {
  public:
   PaintingContextAndroid(JNIEnv* env, jobject impl, jobject text_layout,
-                         jlong textra, jint thread_strategy,
+                         jlong textra, jlong range_rects, jint thread_strategy,
                          bool enable_context_free);
   ~PaintingContextAndroid() override = default;
   virtual void SetUIOperationQueue(
