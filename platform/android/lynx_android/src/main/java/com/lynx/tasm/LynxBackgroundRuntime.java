@@ -399,6 +399,10 @@ public class LynxBackgroundRuntime {
     }
   }
 
+  void bindResourceLoaderToView(long viewId) {
+    mResourceLoader.setViewId(viewId);
+  }
+
   public LynxModuleFactory getModuleFactory() {
     return mModuleFactory;
   }
