@@ -385,6 +385,18 @@ export interface Config {
   enableTransformedTouchPosition?: boolean;
 
   /**
+   * Allows page fetchBundle calls to invoke the resource fetcher without an extra I/O thread dispatch. A cached bundle may complete inline. Cache misses can still complete asynchronously.
+   *
+   * @Android
+   * @iOS
+   *
+   * Since: LynxSDK 4.3
+   *
+   * @defaultValue false
+   */
+  fetchBundleInCurrentThread?: boolean;
+
+  /**
    * Controls whether font scale applies only to `sp` units. When enabled, non-sp font-relevant lengths use a font scale of 1 while `sp` values keep font-scale behavior; when disabled, font scale can affect broader text sizing.
    *
    * @Android

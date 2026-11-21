@@ -1031,6 +1031,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableSkipEmptyPatch(
           doc[config::kEnableSkipEmptyPatch].GetBool());
     }
+
+    if (doc.HasMember(config::kFetchBundleInCurrentThread) &&
+        doc[config::kFetchBundleInCurrentThread].IsBool()) {
+      page_config->SetFetchBundleInCurrentThread(
+          doc[config::kFetchBundleInCurrentThread].GetBool());
+    }
   };
 };
 }  // namespace tasm
