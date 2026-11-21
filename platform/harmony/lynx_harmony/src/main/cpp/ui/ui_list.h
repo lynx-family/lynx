@@ -73,8 +73,8 @@ class UIList : public BaseScrollContainer,
                                   float delta_y, bool is_init_scroll_offset,
                                   bool from_layout);
   void UpdateScrollInfo(bool smooth, float estimated_offset, bool scrolling);
-  void ApplyListScrollState(float scroll_x, float scroll_y, float content_width,
-                            float content_height, bool cmp_managed);
+  void ApplyEngineScrollState(float scroll_x, float scroll_y,
+                              float content_width, float content_height);
   std::pair<float, float> GetScrollOffset() const override;
   void InsertListItemNode(UIComponent* childSign);
   void RemoveListItemNode(UIComponent* childSign);
@@ -138,7 +138,7 @@ class UIList : public BaseScrollContainer,
   void SendScrollEndEvent();
   float GetScrollRange();
   void UpdateStickyView();
-  void ScheduleComposeScrollProjection();
+  void ScheduleEngineScrollProjection();
   float GetListItemSnapScrollOffset(UIComponent* list_item) const;
 
  private:
@@ -173,7 +173,7 @@ class UIList : public BaseScrollContainer,
   int32_t max_snap_count_{1};
   std::pair<float, float> async_delta_offset_{0.f, 0.f};
   std::pair<float, float> last_scroll_offset_{0.0, 0.0};
-  std::pair<float, float> compose_scroll_offset_{0.f, 0.f};
+  std::pair<float, float> engine_scroll_offset_{0.f, 0.f};
   bool engine_scroll_managed_{false};
 
   std::shared_ptr<AutoScroller> auto_scroller_;

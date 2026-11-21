@@ -296,14 +296,6 @@ bool CustomPropertiesChanged(const starlight::ComputedCSSStyle *old_style,
                              new_style.GetCustomProperties());
 }
 
-void CollectDirtyNodeForList(int32_t impl_id, PipelineOptions *options) {
-  if (impl_id != options->list_id_) {
-    // Note: We should avoid adding the parent list node to
-    // options->updated_list_elements_ when rendering a list item.
-    options->updated_list_elements_.emplace_back(impl_id);
-  }
-}
-
 }  // namespace
 
 Element::NewPipelineDynamicStyleInputs
@@ -5996,13 +5988,7 @@ void Element::UpdateLayoutInfoRecursively(PipelineOptions *options) {
     child->UpdateLayoutInfoRecursively(options);
   }
 
-  // A dirty child can change the list's content layout, so collect dirty list
-  // nodes regardless of whether their own layout info needs to be updated. This
-  // is intentionally post-order so nested lists are collected before their
-  // parent list.
-  if (is_list()) {
-    CollectDirtyNodeForList(impl_id(), options);
-  }
+  OnSubtreeLayoutUpdated(options);
 }
 
 /**

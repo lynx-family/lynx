@@ -23,6 +23,7 @@
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIListContainer+Internal.h>
 #import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIScroller.h>
 #import "LynxTimingConstants.h"
 
 @interface LynxRendererContext (ImageUIMethod)
@@ -220,6 +221,16 @@ void NativePaintingCtxPlatformDarwinRef::UpdateContentOffsetForListContainer(
                                         deltaY:delta_y];
 }
 
+void NativePaintingCtxPlatformDarwinRef::ApplyScrollViewState(int32_t sign, float scroll_x,
+                                                              float scroll_y, float content_width,
+                                                              float content_height) {
+  LynxUI* ui = [GetUIOwner() findUIBySign:sign];
+  if ([ui isKindOfClass:[LynxUIScroller class]]) {
+    [(LynxUIScroller*)ui applyEngineScrollOffset:CGPointMake(scroll_x, scroll_y)
+                                     contentSize:CGSizeMake(content_width, content_height)];
+  }
+}
+
 void NativePaintingCtxPlatformDarwinRef::GetPlatformRendererScrollOffset(int32_t sign,
                                                                          float offset[2]) {
   if (offset == nullptr) {
@@ -267,21 +278,21 @@ void NativePaintingCtxPlatformDarwinRef::NotifyInputRootsStateChanged(UIWindow* 
     if (window != nil && view.window != window) {
       continue;
     }
-    NotifyInputRootStateChanged(root_id, view.window != nil,
-                                view.window.isKeyWindow && view.isFirstResponder);
+    NotifyInputRootStateChanged(
+        root_id, view.window != nil,
+        view.window.isKeyWindow && (view.isFirstResponder || HasFocusedInputEditor(root_id)));
   }
 }
 
 void NativePaintingCtxPlatformDarwinRef::ApplyListScrollState(int32_t sign, float scroll_x,
                                                               float scroll_y, float content_width,
-                                                              float content_height, bool managed) {
+                                                              float content_height) {
   LynxUI* ui = [GetUIOwner() findUIBySign:sign];
-  if (LynxIsListContainerUI(ui) &&
-      [ui respondsToSelector:@selector(applyComposeScrollState:contentSize:managed:)]) {
+  SEL selector = @selector(applyEngineScrollState:contentSize:);
+  if (LynxIsListContainerUI(ui) && [ui respondsToSelector:selector]) {
     [(id<LynxListContainerInternal>)ui
-        applyComposeScrollState:CGPointMake(scroll_x, scroll_y)
-                    contentSize:CGSizeMake(content_width, content_height)
-                        managed:managed];
+        applyEngineScrollState:CGPointMake(scroll_x, scroll_y)
+                   contentSize:CGSizeMake(content_width, content_height)];
   }
 }
 

@@ -87,6 +87,11 @@ const TAG = 'LynxView';
 const DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION = 300;
 const KEYBOARD_ANIMATION_CURVE_PARAM_SIZE = 4;
 
+interface KeyboardProjection {
+  imeHeight: number;
+  imeTop?: number;
+}
+
 export interface LynxViewBuilder {
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
@@ -225,6 +230,7 @@ export struct LynxView {
   private windowEventCallback?: (type: window.WindowEventType) => void;
   private enableLogBox: boolean = false;
   private keyboardHeightChangeCallback?: (height: number) => void;
+  private pageTop: number = 0;
   private keyboardWillShowCallback?: (keyboardInfo: window.KeyboardInfo) => void;
   private keyboardWillHideCallback?: (keyboardInfo: window.KeyboardInfo) => void;
   private pendingKeyboardAnimationOption?: AnimateParam;
@@ -557,7 +563,12 @@ export struct LynxView {
       win.on('windowEvent', this.windowEventCallback);
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
-        this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
+        const args: Object[] = [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight];
+        if (this.context.isRawInputEnabled() && this.measuredSize.height > 0) {
+          const projection = this.getKeyboardProjection(height);
+          args.push(projection);
+        }
+        this.sendGlobalEvent('keyboardstatuschanged', args);
         this.activeKeyboardAnimationOption =
           this.pendingKeyboardAnimationOption ?? this.getDefaultKeyboardAnimationOption();
         this.pendingKeyboardAnimationOption = undefined;
@@ -833,6 +844,18 @@ export struct LynxView {
     this.templateRenderer.sendGlobalEvent(name, params);
   }
 
+  private getKeyboardProjection(keyboardHeightPx: number): KeyboardProjection {
+    if (!this.currentWindow || keyboardHeightPx <= 0) {
+      return { imeHeight: 0 };
+    }
+    const windowHeight = px2vp(this.currentWindow.getWindowProperties().windowRect.height);
+    const imeTop = windowHeight - px2vp(keyboardHeightPx) - this.pageTop;
+    return {
+      imeHeight: Math.max(0, Math.min(this.measuredSize.height, this.measuredSize.height - imeTop)),
+      imeTop
+    };
+  }
+
   private reportLynxError(error: LynxError) {
     this.clients.forEach(client => client.onReceivedError(error));
     this.logBox?.reportError(error);
@@ -1084,13 +1107,15 @@ export struct LynxView {
     .onAreaChange((oldValue: Area, newValue: Area) => {
       const width = newValue.width as number;
       const height = newValue.height as number;
-      if (this.measuredSize.width === width && this.measuredSize.height === height) {
+      this.pageTop = newValue.globalPosition.y as number;
+      const sizeChanged = this.measuredSize.width !== width || this.measuredSize.height !== height;
+      this.measuredSize.width = width;
+      this.measuredSize.height = height;
+      if (!sizeChanged) {
         // onAreaChange can be triggered by both size and position changes.
         // If the measured size hasn't changed, skip the update to avoid unnecessary layout calculations.
         return;
       }
-      this.measuredSize.width = width;
-      this.measuredSize.height = height;
       this.uiRenderer?.requestLayout();
     })
   }

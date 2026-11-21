@@ -16,6 +16,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/napi_convert_helper.h"
+#include "core/public/layout_node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/inline_placeholder_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
@@ -95,7 +96,10 @@ int ShadowNodeOwner::CreateShadowNode(int sign, const std::string& tag,
   int ret = COMMON;
 
   ShadowNode* node = nullptr;
-  auto* node_info = context_->GetNodeInfo(tag);
+  // Use layout's page config so first measure does not wait for UI setup.
+  const bool sync_xelement_registry =
+      layout_node_manager_ && layout_node_manager_->GetSyncXElementRegistry();
+  auto* node_info = context_->GetNodeInfo(tag, sync_xelement_registry);
   if (node_info && node_info->layout_node_creator &&
       (node_info->node_type & LayoutNodeType::CUSTOM)) {
     node = node_info->layout_node_creator(sign, tag);

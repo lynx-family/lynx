@@ -359,6 +359,7 @@ class UIOwner {
   std::string id_;
 
   bool destroyed_ = false;
+  bool sync_xelement_registry_ = false;
   bool enable_intersection_observer_initial_ratio_compatibility_{false};
   bool enable_fiber_target_only_destroy_ = false;
   float last_intrinsic_content_width_{0.f};

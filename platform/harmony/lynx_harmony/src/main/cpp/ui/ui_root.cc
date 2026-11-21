@@ -156,9 +156,10 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
     context_->OnRootDetachedFromViewTree();
   } else if (event_type == NODE_ON_FOCUS || event_type == NODE_ON_BLUR) {
     if (dispatcher) {
-      const bool focused =
-          event_type == NODE_ON_FOCUS && dispatcher->InputWindowFocused();
       if (auto input_context = context_->GetNativePaintingContext()) {
+        const bool focused = dispatcher->InputWindowFocused() &&
+                             (event_type == NODE_ON_FOCUS ||
+                              input_context->HasFocusedInputEditor(Sign()));
         input_context->NotifyInputRootStateChanged(Sign(), is_root_attached_,
                                                    focused);
       }

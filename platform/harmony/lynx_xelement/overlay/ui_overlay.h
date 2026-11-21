@@ -71,6 +71,7 @@ class UIOverlay : public UIBase {
   void ShowDialog(bool is_show);
   void ApplyLevelUniqueId(ArkUI_NativeDialogAPI_2* dialog_api);
   void ApplyLevelMode();
+  void SyncPlatformRootOffset();
   void RestoreRootTarget();
 };
 }  // namespace harmony

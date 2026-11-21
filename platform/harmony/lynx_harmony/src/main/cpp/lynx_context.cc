@@ -849,9 +849,18 @@ void LynxContext::PostSyncTaskOnUIThread(base::closure task) const {
 }
 
 const LynxContext::NodeInfo* LynxContext::GetNodeInfo(
-    const std::string& node_name) {
+    const std::string& node_name, bool sync_xelement_registry) {
   auto& static_map = GetCAPINodeInfoMap();
   if (auto iter = static_map.find(node_name); iter != static_map.end()) {
+    // Internal input tags have empty CAPI entries for the ArkTS editors.
+    if (sync_xelement_registry && !iter->second.ui_creator &&
+        !iter->second.layout_node_creator &&
+        (node_name == "input" || node_name == "textarea")) {
+      if (const auto* node_info = GetNodeInfo(
+              node_name == "input" ? "x-input-ng" : "x-textarea-ng")) {
+        return node_info;
+      }
+    }
     return &iter->second;
   }
 

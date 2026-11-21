@@ -70,7 +70,7 @@ class ListContainerImpl : public ContainerDelegate {
 
   std::unique_ptr<pub::Value> ScrollBySync(float delta) override;
   void ScrollStopped() override;
-  void SetComposeScrollManaged(bool managed) override;
+  void EnableEngineManagedScroll() override;
   ListScrollResult ScrollByDelta(float delta) override;
   ListScrollState ScrollToItem(int index, float offset) override;
   ListScrollState GetScrollState() const override;
@@ -161,7 +161,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool has_completed_first_layout() const {
     return has_completed_first_layout_;
   }
-  bool compose_scroll_managed() const { return compose_scroll_managed_; }
+  bool engine_scroll_managed() const { return engine_scroll_managed_; }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -217,7 +217,7 @@ class ListContainerImpl : public ContainerDelegate {
   bool enable_parallel_element_{false};
   bool enable_batch_render_{false};
   bool has_completed_first_layout_{false};
-  bool compose_scroll_managed_{false};
+  bool engine_scroll_managed_{false};
   ListStickyItem compose_sticky_item_;
   fml::WeakPtr<ItemHolder> compose_sticky_holder_;
   ListScrollState published_compose_scroll_state_;

@@ -124,8 +124,8 @@ void ListMediator::ScrollStopped() {
   }
 }
 
-void ListMediator::SetComposeScrollManaged(bool managed) {
-  list_container_delegate_->SetComposeScrollManaged(managed);
+void ListMediator::EnableEngineManagedScroll() {
+  list_container_delegate_->EnableEngineManagedScroll();
 }
 
 lynx::list::ListScrollResult ListMediator::ScrollByDelta(float delta) {
@@ -336,13 +336,12 @@ void ListMediator::UpdateContentOffsetAndSizeToPlatform(
 
 void ListMediator::ApplyListScrollState(float scroll_x, float scroll_y,
                                         float content_width,
-                                        float content_height,
-                                        bool cmp_managed) {
+                                        float content_height) {
   list_element_->UpdateScrollOffset(scroll_x, scroll_y);
   if (auto* manager = list_element_->element_manager()) {
     manager->painting_context()->ApplyListScrollState(
         list_element_->impl_id(), scroll_x, scroll_y, content_width,
-        content_height, cmp_managed);
+        content_height);
   }
 }
 

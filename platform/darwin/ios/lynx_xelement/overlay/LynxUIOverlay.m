@@ -231,9 +231,13 @@ LYNX_LAZY_REGISTER_UI("overlay")
 - (void)onNodeReady {
   [super onNodeReady];
 
-  if (!self.context.rootUI) {
+  BOOL isFragmentLayerRender = self.context.lynxContext.isFragmentLayerRenderOn;
+  // FLR uses the LynxView as its page host without a LynxRootUI.
+  if (!self.context.rootUI && !(isFragmentLayerRender && self.context.rootView)) {
     return;
   }
+  // A new FLR overlay is not yet visible even though its view defaults to unhidden.
+  BOOL wasVisible = !self.view.hidden && (!isFragmentLayerRender || self.view.superview != nil);
   CGRect modeRect = self.followModeEdge
                         ? [LynxUIOverlayShadowNode getBoundsWithMode:self.mode
                                                       viewController:self.customViewController]
@@ -268,7 +272,7 @@ LYNX_LAZY_REGISTER_UI("overlay")
     [self.view.superview bringSubviewToFront:self.view];
   }
 
-  if (self.view.hidden != !self.visible) {
+  if (wasVisible != self.visible) {
     LynxCustomEvent *event =
         [[LynxDetailEvent alloc] initWithName:self.visible ? @"showoverlay" : @"dismissoverlay"
                                    targetSign:[self sign]

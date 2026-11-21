@@ -17,6 +17,7 @@ static constexpr int32_t INPUT_DEFAULT_COLOR = 0x4c3c433c;
 namespace lynx {
 namespace tasm {
 namespace harmony {
+class ParagraphHarmony;
 class UIBaseInput : public UIView {
  public:
   static ArkUI_EnterKeyType ParseEnterKeyType(const lepus::Value& value);
@@ -100,6 +101,7 @@ class UIBaseInput : public UIView {
                     const float* margins, const float* sticky, float max_height,
                     uint32_t node_index) override;
   void OnMeasure(ArkUI_LayoutConstraint* layout_constraint) override;
+  void OnLayout() override;
   void InvokeMethod(const std::string& method, const lepus::Value& args,
                     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) override;
   void Focus(const lepus::Value& args,
@@ -112,6 +114,8 @@ class UIBaseInput : public UIView {
                 base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void SetSelectionRange(const lepus::Value& args,
                          base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void ApplyTextEditCommand(const lepus::Value& args,
+                            base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void OnKeyboardWillShow(float height) override;
   void OnKeyboardWillHide() override;
 
@@ -122,6 +126,25 @@ class UIBaseInput : public UIView {
                             int line_spacing, std::string font_family, std::string value);
   void SetTextValue(const std::string& value);
   void ScheduleClearDefaultValueEventSuppression();
+  void InvalidateTextEditGeometry(bool text_layout_changed = true);
+  void ScheduleTextEditState();
+  void EnsureTextEditParagraph();
+  void ApplyTextEditOffset(float offset);
+  void SendTextEditState();
+  bool text_edit_enabled_{false};
+  bool text_edit_vertical_{false};
+  bool text_edit_state_pending_{false};
+  bool text_edit_layout_dirty_{true};
+  bool ensure_caret_visible_{false};
+  int32_t text_edit_command_id_{0};
+  int32_t text_edit_cursor_revision_{0};
+  int32_t selection_anchor_start_{-1};
+  int32_t selection_anchor_end_{-1};
+  float text_edit_offset_{0};
+  float text_edit_maximum_{0};
+  float text_content_width_{0};
+  float text_content_height_{0};
+  fml::RefPtr<ParagraphHarmony> text_edit_paragraph_;
   static std::unordered_map<std::string, UIMethod> input_base_ui_method_map_;
 };
 }  // namespace harmony

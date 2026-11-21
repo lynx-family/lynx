@@ -1689,6 +1689,7 @@ public class LynxEventHandler : NSObject {
   public CGPoint LynxEventHandler()::viewPointFromTouch:target:(UITouch *touch, [target] nullable id< LynxEventTarget > target);
   public void LynxEventHandler()::setEnableViewReceiveTouch:(BOOL enable);
   public void LynxEventHandler()::setRawInputEnabled:(BOOL enabled);
+  public BOOL LynxEventHandler()::isRawInputEnabled();
   public void LynxEventHandler()::setEnableSimultaneousTap:(BOOL enable);
   public void LynxEventHandler()::setDisableLongpressAfterScroll:(bool value);
   public void LynxEventHandler()::setTapSlop:(NSString *tapSlop);
@@ -2716,7 +2717,7 @@ public protocol LynxListContainerInternal-p : <NSObject> {
   public BOOL LynxListContainerInternal-p::initialPropsFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
   public void LynxListContainerInternal-p::setInitialPropsHasFlushed:cacheKey:(NSString *initialPropKey,[cacheKey] NSString *cacheKey);
   public BOOL LynxListContainerInternal-p::isCUIList();
-  public void LynxListContainerInternal-p::applyComposeScrollState:contentSize:managed:(CGPoint offset,[contentSize] CGSize contentSize,[managed] BOOL managed);
+  public void LynxListContainerInternal-p::applyEngineScrollState:contentSize:(CGPoint offset,[contentSize] CGSize contentSize);
 }
 
 public protocol LynxListContainerScrollView-p : <LynxListScrollHelperView> {
@@ -5372,6 +5373,7 @@ public class LynxUIScroller : AbsLynxUIScroller, <LynxScrollView> {
   public void LynxUIScroller::removeStickyChildSign:(NSInteger sign);
   public void LynxUIScroller::refreshStickyChildren();
   public void LynxUIScroller::updateContentSize();
+  public void LynxUIScroller::applyEngineScrollOffset:contentSize:(CGPoint offset,[contentSize] CGSize contentSize);
 }
 
 public protocol LynxUIScrollerDelegate-p : <NSObject> {
