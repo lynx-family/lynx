@@ -30,14 +30,14 @@ void ElementLayoutNodeManager::SetMeasureFunc(
 void ElementLayoutNodeManager::MarkDirtyAndRequestLayout(int32_t id) {
   auto* element = GetElement(id);
   if (element) {
-    element->MarkLayoutDirty();
+    element->MarkLayoutDirtyAndRequestLayout(false);
   }
 }
 
 void ElementLayoutNodeManager::MarkDirtyAndForceLayout(int32_t id) {
   auto* element = GetElement(id);
   if (element) {
-    element->MarkLayoutDirty();
+    element->MarkLayoutDirtyAndRequestLayout(true);
   }
 }
 

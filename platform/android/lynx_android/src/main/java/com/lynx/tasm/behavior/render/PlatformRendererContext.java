@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import android.graphics.Matrix;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.os.Build;
 import android.text.Layout;
 import android.text.Spanned;
@@ -895,14 +896,21 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       LLog.d(TAG, "host renderer not found for sign: " + sign);
       return;
     }
-    host.getRenderer().setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
+    Renderer renderer = host.getRenderer();
+    int layoutLeft = left + dx;
+    int layoutTop = top + dy;
+    int layoutRight = layoutLeft + width;
+    int layoutBottom = layoutTop + height;
+    Rect currentFrame = renderer.getLynxFrame();
+    boolean frameChanged = !renderer.hasLynxFrame() || currentFrame == null
+        || currentFrame.left != layoutLeft || currentFrame.top != layoutTop
+        || currentFrame.right != layoutRight || currentFrame.bottom != layoutBottom;
+    renderer.setLynxFrame(needClip, left, top, left + width, top + height, dx, dy);
 
     LynxUIOwner owner = mContext.getLynxUIOwner();
     if (owner != null) {
       LynxBaseUI ui = owner.getNode(sign);
       if (ui != null) {
-        int layoutLeft = left + dx;
-        int layoutTop = top + dy;
         if (sign == owner.getRootSign() && ui == mContext.getUIBody()) {
           // The page root's content is laid out by the Renderer directly on the UIBodyView,
           // so it must not go through the legacy UIOwner layout path. Only sync the minimal
@@ -920,8 +928,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
       }
     }
 
-    host.requestLayoutForRenderer();
-    host.getRenderer().invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
+    if (frameChanged) {
+      host.requestLayoutForRenderer();
+    }
+    renderer.invalidate(Renderer.INVALIDATE_PARENT | Renderer.INVALIDATE_DISPLAY_LIST);
   }
 
   @CalledByNative
