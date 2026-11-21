@@ -251,7 +251,8 @@ void LazyBundleLoader::FetchBundle(
     return;
   }
   auto request = pub::LynxResourceRequest{
-      bundle_request.url, pub::LynxResourceType::kLazyBundle, false};
+      bundle_request.url, pub::LynxResourceType::kLazyBundle,
+      bundle_request.request_in_current_thread};
   resource_loader_->LoadResource(
       request, [bundle_request = std::move(bundle_request),
                 weak_self = weak_from_this()](
