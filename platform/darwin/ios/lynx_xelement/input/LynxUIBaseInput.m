@@ -20,6 +20,7 @@
 #import <XElement/LynxDialerKeyListener.h>
 #import <Lynx/LynxUnitUtils.h>
 #import <Lynx/LynxEventHandler.h>
+#import <Lynx/LynxEventHandler+Internal.h>
 
 #define UNDEFINED_INT NSUIntegerMax
 #define UNDEFINED_FLOAT CGFLOAT_MIN
@@ -39,6 +40,12 @@
 @property (nonatomic, assign) BOOL enableHoldKeyboard;
 @property (nonatomic, assign) BOOL shouldSuppressInputEvent;
 @property (nonatomic, assign) BOOL defaultValueConsumed;
+@property(nonatomic, assign) NSInteger textEditCommandId;
+@property(nonatomic, assign) NSInteger textEditCursorRevision;
+@property(nonatomic, assign) NSInteger selectionAnchorStart;
+@property(nonatomic, assign) NSInteger selectionAnchorEnd;
+@property(nonatomic, assign) BOOL textEditStatePending;
+@property(nonatomic, assign) CGSize textEditLayoutSize;
 
 @end
 
@@ -79,6 +86,7 @@ static const NSTimeInterval kLynxInputKeyboardDefaultAnimationDuration = 0.3;
     _placeholderAttrs[NSForegroundColorAttributeName] = [UIColor colorWithRed:0.235 green:0.263 blue:0.235 alpha:0.3];
 
     _preValue = @"";
+    _selectionAnchorStart = -1;
     _keyListener = [[LynxTextKeyListener alloc] init];
   }
   return self;
@@ -86,6 +94,8 @@ static const NSTimeInterval kLynxInputKeyboardDefaultAnimationDuration = 0.3;
 
 - (void)setContext:(LynxUIContext *)context {
   [super setContext:context];
+  _textEditEnabled = [context.eventHandler isRawInputEnabled];
+  [self invalidateTextEditGeometry];
   [context.lynxContext addKeyboardEventObserver:self];
 }
 
@@ -364,7 +374,7 @@ LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) {
 }
 
 LYNX_PROP_SETTER("default-value", setDefaultValue, NSString *) {
-  if (self.defaultValueConsumed) {
+  if (self.defaultValueConsumed && !self.textEditEnabled) {
     return;
   }
   NSString *text = (requestReset || value == nil) ? @"" : value;
@@ -406,6 +416,7 @@ LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
 
 - (void)propsDidUpdate {
   [super propsDidUpdate];
+  [self invalidateTextEditGeometry];
   _font = [[LynxFontFaceManager sharedManager]
                   generateFontWithSize:self.fontSize
                   weight:self.fontWeight
@@ -455,12 +466,186 @@ LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
                                                            inputView:self.view
                                                        avoidKeyboard:self.avoidKeyboardInLynxView
                                                              spacing:self.avoidKeyboardSpacingInLynxView];
+  if (!CGSizeEqualToSize(self.textEditLayoutSize, self.view.bounds.size)) {
+    self.textEditLayoutSize = self.view.bounds.size;
+    [self invalidateTextEditGeometry];
+  }
 }
 
 - (BOOL)shouldHitTest:(CGPoint)point withEvent:(nullable UIEvent*)event {
   return self.view.userInteractionEnabled && [super shouldHitTest:point withEvent:event];
 }
 
+- (CGFloat)textEditScrollOffset {
+  return 0;
+}
+
+- (CGFloat)textEditMaximumScrollOffset {
+  return 0;
+}
+
+- (void)applyTextEditScrollOffset:(CGFloat)offset {
+}
+
+- (void)ensureTextEditSelectionVisible {
+}
+
+- (void)ensureTextEditPositionVisible:(UITextPosition *)position {
+}
+
+- (void)setTextEditMenuVisible:(BOOL)visible rect:(CGRect)rect {
+  UIMenuController *menu = [UIMenuController sharedMenuController];
+  if (@available(iOS 13.0, *)) {
+    if (visible) {
+      [menu showMenuFromView:self.view rect:rect];
+    } else {
+      [menu hideMenuFromView:self.view];
+    }
+  } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    [menu setTargetRect:rect inView:self.view];
+    [menu setMenuVisible:visible animated:visible];
+#pragma clang diagnostic pop
+  }
+}
+
+- (void)invalidateTextEditGeometry {
+  if (!self.textEditEnabled) {
+    return;
+  }
+  self.textEditCursorRevision++;
+  [self scheduleTextEditState];
+}
+
+- (void)scheduleTextEditState {
+  if (!self.textEditEnabled || self.textEditStatePending) {
+    return;
+  }
+  self.textEditStatePending = YES;
+  __weak typeof(self) weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    __strong typeof(weakSelf) self = weakSelf;
+    if (!self) {
+      return;
+    }
+    self.textEditStatePending = NO;
+    if (!self.textEditEnabled || self.view.bounds.size.width <= 0 ||
+        self.view.bounds.size.height <= 0) {
+      return;
+    }
+    CGFloat scale = self.context.screenMetrics.scale ?: 1;
+    CGFloat maximum = [self textEditMaximumScrollOffset];
+    CGFloat offset = MIN(maximum, MAX(0, [self textEditScrollOffset]));
+    NSMutableDictionary *detail = [@{
+      @"commandId" : @(self.textEditCommandId),
+      @"offsetPx" : @(offset * scale),
+      @"maximumPx" : @(maximum * scale),
+      @"focused" : @(self.view.isFirstResponder),
+      @"cursorRevision" : @(self.textEditCursorRevision)
+    } mutableCopy];
+    UITextRange *range = self.view.selectedTextRange;
+    if (self.view.isFirstResponder && range.empty) {
+      CGRect rect = [self.view caretRectForPosition:range.end];
+      rect = CGRectOffset(rect, -self.view.bounds.origin.x, -self.view.bounds.origin.y);
+      if (!CGRectIsNull(rect) && !CGRectIsInfinite(rect)) {
+        detail[@"cursorLeftPx"] = @(CGRectGetMinX(rect) * scale);
+        detail[@"cursorTopPx"] = @(CGRectGetMinY(rect) * scale);
+        detail[@"cursorRightPx"] = @(CGRectGetMaxX(rect) * scale);
+        detail[@"cursorBottomPx"] = @(CGRectGetMaxY(rect) * scale);
+      }
+    }
+    // cspell:ignore texteditstate
+    [self emitEvent:@"texteditstate" detail:detail];
+  });
+}
+
+LYNX_UI_METHOD(textEditCommand) {
+  if (!self.textEditEnabled || self.readonly) {
+    callback(kUIMethodOperationError, @"Compose text input is not enabled.");
+    return;
+  }
+  NSInteger commandId = [params[@"commandId"] integerValue];
+  if (commandId <= self.textEditCommandId) {
+    callback(kUIMethodSuccess, nil);
+    return;
+  }
+  NSString *type = params[@"type"];
+  if (![@[@"scroll", @"tap", @"select", @"extendSelection", @"endSelection"]
+          containsObject:type]) {
+    callback(kUIMethodParamInvalid, @"Unknown text input command.");
+    return;
+  }
+  CGFloat scale = self.context.screenMetrics.scale ?: 1;
+  CGFloat x = [params[@"xPx"] doubleValue] / scale;
+  CGFloat y = [params[@"yPx"] doubleValue] / scale;
+  CGFloat offset = [params[@"offsetPx"] doubleValue] / scale;
+  if (!isfinite(x) || !isfinite(y) || !isfinite(offset)) {
+    callback(kUIMethodParamInvalid, @"Text input coordinates must be finite.");
+    return;
+  }
+  self.textEditCommandId = commandId;
+  if ([type isEqualToString:@"scroll"]) {
+    [self applyTextEditScrollOffset:MIN([self textEditMaximumScrollOffset],
+                                              MAX(0, offset))];
+  } else if ([type isEqualToString:@"endSelection"]) {
+    self.selectionAnchorStart = -1;
+    UITextRange *range = self.view.selectedTextRange;
+    if (self.view.isFirstResponder && range && !range.empty) {
+      [self setTextEditMenuVisible:YES rect:[self.view firstRectForRange:range]];
+    }
+  } else if (self.view.isFirstResponder) {
+    CGPoint point = CGPointMake(x + self.view.bounds.origin.x, y + self.view.bounds.origin.y);
+    UITextPosition *position = [self.view closestPositionToPoint:point];
+    if (position) {
+      if ([type isEqualToString:@"tap"]) {
+        self.selectionAnchorStart = -1;
+        self.view.selectedTextRange = [self.view textRangeFromPosition:position toPosition:position];
+        [self setTextEditMenuVisible:NO rect:CGRectZero];
+      } else if ([type isEqualToString:@"select"]) {
+        UITextRange *range = [self.view.tokenizer rangeEnclosingPosition:position
+                                                       withGranularity:UITextGranularityWord
+                                                           inDirection:UITextStorageDirectionForward];
+        if (!range) {
+          range = [self.view.tokenizer rangeEnclosingPosition:position
+                                             withGranularity:UITextGranularityWord
+                                                 inDirection:UITextStorageDirectionBackward];
+        }
+        if (!range) {
+          range = [self.view.tokenizer rangeEnclosingPosition:position
+                                             withGranularity:UITextGranularityCharacter
+                                                 inDirection:UITextStorageDirectionBackward];
+        }
+        if (range) {
+          self.view.selectedTextRange = range;
+          self.selectionAnchorStart =
+              [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:range.start];
+          self.selectionAnchorEnd =
+              [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:range.end];
+          CGRect rect = [self.view firstRectForRange:range];
+          [self setTextEditMenuVisible:YES rect:rect];
+        }
+      } else if ([type isEqualToString:@"extendSelection"] && self.selectionAnchorStart >= 0) {
+        [self setTextEditMenuVisible:NO rect:CGRectZero];
+        NSInteger index = [self.view offsetFromPosition:self.view.beginningOfDocument
+                                            toPosition:position];
+        UITextPosition *start = [self.view positionFromPosition:self.view.beginningOfDocument
+                                                       offset:MIN(index, self.selectionAnchorStart)];
+        UITextPosition *end = [self.view positionFromPosition:self.view.beginningOfDocument
+                                                     offset:MAX(index, self.selectionAnchorEnd)];
+        self.view.selectedTextRange = [self.view textRangeFromPosition:start toPosition:end];
+        // UIKit normalizes the range. Scroll towards the dragged endpoint.
+        [self ensureTextEditPositionVisible:position];
+      }
+      if (![type isEqualToString:@"extendSelection"]) {
+        [self ensureTextEditSelectionVisible];
+      }
+      [self invalidateTextEditGeometry];
+    }
+  }
+  [self scheduleTextEditState];
+  callback(kUIMethodSuccess, nil);
+}
 
 LYNX_UI_METHOD(getValue) {
   callback(kUIMethodSuccess, @{
@@ -535,7 +720,7 @@ LYNX_UI_METHOD(setSelectionRange) {
 
 
 - (BOOL)inputViewShouldReturn:(id<UITextInput>)input {
-  
+  BOOL rawInputEnabled = [self.context.eventHandler isRawInputEnabled];
   [self emitEvent:@"confirm" detail:@{
     @"value" : [self getText]
   }];
@@ -544,7 +729,7 @@ LYNX_UI_METHOD(setSelectionRange) {
     if (!self.confirmEnter) {
       [self.view resignFirstResponder];
     }
-  } else {
+  } else if (!rawInputEnabled) {
     NSInteger nextTag = self.view.tag + 1;
     // Try to find next responder
     UIResponder* nextResponder = [self.context.rootView viewWithTag:nextTag];
@@ -573,6 +758,7 @@ LYNX_UI_METHOD(setSelectionRange) {
 }
 
 - (void)sendInputEvent {
+  [self invalidateTextEditGeometry];
   if (self.shouldSuppressInputEvent) {
     return;
   }
@@ -713,6 +899,7 @@ LYNX_UI_METHOD(setSelectionRange) {
     return NO;
   }
   [(id)self.view setText:text];
+  [self invalidateTextEditGeometry];
   return YES;
 }
 
@@ -756,6 +943,7 @@ LYNX_UI_METHOD(setSelectionRange) {
 
 
 - (void)inputViewDidBeginEditing:(id<UITextInput>)input {
+  [self invalidateTextEditGeometry];
   [self.context.lynxContext.keyboardEventDispatcher inputDidBeginEditingForOwner:self
                                                                   rootView:self.context.rootView
                                                                  inputView:self.view
@@ -770,6 +958,7 @@ LYNX_UI_METHOD(setSelectionRange) {
 }
 
 - (void)inputViewDidEndEditing:(id<UITextInput>)input {
+  [self invalidateTextEditGeometry];
   __weak typeof(self) weakSelf = self;
   [self.context.lynxContext.keyboardEventDispatcher inputDidEndEditingForOwner:self
                                                           finalHideBlock:^{

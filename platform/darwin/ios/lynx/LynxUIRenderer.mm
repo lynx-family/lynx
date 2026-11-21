@@ -90,6 +90,10 @@ lynx::tasm::NativePaintingCtxPlatformDarwinRef *CastToNativePaintingCtxPlatformR
 - (void)setEnableCurrentTargetTouchPosition:(BOOL)enable;
 @end
 
+@interface LynxKeyboardEventDispatcher (KeyboardProjection)
+- (void)setKeyboardProjectionEnabled:(BOOL)enabled;
+@end
+
 static id<LynxServiceTextProtocol> getTextService() {
   static id<LynxServiceTextProtocol> sService = nil;
   static dispatch_once_t onceToken;
@@ -283,6 +287,7 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler.touchRecognizer
       setEnableCurrentTargetTouchPosition:pageConfig->GetEnableCurrentTargetTouchPosition()];
   [_eventHandler setRawInputEnabled:pageConfig->GetEnableRawInput()];
+  [_keyboardEventDispatcher setKeyboardProjectionEnabled:pageConfig->GetEnableRawInput()];
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
     platform_ref->SetRawInputEnabled(pageConfig->GetEnableRawInput());
   }
@@ -462,6 +467,9 @@ static id<LynxServiceTextProtocol> getTextService() {
                            attached:(BOOL)attached
                             focused:(BOOL)focused {
   if (auto *platform_ref = CastToNativePaintingCtxPlatformRef(_paintingCtxPlatformRef)) {
+    UIView *root = platform_ref->GetPlatformRendererView(static_cast<int32_t>(rootSign));
+    focused = focused || (root.window.isKeyWindow &&
+                          platform_ref->HasFocusedInputEditor(static_cast<int32_t>(rootSign)));
     platform_ref->NotifyInputRootStateChanged(static_cast<int32_t>(rootSign), attached, focused);
   }
 }

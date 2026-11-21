@@ -145,6 +145,7 @@ LYNX_PROP_SETTER("show-soft-input-on-focus", setShowSoftInputOnFocus, BOOL) {
   dispatch_async(dispatch_get_main_queue(), ^{
     [weakSelf updateUISize];
     [weakSelf triggerLayoutIfNeeded];
+    [weakSelf scheduleTextEditState];
   });
 }
 
@@ -323,6 +324,7 @@ LYNX_UI_METHOD(setValue) {
 }
 
 - (void)textViewDidChangeSelection:(UITextView *)textView {
+  [self invalidateTextEditGeometry];
   if ([self shouldSuppressInputEvent]) {
     return;
   }
@@ -330,6 +332,33 @@ LYNX_UI_METHOD(setValue) {
     @"selectionStart": @(self.view.selectedTextRange ? [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:self.view.selectedTextRange.start] : -1),
     @"selectionEnd": @(self.view.selectedTextRange  ? [self.view offsetFromPosition:self.view.beginningOfDocument toPosition:self.view.selectedTextRange.end] : -1),
   }];
+}
+
+- (CGFloat)textEditScrollOffset {
+  return self.view.contentOffset.y + self.view.contentInset.top;
+}
+
+- (CGFloat)textEditMaximumScrollOffset {
+  return MAX(0, self.view.contentSize.height - self.view.bounds.size.height +
+                    self.view.contentInset.top + self.view.contentInset.bottom);
+}
+
+- (void)applyTextEditScrollOffset:(CGFloat)offset {
+  [self.view setContentOffset:CGPointMake(self.view.contentOffset.x,
+                                        offset - self.view.contentInset.top)
+                    animated:NO];
+}
+
+- (void)ensureTextEditSelectionVisible {
+  [self.view scrollRangeToVisible:self.view.selectedRange];
+}
+
+- (void)ensureTextEditPositionVisible:(UITextPosition *)position {
+  [self.view scrollRectToVisible:[self.view caretRectForPosition:position] animated:NO];
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+  [self scheduleTextEditState];
 }
 
 - (BOOL)inputViewDidChange:(id<UITextInput>)input {

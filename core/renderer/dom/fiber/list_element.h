@@ -152,7 +152,9 @@ class ListElement : public Element, public tasm::ListNode {
   std::unique_ptr<pub::Value> ScrollBySync(double physical_delta,
                                            std::string* error);
   void ScrollStopped() override;
-  void SetComposeScrollManaged(bool managed);
+  // Enable Engine-owned scrolling for FLR lists in raw input mode. The host
+  // applies the absolute offset projected by the Engine.
+  void EnableEngineManagedScroll();
   lynx::list::ListScrollResult ScrollByDelta(float delta);
   lynx::list::ListScrollState ScrollToItem(int index, float offset);
   lynx::list::ListScrollState GetScrollState() const;
@@ -206,6 +208,7 @@ class ListElement : public Element, public tasm::ListNode {
       : Element(element, clone_resolved_props) {}
 
   void OnNodeAdded(Element* child) override;
+  void OnSubtreeLayoutUpdated(PipelineOptions* options) override;
   void FilterComponents(
       std::vector<std::unique_ptr<ListComponentInfo>>& components,
       tasm::TemplateAssembler* tasm) override {}
@@ -250,7 +253,7 @@ class ListElement : public Element, public tasm::ListNode {
   bool is_element_template_list_{false};
   fml::WeakPtr<ElementTemplateInstance> element_template_instance_;
   bool continuous_resolve_tree_{false};
-  bool compose_scroll_managed_{false};
+  bool engine_scroll_managed_{false};
   tasm::TemplateAssembler* tasm_{nullptr};
   lepus::Value component_at_index_{};
   lepus::Value enqueue_component_{};

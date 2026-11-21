@@ -17,6 +17,7 @@
 #include "core/renderer/dom/fragment/event/platform_event_target_exposure.h"
 #include "core/renderer/dom/fragment/event/platform_position_change_observer.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/ui_wrapper/common/native_prop_bundle.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/renderer/utils/value_utils.h"
@@ -127,6 +128,12 @@ void NativePaintingCtxPlatformRef::DestroyPaintingNode(int parent, int child,
                                                        int index) {
   if (destroyed_.load(std::memory_order_acquire)) {
     return;
+  }
+  if (child == input_focused_editor_sign_) {
+    ++input_focus_request_id_;
+    input_focused_editor_sign_ = 0;
+    InvokePlatformViewUIMethod(child, "blur", lepus::Value(),
+                               [](int32_t, const pub::Value &) {});
   }
   MarkEventTargetTreeDirty(parent);
   if (event_target_helper_->IsActiveEventRoot(child)) {
@@ -273,6 +280,16 @@ void NativePaintingCtxPlatformRef::NotifyInputRootStateChanged(int32_t root_id,
   if (destroyed_.load(std::memory_order_acquire) || !IsRawInputEnabled()) {
     return;
   }
+  if ((!attached || !focused) && root_id == input_focused_event_root_) {
+    ++input_focus_request_id_;
+    const int32_t editor = input_focused_editor_sign_;
+    input_focused_editor_sign_ = 0;
+    input_focused_event_root_ = 0;
+    if (editor) {
+      InvokePlatformViewUIMethod(editor, "blur", lepus::Value(),
+                                 [](int32_t, const pub::Value &) {});
+    }
+  }
   auto detail = lepus::Value(lepus::Dictionary::Create());
   detail.SetProperty(kInputPageSign, lepus::Value(kRootId));
   detail.SetProperty(kInputEventRoot, lepus::Value(root_id));
@@ -291,16 +308,85 @@ void NativePaintingCtxPlatformRef::NotifyInputRootStateChanged(int32_t root_id,
 
 void NativePaintingCtxPlatformRef::RequestInputFocus(
     int32_t anchor_sign, bool focused, const std::string &request_token) {
-  BASE_STATIC_STRING_DECL(kInputPageSign, "pageSign");
-  BASE_STATIC_STRING_DECL(kInputRequestToken, "requestToken");
-  BASE_STATIC_STRING_DECL(kInputSuccess, "success");
-  BASE_STATIC_STRING_DECL(kInputFocused, "focused");
-  BASE_STATIC_STRING_DECL(kInputEventRoot, "eventRoot");
-  BASE_STATIC_STRING_DECL(kInputCancelled, "cancelled");
   if (destroyed_.load(std::memory_order_acquire) || !IsRawInputEnabled()) {
     return;
   }
-  auto complete = [&](bool success, int32_t event_root, bool cancelled) {
+  const auto request_id = ++input_focus_request_id_;
+  const int32_t previous_root = input_focused_event_root_;
+  const int32_t previous_editor = input_focused_editor_sign_;
+  int32_t event_root = previous_root;
+  int32_t editor_sign = 0;
+  if (focused) {
+    event_root = 0;
+    if (EnsureEventTargetTreeForTarget(anchor_sign, false)) {
+      if (auto target = event_target_helper_->GetEventTarget(anchor_sign)) {
+        event_root = target->RootId();
+      }
+    }
+    if (auto it = renderers_.find(anchor_sign); it != renderers_.end()) {
+      const auto tag = it->second->GetExtendedRendererTagName();
+      if (tag.IsEquals("input") || tag.IsEquals("textarea") ||
+          tag.IsEquals("x-input") || tag.IsEquals("x-textarea") ||
+          tag.IsEquals("x-input-ng") || tag.IsEquals("x-textarea-ng")) {
+        editor_sign = anchor_sign;
+      }
+    }
+  }
+  auto complete = [weak = weak_from_this(), request_id, request_token,
+                   event_root, focused, previous_root,
+                   previous_editor](bool success, bool switched_root = false) {
+    BASE_STATIC_STRING_DECL(kInputPageSign, "pageSign");
+    BASE_STATIC_STRING_DECL(kInputRequestToken, "requestToken");
+    BASE_STATIC_STRING_DECL(kInputSuccess, "success");
+    BASE_STATIC_STRING_DECL(kInputFocused, "focused");
+    BASE_STATIC_STRING_DECL(kInputEventRoot, "eventRoot");
+    BASE_STATIC_STRING_DECL(kInputCancelled, "cancelled");
+    auto self = weak.lock();
+    if (!self || self->destroyed_.load(std::memory_order_acquire)) {
+      return;
+    }
+    if (self->input_focus_request_id_ == request_id) {
+      if (success) {
+        if (!focused) {
+          self->input_focused_editor_sign_ = 0;
+          self->input_focused_event_root_ = 0;
+        }
+      } else {
+        self->input_focused_editor_sign_ = previous_editor;
+        self->input_focused_event_root_ = previous_root;
+        if (switched_root) {
+          // Track the old root before restoring it so the temporary host's
+          // blur does not cancel the rollback.
+          const bool restored_root =
+              (previous_root == kRootId ||
+               self->event_target_helper_->IsActiveEventRoot(previous_root)) &&
+              self->RequestRootFocus(previous_root, true);
+          if (self->input_focus_request_id_ == request_id) {
+            if (!restored_root) {
+              self->input_focused_event_root_ = 0;
+              self->input_focused_editor_sign_ = 0;
+              self->RequestRootFocus(event_root, false);
+            } else if (previous_editor) {
+              self->InvokePlatformViewUIMethod(
+                  previous_editor, "focus", lepus::Value(),
+                  [weak, request_id, previous_root](int32_t code,
+                                                    const pub::Value &) {
+                    if (auto self = weak.lock();
+                        self && self->input_focus_request_id_ == request_id &&
+                        code != LynxGetUIResult::SUCCESS) {
+                      self->input_focused_editor_sign_ = 0;
+                      if (!self->RequestRootFocus(previous_root, true) &&
+                          self->input_focus_request_id_ == request_id) {
+                        self->input_focused_event_root_ = 0;
+                      }
+                    }
+                  });
+            }
+          }
+        }
+      }
+    }
+    const bool cancelled = self->input_focus_request_id_ != request_id;
     auto packet = lepus::Value(lepus::Dictionary::Create());
     packet.SetProperty(kInputPageSign, lepus::Value(kRootId));
     packet.SetProperty(kInputRequestToken, lepus::Value(request_token));
@@ -309,30 +395,50 @@ void NativePaintingCtxPlatformRef::RequestInputFocus(
     packet.SetProperty(kInputEventRoot,
                        lepus::Value(cancelled ? 0 : event_root));
     packet.SetProperty(kInputCancelled, lepus::Value(cancelled));
-    GetEventEmitter()->SendEvent(
+    self->GetEventEmitter()->SendEvent(
         kRootId, fml::MakeRefCounted<event::CustomEvent>(
                      "focusresult", std::move(packet), "detail"));
   };
-  int32_t event_root = input_focused_event_root_;
+  if (!event_root) {
+    complete(false);
+    return;
+  }
   if (focused) {
-    event_root = 0;
-    if (EnsureEventTargetTreeForTarget(anchor_sign, false)) {
-      auto target = event_target_helper_->GetEventTarget(anchor_sign);
-      if (target) {
-        event_root = target->RootId();
-      }
-    }
-    if (!event_root) {
-      complete(false, 0, true);
+    // A native editor remains inside its Compose event root while becoming
+    // the platform focus target. Root blur during this transfer is not Page
+    // blur.
+    input_focused_event_root_ = event_root;
+    input_focused_editor_sign_ = editor_sign;
+  }
+  if (editor_sign) {
+    const bool switched_root = previous_root != event_root;
+    if (switched_root && (!RequestRootFocus(event_root, true) ||
+                          input_focus_request_id_ != request_id)) {
+      complete(false);
       return;
     }
+    InvokePlatformViewUIMethod(editor_sign, "focus", lepus::Value(),
+                               [complete = std::move(complete), switched_root](
+                                   int32_t code, const pub::Value &) {
+                                 complete(code == LynxGetUIResult::SUCCESS,
+                                          switched_root);
+                               });
+  } else if (previous_editor) {
+    // Retain hardware focus on the host, rather than restoring an EditText
+    // descendant when the editor is cleared or a non-editor target is focused.
+    const bool root_focused = RequestRootFocus(event_root, true);
+    if (focused && !root_focused) {
+      complete(false);
+      return;
+    }
+    InvokePlatformViewUIMethod(
+        previous_editor, "blur", lepus::Value(),
+        [complete = std::move(complete)](int32_t code, const pub::Value &) {
+          complete(code == LynxGetUIResult::SUCCESS);
+        });
+  } else {
+    complete(RequestRootFocus(event_root, focused));
   }
-  const bool success = event_root && RequestRootFocus(event_root, focused);
-  const bool cancelled = destroyed_.load(std::memory_order_acquire);
-  if (success && !cancelled) {
-    input_focused_event_root_ = focused ? event_root : 0;
-  }
-  complete(success, event_root, cancelled);
 }
 
 void NativePaintingCtxPlatformRef::DispatchPlatformLongPress() {
@@ -764,6 +870,7 @@ void NativePaintingCtxPlatformRef::SetPlatformEventRootActive(int32_t root_id,
   }
   event_target_helper_->RemoveActiveEventRoot(root_id);
   ClearEventTargetRootDirty(root_id);
+  PublishPlatformEventRootOffset(root_id, std::nullopt);
 }
 
 void NativePaintingCtxPlatformRef::SetPlatformEventRootOffset(int32_t root_id,
@@ -772,10 +879,40 @@ void NativePaintingCtxPlatformRef::SetPlatformEventRootOffset(int32_t root_id,
   if (root_id == kRootId) {
     return;
   }
-  if (event_target_helper_->SetEventRootOffsetToPageRoot(root_id, offset_x,
-                                                         offset_y)) {
-    RequestPositionChangeCheck();
+  if (!event_target_helper_->SetEventRootOffsetToPageRoot(root_id, offset_x,
+                                                          offset_y)) {
+    return;
   }
+  RequestPositionChangeCheck();
+  PublishPlatformEventRootOffset(root_id,
+                                 std::array<float, 2>{offset_x, offset_y});
+}
+
+void NativePaintingCtxPlatformRef::PublishPlatformEventRootOffset(
+    int32_t root_id, std::optional<std::array<float, 2>> offset) {
+  if (!engine_actor_) {
+    return;
+  }
+  // Reuse the native root origin, but publish it on Engine before notifying
+  // Compose. Element geometry queries must not read the UI event-target tree.
+  engine_actor_->Act([root_id, offset](auto &engine) {
+    const auto &manager = engine->GetTasm()->page_proxy()->element_manager();
+    auto *root = manager->node_manager()->Get(root_id);
+    if (!root || !root->IsOverlay()) {
+      return;
+    }
+    if (offset) {
+      root->UpdatePlatformRootOffset((*offset)[0], (*offset)[1]);
+    } else {
+      root->ClearPlatformRootOffset();
+    }
+    if (root->IsComposeLayout()) {
+      // cspell:ignore rootgeometrychange
+      engine->SendEvent(root_id,
+                        fml::MakeRefCounted<event::CustomEvent>(
+                            "rootgeometrychange", lepus::Value(), "detail"));
+    }
+  });
 }
 
 void NativePaintingCtxPlatformRef::StopExposure(const lepus::Value &options) {
@@ -924,6 +1061,8 @@ void NativePaintingCtxPlatformRef::Destroy() {
   renderers_.clear();
   platform_event_bundles_.clear();
   input_focused_event_root_ = 0;
+  input_focused_editor_sign_ = 0;
+  ++input_focus_request_id_;
   text_event_target_ranges_.clear();
   scheduled_event_target_tree_update_.store(false);
   dirty_event_root_ids_.clear();

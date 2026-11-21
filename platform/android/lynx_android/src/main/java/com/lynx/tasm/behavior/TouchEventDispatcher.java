@@ -1388,12 +1388,12 @@ public class TouchEventDispatcher {
                  & IPaintingContext.EVENT_BEHAVIOR_BLOCK_NATIVE_EVENT)
               != 0;
     }
-    if (action == MotionEvent.ACTION_UP && consumed) {
-      paintingContext.dispatchPlatformFocus();
-    }
     if (mUIOwner.getContext().getEnableRawInput()) {
       requestNativeDisallowIntercept(true);
       return true;
+    }
+    if (action == MotionEvent.ACTION_UP && consumed) {
+      paintingContext.dispatchPlatformFocus();
     }
     if (action == MotionEvent.ACTION_DOWN) {
       mPlatformConsumeSlideEventAngles = consumed

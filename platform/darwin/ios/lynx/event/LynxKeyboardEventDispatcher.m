@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #include <Lynx/LynxLog.h>
+#import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
 #import <UIKit/UIKit.h>
 #include <math.h>
@@ -270,6 +271,7 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 
 @implementation LynxKeyboardEventDispatcher {
   LynxContext *_context;
+  BOOL _keyboardProjectionEnabled;
 }
 
 - (instancetype)initWithContext:(LynxContext *)context {
@@ -288,6 +290,42 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
   _observers = [NSMutableDictionary dictionary];
   _keyboardAvoidingContext = [[LynxKeyboardAvoidingContext alloc] init];
   return self;
+}
+
+- (void)setKeyboardProjectionEnabled:(BOOL)enabled {
+  _keyboardProjectionEnabled = enabled;
+}
+
+- (void)dispatchProjectedKeyboardStatus:(CGRect)keyboardRectInWindow
+                             withParams:(NSMutableArray *)params {
+  LynxView *view = [_context getLynxView];
+  if (view.window != nil && !CGRectIsEmpty(view.bounds)) {
+    // Use the frame already corrected by keyboardWillShow on older iOS.
+    CGRect keyboard = CGRectIsEmpty(keyboardRectInWindow)
+                          ? CGRectNull
+                          : [view convertRect:keyboardRectInWindow fromView:view.window];
+    CGRect overlap = CGRectIntersection(view.bounds, keyboard);
+    CGFloat height = !CGRectIsNull(overlap) &&
+                             CGRectGetMaxY(keyboard) >= CGRectGetMaxY(view.bounds) - 0.5 &&
+                             CGRectGetWidth(overlap) >= CGRectGetWidth(view.bounds) - 0.5
+                         ? overlap.size.height
+                         : 0;
+    // Preserve the legacy status and height. The Page-relative top also lets
+    // an Overlay compute its own occlusion when Page is smaller than the window.
+    NSDictionary *projection = @{@"imeHeight" : @(height)};
+    CGRect windowBounds = [view convertRect:view.window.bounds fromView:view.window];
+    if (!CGRectIsNull(keyboard) && CGRectGetMaxY(keyboard) >= CGRectGetMaxY(windowBounds) - 0.5 &&
+        CGRectGetMinX(keyboard) <= CGRectGetMinX(view.bounds) + 0.5 &&
+        CGRectGetMaxX(keyboard) >= CGRectGetMaxX(view.bounds) - 0.5) {
+      projection = @{
+        @"imeHeight" : @(height),
+        @"imeTop" : @(CGRectGetMinY(keyboard) - CGRectGetMinY(view.bounds))
+      };
+    }
+    [params addObject:params[1]];
+    [params addObject:projection];
+  }
+  [view sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
 }
 
 - (NSTimeInterval)keyboardAnimationDurationFromNotification:(NSNotification *)notification {
@@ -359,7 +397,11 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 
   [params addObject:isShow];
   [params addObject:aHeight];
-  [_context sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
+  if (_keyboardProjectionEnabled) {
+    [self dispatchProjectedKeyboardStatus:keyboardRectInApp withParams:params];
+  } else {
+    [_context sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
+  }
   NSTimeInterval duration = [self keyboardAnimationDurationFromNotification:aNotification];
   UIViewAnimationCurve curve = [self keyboardAnimationCurveFromNotification:aNotification];
   [_observers enumerateKeysAndObjectsUsingBlock:^(
@@ -386,7 +428,11 @@ static const CGFloat kLynxKeyboardAvoidEpsilon = 0.5;
 
   [params addObject:isShow];
   [params addObject:aHeight];
-  [_context sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
+  if (_keyboardProjectionEnabled) {
+    [self dispatchProjectedKeyboardStatus:CGRectNull withParams:params];
+  } else {
+    [_context sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
+  }
   NSTimeInterval duration = [self keyboardAnimationDurationFromNotification:aNotification];
   UIViewAnimationCurve curve = [self keyboardAnimationCurveFromNotification:aNotification];
   [_observers enumerateKeysAndObjectsUsingBlock:^(

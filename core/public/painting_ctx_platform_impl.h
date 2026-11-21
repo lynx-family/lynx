@@ -89,14 +89,17 @@ class PaintingCtxPlatformRef {
                                                    float delta_x, float delta_y,
                                                    bool is_init_scroll_offset,
                                                    bool from_layout) {}
-  // A CMP-managed list projects Engine-owned scroll state to its host. All
-  // values use layout units; offsets already include any horizontal RTL
-  // mapping. Applying this state must not feed a platform scroll callback back
-  // to Engine. A false cmp_managed projects the final absolute state and
-  // returns scroll ownership to the platform.
+  // The first projection transfers scroll ownership to Engine for the host's
+  // lifetime. Values are in layout units, with horizontal RTL already mapped
+  // to physical offsets. Suppress platform scroll feedback when applying them.
   virtual void ApplyListScrollState(int32_t container_id, float scroll_x,
                                     float scroll_y, float content_width,
-                                    float content_height, bool cmp_managed) {}
+                                    float content_height) {}
+  // A Compose modifier scroll projects absolute layout-unit state. Platform
+  // callbacks must not feed this projection back into Engine scrolling.
+  virtual void ApplyScrollViewState(int32_t sign, float scroll_x,
+                                    float scroll_y, float content_width,
+                                    float content_height) {}
   virtual void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) {}
 
   virtual void MarkUIOperationQueueFlushForRecreateEngine(bool enable) {}

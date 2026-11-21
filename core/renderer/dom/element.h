@@ -1657,6 +1657,7 @@ class Element : public lepus::RefCounted,
   // Engine-thread snapshot of the FLR event root's platform origin in Page
   // layout units. Independent Overlay roots do not use their layout-box origin.
   void UpdatePlatformRootOffset(float x, float y);
+  void ClearPlatformRootOffset();
   const std::array<float, 2>* platform_root_offset() const {
     return platform_root_offset_.get();
   }
@@ -1871,6 +1872,8 @@ class Element : public lepus::RefCounted,
   virtual void OnNodeAdded(Element* child);
   virtual void OnNodeRemoved(Element* child);
   virtual void OnEventHandlersChanged(const base::String& name) {}
+  // Called after layout info for the visited subtree has been updated.
+  virtual void OnSubtreeLayoutUpdated(PipelineOptions* options) {}
 
   void UpdateNodeInfo(int32_t node_info);
   // Returns whether consuming the attribute should update the element.

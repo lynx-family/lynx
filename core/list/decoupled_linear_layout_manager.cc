@@ -603,7 +603,7 @@ void LinearLayoutManager::ScrollByInternal(float content_offset,
   // step 3.5. Handle sticky.
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
                     LINEAR_LAYOUT_MANAGER_UPDATE_STICKY_ITEMS);
-  if (list_container_->compose_scroll_managed()) {
+  if (list_container_->engine_scroll_managed()) {
     const float anchor_screen_before =
         list_orientation_helper_->GetStart(anchor_info.item_holder_) -
         content_offset_;

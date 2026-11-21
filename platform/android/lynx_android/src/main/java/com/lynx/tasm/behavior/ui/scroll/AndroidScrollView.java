@@ -128,8 +128,8 @@ public class AndroidScrollView
     }
 
     public void run() {
-      if (mWeakScrollView.get() != null) {
-        AndroidScrollView scrollView = mWeakScrollView.get();
+      AndroidScrollView scrollView = mWeakScrollView.get();
+      if (scrollView != null && !scrollView.mUIScrollView.isEngineScrollManaged()) {
         int newPositionY = scrollView.getScrollY();
         int newPositionX = scrollView.mHorizontalScrollView.getScrollX();
         boolean stoped =
@@ -335,6 +335,11 @@ public class AndroidScrollView
   }
 
   @Override
+  public ViewGroup getRendererChildViewGroup() {
+    return mLinearLayout;
+  }
+
+  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     if (mRenderer != null) {
       if (mRenderer.getUIHost() != null) {
@@ -363,6 +368,8 @@ public class AndroidScrollView
         setScrollTo(getScrollX(), bounceScrollRange, false);
       }
     }
+    // FLR can lay out this View directly, bypassing UIScrollView.layout().
+    mUIScrollView.applyEngineScrollStateAfterLayout();
   }
 
   private boolean isConsumeGesture(MotionEvent ev) {
@@ -592,6 +599,9 @@ public class AndroidScrollView
   }
 
   public void sendScrollToEdgeEvent(int l, int t) {
+    if (mUIScrollView.isEngineScrollManaged()) {
+      return;
+    }
     int status = mUIScrollView.updateBorderStatus(l, t, 0, 0);
     if (mUIScrollView.mEnableScrollToLowerEdgeEvent && UIScrollView.isLower(status)) {
       mUIScrollView.sendCustomEvent(getScrollX(), getScrollY(), getScrollX(), getScrollY(),
@@ -615,6 +625,10 @@ public class AndroidScrollView
       return;
     }
     mLastScrollY = this.getScrollY();
+    // Keep the offset cache for setScrollTo, but let Engine own scroll state.
+    if (mUIScrollView.isEngineScrollManaged()) {
+      return;
+    }
     // scroll by user or by front-end
     if (mScrollState == SCROLL_STATE_IDLE) {
       transferToScroll();
@@ -750,13 +764,16 @@ public class AndroidScrollView
 
   @Override
   protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
-    if (mRenderer != null) {
+    // A Compose scroll frame has one renderer child inside the content
+    // container. The outer View draws only the internal scroll wrapper.
+    boolean drawRendererChild = mRenderer != null && !mUIScrollView.isEngineScrollManaged();
+    if (drawRendererChild) {
       mRenderer.beforeDrawChild(canvas, child);
     }
 
     boolean ret = super.drawChild(canvas, child, drawingTime);
 
-    if (mRenderer != null) {
+    if (drawRendererChild) {
       mRenderer.afterDrawChild(canvas, child);
     }
     return ret;
@@ -1364,6 +1381,9 @@ public class AndroidScrollView
         return;
       }
       mLastScrollX = this.getScrollX();
+      if (mUIScrollView.isEngineScrollManaged()) {
+        return;
+      }
       // scroll by user or by front-end
       if (mScrollState == SCROLL_STATE_IDLE) {
         transferToScroll();
