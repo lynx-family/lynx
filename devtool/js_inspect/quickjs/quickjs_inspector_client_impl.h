@@ -5,6 +5,7 @@
 #ifndef DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INSPECTOR_CLIENT_IMPL_H_
 #define DEVTOOL_JS_INSPECT_QUICKJS_QUICKJS_INSPECTOR_CLIENT_IMPL_H_
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,10 +26,12 @@ class QJSChannelImplNG : public quickjs_inspector::QJSInspector::QJSChannel {
       const std::unique_ptr<quickjs_inspector::QJSInspector>& inspector,
       const std::shared_ptr<QJSInspectorClientImpl>& client,
       const std::string& group_id, int instance_id,
-      LEPUSContext* context = nullptr);
+      LEPUSContext* context = nullptr, int64_t owner_runtime_id = -1);
   ~QJSChannelImplNG() override = default;
 
   const std::string& GroupId() { return group_id_; }
+  LEPUSContext* Context() const { return context_; }
+  int64_t OwnerRuntimeId() const { return owner_runtime_id_; }
 
   void SendResponse(int call_id, const std::string& message) override;
   void SendNotification(const std::string& message) override;
@@ -48,6 +51,8 @@ class QJSChannelImplNG : public quickjs_inspector::QJSInspector::QJSChannel {
 
   int instance_id_;
   std::string group_id_;
+  LEPUSContext* context_{nullptr};
+  int64_t owner_runtime_id_{-1};
 };
 
 class QJSInspectorClientImpl : public quickjs_inspector::QJSInspectorClient,
@@ -73,8 +78,9 @@ class QJSInspectorClientImpl : public quickjs_inspector::QJSInspectorClient,
   std::string InitInspector(LEPUSContext* context, const std::string& group_id,
                             const std::string& name = "");
   void ConnectSession(int instance_id, const std::string& group_id,
-                      LEPUSContext* context = nullptr);
-  void DisconnectSession(int instance_id);
+                      LEPUSContext* context = nullptr,
+                      int64_t owner_runtime_id = -1);
+  void DisconnectSession(int instance_id, int64_t owner_runtime_id = -1);
   // Only be called when preparing to destroy LEPUSContext. The param is the
   // group_id after mapping.
   void DestroyInspector(const std::string& group_id);
