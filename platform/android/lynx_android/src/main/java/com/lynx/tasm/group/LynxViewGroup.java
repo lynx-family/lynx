@@ -37,6 +37,7 @@ import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.HashMap;
@@ -442,19 +443,27 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   @Override
   public void setLynxEngine(LynxEngine lynxEngine) {
-    if (enableCacheEngine) {
-      this.cachedLynxEngine = lynxEngine;
+    if (!enableCacheEngine) {
+      return;
+    }
+    LynxEngine previousEngine;
+    synchronized (this) {
+      previousEngine = cachedLynxEngine;
+      cachedLynxEngine = lynxEngine;
+    }
+    if (previousEngine != null && previousEngine != lynxEngine) {
+      UIThreadUtils.runOnUiThreadImmediately(previousEngine::destroy);
     }
   }
 
   @Override
-  public LynxEngine getLynxEngine() {
-    if (enableCacheEngine) {
-      LynxEngine result = this.cachedLynxEngine;
-      this.cachedLynxEngine = null;
-      return result;
+  public synchronized LynxEngine getLynxEngine(ThreadStrategyForRendering threadStrategy) {
+    LynxEngine engine = cachedLynxEngine;
+    if (!enableCacheEngine || engine == null || engine.getThreadStrategy() != threadStrategy) {
+      return null;
     }
-    return null;
+    cachedLynxEngine = null;
+    return engine;
   }
 
   @Override
@@ -636,9 +645,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     if (logicExecutor != null) {
       logicExecutor.destroy();
     }
-    if (cachedLynxEngine != null) {
-      cachedLynxEngine.destroy();
-    }
+    // Clear the cache and destroy the cached engine on the UI thread.
+    setLynxEngine(null);
     setFetchResult(
         LynxResourceResponse.onFailed(new RuntimeException("This LynxViewGroup released")));
   }

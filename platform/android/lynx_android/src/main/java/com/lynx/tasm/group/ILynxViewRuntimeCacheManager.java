@@ -5,6 +5,7 @@ package com.lynx.tasm.group;
 
 import com.lynx.tasm.LynxEngine;
 import com.lynx.tasm.TemplateBundle;
+import com.lynx.tasm.ThreadStrategyForRendering;
 
 /**
  * Interface To Manager Runtime Cache Between LynxViews
@@ -28,11 +29,8 @@ public interface ILynxViewRuntimeCacheManager {
    */
   void setLynxEngine(LynxEngine lynxEngine);
 
-  /**
-   * Acquire A Pre Used LynxEngine from LynxViewGroup
-   * @return LynxEngine cached previously
-   */
-  LynxEngine getLynxEngine();
+  /** Acquires a cached engine only if its thread strategy matches the requested strategy. */
+  LynxEngine getLynxEngine(ThreadStrategyForRendering threadStrategy);
 
   /**
    * Check if Engine Cache Enabled.
