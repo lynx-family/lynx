@@ -747,6 +747,8 @@ public class TextMeasurer {
         new TextUpdateBundle(textLayout, attributes.hasImageSpan(), null, false);
     bundle.setTextTranslateOffset(renderer.getTextTranslateOffset());
     bundle.setOriginText(body);
+    bundle.setSourceTextEnd(renderer.getSourceTextEnd());
+    bundle.setInlineTruncationStart(truncationStart);
     bundle.setLayoutEventParams(
         attributes.getTextOverflow(), lineCount, omitted, body.length(), textLayoutWidth, true);
     mExtraDatas.put(sign, bundle);

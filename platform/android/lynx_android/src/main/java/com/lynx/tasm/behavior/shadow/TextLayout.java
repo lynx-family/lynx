@@ -8,6 +8,7 @@ import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxUIOwner;
+import com.lynx.tasm.behavior.shadow.text.InlineTextGeometry;
 
 public class TextLayout {
   final TextMeasurerProvider mTextMeasurerProvider;
@@ -44,6 +45,11 @@ public class TextLayout {
       }
 
       @Override
+      public float[] getInlineTextRegions(int sign, int[] ranges) {
+        return InlineTextGeometry.getRegions(uiOwner.takeTextLayout(sign), ranges);
+      }
+
+      @Override
       public void destroyText(int sign) {
         uiOwner.destroyText(sign);
       }
@@ -73,6 +79,11 @@ public class TextLayout {
     float[] res = mTextMeasurerProvider.align(sign);
     TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_ALIGN);
     return res;
+  }
+
+  @CalledByNative
+  public float[] getInlineTextRegions(int sign, int[] ranges) {
+    return mTextMeasurerProvider.getInlineTextRegions(sign, ranges);
   }
 
   @CalledByNative

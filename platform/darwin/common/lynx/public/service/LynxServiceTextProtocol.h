@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)warm;
 
+/** Returns the optional native text range rectangle callback. */
+- (nullable void *)textLayoutRangeRects;
+
 @required
 /**
  * create cpp TextLayoutAPI object
