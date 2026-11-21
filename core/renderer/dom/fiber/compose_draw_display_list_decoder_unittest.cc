@@ -66,8 +66,8 @@ class DrawDisplayListDecoderTest : public ::testing::Test {
     output_ = sentinel.Build();
     const Bytes output_before(output_);
     shadow_ = false;
-    const auto error =
-        detail::DecodeDrawDisplayList(wire, pixels, phase, &output_, &shadow_);
+    const auto error = detail::DecodeV1DrawDisplayList(wire, pixels, phase,
+                                                       &output_, &shadow_);
 
     if (error) {
       output_before.Expect(output_);
@@ -116,7 +116,7 @@ TEST_F(DrawDisplayListDecoderTest,
     SCOPED_TRACE(pixels);
     DisplayList output;
     bool shadow = false;
-    const auto error = detail::DecodeDrawDisplayList(
+    const auto error = detail::DecodeV1DrawDisplayList(
         wire, pixels, ComposeDrawPhase::kBehind, &output, &shadow);
     ASSERT_TRUE(error);
     EXPECT_EQ(error->code, Code::kMalformed);
@@ -130,7 +130,7 @@ TEST_F(DrawDisplayListDecoderTest,
 TEST_F(DrawDisplayListDecoderTest, CompilesIndependentFinalStorage) {
   DisplayList output;
   bool shadow = false;
-  ASSERT_FALSE(detail::DecodeDrawDisplayList(
+  ASSERT_FALSE(detail::DecodeV1DrawDisplayList(
       Parse(Wire()), 2, ComposeDrawPhase::kBehind, &output, &shadow));
   EXPECT_FALSE(shadow);
 

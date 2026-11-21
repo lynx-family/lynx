@@ -85,7 +85,7 @@ TEST_F(ComposeDrawRecordingContractTest,
       bool shadow = false;
       const auto phase =
           clip ? ComposeDrawPhase::kClip : ComposeDrawPhase::kBehind;
-      ASSERT_FALSE(detail::DecodeDrawDisplayList(
+      ASSERT_FALSE(detail::DecodeV1DrawDisplayList(
           Json(sample["wire"]), scale.GetDouble(), phase, &compiled, &shadow));
 
       ASSERT_TRUE(builder.AppendDrawingContent(compiled));
@@ -191,7 +191,7 @@ TEST_F(ComposeDrawRecordingContractTest,
 
       DisplayList canonical_list;
       bool canonical_shadow = false;
-      ASSERT_FALSE(detail::DecodeDrawDisplayList(
+      ASSERT_FALSE(detail::DecodeV1DrawDisplayList(
           Json(canonical["wire"]), pixels, ComposeDrawPhase::kBehind,
           &canonical_list, &canonical_shadow));
       ASSERT_TRUE(canonical_builder.AppendDrawingContent(canonical_list));
@@ -203,7 +203,7 @@ TEST_F(ComposeDrawRecordingContractTest,
       Prefix(&builder);
       DisplayList compiled;
       bool shadow = false;
-      ASSERT_FALSE(detail::DecodeDrawDisplayList(
+      ASSERT_FALSE(detail::DecodeV1DrawDisplayList(
           wire, pixels, ComposeDrawPhase::kBehind, &compiled, &shadow));
       ASSERT_TRUE(builder.AppendDrawingContent(compiled));
       EXPECT_EQ(shadow, canonical_shadow);
@@ -227,7 +227,7 @@ TEST_F(ComposeDrawRecordingContractTest,
       const PrefixSnapshot sentinel(sentinel_builder);
       DisplayList compiled = sentinel_builder.Build();
       bool shadow = false;
-      const auto error = detail::DecodeDrawDisplayList(
+      const auto error = detail::DecodeV1DrawDisplayList(
           wire, pixels, ComposeDrawPhase::kBehind, &compiled, &shadow);
       ASSERT_TRUE(error);
 
@@ -287,7 +287,7 @@ TEST_P(ComposeDrawRecordingExactRejectionTest,
     const PrefixSnapshot sentinel(sentinel_builder);
     DisplayList output = sentinel_builder.Build();
     bool shadow = false;
-    const auto error = detail::DecodeDrawDisplayList(
+    const auto error = detail::DecodeV1DrawDisplayList(
         Json(input), pixels, ComposeDrawPhase::kBehind, &output, &shadow);
     ASSERT_TRUE(error);
     EXPECT_EQ(error->code, DrawRecordingError::Code::kUnsupported);

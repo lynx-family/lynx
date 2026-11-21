@@ -13,11 +13,11 @@ class Fragment;
 
 // Element-owned callbacks, installed on its Fragment during Flush. Callbacks
 // record commands directly into the active DisplayListBuilder. They belong to
-// one element instance and are not copied when the element is cloned.
-// draw_layer_properties and requires_layer request an independent platform
-// layer; other content callbacks can flatten into the ancestor's display list.
-// Clearing a binding retains an existing layer. Bindings must remain unchanged
-// during drawing; updates are installed during Flush.
+// one element instance and are not copied when the element is cloned. Only
+// draw_layer_properties requires an independent platform layer; content
+// callbacks can flatten into the ancestor's display list. Clearing a binding
+// retains an existing layer. Bindings must remain unchanged during drawing;
+// updates are installed during Flush.
 struct CustomDrawFunctions {
   // Runs after ordinary background, behavior and children, inside Begin/End.
   // These content callbacks run only when contents are recorded; property-only
@@ -29,8 +29,6 @@ struct CustomDrawFunctions {
   // Runs before ordinary content on a full redraw. Fragment always draws its
   // default content next, then invokes draw_foreground.
   std::function<void(Fragment&, DisplayListBuilder&)> draw_behind;
-  // Content clips affect the owning platform layer and must not flatten.
-  bool requires_layer = false;
   // Runs in the subtree-property phase, after the current CSS/default layer
   // properties are recorded. Record only subtree properties here; properties
   // omitted by the callback retain their CSS/default values, not its previous

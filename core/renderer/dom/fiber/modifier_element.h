@@ -22,7 +22,6 @@ class ModifierElement : public Element {
   ~ModifierElement() override = default;
 
   bool is_modifier() const override { return true; }
-  bool is_view() const override { return true; }
   void SetupFragmentBehavior(Fragment* fragment) override;
   void AttachToElementManager(
       ElementManager* manager,

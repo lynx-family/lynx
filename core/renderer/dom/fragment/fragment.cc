@@ -66,17 +66,13 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
     return false;
   }
 
-  // Layer properties and scoped clips need their own platform layer.
-  // Other content callbacks can draw into the ancestor's display list.
-  const bool custom_draw_requires_layer =
-      HasCustomLayerProperties() ||
-      (custom_draw_functions_ && custom_draw_functions_->requires_layer);
+  // Content callbacks can draw into the ancestor's display list.
   const bool can_flatten_without_platform_renderer =
       (!element()->is_page() &&
        !element()->is_direct_child_of_compatible_component() &&
        (element()->is_text() || element()->is_image() || element()->is_view() ||
         element()->is_component())) &&
-      element()->TendToFlatten() && !custom_draw_requires_layer &&
+      element()->TendToFlatten() && !HasCustomLayerProperties() &&
       !element()->computed_css_style()->GetClipPath();
   if (can_flatten_without_platform_renderer) {
     // If the fragment is a view, text, image, or component, and it tends to

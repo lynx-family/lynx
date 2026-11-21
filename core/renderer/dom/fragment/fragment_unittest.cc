@@ -18,7 +18,6 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
-#include "base/include/vector.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
@@ -26,7 +25,6 @@
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/image_element.h"
-#include "core/renderer/dom/fiber/testing/compose_draw_recording_contract_test_helpers.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -1858,15 +1856,6 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
 
 class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
  public:
-  static std::string V1(
-      const std::string& commands = "[[1,0,0]]",
-      const std::string& paths = "[[1,10,20,width-10,height-20]]",
-      const std::string& paints = "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
-      const std::string& features =
-          "['paint.blend.SrcOver','paint.solid','paint.srgb','path.rect']") {
-    return "['lynx.draw.recording',1,0," + commands + "," + paths + "," +
-           paints + ",[]," + features + ",[]]";
-  }
   lepus::Value Behind(const std::string& expression,
                       const lepus::Value& previous = {}, int op = 12) {
     auto node = lepus::Dictionary::Create();
@@ -1904,8 +1893,22 @@ class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
 
 class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
  public:
-  static base::Vector<uint32_t> Fills(const DisplayList& list) {
-    base::Vector<uint32_t> fills;
+  static std::string LegacyRect() {
+    return "[[1,10,20,width-10,height-20,0x40123456]]";
+  }
+
+  static void Prefix(DisplayListBuilder* builder) {
+    RoundedRectangle box;
+    box.SetWidth(13);
+    box.SetHeight(17);
+    int32_t index;
+    builder->RecordBoxModel(box, index);
+    builder->LinearGradient(180, {0xff010203, 0xff040506}, {0, 1}, index, index,
+                            1, 1);
+  }
+
+  static std::vector<uint32_t> Fills(const DisplayList& list) {
+    std::vector<uint32_t> fills;
     DisplayListReader reader(list);
     while (reader.HasNext()) {
       const auto& item = reader.Next();
@@ -1933,11 +1936,10 @@ class ComposeDrawReuseIntegrationTest
   static std::string Wire(
       const std::string& bounds = "10,20,width-10,height-20",
       uint32_t color = 0x40123456) {
-    return V1("[[1,0,0]]", "[[1," + bounds + "]]",
-              "[[[1," + std::to_string(color) + "],[1,0,true,null],[1],[]]]");
+    return "[[1," + bounds + "," + std::to_string(color) + "]]";
   }
 
-  static std::string EmptyWire() { return V1("[]", "[]", "[]", "[]"); }
+  static std::string EmptyWire() { return "[]"; }
 
   lepus::Value Cached(const std::string& body,
                       const lepus::Value& previous = {}, int op = 12) {
@@ -1973,26 +1975,24 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   auto* fragment = content->fragment_impl();
-  ASSERT_FALSE(fragment->has_platform_renderer_);
-  auto* owner = page_->fragment_impl();
   auto* context = static_cast<NativeMockPaintingContext*>(
       manager->painting_context()->impl());
   auto* ref = context->GetNativePlatformRef();
   for (int iteration = 0; iteration < 3; ++iteration) {
     fragment->InvalidateForRedraw();
-    owner->Draw();
-    const auto* list = ref->GetDisplayListForRenderer(owner->id());
+    fragment->Draw();
+    const auto* list = ref->GetDisplayListForRenderer(fragment->id());
     ASSERT_NE(list, nullptr);
     EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0x40123456));
     EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 1);
   }
-  owner->InvalidateForSubtreeProperty();
-  owner->Draw();
+  fragment->InvalidateForSubtreeProperty();
+  fragment->Draw();
   EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
   Size(content, 120, 80);
-  owner->Draw();
+  fragment->Draw();
   EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 2);
-  const auto* resized = ref->GetDisplayListForRenderer(owner->id());
+  const auto* resized = ref->GetDisplayListForRenderer(fragment->id());
   ASSERT_NE(resized, nullptr);
   bool found = false;
   for (const auto& item : CollectDisplayListItems(*resized)) {
@@ -2004,41 +2004,6 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   EXPECT_TRUE(found);
   EXPECT_EQ(Eval("globalThis.resolveArgCount").Number(), 3);
   EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
-}
-
-TEST_F(ComposeDrawReuseIntegrationTest,
-       InvalidDevicePixelRatiosLeaveOnlyCSSBackgroundInFullSubmission) {
-  Install(Style(kPropertyIDBackgroundColor, "blue",
-                Cached("return [true," + Wire("10,20,40,20") + "];")));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  auto* fragment = content->fragment_impl();
-  auto* owner = page_->fragment_impl();
-  auto* context = static_cast<NativeMockPaintingContext*>(
-      manager->painting_context()->impl());
-  auto* ref = context->GetNativePlatformRef();
-  const auto expect_submission = [&](bool custom_draw) {
-    fragment->InvalidateForRedraw();
-    owner->Draw();
-    const auto* list = ref->GetDisplayListForRenderer(owner->id());
-    ASSERT_NE(list, nullptr);
-    if (custom_draw) {
-      EXPECT_THAT(Fills(*list),
-                  ::testing::UnorderedElementsAre(0xff0000ff, 0x40123456));
-    } else {
-      EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0xff0000ff));
-    }
-  };
-  expect_submission(true);
-  for (float pixels : {0.f, -1.f, std::numeric_limits<float>::quiet_NaN(),
-                       std::numeric_limits<float>::infinity(),
-                       -std::numeric_limits<float>::infinity()}) {
-    SCOPED_TRACE(pixels);
-    manager->GetLynxEnvConfig().UpdateDevicePixelRatio(pixels);
-    expect_submission(false);
-  }
-  manager->GetLynxEnvConfig().UpdateDevicePixelRatio(1.f);
-  expect_submission(true);
 }
 
 TEST_F(ComposeDrawReuseIntegrationTest,
@@ -2101,7 +2066,7 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   const auto behind = Cached("return [true," + Wire() + "];");
   Install(Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", behind,
                  17));
-  base::Vector<Element*> boundaries;
+  std::vector<Element*> boundaries;
   for (auto* target = handle_->mount_root().get(); target;
        target = target->GetChildAt(0)) {
     if (target->HasCustomDrawFunctions()) boundaries.push_back(target);
@@ -2120,717 +2085,14 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   }
 }
 
-TEST_F(ComposeDrawReuseIntegrationTest,
-       CachedBorderAndShadowRelocateForEachDestinationPrefix) {
-  const auto wire = V1(
-      "[[1,2,0],[9,0,0,-2,3,4,1,0,1]]",
-      "[[2,0,0,40,20,4,4,4,4,4,4,4,4],[2,2,2,36,16,2,2,2,2,2,2,2,2],[3,0,1]]",
-      "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
-      "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
-      "'path.border-clip','path.roundrect']");
-  Install(Cached("return [true," + wire + "];"));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  for (int prefix : {1, 3, 1}) {
-    DisplayListBuilder builder;
-    for (int i = 0; i < prefix; ++i)
-      testing::contract_fixture::Prefix(&builder);
-    content->fragment_impl()->custom_outset_shadow_drawn_ = false;
-    content->fragment_impl()->DrawBehind(builder);
-    EXPECT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
-    EXPECT_EQ(builder.BoxModelCount(), static_cast<size_t>(prefix + 4));
-    int borders = 0;
-    int shadows = 0;
-    for (const auto& item : CollectDisplayListItems(builder.Build())) {
-      if (item.type == DisplayListOpType::kBorder) {
-        ++borders;
-        EXPECT_EQ(item.payload.border.out_index, prefix);
-        EXPECT_EQ(item.payload.border.inner_index, prefix + 1);
-        for (uint32_t color : item.payload.border.colors)
-          EXPECT_EQ(color, 0x40123456);
-      } else if (item.type == DisplayListOpType::kBoxShadow) {
-        ++shadows;
-        EXPECT_EQ(item.payload.box_shadow.clip_box_index, prefix + 2);
-        EXPECT_EQ(item.payload.box_shadow.shadow_box_index, prefix + 3);
-        EXPECT_EQ(item.payload.box_shadow.color, 0x40123456);
-        EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
-      }
-    }
-    EXPECT_EQ(borders, 1);
-    EXPECT_EQ(shadows, 1);
-  }
-}
-
-TEST_F(ComposeDrawReuseIntegrationTest,
-       UnsupportedReplacementCannotReusePreviouslyCompiledContent) {
-  const auto unsupported =
-      V1("[[2],[4,1,0,0,1,1,0],[1,0,0],[3]]", "[[1,0,0,40,20]]");
-  Install(Cached("return globalThis.stage===0?[false," + Wire() +
-                 "]:[globalThis.stage===2," + unsupported + "];"));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  for (int stage = 0; stage < 3; ++stage) {
-    Eval("globalThis.stage=" + std::to_string(stage));
-    const auto list = Resolve(content);
-    if (stage == 0)
-      EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456));
-    else
-      EXPECT_EQ(list.GetContentItemsSize(), 0u);
-  }
-}
-
-class ComposeDrawRecordingExactRejectionIntegrationTest
-    : public ComposeDrawRecordingIntegrationTest,
-      public ::testing::WithParamInterface<
-          testing::contract_fixture::UnsupportedScene> {};
-
-TEST_P(ComposeDrawRecordingExactRejectionIntegrationTest,
-       AttachedAuthoredWireRejectsWithoutPartialDrawing) {
-  const auto& scene = GetParam();
-  manager->lynx_env_config_.UpdateDevicePixelRatio(3.5);
-  Eval("globalThis.rejectScene = false; globalThis.drawCalls = 0");
-  Install(Style(kPropertyIDBackgroundColor, "blue",
-                Behind("(globalThis.rejectionSize = [width,height],"
-                       "globalThis.rejectScene ? " +
-                       std::string(scene.wire) + " : " + V1() + ")")));
-  auto* content = handle_->content_element().get();
-  Size(page_.get(), 64, 40);
-  Size(handle_->mount_root().get(), 64, 40);
-  Size(content, 64, 40);
-  auto* owner = page_->fragment_impl();
-  auto* ref = static_cast<NativeMockPaintingContext*>(
-                  manager->painting_context()->impl())
-                  ->GetNativePlatformRef();
-  owner->Draw();
-  const auto* list = ref->GetDisplayListForRenderer(owner->id());
-  ASSERT_NE(list, nullptr);
-  EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0x40123456, 0xff0000ff));
-  Eval("globalThis.rejectScene = true");
-  Invalidate(lepus::Value(handle_));
-  owner->Draw();
-  list = ref->GetDisplayListForRenderer(owner->id());
-  ASSERT_NE(list, nullptr);
-  EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0xff0000ff));
-  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
-  const auto size = Eval("globalThis.rejectionSize");
-  ASSERT_EQ(size.GetLength(), 2);
-  EXPECT_DOUBLE_EQ(size.GetProperty(0u).Number(), 224);
-  EXPECT_DOUBLE_EQ(size.GetProperty(1u).Number(), 140);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    AuthoredScenes, ComposeDrawRecordingExactRejectionIntegrationTest,
-    ::testing::ValuesIn(testing::contract_fixture::kUnsupportedScenes),
-    [](const ::testing::TestParamInfo<
-        testing::contract_fixture::UnsupportedScene>& info) {
-      return info.param.name;
-    });
-
-TEST_F(ComposeDrawRecordingIntegrationTest,
-       V1PhysicalArgsAlphaAndPhaseOrderingReachCompiledReader) {
-  manager->lynx_env_config_.UpdateDevicePixelRatio(2);
-  for (int op : {12, 17}) {
-    SCOPED_TRACE(op);
-    handle_ = nullptr;
-    page_ = nullptr;
-    Install(
-        Style(kPropertyIDBackgroundColor, "blue",
-              Behind("(globalThis.recordingSize=[width,height]," + V1() + ")",
-                     {}, op)));
-    auto* content = handle_->content_element().get();
-    Size(content, 100, 60);
-    ASSERT_TRUE(content->IsAttached());
-    auto list = Draw(content);
-    EXPECT_THAT(Fills(list),
-                op == 12 ? ::testing::ElementsAre(0x40123456u, 0xff0000ffu)
-                         : ::testing::ElementsAre(0xff0000ffu, 0x40123456u));
-    const auto size = Eval("globalThis.recordingSize");
-    ASSERT_EQ(size.GetLength(), 2);
-    EXPECT_DOUBLE_EQ(size.GetProperty(0u).Number(), 200);
-    EXPECT_DOUBLE_EQ(size.GetProperty(1u).Number(), 120);
-    int boxes = 0;
-    for (const auto& item : CollectDisplayListItems(list)) {
-      if (item.type != DisplayListOpType::kRecordBox ||
-          item.payload.record_box.x != 5)
-        continue;
-      ++boxes;
-      EXPECT_FLOAT_EQ(item.payload.record_box.y, 10);
-      EXPECT_FLOAT_EQ(item.payload.record_box.w, 95);
-      EXPECT_FLOAT_EQ(item.payload.record_box.h, 50);
-    }
-    EXPECT_EQ(boxes, 1);
-  }
-}
-
-TEST_F(ComposeDrawRecordingIntegrationTest,
-       V1UniformHoleAndShadowPreserveAuthoredOrderWithoutErasingContent) {
-  const auto wire = V1(
-      "[[1,2,0],[9,0,0,-2,3,4,1,0,1]]",
-      "[[2,0,0,40,20,4,4,4,4,4,4,4,4],[2,2,2,36,16,2,2,2,2,2,2,2,2],[3,0,1]]",
-      "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
-      "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb','"
-      "path.border-clip','path.roundrect']");
-  Install(Style(kPropertyIDBackgroundColor, "blue", Behind(wire)));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  auto list = Draw(content);
-  DisplayListReader reader(list);
-  base::Vector<DisplayListOpType> draws;
-  base::Vector<DisplayListItem> boxes;
-  while (reader.HasNext()) {
-    const auto& item = reader.Next();
-    if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
-    if (item.type == DisplayListOpType::kBorder) {
-      draws.push_back(item.type);
-      EXPECT_EQ(item.payload.border.out_index, 0);
-      EXPECT_EQ(item.payload.border.inner_index, 1);
-      for (unsigned i = 0; i < 4; ++i)
-        EXPECT_EQ(item.payload.border.colors[i], 0x40123456u);
-    } else if (item.type == DisplayListOpType::kBoxShadow) {
-      draws.push_back(item.type);
-      EXPECT_EQ(item.payload.box_shadow.color, 0x40123456u);
-      EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
-      EXPECT_EQ(item.payload.box_shadow.clip_mode, 0);
-      ASSERT_LT(static_cast<size_t>(item.payload.box_shadow.shadow_box_index),
-                boxes.size());
-      const auto& shadow =
-          boxes[item.payload.box_shadow.shadow_box_index].payload.record_box;
-      EXPECT_FLOAT_EQ(shadow.x, -3);
-      EXPECT_FLOAT_EQ(shadow.y, 2);
-      EXPECT_FLOAT_EQ(shadow.w, 42);
-      EXPECT_FLOAT_EQ(shadow.h, 22);
-    } else if (item.type == DisplayListOpType::kFill) {
-      draws.push_back(item.type);
-      EXPECT_EQ(item.payload.fill.color, 0xff0000ffu);
-    }
-  }
-  EXPECT_THAT(draws, ::testing::ElementsAre(DisplayListOpType::kBorder,
-                                            DisplayListOpType::kBoxShadow,
-                                            DisplayListOpType::kFill));
-  EXPECT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
-}
-
-TEST_F(ComposeDrawRecordingIntegrationTest,
-       WholeEnvelopeIsDecodedBeforeOp18AndLocalClipNeverBecomesModifierClip) {
-  const auto clip = V1("[[5,0,0,true]]", "[[1,0,0,0,0]]", "[]",
-                       "['drawing.clip','path.rect']");
-  const auto local = V1("[[2],[5,0,0,true],[1,0,0],[3]]", "[[1,0,0,40,20]]",
-                        "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
-                        "['drawing.clip','drawing.state','paint.blend.SrcOver',"
-                        "'paint.solid','paint.srgb','path.rect']");
-  for (const auto& scenario : base::Vector<std::pair<int, std::string>>{
-           {18, clip},
-           {12, clip},
-           {17, clip},
-           {18, V1()},
-           {12, local},
-           {17, local},
-           {18, "(function(){const a=" + clip +
-                    ";a[8]=[['duplicate',0],['duplicate',1]];return a;})()"},
-           {18, "(function(){const a=" + clip +
-                    ";a[6]=[['unknown.resource',1,[]]];return a;})()"},
-           {18, V1("[[5,0,1,true]]", "[[1,0,0,10,10]]", "[]",
-                   "['drawing.clip','path.rect']")}}) {
-    SCOPED_TRACE(scenario.first);
-    SCOPED_TRACE(scenario.second);
-    handle_ = nullptr;
-    page_ = nullptr;
-    Install(Behind(scenario.second, {}, scenario.first));
-    auto* content = handle_->content_element().get();
-    Size(content, 100, 60);
-    // Inspect this callback phase itself. The op17 carrier's ordinary DrawClip
-    // can independently add a content-bounds CSS clip during a full OnDraw.
-    DisplayListBuilder builder;
-    if (scenario.first == 17)
-      content->fragment_impl()->DrawForeground(builder);
-    else
-      content->fragment_impl()->DrawBehind(builder);
-    int clips = 0;
-    for (const auto& item : CollectDisplayListItems(builder.Build())) {
-      if (item.type == DisplayListOpType::kClipRect) {
-        ++clips;
-        EXPECT_FLOAT_EQ(item.payload.clip_rect.w, 0);
-        EXPECT_FLOAT_EQ(item.payload.clip_rect.h, 0);
-      }
-      EXPECT_NE(item.type, DisplayListOpType::kFill);
-    }
-    EXPECT_EQ(clips, scenario.first == 18 && scenario.second == clip ? 1 : 0);
-  }
-}
-
-TEST_F(ComposeDrawRecordingIntegrationTest,
-       UnversionedMalformedUnsupportedAndOverflowKeepActualPrefixAndFlags) {
-  const auto paths = "[[1,0,0,40,20]]";
-  const auto paint = "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]";
-  for (const auto& expression : base::Vector<std::string>{
-           "[[1,0,0,0,10]]", "[[1,0,0,10,10,0xffffffff],[99]]",
-           "[[1,0,0,10,10,0xffffffff],[],[],[],[],[],[],[],[]]",
-           V1("[[1,0,0],[99]]", paths, paint),
-           V1("[[1,0,0],[1,0,999]]", paths, paint),
-           V1("[[1,0,0],[4,1,0,0,1,1,0]]", paths, paint,
-              "['drawing.state','paint.blend.SrcOver','paint.solid','paint."
-              "srgb','path.rect']"),
-           V1("[[1,0,0],[9,0,0,3e38,0,2,3e38,0,1]]", paths, paint,
-              "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint."
-              "srgb','path.rect']"),
-           "['lynx.draw.recording',2,0,[],[],[],[],[],[]]",
-           "['unknown.envelope',1,0,[],[],[],[],[],[]]"}) {
-    SCOPED_TRACE(expression);
-    handle_ = nullptr;
-    page_ = nullptr;
-    Install(Behind(expression));
-    auto* content = handle_->content_element().get();
-    Size(content, 100, 60);
-    auto* fragment = content->fragment_impl();
-    for (bool shadow_flag : {false, true}) {
-      fragment->custom_outset_shadow_drawn_ = shadow_flag;
-      DisplayListBuilder builder;
-      RoundedRectangle box;
-      box.SetX(7);
-      box.SetY(11);
-      box.SetWidth(13);
-      box.SetHeight(17);
-      int32_t index;
-      builder.RecordBoxModel(box, index);
-      builder.LinearGradient(180, {0xff010203, 0xff040506}, {0, 1}, index,
-                             index, 1, 1);
-      builder.MarkRootNeedClipBounds();
-      const auto& prefix = builder.CurrentDisplayList();
-      const base::ByteArray bytes(
-          prefix.GetContentItemsData(),
-          prefix.GetContentItemsData() + prefix.GetContentItemsByteSize());
-      const base::ByteArray data(
-          prefix.GetContentData(),
-          prefix.GetContentData() + prefix.GetContentDataSize());
-      fragment->DrawBehind(
-          builder);  // real closure, attached Fragment, coordinator and decoder
-      const auto& after = builder.CurrentDisplayList();
-      EXPECT_EQ(base::ByteArray(after.GetContentItemsData(),
-                                after.GetContentItemsData() +
-                                    after.GetContentItemsByteSize()),
-                bytes);
-      EXPECT_EQ(
-          base::ByteArray(after.GetContentData(),
-                          after.GetContentData() + after.GetContentDataSize()),
-          data);
-      EXPECT_EQ(builder.BoxModelCount(), 1u);
-      EXPECT_TRUE(after.RootNeedClipBounds());
-      EXPECT_EQ(fragment->custom_outset_shadow_drawn_, shadow_flag);
-      int32_t next;
-      builder.RecordBoxModel(box, next);
-      EXPECT_EQ(next, 1);
-    }
-  }
-}
-
-TEST_F(ComposeDrawRecordingIntegrationTest,
-       RemovalExceptionAndCloneDoNotLeakShadowOrRuntimeBinding) {
-  const auto shadow = V1("[[9,0,0,0,0,4,0,0,1]]", "[[1,0,0,40,20]]",
-                         "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
-                         "['drawing.shadow','paint.blend.SrcOver','paint.solid'"
-                         ",'paint.srgb','path.rect']");
-  Install(Behind(shadow));
-  auto content = handle_->content_element();
-  Size(content.get(), 100, 60);
-  Draw(content.get());
-  ASSERT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
-  ASSERT_TRUE(
-      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
-          .success);
-  page_->FlushActionsAsRoot();
-  content->fragment_impl()->InvalidateForRedraw();
-  EXPECT_TRUE(Fills(Draw(content.get())).empty());
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
-  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
-  Rebind(Behind("(function(){throw new Error('recording failure');})()"));
-  EXPECT_TRUE(Fills(Draw(content.get())).empty());
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
-  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
-  Rebind(Behind(V1()));
-  content->fragment_impl()->InvalidateForRedraw();
-  EXPECT_THAT(Fills(Draw(content.get())), ::testing::ElementsAre(0x40123456u));
-  auto clone = content->CloneElement(false);
-  EXPECT_FALSE(clone->HasCustomDrawFunctions());
-  clone->AttachToElementManager(manager.get(), nullptr, false);
-  page_->InsertNode(clone);
-  page_->FlushActionsAsRoot();
-  Size(clone.get(), 100, 60);
-  EXPECT_TRUE(Fills(Draw(clone.get())).empty());
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 3);
-}
-
-TEST_F(ComposeDrawBehindTest,
-       PaintProjectionMatchesAuthoredEndpointsAtSamplePoints) {
-  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
-  Install(Behind(V1(
-      "[[1,2,0]]",
-      "[[2,10,12,160,120,8,8,16,16,24,24,32,32],"
-      "[2,14,16,152,112,4,4,12,12,20,20,28,28],[3,0,1]]",
-      "[[[2,16,8,144,72,[0x80ff0000,0x800000ff],[0,1],0,[1,0,0,1,0,0]],"
-      "[1,0,true,null],[1],[]]]",
-      "['paint.blend.SrcOver','paint.linear','paint.srgb','paint.tile.Clamp',"
-      "'path.border-clip','path.roundrect']")));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 80);
-  auto list = Draw(content);
-  DisplayListReader reader(list);
-  base::Vector<DisplayListItem> boxes;
-  int gradients = 0;
-  while (reader.HasNext()) {
-    const auto& item = reader.Next();
-    if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
-    if (item.type != DisplayListOpType::kLinearGradient) continue;
-    ++gradients;
-    const auto& gradient = item.payload.linear_gradient;
-    ASSERT_EQ(gradient.inner_clip_index_plus_one, 3);
-    ASSERT_EQ(boxes.size(), 3u);
-    const auto& inner = boxes[2].payload.record_box;
-    EXPECT_FLOAT_EQ(inner.x, 7);
-    EXPECT_FLOAT_EQ(inner.y, 8);
-    EXPECT_FLOAT_EQ(inner.w, 76);
-    EXPECT_FLOAT_EQ(inner.h, 56);
-    EXPECT_FLOAT_EQ(inner.radii[0], 2);
-    EXPECT_FLOAT_EQ(inner.radii[6], 14);
-    const auto& tile = boxes[gradient.tiling_index].payload.record_box;
-    const auto* stops = reader.Stops(item);
-    ASSERT_NE(stops, nullptr);
-    ASSERT_EQ(gradient.stop_count, 4u);
-    const double angle = gradient.angle * std::acos(-1.0) / 180;
-    const double dx = std::sin(angle), dy = -std::cos(angle);
-    const double span = std::abs(tile.w * dx) + std::abs(tile.h * dy);
-    for (const auto& point :
-         {std::pair<double, double>{5, 6}, {85, 66}, {40, 25}}) {
-      const double projected = ((point.first - tile.x - tile.w / 2) * dx +
-                                (point.second - tile.y - tile.h / 2) * dy) /
-                                   span +
-                               .5;
-      const double actual = (projected - stops[1]) / (stops[2] - stops[1]);
-      // Original endpoints in layout units: (8,4) -> (72,36).
-      const double expected =
-          ((point.first - 8) * 64 + (point.second - 4) * 32) /
-          (64 * 64 + 32 * 32);
-      EXPECT_NEAR(actual, expected, 0.00001);
-    }
-    EXPECT_EQ(reader.Colors(item)[0], 0x80ff0000);
-    EXPECT_EQ(reader.Colors(item)[3], 0x800000ff);
-  }
-  EXPECT_EQ(gradients, 1);
-}
-
-TEST_F(ComposeDrawBehindTest,
-       PhysicalHairlineInsetSurvivesScaleThreeConversion) {
-  manager->lynx_env_config_.UpdateDevicePixelRatio(3.f);
-  Install(Behind(V1("[[1,2,0]]",
-                    "[[2,0,0,288,192,36,36,24,24,12,12,6,6],"
-                    "[2,1,1,286,190,35,35,23,23,11,11,5,5],[3,0,1]]",
-                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-                    "['paint.blend.SrcOver','paint.solid','paint.srgb',"
-                    "'path.border-clip','path.roundrect']")));
-  auto* content = handle_->content_element().get();
-  Size(content, 96, 64);
-  int borders = 0;
-  for (const auto& item : CollectDisplayListItems(Draw(content))) {
-    if (item.type == DisplayListOpType::kBorder) {
-      ++borders;
-      EXPECT_EQ(item.payload.border.out_index, 0);
-      EXPECT_EQ(item.payload.border.inner_index, 1);
-    }
-  }
-  EXPECT_EQ(borders, 1);
-}
-
-TEST_F(ComposeDrawBehindTest, InnerCornersAcceptNormalizedStartAndEndPairs) {
-  Install(Behind(V1("[[1,2,0]]",
-                    "[[2,0,0,100,60,60,60,0,0,20,20,0,0],"
-                    "[2,10,10,80,40,40,40,0,0,10,10,0,0],[3,0,1]]",
-                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-                    "['paint.blend.SrcOver','paint.solid','paint.srgb',"
-                    "'path.border-clip','path.roundrect']")));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  int borders = 0;
-  for (const auto& item : CollectDisplayListItems(Draw(content))) {
-    if (item.type == DisplayListOpType::kBorder) ++borders;
-  }
-  EXPECT_EQ(borders, 1);
-}
-
-TEST_F(ComposeDrawBehindTest, MixedPaintAndShadowBatchPreservesOrder) {
-  Install(Behind(
-      V1("[[1,0,0],[1,0,1],[1,0,2],[1,2,3],[9,0,4,0,0,0,0,0,1]]",
-         "[[1,0,0,10,10],[1,2,2,6,6],[3,0,1]]",
-         "[[[1,0xffff0000],[1,0,true,null],[1],[]],"
-         "[[1,0xff00ff00],[1,0,true,null],[1],[]],"
-         "[[2,0,0,0,10,[0xffff0000,0xff0000ff],[0,1],0,[1,0,0,1,0,0]],"
-         "[1,0,true,null],[1],[]],"
-         "[[1,0x800000ff],[1,0,true,null],[1],[]],"
-         "[[1,0xff000000],[1,0,true,null],[1],[]]]",
-         "['drawing.shadow','paint.blend.SrcOver','paint.linear','paint.solid',"
-         "'paint.srgb','paint.tile.Clamp','path.border-clip','path.rect']")));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  auto list = Draw(content);
-  DisplayListReader reader(list);
-  base::Vector<DisplayListOpType> draws;
-  while (reader.HasNext()) {
-    const auto& item = reader.Next();
-    if (item.type == DisplayListOpType::kBorder) {
-      for (unsigned i = 0; i < 4; ++i)
-        EXPECT_EQ(item.payload.border.colors[i], 0x800000ff);
-    } else if (item.type != DisplayListOpType::kFill &&
-               item.type != DisplayListOpType::kLinearGradient &&
-               item.type != DisplayListOpType::kBoxShadow) {
-      continue;
-    }
-    draws.push_back(item.type);
-  }
-  EXPECT_THAT(draws, ::testing::ElementsAre(DisplayListOpType::kFill,
-                                            DisplayListOpType::kFill,
-                                            DisplayListOpType::kLinearGradient,
-                                            DisplayListOpType::kBorder,
-                                            DisplayListOpType::kBoxShadow));
-}
-
-TEST_F(ComposeDrawBehindTest, InvalidPaintTailRejectsWholeBatchInBothPhases) {
-  const auto batch = [](const std::string& paths, const std::string& paint,
-                        const std::string& commands = "[[1,0,0],[1,1,1]]",
-                        bool repeated = false) {
-    return V1(
-        commands, paths,
-        "[[[1,0xffffffff],[1,0,true,null],[1],[]]," + paint + "]",
-        "['paint.blend.SrcOver','paint.linear','paint.solid','paint.srgb',"
-        "'paint.tile.Clamp'," +
-            std::string(repeated ? "'paint.tile.Repeated'," : "") +
-            "'path.border-clip','path.rect','path.roundrect']");
-  };
-  const std::string solid = "[[1,0xff000000],[1,0,true,null],[1],[]]";
-  const std::string rects = "[[1,0,0,10,10],[1,0,0,10,10]]";
-  for (int op : {12, 17}) {
-    for (const auto& wire :
-         {batch(rects, "[[1,0.5],[1,0,true,null],[1],[]]"),
-          batch("[[1,0,0,10,10],[1,0,0,1e40,10]]", solid),
-          batch("[[1,0,0,10,10],[2,0,0,10,10,0,0,-1,-1,0,0,0,0]]", solid),
-          batch("[[1,0,0,10,10],null]", solid),
-          batch("[[1,0,0,10,10],[1,1,2,8,6],[3,0,1]]", solid,
-                "[[1,0,0],[1,2,1]]"),
-          batch("[[2,0,0,10,10,4,4,4,4,4,4,4,4],"
-                "[2,1,1,8,8,0,0,0,0,0,0,0,0],[3,0,1]]",
-                solid, "[[1,0,0],[1,2,1]]"),
-          batch("[[1,0,0,10,10],[1,5,5,0,0],[3,0,1]]", solid,
-                "[[1,0,0],[1,2,1]]"),
-          batch(rects,
-                "[[2,0,0,0,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
-                "[1,0,true,null],[1],[]]"),
-          batch(rects,
-                "[[2,1e20,0,1e20+1,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
-                "[1,0,true,null],[1],[]]"),
-          batch(rects,
-                "[[2,0,0,10,0,[0,1],[0,1],1,[1,0,0,1,0,0]],"
-                "[1,0,true,null],[1],[]]",
-                "[[1,0,0],[1,1,1]]", true),
-          batch(rects,
-                "[[2,0,0,10,0,[0,1],[1,0],0,[1,0,0,1,0,0]],"
-                "[1,0,true,null],[1],[]]"),
-          batch(rects,
-                "[[2,0,0,Infinity,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
-                "[1,0,true,null],[1],[]]"),
-          batch(rects, solid, "[[1,0,0],[99]]")}) {
-      SCOPED_TRACE(wire);
-      handle_ = nullptr;
-      page_ = nullptr;
-      Install(Behind(wire, {}, op));
-      auto* content = handle_->content_element().get();
-      Size(content, 100, 60);
-      for (const auto& item : CollectDisplayListItems(Draw(content))) {
-        EXPECT_NE(item.type, DisplayListOpType::kRecordBox);
-        EXPECT_NE(item.type, DisplayListOpType::kFill);
-        EXPECT_NE(item.type, DisplayListOpType::kLinearGradient);
-      }
-    }
-  }
-}
-
-TEST_F(ComposeDrawBehindTest, ForegroundFollowsContentAndClearsOnReplacement) {
-  Install(Style(kPropertyIDBackgroundColor, "blue",
-                Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
-                          "[[[1,0x80ff0000],[1,0,true,null],[1],[]]]"),
-                       {}, 17)));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  base::Vector<uint32_t> colors;
-  for (const auto& item : CollectDisplayListItems(Draw(content))) {
-    if (item.type == DisplayListOpType::kFill)
-      colors.push_back(item.payload.fill.color);
-  }
-  EXPECT_THAT(colors, ::testing::ElementsAre(0xff0000ff, 0x80ff0000));
-  ASSERT_TRUE(
-      ComposeModifierApplicator::Apply(
-          handle_.get(), Behind(V1("[]", "[]", "[]", "[]")), runtime_.get())
-          .success);
-  page_->FlushActionsAsRoot();
-  ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
-  EXPECT_FALSE(
-      content->fragment_impl()->custom_draw_functions_->draw_foreground);
-  ASSERT_TRUE(
-      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
-          .success);
-  page_->FlushActionsAsRoot();
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
-}
-
-TEST_F(ComposeDrawBehindTest, ScopedClipKeepsShadowOrderWithFlattenedContent) {
-  const auto shadow =
-      V1("[[9,0,0,0,4,8,0,0,1]]", "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
-         "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-         "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
-         "'path.roundrect']");
-  const auto clip =
-      V1("[[5,0,0,true]]", "[[2,0,0,width,height,4,4,8,8,12,12,16,16]]", "[]",
-         "['drawing.clip','path.roundrect']");
-  for (auto kind : {ComposeElementKind::kView, ComposeElementKind::kText,
-                    ComposeElementKind::kImage}) {
-    for (bool clip_first : {false, true}) {
-      SCOPED_TRACE(::testing::Message()
-                   << static_cast<int>(kind) << clip_first);
-      handle_ = nullptr;
-      page_ = nullptr;
-      Install(Style(kPropertyIDOverflow, "visible", Behind(shadow)), kind);
-      auto* content = handle_->content_element().get();
-      ASSERT_FALSE(
-          handle_->mount_root()->fragment_impl()->has_platform_renderer_);
-      ASSERT_FALSE(content->fragment_impl()->has_platform_renderer_);
-      base::Vector<fml::RefPtr<Element>> native_children;
-      if (kind == ComposeElementKind::kView) {
-        native_children.push_back(
-            manager->CreateFiberText(base::String("text")));
-        native_children.push_back(
-            manager->CreateFiberImage(base::String("image")));
-        for (const auto& child : native_children) {
-          child->SetAttribute(base::String("flatten"), lepus::Value(false));
-          content->InsertNode(child);
-        }
-      }
-      page_->FlushActionsAsRoot();
-      Size(page_.get(), 100, 60);
-      Size(handle_->mount_root().get(), 100, 60);
-      Size(content, 100, 60);
-      for (const auto& child : native_children) Size(child.get(), 130, 90);
-      page_->fragment_impl()->Draw();
-      auto* ref = static_cast<NativeMockPaintingContext*>(
-                      manager->painting_context()->impl())
-                      ->GetNativePlatformRef();
-      EXPECT_EQ(ref->renderers_.at(page_->impl_id())->Children().size(),
-                native_children.size());
-      ASSERT_TRUE(ComposeModifierApplicator::Apply(
-                      handle_.get(),
-                      clip_first ? Behind(shadow, Behind(clip, {}, 18))
-                                 : Behind(clip, Behind(shadow), 18),
-                      runtime_.get())
-                      .success);
-      auto* first = handle_->mount_root()->GetChildAt(0);
-      auto* clip_target = clip_first ? first : content;
-      auto* shadow_target = clip_first ? content : first;
-      shadow_target->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
-      page_->FlushActionsAsRoot();
-      EXPECT_FALSE(
-          handle_->mount_root()->fragment_impl()->has_platform_renderer_);
-      ASSERT_TRUE(clip_target->fragment_impl()->has_platform_renderer_);
-      EXPECT_FALSE(clip_target->fragment_impl()->HasCustomLayerProperties());
-      EXPECT_FALSE(shadow_target->fragment_impl()->has_platform_renderer_);
-      EXPECT_FALSE(content->is_direct_child_of_compatible_component());
-      Size(page_.get(), 100, 60);
-      Size(handle_->mount_root().get(), 100, 60);
-      Size(first, 100, 60);
-      Size(content, 100, 60);
-      for (const auto& child : native_children) Size(child.get(), 130, 90);
-      page_->fragment_impl()->Draw();
-      const auto* clip_list =
-          ref->GetDisplayListForRenderer(clip_target->impl_id());
-      const auto* parent_list =
-          ref->GetDisplayListForRenderer(page_->impl_id());
-      ASSERT_NE(clip_list, nullptr);
-      ASSERT_NE(parent_list, nullptr);
-      const auto items = CollectDisplayListItems(*clip_list);
-      ASSERT_GE(items.size(), 3u);
-      EXPECT_EQ(items.front().type, DisplayListOpType::kBegin);
-      ASSERT_EQ(items[1].type, DisplayListOpType::kClipRect);
-      EXPECT_FLOAT_EQ(items[1].payload.clip_rect.radii[0], 4);
-      EXPECT_FLOAT_EQ(items[1].payload.clip_rect.radii[6], 16);
-      EXPECT_EQ(items.back().type, DisplayListOpType::kEnd);
-      int shadows = 0;
-      for (const auto& item :
-           CollectDisplayListItems(clip_first ? *clip_list : *parent_list)) {
-        if (item.type == DisplayListOpType::kBoxShadow) ++shadows;
-        if (!clip_first && item.type == DisplayListOpType::kDrawView &&
-            item.payload.draw_view.view_id == clip_target->impl_id()) {
-          EXPECT_EQ(shadows, 1);
-        }
-      }
-      EXPECT_EQ(shadows, 1);
-      EXPECT_EQ(clip_list->SubLayers().size(), native_children.size());
-      EXPECT_EQ(ref->renderers_.at(clip_target->impl_id())->Children().size(),
-                native_children.size());
-      const int clip_id = clip_target->impl_id();
-      ASSERT_TRUE(ComposeModifierApplicator::Apply(
-                      handle_.get(),
-                      Style(kPropertyIDOverflow, "visible", Behind(shadow)),
-                      runtime_.get())
-                      .success);
-      page_->FlushActionsAsRoot();
-      Size(handle_->mount_root().get(), 100, 60);
-      Size(content, 100, 60);
-      page_->fragment_impl()->Draw();
-      const auto* cleared = ref->GetDisplayListForRenderer(clip_id);
-      ASSERT_NE(cleared, nullptr);
-      EXPECT_GT(cleared->GetContentItemsSize(), 0u);
-      for (const auto& item : CollectDisplayListItems(*cleared))
-        EXPECT_NE(item.type, DisplayListOpType::kClipRect);
-      EXPECT_EQ(ref->renderers_.at(clip_id)->Children().size(),
-                native_children.size());
-    }
-  }
-}
-
-TEST_F(ComposeDrawBehindTest,
-       ScopedClipEmptyGeometryStillClipsAndInvalidBatchDoesNot) {
-  const auto empty_clip = V1("[[5,0,0,true]]", "[[1,0,0,0,0]]", "[]",
-                             "['drawing.clip','path.rect']");
-  for (const auto& expression :
-       {empty_clip, V1("[]", "[]", "[]", "[]"),
-        V1("[[5,0,0,true],[5,1,0,true]]", "[[1,0,0,10,10],[1,0,0,2,2]]", "[]",
-           "['drawing.clip','path.rect']"),
-        V1()}) {
-    handle_ = nullptr;
-    page_ = nullptr;
-    Install(Behind(expression, {}, 18));
-    auto* content = handle_->content_element().get();
-    Size(content, 100, 60);
-    int clips = 0;
-    for (const auto& item : CollectDisplayListItems(Draw(content))) {
-      if (item.type == DisplayListOpType::kClipRect) {
-        ++clips;
-        EXPECT_FLOAT_EQ(item.payload.clip_rect.w, 0);
-        EXPECT_FLOAT_EQ(item.payload.clip_rect.h, 0);
-      }
-    }
-    EXPECT_EQ(clips, expression == empty_clip ? 1 : 0);
-  }
-}
-
 TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
   Install(Style(
       kPropertyIDBackgroundColor, "red",
-      Behind(V1(
-          "[[9,0,0,0,6,16,2,0,1],[1,1,1],[9,0,2,0,0,8,0,0,1]]",
-          "[[2,0,0,width,height,24,24,24,24,8,8,8,8],[1,0,0,width,height]]",
-          "[[[1,0x40000000],[1,0,true,null],[1],[]],"
-          "[[1,0xffffffff],[1,0,true,null],[1],[]],"
-          "[[1,0x20000000],[1,0,true,null],[1],[]]]",
-          "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
-          "'path.rect','path.roundrect']"))));
+      Behind(
+          "[[3, 0, 0, width, height, 24, 24, 8, 8, 0, 6, 16, 2, 0x40000000],"
+          " [1, 0, 0, width, height, 0xffffffff],"
+          " [3, 0, 0, width, height, 24, 24, 8, 8, 0, 0, 8, 0, 0x20000000]]")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   std::vector<DisplayListItem> boxes;
@@ -2875,25 +2137,18 @@ TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
 }
 
 TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
-  const auto batch = [](const std::string& shadow,
-                        const std::string& path = "[1,0,0,width,height]",
-                        const std::string& color = "0xff000000") {
-    return V1("[[1,0,0]," + shadow + "]", "[[1,0,0,width,height]," + path + "]",
-              "[[[1,0xffffffff],[1,0,true,null],[1],[]],[[1," + color +
-                  "],[1,0,true,null],[1],[]]]",
-              "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
-              "'paint.srgb','path.rect','path.roundrect']");
-  };
-  for (const auto& wire :
-       {batch("[9,1,1,0,0,-1,0,0,1]"),
-        batch("[9,1,1,0,0,4,0,0,1]", "[2,0,0,width,height,0,0,-1,-1,0,0,0,0]"),
-        batch("[9,1,1,NaN,0,4,0,0,1]"),
-        batch("[9,1,1,0,0,4,0,0,1]", "[1,0,0,width,height]", "0.5"),
-        batch("[9,1,1,0,0,4,0,0]")}) {
-    SCOPED_TRACE(wire);
+  const std::string fill = "[1, 0, 0, width, height, 0xffffffff], ";
+  for (const char* shadow : {
+           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, -1, 0, 0xff000000]",
+           "[3, 0, 0, width, height, 0, -1, 0, 0, 0, 0, 4, 0, 0xff000000]",
+           "[3, 0, 0, width, height, 0, 0, 0, 0, NaN, 0, 4, 0, 0xff000000]",
+           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0, 0.5]",
+           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0]",
+       }) {
+    SCOPED_TRACE(shadow);
     handle_ = nullptr;
     page_ = nullptr;
-    Install(Behind(wire));
+    Install(Behind("[" + fill + shadow + "]"));
     auto* content = handle_->content_element().get();
     Size(content, 100, 60);
     EXPECT_FALSE(RecordsShadowOrFill(Draw(content)));
@@ -2903,18 +2158,10 @@ TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
 TEST_F(ComposeDrawBehindTest,
        OutsetShadowKeepsPlatformLayerUnclippedUnderOverflowHidden) {
   Eval("globalThis.castShadow = true;");
-  Install(
-      Style(kPropertyIDOverflow, "hidden",
-            Behind("globalThis.castShadow ? " +
-                   V1("[[9,0,0,0,4,8,0,0,1]]",
-                      "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
-                      "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-                      "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
-                      "'paint.srgb','path.roundrect']") +
-                   " : " + V1("[]", "[]", "[]", "[]"))));
+  Install(Style(kPropertyIDOverflow, "hidden",
+                Behind("globalThis.castShadow ? [[3, 0, 0, width, height, 8, "
+                       "8, 8, 8, 0, 4, 8, 0, 0xff000000]] : []")));
   auto* content = handle_->content_element().get();
-  content->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
-  page_->FlushActionsAsRoot();
   ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
   Size(content, 100, 60);
   auto* fragment = content->fragment_impl();
@@ -2944,11 +2191,10 @@ TEST_F(ComposeDrawBehindTest,
 }
 
 TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsInsideItsTransform) {
-  Install(Behind(V1("[[9,0,0,0,4,8,0,0,1]]", "[[1,0,0,width,height]]",
-                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-                    "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
-                    "'paint.srgb','path.rect']"),
-                 Layer()));
+  Install(
+      Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
+             "0xff000000]]",
+             Layer()));
   auto* layer = handle_->mount_root()->GetChildAt(0);
   auto* content = layer->GetChildAt(0);
   ASSERT_EQ(content, handle_->content_element().get());
@@ -2958,14 +2204,13 @@ TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsInsideItsTransform) {
   ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
   Size(layer, 100, 60);
   Size(content, 100, 60);
-  ASSERT_FALSE(content->fragment_impl()->has_platform_renderer_);
-  auto list = Draw(layer);
+  // Drawing the layer may draw its content too. Inspect the content first.
   bool shadowed = false;
-  for (const auto& item : CollectDisplayListItems(list)) {
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
     shadowed |= item.type == DisplayListOpType::kBoxShadow;
   }
   EXPECT_TRUE(shadowed);
-  ExpectTranslation(list, 60, 60);
+  ExpectTranslation(Draw(layer), 60, 60);
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
   EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
 }
@@ -2975,10 +2220,8 @@ TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsOnImageAndTextContent) {
     SCOPED_TRACE(static_cast<int>(kind));
     handle_ = nullptr;
     page_ = nullptr;
-    Install(Behind(V1("[[9,0,0,0,4,8,0,0,1]]", "[[1,0,0,width,height]]",
-                      "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-                      "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
-                      "'paint.srgb','path.rect']"),
+    Install(Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
+                   "0xff000000]]",
                    Layer()),
             kind);
     auto* content = handle_->content_element().get();
@@ -2996,16 +2239,11 @@ TEST_F(ComposeDrawBehindTest, ClippedShadowStaysOutsideTheContentClip) {
   // Modifier.shadow(clip = true): layer, shadow, then the ordinary clip.
   Install(Style(kPropertyIDOverflow, "hidden",
                 Style(kPropertyIDBorderRadius, "8px",
-                      Behind(V1("[[9,0,0,0,4,8,0,0,1]]",
-                                "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
-                                "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
-                                "['drawing.shadow','paint.blend.SrcOver',"
-                                "'paint.solid','paint.srgb','path.roundrect']"),
+                      Behind("[[3, 0, 0, width, height, 8, 8, 8, 8, 0, 4, 8, "
+                             "0, 0xff000000]]",
                              Layer()))),
           ComposeElementKind::kText);
   auto* content = handle_->content_element().get();
-  content->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
-  page_->FlushActionsAsRoot();
   ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
   Size(content, 100, 60);
   int shadows = 0;
@@ -3033,12 +2271,34 @@ TEST_F(ComposeDrawBehindTest, ClippedShadowStaysOutsideTheContentClip) {
   EXPECT_FALSE(list->RootNeedClipBounds());
 }
 
+TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
+  auto background = lepus::Dictionary::Create();
+  background->SetValue("op", lepus::Value(3));
+  background->SetValue("propertyId", lepus::Value(kPropertyIDBackgroundColor));
+  background->SetValue("value", lepus::Value("blue"));
+  background->SetValue("previous",
+                       Behind("[[1, 0, 0, width, height, 0xffff0000]]"));
+  Install(lepus::Value(background));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  std::vector<uint32_t> fills;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kFill)
+      fills.push_back(item.payload.fill.color);
+  }
+  EXPECT_THAT(fills, ::testing::ElementsAre(0xffff0000, 0xff0000ff));
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  content->fragment_impl()->InvalidateForSubtreeProperty();
+  EXPECT_EQ(Draw(content).GetContentItemsSize(), 0u);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  Invalidate(lepus::Value(handle_));
+  Draw(content);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+}
+
 TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
-  Install(
-      Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
-                "[[[1,0xff0000ff],[1,0,true,null],[1],[]]]"),
-             Layer(Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
-                             "[[[1,0xffff0000],[1,0,true,null],[1],[]]]")))));
+  Install(Behind("[[1, 0, 0, width, height, 0xff0000ff]]",
+                 Layer(Behind("[[1, 0, 0, width, height, 0xffff0000]]"))));
   auto* first = handle_->mount_root()->GetChildAt(0);
   auto* layer = first->GetChildAt(0);
   auto* last = layer->GetChildAt(0);
@@ -3050,26 +2310,20 @@ TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
   Size(first, 100, 60);
   Size(layer, 100, 60);
   Size(last, 80, 40);
-  EXPECT_FALSE(first->fragment_impl()->has_platform_renderer_);
-  EXPECT_FALSE(last->fragment_impl()->has_platform_renderer_);
+  // Drawing a parent may draw its descendants too. Inspect the layer's first
+  // property pass before the outer content pass consumes its dirty flags.
+  EXPECT_TRUE(layer->fragment_impl()->NeedUpdateSubtreeProperty());
   EXPECT_TRUE(layer->fragment_impl()->has_platform_renderer_);
-  auto outer = Draw(first);
-  auto* ref = static_cast<NativeMockPaintingContext*>(
-                  manager->painting_context()->impl())
-                  ->GetNativePlatformRef();
-  const auto* inner = ref->GetDisplayListForRenderer(layer->impl_id());
-  ASSERT_NE(inner, nullptr);
-  ExpectTranslation(*inner, 60, 60);
-  EXPECT_TRUE(RecordsShadowOrFill(outer));
-  EXPECT_TRUE(RecordsShadowOrFill(*inner));
+  ExpectTranslation(Draw(layer), 60, 60);
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
+  Draw(first);
+  Draw(last);
   EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
 }
 
 TEST_F(ComposeDrawBehindTest, ConvertsPhysicalRectCoordinatesOnce) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
-  Install(Behind(V1("[[1,0,0]]", "[[1,10,20,width-10,height-20]]",
-                    "[[[1,0x80ffffff],[1,0,true,null],[1],[]]]")));
+  Install(Behind("[[1, 10, 20, width - 10, height - 20, 0x80ffffff]]"));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   bool found = false;
@@ -3098,8 +2352,7 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
     for (const auto* side : {"start", "top", "end", "bottom"}) {
       padding->SetValue(side, lepus::Value(8.0));
     }
-    const auto commands = V1("[[1,0,0]]", "[[1,0,0,width,height]]",
-                             "[[[1,0xffffffff],[1,0,true,null],[1],[]]]");
+    const std::string commands = "[[1, 0, 0, width, height, 0xffffffff]]";
     padding->SetValue("previous", padding_before
                                       ? lepus::Value(size)
                                       : Behind(commands, lepus::Value(size)));
@@ -3123,11 +2376,7 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
 
 TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
   Install(
-      Behind(V1("[[1,0,0]]", "[[1,5,-10,40,50]]",
-                "[[[2,0,0,0,16,[0x80ffffff,0x80000000],[0,1],0,[1,0,0,1,0,0]],"
-                "[1,0,true,null],[1],[]]]",
-                "['paint.blend.SrcOver','paint.linear','paint.srgb',"
-                "'paint.tile.Clamp','path.rect']")));
+      Behind("[[2, 5, -10, 40, 50, 0, 16, [0x80ffffff, 0x80000000], [0, 1]]]"));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   auto list = Draw(content);
@@ -3151,9 +2400,8 @@ TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
 }
 
 TEST_F(ComposeDrawBehindTest, MalformedTailDoesNotRecordPartialBackground) {
-  Install(Behind(V1("[[1,0,0],[1,1,1]]", "[[1,0,0,10,10],[1,0,0,NaN,10]]",
-                    "[[[1,0xffff0000],[1,0,true,null],[1],[]],"
-                    "[[1,0xff000000],[1,0,true,null],[1],[]]]")));
+  Install(Behind(
+      "[[1, 0, 0, 10, 10, 0xffff0000], [1, 0, 0, NaN, 10, 0xff000000]]"));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   for (const auto& item : CollectDisplayListItems(Draw(content))) {

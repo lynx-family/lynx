@@ -102,7 +102,7 @@ std::optional<DrawRecordingError> Compile(
     ComposeDrawPhase phase = ComposeDrawPhase::kBehind) {
   bool shadow = false;
   const auto error =
-      detail::DecodeDrawDisplayList(wire, 1, phase, output, &shadow);
+      detail::DecodeV1DrawDisplayList(wire, 1, phase, output, &shadow);
   if (error) EXPECT_FALSE(shadow);
   return error;
 }

@@ -66,7 +66,7 @@ class ComposeDrawRecordingPolyfillTest : public ::testing::Test {
       ComposeDrawPhase phase = ComposeDrawPhase::kBehind) {
     bool shadow = false;
     const auto error =
-        detail::DecodeDrawDisplayList(wire, pixels, phase, output, &shadow);
+        detail::DecodeV1DrawDisplayList(wire, pixels, phase, output, &shadow);
 
     if (error) EXPECT_FALSE(shadow);
     return error;
@@ -399,7 +399,7 @@ TEST_F(ComposeDrawRecordingPolyfillTest,
   for (const auto& test : cases) {
     auto output = Sentinel();
     bool shadow = false;
-    const auto error = detail::DecodeDrawDisplayList(
+    const auto error = detail::DecodeV1DrawDisplayList(
         Parse(test.wire), 1, ComposeDrawPhase::kBehind, &output, &shadow);
     EXPECT_EQ(static_cast<bool>(error), test.overflow);
     if (test.overflow) {
@@ -443,7 +443,7 @@ TEST_F(ComposeDrawRecordingPolyfillTest,
 
       auto output = Sentinel();
       bool shadow = false;
-      const auto error = detail::DecodeDrawDisplayList(
+      const auto error = detail::DecodeV1DrawDisplayList(
           wire, 1, ComposeDrawPhase::kBehind, &output, &shadow);
       EXPECT_EQ(static_cast<bool>(error), text == overflow);
       if (error) {
