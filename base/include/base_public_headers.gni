@@ -124,6 +124,7 @@ base_core_public_headers_list = [
   "vector2d.h",
   "vector_helper.h",
   "version_util.h",
+  "vsync_frame_tick_work.h",
   "//build/build_config.h",
   "fml/hash_combine.h",
   "fml/raster_thread_merger.h",
