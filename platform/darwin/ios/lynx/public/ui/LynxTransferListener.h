@@ -7,6 +7,8 @@
 
 #import <UIKit/UIKit.h>
 
+@class LynxTransferWrapperView;
+
 NS_ASSUME_NONNULL_BEGIN
 
 /**
@@ -18,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Called when a transfer view is ready to be mounted by the host.
  * @param transferId The {@code transfer-id} declared on the {@code <transfer-view>} node.
- * @param view The detached wrapper view containing the transfer subtree.
+ * @param view A LynxTransferWrapperView containing the transfer subtree.
  * @param dataset The dataset declared on the {@code <transfer-view>} node.
  * @return YES to take ownership; NO to leave the view available to another listener.
  */
@@ -35,6 +37,15 @@ NS_ASSUME_NONNULL_BEGIN
  * @param view The wrapper view that will be detached from its current parent.
  */
 - (void)onRemove:(NSString *)transferId view:(UIView *)view;
+
+@optional
+
+/**
+ * Called after layout when the owned view's intrinsicContentSize changes.
+ * Like LynxView's size lifecycle callback, the host can update its frame or
+ * invalidate its Auto Layout sizing here. Only the registered owner receives it.
+ */
+- (void)transferViewDidChangeIntrinsicContentSize:(LynxTransferWrapperView *)view;
 
 @end
 
