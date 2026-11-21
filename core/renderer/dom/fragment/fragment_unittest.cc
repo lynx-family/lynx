@@ -25,6 +25,7 @@
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -36,6 +37,7 @@
 #include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_component/list/mediator/list_item_mediator.h"
+#include "core/renderer/ui_component/list/mediator/list_mediator.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/ui_wrapper/painting/native_painting_context_platform_ref.h"
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
@@ -8051,6 +8053,43 @@ TEST_F(FragmentDrawTest, ReparentToCurrentParentPreservesOrderAndCleanState) {
   EXPECT_FALSE(page_fragment->NeedRedraw());
   EXPECT_FALSE(page_fragment->NeedSortZChild());
   EXPECT_FALSE(page_fragment->NeedSortFixedChild());
+}
+
+TEST_F(FragmentDrawTest, ListRecycleDetachesRenderMountBeforeReuse) {
+  auto page = manager->CreateFiberPage("page", 0);
+  manager->SetFiberPageElement(page);
+  auto list = manager->CreateFiberList(nullptr, "list", {}, {}, {});
+  auto recycled = manager->CreateFiberElement("list-item");
+  auto visible = manager->CreateFiberElement("list-item");
+  recycled->MarkAsListItem();
+  visible->MarkAsListItem();
+  page->InsertNode(list);
+  list->InsertNode(recycled);
+  list->InsertNode(visible);
+  page->FlushActionsAsRoot();
+
+  auto* list_fragment = list->fragment_impl();
+  auto* recycled_fragment = recycled->fragment_impl();
+  auto* visible_fragment = visible->fragment_impl();
+  ASSERT_EQ(recycled_fragment->fragment_parent(), list_fragment);
+  ASSERT_EQ(visible_fragment->fragment_parent(), list_fragment);
+
+  ListMediator mediator(list.get());
+  mediator.EnqueueComponent(visible->impl_id());
+  EXPECT_EQ(visible_fragment->fragment_parent(), list_fragment);
+
+  // The recycle callback removes the item from the Element tree before its
+  // queued render-tree removal has been resolved.
+  list->RemoveNode(recycled);
+  ASSERT_EQ(recycled_fragment->fragment_parent(), list_fragment);
+  mediator.EnqueueComponent(recycled->impl_id());
+  EXPECT_EQ(recycled_fragment->fragment_parent(), nullptr);
+  EXPECT_EQ(visible_fragment->fragment_parent(), list_fragment);
+
+  list->InsertNode(recycled);
+  page->FlushActionsAsRoot();
+  EXPECT_EQ(recycled_fragment->fragment_parent(), list_fragment);
+  EXPECT_EQ(visible_fragment->fragment_parent(), list_fragment);
 }
 
 TEST_F(FragmentDrawTest, ListAnimationFramesSubmitPaintedPositions) {
