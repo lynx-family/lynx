@@ -27,6 +27,7 @@ enum class InterceptKind {
   kCallback,
   kCreate,
   kUpdateViewport,
+  kResourceFetch,
   kCount
 };
 
@@ -65,6 +66,10 @@ class LYNX_EXPORT Interceptor {
   // missing coverage at most once, using the first registered stage.
   static std::shared_ptr<Interceptor> Current(
       std::initializer_list<InterceptKind> kinds, Domain domain);
+  static bool HasResourceFetchHandler(base::LynxEntityId view);
+  // Dispatch on UI, rechecking the View and handler after any thread hop.
+  static InterceptResult DispatchResourceFetch(base::LynxEntityId view,
+                                               std::string url);
   static void HandlerAdded(InterceptKind kind, Domain domain = Domain::kUI);
   static void HandlerRemoved(InterceptKind kind, Domain domain = Domain::kUI);
   static bool IsEnabled();
