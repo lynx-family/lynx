@@ -25,6 +25,7 @@ struct LynxLazyBundleRequest {
   pub::LynxResourceType resource_type = pub::LynxResourceType::kLazyBundle;
   std::shared_ptr<runtime::ResponsePromise<BundleResourceInfo>>
       response_promise = nullptr;
+  bool request_in_current_thread = false;
 };
 
 }  // namespace lazy_bundle
