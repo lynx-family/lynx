@@ -55,9 +55,6 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
  private:
   static void RegisterGlobalDomainAgents(
       DevToolMessageDispatcher& global_dispatcher);
-  static void RegisterGlobalDomainAgents(
-      DevToolMessageDispatcher& global_dispatcher,
-      const std::string& domain_key);
   void RegisterInstanceDomainAgents();
   void RegisterInstanceDomainAgents(const std::string& domain_key);
 };
