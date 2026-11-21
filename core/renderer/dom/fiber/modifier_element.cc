@@ -23,11 +23,13 @@
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_graphics_layer.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
+#include "core/renderer/dom/fiber/modifier_scroll_element.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/view_fragment_behavior.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
+#include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/shell/runtime/mts/mts_runtime.h"
 
@@ -58,6 +60,7 @@ constexpr int kModifierOpSizeRange = 15;
 constexpr int kModifierOpAttachment = 16;
 constexpr int kModifierOpDrawForeground = 17;
 constexpr int kModifierOpScopedClip = 18;
+constexpr int kModifierOpScroll = 19;
 
 bool IsDrawOperation(int op) {
   return op == kModifierOpGraphicsLayer || op == kModifierOpDrawBehind ||
@@ -116,6 +119,14 @@ BASE_STATIC_STRING_DECL(kMaxWidth, "maxWidth");
 BASE_STATIC_STRING_DECL(kMaxHeight, "maxHeight");
 BASE_STATIC_STRING_DECL(kTapEventName, "tap");
 BASE_STATIC_STRING_DECL(kBindEventType, "bindEvent");
+BASE_STATIC_STRING_DECL(kScrollVertical, "vertical");
+BASE_STATIC_STRING_DECL(kScrollReverse, "reverseScrolling");
+BASE_STATIC_STRING_DECL(kScrollRtl, "rtl");
+BASE_STATIC_STRING_DECL(kOnScroll, "onScroll");
+BASE_STATIC_STRING_DECL(kScrollBindingId, "bindingId");
+BASE_STATIC_STRING_DECL(kScrollInitialOffsetPx, "initialOffsetPx");
+// cspell:ignore modifierscroll
+BASE_STATIC_STRING_DECL(kModifierScrollEventName, "modifierscroll");
 
 struct ModifierOperation {
   int op{0};
@@ -130,10 +141,15 @@ struct ModifierOperation {
   int wrap_axes{0};
   double layout_values[4]{};
   bool introduces_frame{false};
+  bool separates_scroll_clip{false};
   bool event_target{false};
   bool share_touch_target{false};
   bool supports_draw_reuse{false};
   float minimum_touch_target_px{0.f};
+  int scroll_binding_id{0};
+  bool scroll_vertical{true};
+  bool scroll_reverse{false};
+  bool scroll_rtl{false};
   base::String name;
   base::String event_type;
   lepus::Value value;
@@ -157,6 +173,8 @@ struct ModifierFramePlan {
   bool has_wrap_content{false};
   base::flex_optional<bool> weight_fill;
   bool has_attachments{false};
+  bool has_scroll{false};
+  base::Vector<const ModifierOperation*> scroll_frames;
 };
 
 lepus::Value ReadModifierProperty(const lepus::Value& node,
@@ -363,6 +381,30 @@ bool ParseLayoutOperation(const lepus::Value& node,
 bool ParseModifierOperation(const lepus::Value& node,
                             ModifierOperation* operation, std::string* error) {
   switch (operation->op) {
+    case kModifierOpScroll: {
+      const auto vertical = ReadModifierProperty(node, kScrollVertical);
+      const auto reverse = ReadModifierProperty(node, kScrollReverse);
+      const auto rtl = ReadModifierProperty(node, kScrollRtl);
+      operation->callback = node.GetProperty(kAttachField);
+      operation->value = node.GetProperty(kOnScroll);
+      if (!ReadIntegerProperty(node, kScrollBindingId,
+                               &operation->scroll_binding_id) ||
+          operation->scroll_binding_id <= 0 || !vertical.IsBool() ||
+          !reverse.IsBool() || !rtl.IsBool() ||
+          !ReadFiniteNumberProperty(node, kScrollInitialOffsetPx,
+                                    &operation->layout_values[0]) ||
+          operation->layout_values[0] < 0 ||
+          operation->layout_values[0] > std::numeric_limits<float>::max() ||
+          !operation->callback.ToLepusValue().IsCallable() ||
+          !operation->value.ToLepusValue().IsCallable()) {
+        *error = "invalid scroll Modifier";
+        return false;
+      }
+      operation->scroll_vertical = vertical.Bool();
+      operation->scroll_reverse = reverse.Bool();
+      operation->scroll_rtl = rtl.Bool();
+      return true;
+    }
     case kModifierOpWeightFill:
       operation->value = ReadModifierProperty(node, kFill);
       if (!operation->value.IsBool()) {
@@ -467,6 +509,10 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpDrawForeground:
     case kModifierOpScopedClip:
       operation->callback = node.GetProperty(kResolve);
+      if (operation->op == kModifierOpScopedClip &&
+          operation->callback.IsEmpty()) {
+        return true;
+      }
       if (!operation->callback.ToLepusValue().IsCallable()) {
         *error = "drawing resolve should be callable";
         return false;
@@ -596,6 +642,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
         previous_target = &operation;
       }
     } else if (IsDrawOperation(operation.op) ||
+               operation.op == kModifierOpScroll ||
                operation.op == kModifierOpPadding ||
                operation.op == kModifierOpOffset ||
                operation.op == kModifierOpSizeRange ||
@@ -605,6 +652,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   }
 
   int sizing_prefix_axes = 0;
+  ModifierOperation* scoped_clip = nullptr;
   for (size_t position = 0; position < plan->operations.size(); ++position) {
     auto& operation = plan->operations[position];
     // Each Compose weight() emits LinearWeight and WeightFill, even for the
@@ -623,6 +671,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     if (operation.introduces_frame) {
       ++plan->frame_count;
       sizing_prefix_axes = 0;
+      scoped_clip = nullptr;
     } else if (const int axis = WrapContentStyleAxis(operation)) {
       if (position > 0 && axis == kLayoutModifierAxisHeight &&
           plan->operations[position - 1].wrap_axes == kLayoutModifierAllAxes) {
@@ -640,21 +689,38 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
       plan->frame_count += operation.wrap_has_prefix ? 2 : 1;
       plan->has_wrap_content = true;
       sizing_prefix_axes = 0;
+      scoped_clip = nullptr;
     } else if (IsDrawOperation(operation.op)) {
       plan->has_draw_callbacks = true;
       // Keep preceding effects outside the following Element's drawing hook.
       ++plan->frame_count;
       sizing_prefix_axes = 0;
+      scoped_clip =
+          operation.op == kModifierOpScopedClip && !operation.callback.IsEmpty()
+              ? &operation
+              : nullptr;
     } else if (operation.op == kModifierOpPadding ||
                operation.op == kModifierOpOffset ||
-               operation.op == kModifierOpSizeRange) {
+               operation.op == kModifierOpSizeRange ||
+               operation.op == kModifierOpScroll) {
+      if (operation.op == kModifierOpScroll && scoped_clip) {
+        // Give the explicit clip its own host so the viewport mask intersects
+        // it instead of replacing it on the same layer.
+        scoped_clip->separates_scroll_clip = true;
+        ++plan->frame_count;
+      }
+      plan->has_scroll |= operation.op == kModifierOpScroll;
       plan->has_size_range |= operation.op == kModifierOpSizeRange;
       plan->has_offset |= operation.op == kModifierOpOffset;
       ++plan->frame_count;
       sizing_prefix_axes = 0;
+      scoped_clip = nullptr;
     }
   }
   plan->frame_child_constrained_axes.resize<true>(plan->frame_count);
+  if (plan->has_scroll) {
+    plan->scroll_frames.resize<true>(plan->frame_count);
+  }
   if (layout_in_element) {
     plan->layout_modifiers =
         std::make_unique<ComposeLayoutModifiers[]>(plan->frame_count + 1);
@@ -673,7 +739,16 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
     const size_t target_frame_index =
         carrier_index < plan->frame_count ? carrier_index : kNoModifierFrame;
 
-    if (operation.wrap_axes != 0) {
+    if (operation.op == kModifierOpScroll) {
+      operation.target_frame_index = carrier_index;
+      plan->scroll_frames[carrier_index] = &operation;
+      const int axis = operation.scroll_vertical ? kLayoutModifierAxisHeight
+                                                 : kLayoutModifierAxisWidth;
+      constrained_axes &= ~axis;
+      plan->frame_child_constrained_axes[carrier_index] = constrained_axes;
+      ++carrier_index;
+      fill_propagation_start[operation.scroll_vertical ? 1 : 0] = carrier_index;
+    } else if (operation.wrap_axes != 0) {
       constrained_axes &= ~operation.wrap_axes;
       if (operation.wrap_has_prefix) {
         // Keep the outer size/fill separate from intrinsic size styles.
@@ -701,6 +776,9 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
       ++carrier_index;
       operation.target_frame_index =
           carrier_index < plan->frame_count ? carrier_index : kNoModifierFrame;
+      if (operation.separates_scroll_clip) {
+        plan->frame_child_constrained_axes[carrier_index++] = constrained_axes;
+      }
     } else if (IsLayoutOperation(operation.op)) {
       operation.target_frame_index = target_frame_index;
       switch (operation.op) {
@@ -819,18 +897,16 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
   return true;
 }
 
-Element* OperationTarget(
-    const ModifierOperation& operation, Element* owner,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames) {
+Element* OperationTarget(const ModifierOperation& operation, Element* owner,
+                         const base::Vector<fml::RefPtr<Element>>& frames) {
   if (operation.target_frame_index == kNoModifierFrame) {
     return owner;
   }
   return frames[operation.target_frame_index].get();
 }
 
-Element* LayoutCarrierAt(
-    size_t index, Element* owner,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames) {
+Element* LayoutCarrierAt(size_t index, Element* owner,
+                         const base::Vector<fml::RefPtr<Element>>& frames) {
   return index < frames.size() ? frames[index].get() : owner;
 }
 
@@ -922,9 +998,9 @@ void ApplyLayoutOperation(const ModifierOperation& operation,
   }
 }
 
-void ApplyLayoutOperations(
-    ModifierFramePlan& plan,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames, Element* owner) {
+void ApplyLayoutOperations(ModifierFramePlan& plan,
+                           const base::Vector<fml::RefPtr<Element>>& frames,
+                           Element* owner) {
   const bool layout_in_element = plan.layout_modifiers != nullptr;
   if (plan.owner_uses_layout_box) {
     owner->SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
@@ -1013,12 +1089,20 @@ void AddModifierEventListener(Element* element, const base::String& name,
           event::ClosureEventListener::ClosureType::kCore, callback));
 }
 
-void ApplyNonLayoutOperation(
-    const ModifierOperation& operation, Element* owner,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames,
-    runtime::MTSRuntime* registration_context, bool deep_convert) {
+void ApplyNonLayoutOperation(const ModifierOperation& operation, Element* owner,
+                             const base::Vector<fml::RefPtr<Element>>& frames,
+                             runtime::MTSRuntime* registration_context,
+                             bool deep_convert) {
   Element* target = OperationTarget(operation, owner, frames);
   switch (operation.op) {
+    case kModifierOpScroll:
+      static_cast<ModifierScrollElement*>(target)->Configure(
+          operation.scroll_binding_id, operation.scroll_vertical,
+          operation.scroll_reverse, operation.scroll_rtl,
+          operation.layout_values[0]);
+      AddModifierEventListener(target, kModifierScrollEventName, kBindEventType,
+                               operation.value, registration_context);
+      break;
     case kModifierOpStyleNumber:
     case kModifierOpStyleString:
       target->SetStyle(operation.style_id, operation.value.ToLepusValue());
@@ -1057,10 +1141,10 @@ void ApplyNonLayoutOperation(
   }
 }
 
-void ApplyNonLayoutOperations(
-    const ModifierFramePlan& plan, Element* owner,
-    const base::Vector<fml::RefPtr<ModifierElement>>& frames,
-    runtime::MTSRuntime* registration_context, bool deep_convert) {
+void ApplyNonLayoutOperations(const ModifierFramePlan& plan, Element* owner,
+                              const base::Vector<fml::RefPtr<Element>>& frames,
+                              runtime::MTSRuntime* registration_context,
+                              bool deep_convert) {
   // Upstream Compose folds parent data from inner to outer, so the first
   // authored value wins. Our operations are in authored order: skip later
   // writes to those fields. Box producers emit both alignment axes and the
@@ -1098,13 +1182,14 @@ void SetWeightFill(Element* element, bool fill) {
 void BindModifierAttachments(const ModifierFramePlan& plan, Element* mount_root,
                              Element* content_element,
                              runtime::MTSRuntime* registration_context) {
-  base::Vector<fml::RefPtr<ModifierElement>> frames;
+  base::Vector<fml::RefPtr<Element>> frames;
   for (auto* target = mount_root; target != content_element;
        target = target->GetChildAt(0)) {
-    frames.emplace_back(static_cast<ModifierElement*>(target));
+    frames.emplace_back(target);
   }
   for (const auto& operation : plan.operations) {
-    if (operation.op == kModifierOpAttachment) {
+    if (operation.op == kModifierOpAttachment ||
+        operation.op == kModifierOpScroll) {
       auto* target = OperationTarget(operation, content_element, frames);
       registration_context->CallClosure(operation.callback,
                                         lepus::Value(target->impl_id()));
@@ -1204,10 +1289,10 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
   // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
   // The stable content Element is not a frame; OperationTarget selects it when
   // the operation has kNoModifierFrame as its target.
-  base::Vector<fml::RefPtr<ModifierElement>> frames;
+  base::Vector<fml::RefPtr<Element>> frames;
   for (auto* target = mount_root; target != content_element;
        target = target->GetChildAt(0)) {
-    frames.emplace_back(static_cast<ModifierElement*>(target));
+    frames.emplace_back(target);
   }
 
   for (const auto& operation : plan.operations) {
@@ -1218,6 +1303,12 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
     // another on the same Element. Layer properties and content drawing run in
     // their respective Fragment phases, both with this Element's actual size.
     auto* target = OperationTarget(operation, content_element, frames);
+    if (operation.op == kModifierOpScopedClip && operation.callback.IsEmpty()) {
+      // Bounds-only clips share the overflow path for drawing and hit testing,
+      // including native child layers.
+      target->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
+      continue;
+    }
     target->SetCustomDrawFunctions(
         operation.op == kModifierOpGraphicsLayer
             ? GraphicsLayerDrawFunctions(registration_context,
@@ -1233,20 +1324,20 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
                                              : ComposeDrawPhase::kBehind,
                                          operation.supports_draw_reuse));
     if (operation.op == kModifierOpScopedClip) {
-      // The explicit ClipRect owns this carrier's mask. Do not let the later
-      // ordinary DrawClip replace it with the carrier's CSS rounded rectangle.
+      // The explicit ClipRect owns this carrier's mask. Any following scroll
+      // frame keeps its own overflow clip.
       target->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
     }
   }
 }
 
-using ModifierFrames = base::Vector<fml::RefPtr<ModifierElement>>;
+using ModifierFrames = base::Vector<fml::RefPtr<Element>>;
 
 ModifierFrames CollectModifierFrames(Element* mount_root, Element* owner) {
   ModifierFrames frames;
   // ValidateTopology has checked the single-child chain ending at owner.
   for (auto* frame = mount_root; frame != owner; frame = frame->GetChildAt(0)) {
-    frames.emplace_back(static_cast<ModifierElement*>(frame));
+    frames.emplace_back(frame);
   }
   return frames;
 }
@@ -1254,6 +1345,58 @@ ModifierFrames CollectModifierFrames(Element* mount_root, Element* owner) {
 ModifierFrames PrepareModifierFrames(const ModifierFramePlan& plan,
                                      Element* owner,
                                      const ModifierFrames& previous_frames) {
+  const bool had_scroll =
+      std::any_of(previous_frames.begin(), previous_frames.end(),
+                  [](const auto& frame) { return frame->is_scroll_view(); });
+  if (plan.has_scroll || had_scroll) {
+    ModifierFrames frames;
+    frames.grow(plan.frame_count);
+    base::Vector<bool> used;
+    used.resize<true>(previous_frames.size());
+    for (size_t index = plan.frame_count; index > 0; --index) {
+      const auto* scroll =
+          plan.has_scroll ? plan.scroll_frames[index - 1] : nullptr;
+      for (size_t old = previous_frames.size(); old > 0; --old) {
+        auto frame = previous_frames[old - 1];
+        if (used[old - 1] || frame->is_scroll_view() != (scroll != nullptr))
+          continue;
+        if (scroll &&
+            static_cast<ModifierScrollElement*>(frame.get())->binding_id() !=
+                scroll->scroll_binding_id)
+          continue;
+        used[old - 1] = true;
+        ClearModifierOwnedProperties(frame.get());
+        frames[index - 1] = std::move(frame);
+        break;
+      }
+      auto& frame = frames[index - 1];
+      if (!frame) {
+        if (scroll) {
+          frame = fml::AdoptRef<Element>(
+              new ModifierScrollElement(owner->element_manager()));
+          frame->SetParentComponentUniqueIdForFiber(
+              owner->GetParentComponentUniqueIdForFiber());
+          frame->set_style_sheet_manager(owner->style_sheet_manager());
+          NotifyNodeCreated(frame.get());
+        } else {
+          frame = CreateFrame(owner);
+        }
+      }
+      if (scroll) {
+        static_cast<ModifierScrollElement*>(frame.get())->ResetModifierStyles();
+      } else {
+        frame->SetStyle(kPropertyIDDisplay, lepus::Value("-x-box"));
+        frame->SetStyle(kPropertyIDBoxSizing, lepus::Value("border-box"));
+        frame->SetStyle(kPropertyIDXBoxPropagateMinConstraints,
+                        lepus::Value(true));
+        frame->SetDefaultOverflow(
+            plan.has_draw_callbacks || plan.has_offset ||
+            plan.has_wrap_content ||
+            owner->element_manager()->GetDefaultOverflowVisible());
+      }
+    }
+    return frames;
+  }
   // Keep the innermost suffix; only a missing outer prefix needs new nodes.
   const size_t reused_count =
       std::min(previous_frames.size(), plan.frame_count);
@@ -1312,6 +1455,48 @@ fml::RefPtr<Element> UpdateModifierFrameTree(
   auto* parent = previous_root->parent();
   const int32_t old_index =
       parent == nullptr ? -1 : parent->IndexOf(previous_root);
+  const auto has_scroll = [](const auto& frame) {
+    return frame->is_scroll_view();
+  };
+  if (std::any_of(previous_frames.begin(), previous_frames.end(), has_scroll) ||
+      std::any_of(frames.begin(), frames.end(), has_scroll)) {
+    // Retain matching links and scroll identities even when a boundary is
+    // inserted inside a scroll. Unlink changed edges before rewiring to avoid
+    // cycles when existing frames change positions.
+    for (const auto& frame : previous_frames) {
+      auto found = std::find(frames.begin(), frames.end(), frame);
+      // Leave children of discarded frames linked until a move or root
+      // promotion can unlink them through the normal tree operations.
+      if (found == frames.end()) continue;
+      const auto next = found + 1;
+      Element* wanted = next == frames.end() ? owner : next->get();
+      if (frame->GetChildCount() && frame->GetChildAt(0) != wanted) {
+        auto child = fml::RefPtr<Element>(frame->GetChildAt(0));
+        NotifyNodeRemoved(child.get());
+        frame->RemoveNode(child, false);
+      }
+    }
+    auto root = fml::RefPtr<Element>(owner);
+    for (size_t index = frames.size(); index > 0; --index) {
+      if (root->parent() != frames[index - 1].get()) {
+        AttachModifierSubtree(frames[index - 1].get(), root, 0);
+      }
+      root = frames[index - 1];
+    }
+    if (root.get() != previous_root && parent) {
+      const bool old_still_attached = previous_root->parent() == parent;
+      AttachModifierSubtree(parent, root,
+                            old_index + (old_still_attached ? 1 : 0));
+      if (old_still_attached) {
+        NotifyNodeRemoved(previous_root);
+        parent->RemoveNode(fml::RefPtr<Element>(previous_root), false);
+      }
+    } else if (parent == nullptr && root->parent() != nullptr) {
+      NotifyNodeRemoved(root.get());
+      root->parent()->RemoveNode(root, false);
+    }
+    return root;
+  }
   const size_t reused_count = std::min(previous_frames.size(), frames.size());
   auto root =
       WrapNewModifierFrames(owner, frames, frames.size() - reused_count);
@@ -1470,6 +1655,9 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
   if (plan.has_wrap_content && !layout_in_element) {
     return {false, 0, "wrapContent requires layout in Element"};
   }
+  if (plan.has_scroll && !layout_in_element) {
+    return {false, 0, "scroll modifiers require layout in Element"};
+  }
   if (plan.has_offset) {
     if (!layout_in_element) {
       return {false, 0, "offset requires layout in Element"};
@@ -1487,7 +1675,7 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     }
   }
   // Reject unsupported plans before changing any active callbacks or nodes.
-  if (plan.has_attachments && !registration_context) {
+  if ((plan.has_attachments || plan.has_scroll) && !registration_context) {
     return {false, 0, "Modifier attachment requires a registering runtime"};
   }
   if (plan.has_draw_callbacks) {
@@ -1507,7 +1695,7 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
       plan, content_element.get(), previous_mount_root.get(),
       registration_context, manager->GetEnableParallelElement());
   handle->SetMountRoot(std::move(mount_root));
-  if (plan.has_attachments) {
+  if (plan.has_attachments || plan.has_scroll) {
     BindModifierAttachments(plan, handle->mount_root().get(),
                             content_element.get(), registration_context);
   }

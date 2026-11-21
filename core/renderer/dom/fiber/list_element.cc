@@ -635,7 +635,9 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       // Create the mediator after resolving attributes so its constructor can
       // get PhysicalPixelsPerLayoutUnit from the element manager.
       list_mediator_ = std::make_unique<ListMediator>(this);
-      SetComposeScrollManaged(compose_scroll_managed_);
+      if (engine_scroll_managed_) {
+        list_mediator_->EnableEngineManagedScroll();
+      }
       // Note: if enable native list only from env, we should not send scroll
       // to threshold event on diff layout to avoid breaking change.
       list_mediator_->SetEnableScrollToThresholdEventOnDiffLayout(
@@ -706,8 +708,8 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
 
 bool ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
-  if (key.IsEqual("compose-scroll-managed")) {
-    SetComposeScrollManaged(value.IsBool() && value.Bool());
+  if (key.IsEqual("engine-scroll-managed") && value.IsBool() && value.Bool()) {
+    EnableEngineManagedScroll();
   }
   if (!DisableListPlatformImplementation() ||
       (UseNativeList() && list_mediator_->ResolveAttribute(key, value))) {
@@ -847,7 +849,7 @@ lepus::Value ListElement::InvokeMethod(const base::String& method,
   BASE_STATIC_STRING_DECL(kInputDeltaPx, "deltaPx");
   BASE_STATIC_STRING_DECL(kInputIndex, "index");
   BASE_STATIC_STRING_DECL(kInputOffsetPx, "offsetPx");
-  if (method == "composeList") {
+  if (method == "scrollCommand") {
     // Compose binds and lays out items synchronously before returning state.
     const auto request = params.ToLepusValue(true);
     if (will_destroy() || !CanUseComposeScroll()) {
@@ -987,10 +989,13 @@ void ListElement::ScrollStopped() {
   }
 }
 
-void ListElement::SetComposeScrollManaged(bool managed) {
-  compose_scroll_managed_ = managed && CanUseComposeScroll();
+void ListElement::EnableEngineManagedScroll() {
+  if (engine_scroll_managed_ || !CanUseComposeScroll()) {
+    return;
+  }
+  engine_scroll_managed_ = true;
   if (list_mediator_) {
-    list_mediator_->SetComposeScrollManaged(compose_scroll_managed_);
+    list_mediator_->EnableEngineManagedScroll();
   }
 }
 
