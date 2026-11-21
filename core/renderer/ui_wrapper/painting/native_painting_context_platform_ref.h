@@ -8,6 +8,7 @@
 #include <array>
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -95,6 +96,12 @@ class NativePaintingCtxPlatformRef
                                   int32_t event_target_root_id,
                                   int64_t time_stamp = 0);
   bool IsRawInputEnabled() const { return event_handler_->IsRawInputEnabled(); }
+  // Includes an editor receiving focus so a root-to-editor transfer retains
+  // the event root's focus ownership.
+  bool HasFocusedInputEditor(int32_t root_id) const {
+    return input_focused_editor_sign_ != 0 &&
+           input_focused_event_root_ == root_id;
+  }
   // Notify Compose of native root availability without changing input
   // ownership.
   void NotifyInputRootStateChanged(int32_t root_id, bool attached,
@@ -204,6 +211,9 @@ class NativePaintingCtxPlatformRef
   bool IsNativePaintingCtxPlatformRef() override { return true; }
 
  protected:
+  void PublishPlatformEventRootOffset(
+      int32_t root_id, std::optional<std::array<float, 2>> offset);
+
   virtual bool RequestRootFocus(int32_t sign, bool focused) { return false; }
 
   // Query on the platform thread. Returns content, padding, border and margin
@@ -242,6 +252,10 @@ class NativePaintingCtxPlatformRef
   std::unique_ptr<PlatformEventHandler> event_handler_ =
       std::make_unique<PlatformEventHandler>(this);
   int32_t input_focused_event_root_{0};
+  // The native editor owned by the current or pending focus request.
+  int32_t input_focused_editor_sign_{0};
+  // Invalidates late UI-method replies after a newer request or root teardown.
+  uint64_t input_focus_request_id_{0};
   std::unique_ptr<PlatformEventEmitter> event_emitter_ =
       std::make_unique<PlatformEventEmitter>(this);
   std::unique_ptr<PlatformEventTargetHelper> event_target_helper_ =

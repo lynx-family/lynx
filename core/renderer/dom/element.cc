@@ -3073,6 +3073,15 @@ lepus::Value Element::InvokeMethod(const base::String& method,
   if (method == "getGeometry") {
     return QueryGeometry(request);
   }
+  if (method == "textEditCommand") {
+    // Capture the edit payload, including its command ID and pixel values.
+    // Run it after native input creation and previously queued focus ops.
+    AppendPendingInvokeTask([this, request] {
+      EnqueueInvoke("textEditCommand", pub::ValueImplLepus(request),
+                    [](int32_t, const pub::Value&) {});
+    });
+    return lepus::Value(true);
+  }
   if (method == "getInputAncestors") {
     auto ancestors = lepus::CArray::Create();
     for (auto* node : FiberNodeInfo::PathToRoot(this)) {
@@ -3128,6 +3137,8 @@ void Element::UpdateStickyTranslation(float x, float y) {
 void Element::UpdatePlatformRootOffset(float x, float y) {
   *platform_root_offset_ = {x, y};
 }
+
+void Element::ClearPlatformRootOffset() { platform_root_offset_.reset(); }
 
 starlight::LayoutResultForRendering Element::layout_result() {
   auto layout_result = starlight::LayoutResultForRendering();

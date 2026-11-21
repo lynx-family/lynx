@@ -56,6 +56,7 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void SetEngineActor(const std::shared_ptr<LynxActor<LynxEngine>>& actor) {
     engine_actor_ = actor;
+    ui_operation_flush_scheduled_ = false;
   }
 
   void SetVSyncMonitorPlatformImpl(
@@ -154,6 +155,7 @@ class TasmMediator : public LynxEngine::Delegate {
   void SendNativeCustomEvent(const std::string& name, int tag,
                              const lepus::Value& param_value,
                              const std::string& param_name) override;
+  void ScheduleUIOperationFlush() override;
 
   void OnDataUpdatedByNative(tasm::TemplateData data,
                              const bool reset) override;
@@ -288,6 +290,7 @@ class TasmMediator : public LynxEngine::Delegate {
   std::shared_ptr<LynxActor<BTSRuntime>> runtime_actor_;
   std::shared_ptr<LynxActor<tasm::LayoutContext>> layout_actor_;
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
+  bool ui_operation_flush_scheduled_{false};
   bool should_send_event_to_main_thread_{false};
   bool should_enable_air_performance_callback_{false};
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>

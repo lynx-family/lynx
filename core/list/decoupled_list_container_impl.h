@@ -70,7 +70,7 @@ class ListContainerImpl : public ContainerDelegate {
 
   std::unique_ptr<pub::Value> ScrollBySync(float delta) override;
   void ScrollStopped() override;
-  void SetComposeScrollManaged(bool managed) override;
+  void EnableEngineManagedScroll() override;
   ListScrollResult ScrollByDelta(float delta) override;
   ListScrollState ScrollToItem(int index, float offset) override;
   ListScrollState GetScrollState() const override;

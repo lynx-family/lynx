@@ -134,10 +134,11 @@ class PlatformRendererContext {
   std::vector<float> GetRootViewLocationOnScreen();
   bool RequestRootFocus(int32_t root_sign, bool focused);
   void ApplyListScrollState(int32_t sign, float scroll_x, float scroll_y,
-                            float content_width, float content_height,
-                            bool cmp_managed);
+                            float content_width, float content_height);
   // Returns false while the root view is not attached to a window.
   bool GetRootViewLocationInWindow(float location[2]);
+  void ApplyScrollViewState(int32_t sign, float scroll_x, float scroll_y,
+                            float content_width, float content_height);
   std::vector<float> GetScreenSize();
   std::vector<float> GetRendererHostScrollOffset(int32_t sign);
   bool IsRendererHostScrollable(int32_t sign);
