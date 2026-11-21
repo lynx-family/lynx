@@ -18,6 +18,10 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
  protected:
   void SetUp() override { configs_.SetQuirksMode(base::Version(3, 1)); }
 
+  void SetQuirksMode(const base::Version& version) {
+    configs_.SetQuirksMode(version);
+  }
+
   LayoutObject* CreateNode(DisplayType display = DisplayType::kXBox) {
     styles_.push_back(std::make_unique<LayoutComputedStyle>(1.f));
     auto* style = styles_.back().get();
@@ -63,6 +67,20 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
     return box;
   }
 
+  LayoutObject* CreateDecoratedCssBox(LayoutObject* child) {
+    auto* box = CreatePaddedBox(child);
+    auto* style = box->GetCSSMutableStyle();
+    style->SetPaddingLeft(NLength::MakeUnitNLength(3));
+    style->SetPaddingRight(NLength::MakeUnitNLength(7));
+    style->SetPaddingTop(NLength::MakeUnitNLength(5));
+    style->SetPaddingBottom(NLength::MakeUnitNLength(9));
+    style->SetBorderLeftWidth(1);
+    style->SetBorderRightWidth(2);
+    style->SetBorderTopWidth(2);
+    style->SetBorderBottomWidth(4);
+    return box;
+  }
+
   struct ComposeMeasurement {
     std::vector<ComposeConstraints> ranges;
     FloatSize preferred{20, 15, 0};
@@ -78,7 +96,7 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
       measurement->ranges.push_back(range);
       return FloatSize(range.ConstrainWidth(measurement->preferred.width_),
                        range.ConstrainHeight(measurement->preferred.height_),
-                       0);
+                       measurement->preferred.baseline_);
     });
     return child;
   }
@@ -87,6 +105,7 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
     LayoutObject* node{nullptr};
     FloatSize preferred{20, 15, 0};
     std::vector<Constraints> ranges;
+    std::vector<bool> phases;
   };
 
   LayoutObject* CreateNativeChild(NativeMeasurement* measurement) {
@@ -94,9 +113,10 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
     measurement->node = child;
     child->SetContext(measurement);
     child->SetSLMeasureFunc(
-        [](void* context, const Constraints& constraints, bool) {
+        [](void* context, const Constraints& constraints, bool final_measure) {
           auto* measurement = static_cast<NativeMeasurement*>(context);
           measurement->ranges.push_back(constraints);
+          measurement->phases.push_back(final_measure);
           auto axis = [](const OneSideConstraint& constraint, float preferred) {
             if (constraint.Mode() == SLMeasureModeIndefinite) return preferred;
             if (constraint.Mode() == SLMeasureModeDefinite)
@@ -105,7 +125,8 @@ class BoxLayoutAlgorithmTest : public ::testing::Test {
           };
           return FloatSize(
               axis(constraints[kHorizontal], measurement->preferred.width_),
-              axis(constraints[kVertical], measurement->preferred.height_), 0);
+              axis(constraints[kVertical], measurement->preferred.height_),
+              measurement->preferred.baseline_);
         });
     return child;
   }
@@ -340,7 +361,7 @@ TEST_F(BoxLayoutAlgorithmTest, ComposeBoxMatchParentUsesChosenContentSize) {
   box->AppendChild(match);
   const auto size =
       box->UpdateMeasureWithComposeConstraints({50, 100, 30, 80}, true);
-  EXPECT_TRUE(match_measurement.ranges.empty());
+  ASSERT_EQ(1u, match_measurement.ranges.size());
   EXPECT_FLOAT_EQ(50, size.width_);
   EXPECT_FLOAT_EQ(30, size.height_);
   box->AlignmentByPlatform(0, 0);
@@ -350,7 +371,8 @@ TEST_F(BoxLayoutAlgorithmTest, ComposeBoxMatchParentUsesChosenContentSize) {
   EXPECT_FLOAT_EQ(6, match->GetBorderBoundTopFromParentPaddingBound());
 }
 
-TEST_F(BoxLayoutAlgorithmTest, BoxMatchParentMeasuresDuringPlacement) {
+TEST_F(BoxLayoutAlgorithmTest,
+       MatchParentMeasuresBeforePlacementForComposeAndCss) {
   for (bool compose : {false, true}) {
     SCOPED_TRACE(compose);
     NativeMeasurement regular_measurement;
@@ -376,7 +398,7 @@ TEST_F(BoxLayoutAlgorithmTest, BoxMatchParentMeasuresDuringPlacement) {
                                       true);
       EXPECT_FLOAT_EQ(50, size.width_);
       EXPECT_FLOAT_EQ(30, size.height_);
-      EXPECT_EQ(pass == 0 ? 0u : 1u, match_measurement.ranges.size());
+      EXPECT_EQ(1u, match_measurement.ranges.size());
       box->AlignmentByPlatform(0, 0);
       ASSERT_EQ(1u, match_measurement.ranges.size());
       const auto& constraints = match_measurement.ranges.front();
@@ -394,6 +416,94 @@ TEST_F(BoxLayoutAlgorithmTest, BoxMatchParentMeasuresDuringPlacement) {
   }
 }
 
+TEST_F(BoxLayoutAlgorithmTest,
+       CssMatchParentPredictionDoesNotForceFinalNativeMeasurement) {
+  NativeMeasurement regular_measurement, match_measurement;
+  regular_measurement.preferred = {37, 40, 0};
+  match_measurement.preferred = {200, 120, 0};
+  auto* regular = CreateNativeChild(&regular_measurement);
+  auto* match = CreateNativeChild(&match_measurement);
+  match->GetCSSMutableStyle()->SetXBoxMatchParentSize(true);
+  match->GetCSSMutableStyle()->SetMarginLeft(NLength::MakeUnitNLength(2));
+  match->GetCSSMutableStyle()->SetMarginRight(NLength::MakeUnitNLength(4));
+  match->GetCSSMutableStyle()->SetMarginTop(NLength::MakeUnitNLength(3));
+  match->GetCSSMutableStyle()->SetMarginBottom(NLength::MakeUnitNLength(7));
+  auto* box = CreateDecoratedCssBox(regular);
+  box->AppendChild(match);
+  const Constraints range{OneSideConstraint::AtMost(200),
+                          OneSideConstraint::AtMost(160)};
+  const auto predicted = box->UpdateMeasureByPlatform(range, false);
+  // The ordinary child determines 37x40 content plus 13x20 insets. The
+  // matching child can predict its exact size without invoking native measure.
+  EXPECT_FLOAT_EQ(50, predicted.width_);
+  EXPECT_FLOAT_EQ(60, predicted.height_);
+  EXPECT_TRUE(match_measurement.ranges.empty());
+  EXPECT_FLOAT_EQ(0, match->GetBorderBoundWidth());
+  const auto final_size = box->UpdateMeasureByPlatform(range, true);
+  EXPECT_FLOAT_EQ(predicted.width_, final_size.width_);
+  EXPECT_FLOAT_EQ(predicted.height_, final_size.height_);
+  ASSERT_EQ(1u, match_measurement.phases.size());
+  EXPECT_TRUE(match_measurement.phases.front());
+  EXPECT_FLOAT_EQ(31, match->GetBorderBoundWidth());
+  EXPECT_FLOAT_EQ(30, match->GetBorderBoundHeight());
+  box->UpdateAlignment();
+  EXPECT_EQ(1u, match_measurement.ranges.size());
+  EXPECT_FLOAT_EQ(5 + 3, match->GetBorderBoundTopFromParentPaddingBound());
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       CssMatchParentUsesChosenSizeAndPercentageMarginsAcrossUpdates) {
+  for (bool only_matching : {false, true}) {
+    SCOPED_TRACE(only_matching);
+    NativeMeasurement regular_measurement, match_measurement;
+    regular_measurement.preferred = {120, 80, 0};
+    match_measurement.preferred = {200, 120, 0};
+    auto* regular = CreateNativeChild(&regular_measurement);
+    auto* match = CreateNativeChild(&match_measurement);
+    auto* child_style = match->GetCSSMutableStyle();
+    child_style->SetXBoxMatchParentSize(true);
+    child_style->SetMarginLeft(NLength::MakePercentageNLength(10));
+    child_style->SetMarginRight(NLength::MakePercentageNLength(20));
+    child_style->SetMarginTop(NLength::MakeUnitNLength(3));
+    child_style->SetMarginBottom(NLength::MakeUnitNLength(7));
+    auto* box = CreateDecoratedCssBox(only_matching ? match : regular);
+    if (!only_matching) box->AppendChild(match);
+    auto* style = box->GetCSSMutableStyle();
+    style->SetMinWidth(NLength::MakeUnitNLength(50));
+    style->SetMinHeight(NLength::MakeUnitNLength(60));
+    for (float max_width : {100.f, 70.f, 100.f}) {
+      const float max_height = max_width == 70 ? 60 : 80;
+      style->SetMaxWidth(NLength::MakeUnitNLength(max_width));
+      style->SetMaxHeight(NLength::MakeUnitNLength(max_height));
+      box->MarkDirty();
+      const float width = only_matching ? 50 : max_width;
+      const float height = only_matching ? 60 : max_height;
+      size_t measurements = 0;
+      for (int pass = 0; pass < 2; ++pass) {
+        const auto size = box->UpdateMeasureByPlatform(
+            {OneSideConstraint::AtMost(200), OneSideConstraint::AtMost(160)},
+            true);
+        EXPECT_FLOAT_EQ(width, size.width_);
+        EXPECT_FLOAT_EQ(height, size.height_);
+        // Match-parent text does not size the Box. Horizontal margins resolve
+        // against the chosen content width, not the incoming 200px maximum.
+        EXPECT_FLOAT_EQ((width - 13) * .1f, match->GetLayoutMarginLeft());
+        EXPECT_FLOAT_EQ((width - 13) * .7f, match->GetBorderBoundWidth());
+        EXPECT_FLOAT_EQ(height - 20 - 10, match->GetBorderBoundHeight());
+        ASSERT_FALSE(match_measurement.ranges.empty());
+        const auto& child_range = match_measurement.ranges.back();
+        EXPECT_EQ(SLMeasureModeDefinite, child_range[kHorizontal].Mode());
+        EXPECT_EQ(SLMeasureModeDefinite, child_range[kVertical].Mode());
+        if (pass == 0) measurements = match_measurement.ranges.size();
+        EXPECT_EQ(measurements, match_measurement.ranges.size());
+        box->UpdateAlignment();
+        EXPECT_EQ(measurements, match_measurement.ranges.size());
+        for (auto* node : {box, regular, match}) node->MarkNotDirty();
+      }
+    }
+  }
+}
+
 TEST_F(BoxLayoutAlgorithmTest, ComposeBoxEmptyAndOnlyMatchParentSize) {
   auto* empty = CreateNode();
   empty->SetComposeLayout(true);
@@ -408,7 +518,7 @@ TEST_F(BoxLayoutAlgorithmTest, ComposeBoxEmptyAndOnlyMatchParentSize) {
   auto* box = CreatePaddedBox(match, true);
   const auto size =
       box->UpdateMeasureWithComposeConstraints({0, 100, 0, 80}, true);
-  EXPECT_TRUE(measurement.ranges.empty());
+  ASSERT_EQ(1u, measurement.ranges.size());
   EXPECT_FLOAT_EQ(12, size.width_);
   EXPECT_FLOAT_EQ(4, size.height_);
   box->AlignmentByPlatform(0, 0);
@@ -1067,7 +1177,8 @@ TEST_F(BoxLayoutAlgorithmTest, BoxConstraintPathsMeasureBeforePlacement) {
     }
     const auto before_alignment = match_measurement.ranges.size();
     box->AlignmentByPlatform(0, 0);
-    ASSERT_EQ(before_alignment + 1, match_measurement.ranges.size());
+    ASSERT_EQ(1u, before_alignment);
+    ASSERT_EQ(before_alignment, match_measurement.ranges.size());
     const float width = compose ? 38 : 58;
     const float height = compose ? 26 : 36;
     ExpectRange(match_measurement.ranges.back(), width, width, height, height);
@@ -1121,6 +1232,234 @@ TEST_F(BoxLayoutAlgorithmTest, ComposeCacheRejectsExternallyChangedGeometry) {
   child->UpdateMeasureWithComposeConstraints(range, true);
   EXPECT_EQ(3u, measurement.ranges.size());
   EXPECT_FLOAT_EQ(15, child->GetBaseline());
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposePropagatesTextBaselineWithoutChangingCss) {
+  for (bool compose : {false, true}) {
+    SCOPED_TRACE(compose);
+    auto* box = CreateNode();
+    box->SetComposeLayout(compose);
+    auto* style = box->GetCSSMutableStyle();
+    style->SetPaddingLeft(NLength::MakeUnitNLength(3));
+    style->SetPaddingRight(NLength::MakeUnitNLength(7));
+    style->SetPaddingTop(NLength::MakeUnitNLength(4));
+    style->SetPaddingBottom(NLength::MakeUnitNLength(3));
+    style->SetBorderTopWidth(2);
+    style->SetBorderBottomWidth(1);
+    auto* text = CreateNode();
+    text->SetComposeLayout(compose);
+    text->GetCSSMutableStyle()->SetMarginTop(NLength::MakeUnitNLength(5));
+    text->GetCSSMutableStyle()->SetMarginBottom(NLength::MakeUnitNLength(7));
+    text->SetSLMeasureFunc(
+        [](void*, const Constraints&, bool) { return FloatSize(20, 24, 18); });
+    box->AppendChild(text);
+    const auto size = box->UpdateMeasureByPlatform(
+        {OneSideConstraint::AtMost(100), OneSideConstraint::AtMost(100)}, true);
+    // 24px text + 12px margins + 10px container insets = 46px.
+    // Compose's baseline is border-top + padding-top + margin-top + text line.
+    EXPECT_FLOAT_EQ(46, size.height_);
+    EXPECT_FLOAT_EQ(compose ? 2 + 4 + 5 + 18 : 46, size.baseline_);
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposePropagatesChildHeightFallbackAfterPlacement) {
+  NativeMeasurement measurement;
+  measurement.preferred = {20, 24, 0};
+  auto* child = CreateNativeChild(&measurement);
+  child->SetComposeLayout(true);
+  auto* child_style = child->GetCSSMutableStyle();
+  child_style->SetPaddingLeft(NLength::MakeUnitNLength(3));
+  child_style->SetPaddingRight(NLength::MakeUnitNLength(7));
+  child_style->SetPaddingTop(NLength::MakeUnitNLength(5));
+  child_style->SetPaddingBottom(NLength::MakeUnitNLength(11));
+  child_style->SetBorderLeftWidth(1);
+  child_style->SetBorderRightWidth(2);
+  child_style->SetBorderTopWidth(3);
+  child_style->SetBorderBottomWidth(4);
+  child_style->SetMarginLeft(NLength::MakeUnitNLength(2));
+  child_style->SetMarginRight(NLength::MakeUnitNLength(4));
+  child_style->SetMarginTop(NLength::MakeUnitNLength(4));
+  child_style->SetMarginBottom(NLength::MakeUnitNLength(6));
+  auto* box = CreateDecoratedCssBox(child);
+  box->SetComposeLayout(true);
+  auto* style = box->GetCSSMutableStyle();
+  style->SetWidth(NLength::MakeUnitNLength(200));
+  style->SetHeight(NLength::MakeUnitNLength(121));
+  const ComposeConstraints range{0, 300, 0, 200};
+  for (auto alignment :
+       {FlexAlignType::kStart, FlexAlignType::kCenter, FlexAlignType::kEnd}) {
+    SCOPED_TRACE(static_cast<int>(alignment));
+    style->SetAlignItems(alignment);
+    box->MarkDirty();
+    // Child border height is 24+(3+5+11+4)=47px and its margin height is 57px.
+    // Box content height is 121-(2+5+9+4)=101px, leaving 44px for alignment.
+    const float offset = alignment == FlexAlignType::kStart    ? 0
+                         : alignment == FlexAlignType::kCenter ? 22
+                                                               : 44;
+    for (float baseline : {0.f, 18.f, 0.f}) {
+      SCOPED_TRACE(baseline);
+      measurement.preferred.baseline_ = baseline;
+      child->MarkDirty();
+      const size_t count = measurement.ranges.size() + 1;
+      for (int pass = 0; pass < 2; ++pass) {
+        const auto size = box->UpdateMeasureWithComposeConstraints(range, true);
+        EXPECT_EQ(count, measurement.ranges.size());
+        EXPECT_FLOAT_EQ(47, child->GetBorderBoundHeight());
+        // Explicit lines are content-relative; fallback already includes the
+        // child's insets. Add only Box border+padding (7) and child margin (4).
+        const float child_line = baseline == 0 ? 47 : 3 + 5 + baseline;
+        EXPECT_FLOAT_EQ(11 + offset + child_line, size.baseline_);
+        box->UpdateAlignment();
+        EXPECT_FLOAT_EQ(size.baseline_,
+                        child->GetBoundTopFrom(box, BoundType::kBorder,
+                                               BoundType::kBorder) +
+                            child_line);
+        EXPECT_EQ(count, measurement.ranges.size());
+      }
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposeMergesTextAndHeightFallbackInEitherChildOrder) {
+  for (bool fallback_first : {false, true}) {
+    SCOPED_TRACE(fallback_first);
+    ComposeMeasurement a, b;
+    a.preferred = {20, 10, 0};
+    b.preferred = {20, 24, 18};
+    auto* fallback = CreateComposeChild(&a);
+    auto* text = CreateComposeChild(&b);
+    fallback->GetCSSMutableStyle()->SetMarginTop(NLength::MakeUnitNLength(4));
+    fallback->GetCSSMutableStyle()->SetMarginBottom(
+        NLength::MakeUnitNLength(6));
+    text->GetCSSMutableStyle()->SetMarginTop(NLength::MakeUnitNLength(6));
+    text->GetCSSMutableStyle()->SetMarginBottom(NLength::MakeUnitNLength(8));
+    auto* box = CreateDecoratedCssBox(fallback_first ? fallback : text);
+    box->SetComposeLayout(true);
+    box->AppendChild(fallback_first ? text : fallback);
+    const auto size =
+        box->UpdateMeasureWithComposeConstraints({0, 200, 0, 100}, true);
+    // Insets 20px + max(4+10+6,6+24+8)=38px margin height = 58px.
+    // The fallback participates in min(4+10,6+18)=14px, then Box adds 2+5px.
+    EXPECT_FLOAT_EQ(58, size.height_);
+    EXPECT_FLOAT_EQ(21, size.baseline_);
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposeMatchParentTextUsesFinalSizeWithoutSizingItsBox) {
+  for (bool final_measure : {false, true}) {
+    NativeMeasurement regular_measurement, match_measurement;
+    regular_measurement.preferred = {37, 40, 0};
+    match_measurement.preferred = {200, 120, 18};
+    auto* regular = CreateNativeChild(&regular_measurement);
+    auto* match = CreateNativeChild(&match_measurement);
+    regular->SetComposeLayout(true);
+    match->SetComposeLayout(true);
+    match->GetCSSMutableStyle()->SetXBoxMatchParentSize(true);
+    match->GetCSSMutableStyle()->SetMarginLeft(NLength::MakeUnitNLength(2));
+    match->GetCSSMutableStyle()->SetMarginRight(NLength::MakeUnitNLength(4));
+    match->GetCSSMutableStyle()->SetMarginTop(NLength::MakeUnitNLength(4));
+    match->GetCSSMutableStyle()->SetMarginBottom(NLength::MakeUnitNLength(6));
+    auto* box = CreatePaddedBox(regular, true);
+    auto* style = box->GetCSSMutableStyle();
+    style->SetPaddingLeft(NLength::MakeUnitNLength(3));
+    style->SetPaddingRight(NLength::MakeUnitNLength(7));
+    style->SetPaddingTop(NLength::MakeUnitNLength(5));
+    style->SetPaddingBottom(NLength::MakeUnitNLength(9));
+    style->SetBorderLeftWidth(1);
+    style->SetBorderRightWidth(2);
+    style->SetBorderTopWidth(2);
+    style->SetBorderBottomWidth(4);
+    box->AppendChild(match);
+    const ComposeConstraints range{0, 300, 0, 200};
+    for (int pass = 0; pass < 2; ++pass) {
+      const auto size =
+          box->UpdateMeasureWithComposeConstraints(range, final_measure);
+      // Only the regular child sizes the Box: 37+13 by 40+20. The matching
+      // text gets the 37x40 content area minus its 6x10 margins.
+      EXPECT_FLOAT_EQ(50, size.width_);
+      EXPECT_FLOAT_EQ(60, size.height_);
+      EXPECT_FLOAT_EQ(2 + 5 + 4 + 18, size.baseline_);
+      ASSERT_EQ(1u, match_measurement.ranges.size());
+      EXPECT_FLOAT_EQ(31, match->GetBorderBoundWidth());
+      EXPECT_FLOAT_EQ(30, match->GetBorderBoundHeight());
+      box->UpdateAlignment();
+      EXPECT_EQ(1u, match_measurement.ranges.size());
+    }
+  }
+}
+
+TEST_F(BoxLayoutAlgorithmTest,
+       ComposeBaselinesIncludeRelativeOffsetsWithLegacyPlacementUnchanged) {
+  struct Offset {
+    NLength top;
+    NLength bottom;
+    float expected;
+  };
+  const auto px = [](float value) { return NLength::MakeUnitNLength(value); };
+  const auto auto_length = NLength::MakeAutoNLength();
+  const Offset offsets[] = {
+      {auto_length, auto_length, 0},
+      {px(12), px(7), 12},
+      {px(-12), px(7), -12},
+      {auto_length, px(7), -7},
+      {auto_length, px(-7), 7},
+      {NLength::MakePercentageNLength(50), px(7), 30},
+      {auto_length, NLength::MakePercentageNLength(25), -15}};
+  for (bool compose : {false, true}) {
+    for (bool quirks : {false, true}) {
+      SetQuirksMode(quirks ? base::Version(1, 0) : base::Version(3, 2));
+      for (const auto& offset : offsets) {
+        for (float baseline : {0.f, 18.f}) {
+          SCOPED_TRACE(::testing::Message()
+                       << compose << ',' << quirks << ',' << offset.expected
+                       << ',' << baseline);
+          NativeMeasurement measurement;
+          measurement.preferred = {20, 24, baseline};
+          auto* text = CreateNativeChild(&measurement);
+          text->SetComposeLayout(compose);
+          auto* child_style = text->GetCSSMutableStyle();
+          child_style->SetMarginTop(px(4));
+          child_style->SetMarginBottom(px(6));
+          EXPECT_EQ(PositionType::kRelative, child_style->GetPosition());
+          child_style->SetTop(offset.top);
+          child_style->SetBottom(offset.bottom);
+          auto* box = CreatePaddedBox(text, compose);
+          auto* style = box->GetCSSMutableStyle();
+          style->SetWidth(px(100));
+          style->SetHeight(px(80));
+          style->SetPaddingTop(px(5));
+          style->SetPaddingBottom(px(9));
+          style->SetBorderTopWidth(2);
+          style->SetBorderBottomWidth(4);
+          style->SetAlignItems(FlexAlignType::kCenter);
+          // Placement retains full-quirks behavior. Compose baseline export
+          // independently includes relative offsets in every mode.
+          const float placement_delta = quirks ? 0 : offset.expected;
+          for (int pass = 0; pass < 2; ++pass) {
+            const auto size =
+                box->UpdateMeasureByPlatform({OneSideConstraint::Definite(100),
+                                              OneSideConstraint::Definite(80)},
+                                             true);
+            box->UpdateAlignment();
+            // Content height=60, child margin height=34. Center places its
+            // border at padding-top(5)+(60-34)/2+margin-top(4)=22.
+            EXPECT_FLOAT_EQ(22 + placement_delta,
+                            text->GetBorderBoundTopFromParentPaddingBound());
+            const float child_baseline = baseline == 0 ? 24 : baseline;
+            EXPECT_FLOAT_EQ(
+                compose ? 2 + 22 + offset.expected + child_baseline : 80,
+                size.baseline_);
+            box->MarkNotDirty();
+            text->MarkNotDirty();
+          }
+        }
+      }
+    }
+  }
 }
 
 TEST_F(BoxLayoutAlgorithmTest, ComposeCacheRebuildsRemovedBoxAlgorithm) {

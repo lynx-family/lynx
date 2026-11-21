@@ -55,6 +55,25 @@ class WrapTextLayoutProbe : public TextLayoutMock {
   float last_width{0};
 };
 
+class BaselineTextLayoutProbe : public TextLayoutMock {
+ public:
+  LayoutResult Measure(Element*, float, int, float, int) override {
+    return {20.f, 24.f, 18.f};
+  }
+};
+
+class MutableBaselineTextLayoutProbe : public TextLayoutMock {
+ public:
+  LayoutResult Measure(Element* element, float, int, float, int) override {
+    if (element != target) return {20.f, 24.f, 18.f};
+    ++target_measurements;
+    return {20.f, 24.f, target_baseline};
+  }
+  Element* target{nullptr};
+  float target_baseline{18};
+  int target_measurements{0};
+};
+
 fml::RefPtr<ComposeElementHandle> CreateComposeHandle(
     ElementManager* manager,
     ComposeElementKind kind = ComposeElementKind::kView,
@@ -309,7 +328,240 @@ class ModifierElementTest : public FiberElementTest {
       page->Layout(std::make_shared<PipelineOptions>());
     }
   }
+
+  fml::RefPtr<ComposeElementHandle> CreateBaselineRow(float height = 72) {
+    auto row = CreateComposeHandle(manager);
+    EXPECT_TRUE(ComposeModifierApplicator::Apply(
+                    row.get(), AppendTestSize({}, 260, height), nullptr)
+                    .success);
+    // Applying a modifier clears the owner's inline styles. Component
+    // configuration follows it so these tests exercise Compose Row.
+    row->content_element()->SetStyle(kPropertyIDDisplay,
+                                     lepus::Value("linear"));
+    row->content_element()->SetStyle(kPropertyIDLinearOrientation,
+                                     lepus::Value("row"));
+    row->content_element()->SetStyle(kPropertyIDAlignItems,
+                                     lepus::Value("center"));
+    return row;
+  }
 };
+
+TEST_P(ModifierElementTest, RowTextBaselinesFollowPaddingParentDataAndReset) {
+  platform_impl_->text_layout_impl_ =
+      std::make_unique<BaselineTextLayoutProbe>();
+  auto page = CreateComposePage();
+  auto row = CreateBaselineRow(72);
+  auto first = CreateComposeHandle(manager, ComposeElementKind::kText);
+  auto second = CreateComposeHandle(manager, ComposeElementKind::kText);
+  first->content_element()->SetAttribute("text", lepus::Value("H"));
+  second->content_element()->SetAttribute("text", lepus::Value("H"));
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  first.get(),
+                  AppendTestStyle({}, kPropertyIDAlignSelf, "baseline"),
+                  nullptr)
+                  .success);
+  row->content_element()->InsertNode(first->mount_root());
+  row->content_element()->InsertNode(second->mount_root());
+  page->InsertNode(row->mount_root());
+  for (bool baseline_first : {false, true}) {
+    for (float top : {12.f, 4.f, 0.f}) {
+      auto modifier =
+          baseline_first ? AppendTestStyle({}, kPropertyIDAlignSelf, "baseline")
+                         : lepus::Value();
+      if (top != 0) {
+        modifier = AppendTestPadding(modifier);
+        modifier.Table()->SetValue("start", lepus::Value(0));
+        modifier.Table()->SetValue("top", lepus::Value(top));
+        modifier.Table()->SetValue("end", lepus::Value(0));
+        modifier.Table()->SetValue("bottom", lepus::Value(0));
+      }
+      if (!baseline_first) {
+        modifier = AppendTestStyle(modifier, kPropertyIDAlignSelf, "baseline");
+      }
+      ASSERT_TRUE(
+          ComposeModifierApplicator::Apply(second.get(), modifier, nullptr)
+              .success);
+      FlushAndLayout(page);
+      auto* parent = row->content_element()->slnode();
+      EXPECT_EQ(starlight::FlexAlignType::kBaseline,
+                second->mount_root()->slnode()->GetCSSStyle()->GetAlignSelf());
+      // Match the Compose fixture: identical glyphs, a center-aligned Row,
+      // and a 12px top inset on only the second text. The two text content
+      // origins coincide, while their mount roots differ by the inset.
+      EXPECT_FLOAT_EQ(
+          top, TopFromAncestor(first->content_element()->slnode(), parent));
+      EXPECT_FLOAT_EQ(
+          top, TopFromAncestor(second->content_element()->slnode(), parent));
+      EXPECT_FLOAT_EQ(0,
+                      TopFromAncestor(second->mount_root()->slnode(), parent));
+      EXPECT_FLOAT_EQ(18 + top, parent->GetOffsetFromTopMarginEdgeToBaseline());
+    }
+  }
+}
+
+TEST_P(ModifierElementTest, RowTextBaselinesFollowOffsetUpdatesAndRemoval) {
+  platform_impl_->text_layout_impl_ =
+      std::make_unique<BaselineTextLayoutProbe>();
+  auto page = CreateComposePage();
+  auto row = CreateBaselineRow(72);
+  auto first = CreateComposeHandle(manager, ComposeElementKind::kText);
+  auto second = CreateComposeHandle(manager, ComposeElementKind::kText);
+  for (auto* handle : {first.get(), second.get()}) {
+    handle->content_element()->SetAttribute("text", lepus::Value("H"));
+  }
+  const auto baseline = AppendTestStyle({}, kPropertyIDAlignSelf, "baseline");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(first.get(), baseline, nullptr).success);
+  row->content_element()->InsertNode(first->mount_root());
+  row->content_element()->InsertNode(second->mount_root());
+  page->InsertNode(row->mount_root());
+  for (bool baseline_first : {false, true}) {
+    for (float y : {12.f, -24.f, 0.f}) {
+      SCOPED_TRACE(y);
+      auto modifier =
+          AppendTestOffset(baseline_first ? baseline : lepus::Value(), 0, y);
+      if (!baseline_first) {
+        modifier = AppendTestStyle(modifier, kPropertyIDAlignSelf, "baseline");
+      }
+      ASSERT_TRUE(
+          ComposeModifierApplicator::Apply(second.get(), modifier, nullptr)
+              .success);
+      FlushAndLayout(page);
+      auto* parent = row->content_element()->slnode();
+      auto* frame = second->mount_root()->slnode();
+      EXPECT_FLOAT_EQ(18 + y, frame->GetBaseline());
+      // A negative nonzero line (y=-24, line=-6) remains available.
+      EXPECT_FLOAT_EQ(
+          std::max(y, 0.f),
+          TopFromAncestor(first->content_element()->slnode(), parent));
+      EXPECT_FLOAT_EQ(
+          std::max(y, 0.f),
+          TopFromAncestor(second->content_element()->slnode(), parent));
+      EXPECT_FLOAT_EQ(std::max(-y, 0.f), TopFromAncestor(frame, parent));
+    }
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(second.get(), baseline, nullptr)
+            .success);
+    FlushAndLayout(page);
+    EXPECT_EQ(second->content_element(), second->mount_root());
+    EXPECT_FLOAT_EQ(18, row->content_element()->slnode()->GetBaseline());
+  }
+}
+
+TEST_P(ModifierElementTest,
+       RowTextBaselinesCombinePaddingAndOffsetInBothOrders) {
+  platform_impl_->text_layout_impl_ =
+      std::make_unique<BaselineTextLayoutProbe>();
+  auto page = CreateComposePage();
+  auto row = CreateBaselineRow(90);
+  auto first = CreateComposeHandle(manager, ComposeElementKind::kText);
+  auto second = CreateComposeHandle(manager, ComposeElementKind::kText);
+  for (auto* handle : {first.get(), second.get()}) {
+    handle->content_element()->SetAttribute("text", lepus::Value("H"));
+  }
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  first.get(),
+                  AppendTestStyle({}, kPropertyIDAlignSelf, "baseline"),
+                  nullptr)
+                  .success);
+  row->content_element()->InsertNode(first->mount_root());
+  row->content_element()->InsertNode(second->mount_root());
+  page->InsertNode(row->mount_root());
+  for (bool rtl : {false, true}) {
+    row->content_element()->SetStyle(kPropertyIDDirection,
+                                     lepus::Value(rtl ? "rtl" : "ltr"));
+    for (bool offset_first : {false, true}) {
+      for (float y : {12.f, -12.f, -36.f}) {
+        auto modifier =
+            offset_first ? AppendTestOffset({}, 5, y) : lepus::Value();
+        modifier = AppendTestPadding(modifier);
+        modifier.Table()->SetValue("start", lepus::Value(3));
+        modifier.Table()->SetValue("end", lepus::Value(7));
+        modifier.Table()->SetValue("top", lepus::Value(12));
+        modifier.Table()->SetValue("bottom", lepus::Value(4));
+        if (!offset_first) modifier = AppendTestOffset(modifier, 5, y);
+        modifier = AppendTestStyle(modifier, kPropertyIDAlignSelf, "baseline");
+        ASSERT_TRUE(
+            ComposeModifierApplicator::Apply(second.get(), modifier, nullptr)
+                .success);
+        FlushAndLayout(page);
+        auto* parent = row->content_element()->slnode();
+        const float expected_top = std::max(12 + y, 0.f);
+        EXPECT_FLOAT_EQ(30 + y, second->mount_root()
+                                    ->slnode()
+                                    ->GetOffsetFromTopMarginEdgeToBaseline());
+        EXPECT_FLOAT_EQ(
+            expected_top,
+            TopFromAncestor(first->content_element()->slnode(), parent));
+        EXPECT_FLOAT_EQ(
+            expected_top,
+            TopFromAncestor(second->content_element()->slnode(), parent));
+        EXPECT_FLOAT_EQ(18 + expected_top,
+                        parent->GetOffsetFromTopMarginEdgeToBaseline());
+      }
+    }
+  }
+}
+
+TEST_P(ModifierElementTest, MatchParentTextBaselineTracksNativeRemeasurement) {
+  auto probe = std::make_unique<MutableBaselineTextLayoutProbe>();
+  auto* measurement = probe.get();
+  platform_impl_->text_layout_impl_ = std::move(probe);
+  auto page = CreateComposePage();
+  auto row = CreateBaselineRow(90);
+  auto first = CreateComposeHandle(manager, ComposeElementKind::kText);
+  auto text = CreateComposeHandle(manager, ComposeElementKind::kText);
+  auto box = CreateComposeHandle(manager);
+  measurement->target = text->content_element().get();
+  for (auto* handle : {first.get(), text.get()}) {
+    handle->content_element()->SetAttribute("text", lepus::Value("H"));
+  }
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                  first.get(),
+                  AppendTestStyle({}, kPropertyIDAlignSelf, "baseline"),
+                  nullptr)
+                  .success);
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(
+          text.get(), AppendTestBoxData({}, "center", "center", true), nullptr)
+          .success);
+  box->content_element()->InsertNode(text->mount_root());
+  row->content_element()->InsertNode(first->mount_root());
+  row->content_element()->InsertNode(box->mount_root());
+  page->InsertNode(row->mount_root());
+  int step = 0;
+  for (float baseline : {18.f, 8.f, 0.f, 18.f}) {
+    measurement->target_baseline = baseline;
+    const float top = step == 3 ? 4 : 12;
+    const float height = step == 3 ? 72 : 60;
+    auto modifier = AppendTestPadding(AppendTestSize({}, 60, height));
+    modifier.Table()->SetValue("start", lepus::Value(3));
+    modifier.Table()->SetValue("end", lepus::Value(7));
+    modifier.Table()->SetValue("top", lepus::Value(top));
+    modifier.Table()->SetValue("bottom", lepus::Value(4));
+    modifier = AppendTestStyle(modifier, kPropertyIDAlignSelf, "baseline");
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(box.get(), modifier, nullptr).success);
+    box->content_element()->SetStyle(kPropertyIDDisplay,
+                                     lepus::Value("-x-box"));
+    const char* fonts[] = {"24px", "25px", "26px", "27px"};
+    text->content_element()->SetStyle(kPropertyIDFontSize,
+                                      lepus::Value(fonts[step++]));
+    const int previous_measurements = measurement->target_measurements;
+    FlushAndLayout(page);
+    EXPECT_GT(measurement->target_measurements, previous_measurements);
+    auto* parent = row->content_element()->slnode();
+    auto* target = text->content_element()->slnode();
+    EXPECT_FLOAT_EQ(height - top - 4, target->GetBorderBoundHeight());
+    const float text_baseline = baseline == 0 ? height - top - 4 : baseline;
+    const float expected_top = std::max(top + text_baseline - 18, 0.f);
+    EXPECT_FLOAT_EQ(
+        expected_top,
+        TopFromAncestor(first->content_element()->slnode(), parent));
+    EXPECT_FLOAT_EQ(18 + expected_top,
+                    TopFromAncestor(target, parent) + text_baseline);
+  }
+}
 
 TEST_P(ModifierElementTest,
        InvalidDrawingResolverDoesNotReplaceExistingTopology) {

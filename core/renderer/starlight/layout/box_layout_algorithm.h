@@ -21,7 +21,6 @@ class BoxLayoutAlgorithm : public LayoutAlgorithm {
   void Reset() override;
   void InitializeAlgorithmEnv() override;
   void SizeDeterminationByAlgorithm() override;
-  void MeasureAbsoluteAndFixed() override;
   void AlignInFlowItems() override;
 
  private:
