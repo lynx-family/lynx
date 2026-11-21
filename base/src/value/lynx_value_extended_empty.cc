@@ -59,6 +59,13 @@ lynx_api_status lynx_value_is_array_ext(lynx_api_env env, lynx_value value,
   return lynx_api_not_support;
 }
 
+lynx_api_status lynx_value_get_arraybuffer_ext(lynx_api_env env,
+                                               lynx_value value,
+                                               uint8_t** result,
+                                               size_t* length) {
+  return lynx_api_not_support;
+}
+
 lynx_api_status lynx_value_set_element_ext(lynx_api_env env, lynx_value object,
                                            uint32_t index, lynx_value value) {
   return lynx_api_not_support;

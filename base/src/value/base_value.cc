@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include <cmath>
+#include <cstring>
 #include <memory>
 #include <utility>
 
@@ -1369,6 +1370,19 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
     }
     case lynx_value_array: {
       return ToLepusArray(env, val, flag);
+    }
+    case lynx_value_arraybuffer: {
+      uint8_t* data = nullptr;
+      size_t length = 0;
+      if (lynx_value_get_arraybuffer_ext(env, val, &data, &length) !=
+          lynx_api_ok) {
+        break;
+      }
+      auto copy = std::make_unique<uint8_t[]>(length);
+      if (length != 0) {
+        memcpy(copy.get(), data, length);
+      }
+      return Value(ByteArray::Create(std::move(copy), length));
     }
     case lynx_value_map: {
       return ToLepusMap(env, val, flag);
