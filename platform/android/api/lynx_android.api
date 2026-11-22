@@ -1178,6 +1178,30 @@ public class com::lynx::tasm::LynxLoadMeta::Builder :  {
   public LynxLoadMeta com.lynx.tasm.LynxLoadMeta.Builder.build();
 }
 
+public class com::lynx::tasm::LynxPageOption::Builder :  {
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setThreadStrategyForRendering(ThreadStrategyForRendering value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableMultiAsyncThread(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableJSRuntime(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnablePendingJsTask(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.enableAutoExpose(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableLayoutSafepoint(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableUnifiedPipeline(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setForceDarkAllowed(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableVSyncAlignedMessageLoop(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableAsyncHydration(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setDebuggable(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnablePreUpdateData(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setEnableMTSModule(boolean value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setDensity(Float value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setFontScale(float value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setColorScheme(LynxColorScheme value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setUIRendererCreator(IUIRendererCreator value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setTapSlop(String value);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.setScreenSize(int width, int height);
+  public Builder com.lynx.tasm.LynxPageOption.Builder.registerContextData(String key, Object value);
+  public LynxPageOption com.lynx.tasm.LynxPageOption.Builder.build();
+}
+
 public class com::lynx::tasm::LynxUpdateMeta::Builder :  {
   public Builder com.lynx.tasm.LynxUpdateMeta.Builder.setUpdatedData(TemplateData updatedData);
   public Builder com.lynx.tasm.LynxUpdateMeta.Builder.setUpdatedGlobalProps(TemplateData updatedGlobalProps);
@@ -6020,7 +6044,7 @@ public interface com::lynx::tasm::navigator::LynxHolder {
 }
 
 public class com::lynx::tasm::group::LynxHost :  {
-  public LynxPageView com.lynx.tasm.group.LynxHost.createPageView(@NonNull Context context);
+  public LynxPageView com.lynx.tasm.group.LynxHost.createPageView(@NonNull Context context, @NonNull LynxPageOption option);
   public int com.lynx.tasm.group.LynxHost.getEmbeddedMode();
   public LynxHostEnvironment com.lynx.tasm.group.LynxHost.getHostEnvironment();
   public void com.lynx.tasm.group.LynxHost.release();
@@ -6627,9 +6651,40 @@ public interface com::lynx::tasm::base::LynxPageLoadListener {
   public void com.lynx.tasm.base.LynxPageLoadListener.onUpdateDataWithoutChange();
 }
 
+public class com::lynx::tasm::LynxPageOption :  {
+  public ThreadStrategyForRendering com.lynx.tasm.LynxPageOption.getThreadStrategy();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableMultiAsyncThread();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableJSRuntime();
+  public boolean com.lynx.tasm.LynxPageOption.isEnablePendingJsTask();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableAutoExpose();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableLayoutSafepoint();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableUnifiedPipeline();
+  public boolean com.lynx.tasm.LynxPageOption.getForceDarkAllowed();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableVSyncAlignedMessageLoop();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableAsyncHydration();
+  public boolean com.lynx.tasm.LynxPageOption.isDebuggable();
+  public boolean com.lynx.tasm.LynxPageOption.isEnablePreUpdateData();
+  public boolean com.lynx.tasm.LynxPageOption.isEnableMTSModule();
+  public Float com.lynx.tasm.LynxPageOption.getDensity();
+  public int com.lynx.tasm.LynxPageOption.getScreenWidth();
+  public int com.lynx.tasm.LynxPageOption.getScreenHeight();
+  public float com.lynx.tasm.LynxPageOption.getFontScale();
+  public LynxColorScheme com.lynx.tasm.LynxPageOption.getColorScheme();
+  public IUIRendererCreator com.lynx.tasm.LynxPageOption.getUIRendererCreator();
+  public String com.lynx.tasm.LynxPageOption.getTapSlop();
+}
+
 public class com::lynx::tasm::LynxPageView : com.lynx.tasm.behavior.ui.UIBody.UIBodyView {
-  public com.lynx.tasm.LynxPageView.LynxPageView(Context context);
+  public com.lynx.tasm.LynxPageView.LynxPageView(Context context, @NonNull LynxHost host, @NonNull LynxPageOption option);
+  public LynxContext com.lynx.tasm.LynxPageView.getLynxContext();
+  public ThreadStrategyForRendering com.lynx.tasm.LynxPageView.getThreadStrategyForRendering();
+  public void com.lynx.tasm.LynxPageView.loadTemplate(TemplateBundle bundle, TemplateData data, String url);
+  public void com.lynx.tasm.LynxPageView.loadTemplate(TemplateBundle bundle, TemplateData data, String url, @Nullable TemplateData globalProps);
+  public void com.lynx.tasm.LynxPageView.updateData(TemplateData data);
   public void com.lynx.tasm.LynxPageView.destroy();
+  public boolean com.lynx.tasm.LynxPageView.dispatchTouchEvent(MotionEvent event);
+  public boolean com.lynx.tasm.LynxPageView.onInterceptTouchEvent(MotionEvent event);
+  public boolean com.lynx.tasm.LynxPageView.onTouchEvent(MotionEvent event);
 }
 
 public class com::lynx::tasm::LynxPerfMetric :  {
