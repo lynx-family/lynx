@@ -30,6 +30,16 @@ struct ScreenMetadata {
   float scroll_off_set_x_;
   float scroll_off_set_y_;
   float timestamp_;
+  // Only populated by the opt-in Android JPEG screencast pipeline.
+  double capture_timestamp_ = 0;
+  int frame_id_ = 0;
+  int base_frame_id_ = 0;
+  int full_width_ = 0;
+  int full_height_ = 0;
+  int frame_x_ = 0;
+  int frame_y_ = 0;
+  int frame_width_ = 0;
+  int frame_height_ = 0;
 };
 
 enum class ScreenshotType { JPEG = 0, PNG, WEBP, BITMAP };
@@ -49,6 +59,8 @@ struct ScreenshotRequest {
   float screen_scale_factor_;
   std::string format_;
   int every_nth_frame_;
+  bool enable_better_screencast_ = false;
+  bool enable_jpeg_delta_ = false;
 };
 
 }  // namespace devtool

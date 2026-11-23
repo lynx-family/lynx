@@ -104,6 +104,9 @@ public class ScreenCapturer extends FrameCapturer {
     mResetDirtyCallBack = new Choreographer.FrameCallback() {
       @Override
       public void doFrame(long frameTimeNanos) {
+        if (!mIsEnabled) {
+          return;
+        }
         mIsDirty.set(true);
         Choreographer.getInstance().postFrameCallback(mResetDirtyCallBack);
       }
@@ -130,6 +133,7 @@ public class ScreenCapturer extends FrameCapturer {
   }
 
   private void addResetDirtyStatusCallBack() {
+    Choreographer.getInstance().removeFrameCallback(mResetDirtyCallBack);
     Choreographer.getInstance().postFrameCallback(mResetDirtyCallBack);
   }
 
