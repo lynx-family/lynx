@@ -218,6 +218,10 @@ bool ListMediator::IsRTL() const {
                                     starlight::DirectionType::kLynxRtl);
 }
 
+bool ListMediator::KeepScrollStartOnDataChange() const {
+  return list_element_->UsesLegacyIOSListBehavior();
+}
+
 float ListMediator::GetWidth() const { return list_element_->width(); }
 
 float ListMediator::GetHeight() const { return list_element_->height(); }
