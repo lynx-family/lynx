@@ -27,6 +27,10 @@ NS_ASSUME_NONNULL_BEGIN
 FLUTTER_DARWIN_EXPORT
 @interface ClayViewProvider : NSResponder <FlutterPluginRegistry>
 
+- (instancetype)initWithDisplayP3:(BOOL)enableDisplayP3;
+- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering
+                          enableDisplayP3:(BOOL)enableDisplayP3;
+
 /**
  * The Flutter engine associated with this view controller.
  */

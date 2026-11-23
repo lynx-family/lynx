@@ -243,6 +243,7 @@ class ClayPlatformViewMacDelegate : public clay::PlatformViewEmbedderDelegate {
   }
   clay::Settings settings = clay::SettingsFromCommandLine(command_line);
   settings.enable_software_rendering = _renderer.softwareRendering;
+  _renderer.colorSpace = self.enableDisplayP3 ? kClayColorSpaceDisplayP3 : kClayColorSpaceSRGB;
   const char* icu_data_path =
       [[NSBundle mainBundle] pathForResource:@"icudtl.dat" ofType:nil].UTF8String;
   if (icu_data_path) {

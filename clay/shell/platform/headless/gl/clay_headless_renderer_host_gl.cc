@@ -4,6 +4,7 @@
 
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_host_gl.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -822,7 +823,10 @@ std::unique_ptr<ClayHeadlessRenderer> ClayHeadlessRenderer::CreateHostGL(
 
 ClayHeadlessRendererHostGL::ClayHeadlessRendererHostGL(
     ClayHeadlessEngine* engine, const ClayOpenGLRendererConfig& renderer_config)
-    : ClayHeadlessRendererGL(engine), config_(renderer_config) {
+    : ClayHeadlessRendererGL(engine), config_{} {
+  std::memcpy(&config_, &renderer_config,
+              std::min(renderer_config.struct_size, sizeof(config_)));
+  output_color_space_ = config_.color_space;
   FML_LOG(INFO) << "Starting Clay in [Host GL] mode. "
                    "Components using external textures will NOT work";
 }
@@ -862,7 +866,9 @@ ClayHeadlessRendererSharedImageHostGL::ClayHeadlessRendererSharedImageHostGL(
     : ClayHeadlessRenderer(engine),
       host_gl_thread_("clay.headless.host-gl"),
       draw_tasks_enabled_(std::make_shared<std::atomic_bool>(true)),
-      config_(renderer_config) {
+      config_{} {
+  std::memcpy(&config_, &renderer_config,
+              std::min(renderer_config.struct_size, sizeof(config_)));
   FML_LOG(INFO) << "Starting Clay in [Host GL+SharedImage] mode. "
                    "Maybe slow in large views";
 
@@ -887,9 +893,9 @@ ClayHeadlessRendererSharedImageHostGL::ClayHeadlessRendererSharedImageHostGL(
   return;
 #endif
 
-  ClaySharedImageSinkRef sink_ref =
-      ClayCreateSharedImageSink(buffer_mode, image_backing_type,
-                                kClaySharedImageBackingPixelFormatNative8888);
+  ClaySharedImageSinkRef sink_ref = ClayCreateSharedImageSinkWithColorSpace(
+      buffer_mode, image_backing_type,
+      kClaySharedImageBackingPixelFormatNative8888, config_.color_space);
   shared_image_sink_ = fml::RefPtr<clay::SharedImageSink>(
       reinterpret_cast<clay::SharedImageSink*>(sink_ref));
 
@@ -1026,7 +1032,8 @@ GLFBOInfo ClayHeadlessRendererSharedImageHostGL::GLContextFBO(
   clay_frame_info.width = frame_info.width;
   clay_frame_info.height = frame_info.height;
   return {.fbo_id = config_.fbo_callback(engine_->UserData(), &clay_frame_info),
-          .existing_damage = {}};
+          .existing_damage = {},
+          .color_space = config_.color_space};
 }
 
 // |GPUSurfaceGLDelegate|

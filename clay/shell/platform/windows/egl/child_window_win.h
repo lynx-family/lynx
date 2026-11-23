@@ -15,7 +15,7 @@ namespace egl {
 
 class ChildWindowWin {
  public:
-  explicit ChildWindowWin(HWND parent_window);
+  explicit ChildWindowWin(HWND parent_window, bool track_sdr_white = false);
 
   ChildWindowWin(const ChildWindowWin&) = delete;
   ChildWindowWin& operator=(const ChildWindowWin&) = delete;
@@ -24,6 +24,7 @@ class ChildWindowWin {
 
   void Initialize();
   HWND window() const;
+  float sdr_white_scale() const;
 
   void Resize(int width, int height);
 

@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "base/include/fml/macros.h"
+#include "clay/public/clay.h"
 #include "skity/geometry/rect.hpp"
 
 namespace clay {
@@ -31,6 +32,10 @@ struct GPUMTLTextureInfo {
   GPUMTLTextureHandle texture;
   GPUMTLDestructionCallback destruction_callback;
   void* destruction_context;
+  ClayColorSpace color_space = kClayColorSpaceSRGB;
+  // Newly allocated buffers have no preserved pixels, even if a native texture
+  // address was reused by the allocator after a color-space transition.
+  bool reset_damage = false;
 };
 
 enum class MTLRenderTargetType { kMTLTexture, kCAMetalLayer };

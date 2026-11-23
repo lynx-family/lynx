@@ -99,6 +99,16 @@ lynx_windowless_renderer_create_with_finalizer(
     lynx_windowless_renderer_type_e type, void* user_data,
     void (*finalizer)(lynx_windowless_renderer_t*, void*));
 
+// Display P3 is supported on macOS and Windows. The default is sRGB.
+// Configure before attaching the renderer to a view. The returned pixels or
+// native texture handles use this immutable encoding. The host must present
+// them with matching color management; native handles do not carry it on all
+// platforms. Returns false after initialization or for invalid arguments.
+LYNX_CAPI_EXPORT bool lynx_windowless_renderer_set_color_space(
+    lynx_windowless_renderer_t* renderer, lynx_color_space_e color_space);
+LYNX_CAPI_EXPORT lynx_color_space_e
+lynx_windowless_renderer_get_color_space(lynx_windowless_renderer_t* renderer);
+
 LYNX_CAPI_EXPORT void* lynx_windowless_renderer_get_user_data(
     lynx_windowless_renderer_t*);
 

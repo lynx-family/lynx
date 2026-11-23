@@ -11,6 +11,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Named SDR pixel encodings. Both use the sRGB transfer function and D65 white.
+typedef enum lynx_color_space_e {
+  kLynxColorSpaceSRGB = 0,
+  kLynxColorSpaceDisplayP3 = 1,
+} lynx_color_space_e;
+
 typedef enum {
   kLynxCursorTypeUnknown = 1,
 

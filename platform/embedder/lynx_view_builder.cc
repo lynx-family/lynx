@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "base/include/log/logging.h"
+#include "build/build_config.h"
 #include "platform/embedder/lynx_view_builder_priv.h"
 #include "platform/embedder/native_view/lynx_texture_view.h"
 
@@ -57,6 +58,15 @@ LYNX_EXTERN_C void lynx_view_builder_set_custom_vsync_monitor(
 LYNX_EXTERN_C void lynx_view_builder_set_enable_js_runtime(
     lynx_view_builder_t* builder, bool enable) {
   builder->enable_js_runtime = enable;
+}
+
+LYNX_EXTERN_C bool lynx_view_builder_set_color_space(
+    lynx_view_builder_t* builder, lynx_color_space_e color_space) {
+  if (!builder || (color_space != kLynxColorSpaceSRGB &&
+                   color_space != kLynxColorSpaceDisplayP3))
+    return false;
+  builder->color_space = color_space;
+  return true;
 }
 
 LYNX_EXTERN_C void lynx_view_builder_set_enable_software_rendering(

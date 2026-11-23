@@ -49,6 +49,8 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
       frame_timing_listener_(std::make_shared<FrameTimingListenerImpl>()) {
   clay::FlutterDesktopEngineProperties properties = {};
   properties.enable_software_rendering = builder->enable_software_rendering;
+  properties.enable_display_p3 =
+      builder->color_space == kLynxColorSpaceDisplayP3;
 #ifdef ENABLE_SKITY
   if (properties.enable_software_rendering) {
     LOGW(

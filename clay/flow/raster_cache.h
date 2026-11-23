@@ -126,6 +126,8 @@ class RasterCache {
     uint32_t sample_count = 1;
 #ifndef ENABLE_SKITY
     const SkColorSpace* dst_color_space;
+#else
+    std::shared_ptr<const skity::ColorSpace> dst_color_space = nullptr;
 #endif  // ENABLE_SKITY
     const skity::Matrix& matrix;
     const skity::Rect& logical_rect;

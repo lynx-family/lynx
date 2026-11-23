@@ -4,6 +4,8 @@
 
 #include "clay/gfx/shared_image/iosurface_image_backing.h"
 
+#import <CoreGraphics/CoreGraphics.h>
+
 #import <Foundation/Foundation.h>
 
 #include "build/build_config.h"
@@ -13,6 +15,7 @@
 
 #if ENABLE_SKITY
 #include "clay/gfx/shared_image/skity_mtl_image_representation.h"
+#include "clay/gfx/shared_image/skity_raster_image_representation.h"
 #include "skity/gpu/gpu_context.hpp"
 #else
 #if OS_MAC
@@ -76,12 +79,18 @@ fml::CFRef<IOSurfaceRef> IOSurfaceImageBacking::CreateIOSurface(
 }
 
 IOSurfaceImageBacking::IOSurfaceImageBacking(PixelFormat pixel_format, skity::Vec2 size,
-                                             std::optional<GraphicsMemoryHandle> gfx_handle)
-    : SharedImageBacking(pixel_format, size) {
+                                             std::optional<GraphicsMemoryHandle> gfx_handle,
+                                             ClayColorSpace color_space)
+    : SharedImageBacking(pixel_format, size, color_space) {
   if (gfx_handle) {
     io_surface_.Reset((IOSurfaceRef)CFRetain(*gfx_handle));
   } else {
     io_surface_ = CreateIOSurface(pixel_format, size);
+    if (io_surface_) {
+      IOSurfaceSetValue(
+          io_surface_, CFSTR("IOSurfaceColorSpace"),
+          color_space == kClayColorSpaceDisplayP3 ? kCGColorSpaceDisplayP3 : kCGColorSpaceSRGB);
+    }
   }
 }
 
@@ -170,6 +179,8 @@ bool IOSurfaceImageBacking::ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
 fml::RefPtr<SkityImageRepresentation> IOSurfaceImageBacking::CreateSkityRepresentation(
     skity::GPUContext* skity_context) {
   switch (skity_context->GetBackendType()) {
+    case skity::GPUBackendType::kOpenGL:
+      return fml::MakeRefCounted<SkityRasterImageRepresentation>(fml::Ref(this));
     case skity::GPUBackendType::kMetal: {
       return fml::MakeRefCounted<SkityMTLImageRepresentation>(skity_context, fml::Ref(this));
     }

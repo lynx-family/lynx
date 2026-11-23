@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
@@ -48,7 +49,8 @@ sk_sp<SkImage> SkiaGLImageRepresentation::GetSkImage() {
 
   return SkImages::BorrowTextureFrom(
       gr_context_, backend_texture, kBottomLeft_GrSurfaceOrigin,
-      kRGBA_8888_SkColorType, kPremul_SkAlphaType, nullptr,
+      kRGBA_8888_SkColorType, kPremul_SkAlphaType,
+      ToSkColorSpace(GetBacking()->GetColorSpace()),
       result.opengl_texture.destruction_callback,
       result.opengl_texture.user_data);
 }

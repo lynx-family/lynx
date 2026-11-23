@@ -56,6 +56,7 @@
  * Must be called on raster thread.
  */
 - (nonnull FlutterSurface*)surfaceForSize:(CGSize)size;
+- (nonnull FlutterSurface*)surfaceForSize:(CGSize)size colorSpace:(ClayColorSpace)colorSpace;
 
 /**
  * Sets the provided surfaces as contents of FlutterView. Will create, update and

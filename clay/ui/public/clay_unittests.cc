@@ -6,7 +6,13 @@
 #include <limits>
 #include <vector>
 
+#include "build/build_config.h"
 #include "clay/public/clay.h"
+#if defined(OS_HARMONY)
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <native_image/native_image.h>
+#endif
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 #ifdef ENABLE_SKITY
@@ -22,6 +28,35 @@
 namespace clay {
 namespace testing {
 namespace {
+
+#if defined(OS_HARMONY)
+TEST(ClaySharedImageTest, NativeImageAcceptsUnspecifiedDimensions) {
+  for (const ClaySize size :
+       {ClaySize{0, 0}, ClaySize{0, 16}, ClaySize{16, 0}}) {
+    auto image = ClayCreateSharedImage(
+        kClaySharedImageBackingTypeNativeImage,
+        kClaySharedImageBackingPixelFormatNative8888, &size);
+    ASSERT_NE(image, nullptr);
+    ClaySize actual{};
+    ClaySharedImageGetSize(image, &actual);
+    EXPECT_EQ(actual.width, 256u);
+    EXPECT_EQ(actual.height, 256u);
+    ClayReleaseSharedImage(image);
+
+    auto* native = OH_NativeImage_Create(0, GL_TEXTURE_EXTERNAL_OES);
+    ASSERT_NE(native, nullptr);
+    image = ClayCreateSharedImageFromHandle(
+        kClaySharedImageBackingTypeNativeImage,
+        kClaySharedImageBackingPixelFormatNative8888, &size, native);
+    if (!image) OH_NativeImage_Destroy(&native);
+    ASSERT_NE(image, nullptr);
+    ClaySharedImageGetSize(image, &actual);
+    EXPECT_EQ(actual.width, 256u);
+    EXPECT_EQ(actual.height, 256u);
+    ClayReleaseSharedImage(image);
+  }
+}
+#endif
 
 class ClayEncodeBitmapTest : public ::testing::TestWithParam<ClayImageFormat> {
  protected:

@@ -129,6 +129,13 @@ class LynxNativeView {
   }
   virtual void Release() { delete this; }
 
+  bool SetSurfaceColorSpace(lynx_color_space_e color_space) {
+    return lynx_native_view_set_surface_color_space(native_view_, color_space);
+  }
+  lynx_color_space_e GetSurfaceColorSpace() const {
+    return lynx_native_view_get_surface_color_space(native_view_);
+  }
+
   /**
    * @apidoc
    * @brief Create and present surface with external graphics buffer

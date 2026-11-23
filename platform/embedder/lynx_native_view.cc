@@ -7,11 +7,14 @@
 #include <string>
 #include <unordered_map>
 
+#include "build/build_config.h"
 #include "clay/lynx_adaptor/native_platform_view.h"
 #include "platform/embedder/public/capi/lynx_native_view_capi.h"
 
 class LynxNativeViewPrivate : public clay::NativePlatformView {
  public:
+  using NativePlatformView::UpdateSurfaceColorSpace;
+
   void Retain() { ref_count_.fetch_add(1, std::memory_order_relaxed); }
 
   void ReleaseRef() {
@@ -125,6 +128,14 @@ class LynxNativeViewPrivate : public clay::NativePlatformView {
     }
     return kClaySharedImageSinkBufferModeDoubleBuffer;
   }
+  ClayColorSpace color_space() const override {
+    surface_color_space_locked_ = true;
+    return surface_color_space_ == kLynxColorSpaceDisplayP3
+               ? kClayColorSpaceDisplayP3
+               : kClayColorSpaceSRGB;
+  }
+  lynx_color_space_e surface_color_space_ = kLynxColorSpaceSRGB;
+  mutable bool surface_color_space_locked_ = false;
   void Release() override { ReleaseRef(); }
 
   void (*release_fn)(lynx_native_view_t*, void*) = nullptr;
@@ -312,4 +323,33 @@ LYNX_EXTERN_C void lynx_native_view_request_focus(lynx_native_view_t* view) {
 }
 LYNX_EXTERN_C void lynx_native_view_mark_dirty(lynx_native_view_t* view) {
   reinterpret_cast<LynxNativeViewPrivate*>(view)->MarkDirty();
+}
+
+LYNX_EXTERN_C bool lynx_native_view_set_surface_color_space(
+    lynx_native_view_t* view, lynx_color_space_e color_space) {
+  if (!view || (color_space != kLynxColorSpaceSRGB &&
+                color_space != kLynxColorSpaceDisplayP3))
+    return false;
+#if !defined(OS_MAC) && !defined(OS_WIN)
+  if (color_space == kLynxColorSpaceDisplayP3) return false;
+#endif
+  auto* self = reinterpret_cast<LynxNativeViewPrivate*>(view);
+#if defined(OS_MAC) || defined(_WIN32)
+  if (self->surface_color_space_ != color_space &&
+      !self->UpdateSurfaceColorSpace(color_space == kLynxColorSpaceDisplayP3
+                                         ? kClayColorSpaceDisplayP3
+                                         : kClayColorSpaceSRGB))
+    return false;
+#else
+  if (self->surface_color_space_locked_) return false;
+#endif
+  self->surface_color_space_ = color_space;
+  return true;
+}
+
+LYNX_EXTERN_C lynx_color_space_e
+lynx_native_view_get_surface_color_space(lynx_native_view_t* view) {
+  return view ? reinterpret_cast<LynxNativeViewPrivate*>(view)
+                    ->surface_color_space_
+              : kLynxColorSpaceSRGB;
 }

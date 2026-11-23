@@ -157,7 +157,8 @@ GPUMTLTextureInfo EmbedderSurfaceMetalDelegateImpl::GetMTLTexture(
   if (view == nil) {
     return {};
   }
-  return [view.surfaceManager surfaceForSize:size].asGPUMTLTextureInfo;
+  return [view.surfaceManager surfaceForSize:size colorSpace:flutter_renderer.colorSpace]
+      .asGPUMTLTextureInfo;
 }
 
 bool EmbedderSurfaceMetalDelegateImpl::PresentTexture(GPUMTLTextureInfo texture) const {

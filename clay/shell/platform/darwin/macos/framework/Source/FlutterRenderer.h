@@ -17,6 +17,8 @@
  */
 @interface FlutterRenderer : NSObject
 
+@property(nonatomic, assign) ClayColorSpace colorSpace;
+
 /**
  * Interface to the system GPU. Used to issue all the rendering commands.
  */

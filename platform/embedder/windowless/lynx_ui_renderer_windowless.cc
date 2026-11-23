@@ -38,7 +38,7 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   base::UIThread::Init();
 #endif
   windowless_renderer_ = builder->windowless_renderer;
-  windowless_renderer_->sync_compositor_config_locked = true;
+  windowless_renderer_->config_locked = true;
   windowless_renderer_->run_task = [this](lynx_task_t task) {
     ClayTask clay_task{};
     clay_task.task = task.task;

@@ -8,6 +8,7 @@
 
 #include "build/build_config.h"
 #include "clay/fml/logging.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #if defined(OS_LINUX)
@@ -76,7 +77,8 @@ std::shared_ptr<SkityImage> SkityGLImageRepresentation::GetSkityImage() {
   auto texture = skity_context_->WrapTexture(
       &texture_info, result.opengl_texture.destruction_callback,
       result.opengl_texture.user_data);
-  return std::make_shared<SkityImage>(skity::Image::MakeHWImage(texture));
+  return std::make_shared<SkityImage>(skity::Image::MakeHWImage(
+      texture, ToSkityColorSpace(GetBacking()->GetColorSpace())));
 }
 
 bool SkityGLImageRepresentation::EndRead() {

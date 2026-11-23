@@ -16,6 +16,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "clay/common/graphics/gl_context_switch.h"
 #include "clay/gfx/rendering_backend.h"
+#include "clay/public/clay.h"
 #include "skity/geometry/rect.hpp"
 
 namespace clay {
@@ -98,6 +99,12 @@ class SurfaceFrame {
     // rasterized (no partial redraw). To signal that there is no existing
     // damage use an empty skity::Rect.
     std::optional<skity::Rect> existing_damage = std::nullopt;
+
+    ClayColorSpace color_space = kClayColorSpaceSRGB;
+
+    // Target RGB encoding changed; rasterized caches must be recreated before
+    // painting this frame to avoid retaining pixels clipped in the old gamut.
+    bool color_space_changed = false;
   };
 
   SurfaceFrame(clay::GrSurfacePtr surface, FramebufferInfo framebuffer_info,

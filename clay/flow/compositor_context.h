@@ -22,6 +22,7 @@
 #include "clay/flow/raster_cache.h"
 #include "clay/flow/stopwatch.h"
 #include "clay/gfx/rendering_backend.h"
+#include "clay/public/clay.h"
 
 namespace clay {
 
@@ -107,6 +108,12 @@ class CompositorContext {
 
     bool surface_supports_readback() { return surface_supports_readback_; }
 
+    ClayColorSpace output_color_space() const { return output_color_space_; }
+
+    void set_output_color_space(ClayColorSpace color_space) {
+      output_color_space_ = color_space;
+    }
+
     uint32_t sample_count() const { return sample_count_; }
 
     RasterStatus Raster(
@@ -124,6 +131,7 @@ class CompositorContext {
     const bool instrumentation_enabled_;
     const bool surface_supports_readback_;
     const uint32_t sample_count_;
+    ClayColorSpace output_color_space_ = kClayColorSpaceSRGB;
 
     BASE_DISALLOW_COPY_AND_ASSIGN(ScopedFrame);
   };

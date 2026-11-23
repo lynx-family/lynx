@@ -21,6 +21,29 @@ lynx_windowless_renderer_create_with_finalizer(
   return reinterpret_cast<lynx_windowless_renderer_t*>(renderer);
 }
 
+LYNX_EXTERN_C bool lynx_windowless_renderer_set_color_space(
+    lynx_windowless_renderer_t* renderer, lynx_color_space_e color_space) {
+  if (!renderer || (color_space != kLynxColorSpaceSRGB &&
+                    color_space != kLynxColorSpaceDisplayP3))
+    return false;
+  auto* self =
+      reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
+  if (self->config_locked) return false;
+#if !defined(OS_MAC) && !defined(OS_WIN)
+  if (color_space == kLynxColorSpaceDisplayP3) return false;
+#endif
+  self->color_space = color_space;
+  return true;
+}
+
+LYNX_EXTERN_C lynx_color_space_e
+lynx_windowless_renderer_get_color_space(lynx_windowless_renderer_t* renderer) {
+  return renderer ? reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(
+                        renderer)
+                        ->color_space
+                  : kLynxColorSpaceSRGB;
+}
+
 LYNX_EXTERN_C void* lynx_windowless_renderer_get_user_data(
     lynx_windowless_renderer_t* renderer) {
   return reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer)
@@ -31,7 +54,7 @@ LYNX_EXTERN_C bool lynx_windowless_renderer_set_sync_compositor(
     lynx_windowless_renderer_t* renderer, bool enabled) {
   auto* impl =
       reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
-  if (impl->sync_compositor_config_locked) {
+  if (impl->config_locked) {
     LOGE("SetSyncCompositor must be called before creating the LynxView.");
     return false;
   }
@@ -288,9 +311,14 @@ void LynxWindowlessRenderer::PostTask(lynx_task_t task,
 }
 
 ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
+  config_locked = true;
+  const auto output_space = color_space == kLynxColorSpaceDisplayP3
+                                ? kClayColorSpaceDisplayP3
+                                : kClayColorSpaceSRGB;
   if (type == kRendererTypeSoftware) {
     renderer_config_.type = kClayRendererTypeSoftware;
     renderer_config_.software.struct_size = sizeof(ClaySoftwareRendererConfig);
+    renderer_config_.software.color_space = output_space;
     renderer_config_.software.present_callback_v2 =
         [](void* user_data, const void* allocation, size_t row_bytes,
            size_t height,
@@ -316,6 +344,7 @@ ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
   } else if (type == kRendererTypeGL || type == kRendererTypeGLDirect) {
     renderer_config_.type = kClayRendererTypeHostGL;
     renderer_config_.opengl.struct_size = sizeof(ClayOpenGLRendererConfig);
+    renderer_config_.opengl.color_space = output_space;
     renderer_config_.opengl.make_current = [](void* user_data) -> bool {
       LynxWindowlessRenderer* renderer =
           reinterpret_cast<LynxWindowlessRenderer*>(user_data);
@@ -399,9 +428,9 @@ ClayHeadlessRendererConfig* LynxWindowlessRenderer::GetRendererConfig() {
       ClaySharedImageBackingPixelFormat pixel_format =
           kClaySharedImageBackingPixelFormatNative8888;
 #endif
-      sink_ref_ =
-          ClayCreateSharedImageSink(kClaySharedImageSinkBufferModeDoubleBuffer,
-                                    backing_type, pixel_format);
+      sink_ref_ = ClayCreateSharedImageSinkWithColorSpace(
+          kClaySharedImageSinkBufferModeDoubleBuffer, backing_type,
+          pixel_format, output_space);
       ClaySharedImageSinkSetFrameAvailableCallback(
           sink_ref_,
           [](void* user_data) {

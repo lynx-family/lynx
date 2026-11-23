@@ -72,6 +72,9 @@ class GPUSurfaceGLSkia : public Surface {
   sk_sp<SkSurface> onscreen_surface_;
   /// FBO backing the current `onscreen_surface_`.
   uint32_t fbo_id_ = 0;
+  // Retained across FBO resets to detect output encoding changes between
+  // frames.
+  std::optional<ClayColorSpace> color_space_;
   // The current FBO's existing damage, as tracked by the GPU surface, delegates
   // still have an option of overriding this damage with their own in
   // `GLContextFrameBufferInfo`.

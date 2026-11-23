@@ -65,6 +65,7 @@ struct Settings {
 
   // Engine settings
   bool enable_software_rendering = false;
+  bool enable_display_p3 = false;
   bool skia_deterministic_rendering_on_cpu = false;
 #ifndef NDEBUG
   bool verbose_logging = true;

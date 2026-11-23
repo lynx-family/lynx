@@ -25,6 +25,7 @@
 #include "clay/gfx/geometry/rect.h"
 #include "clay/gfx/geometry/size.h"
 #include "clay/shell/platform/windows/egl/child_window_win.h"
+#include "clay/shell/platform/windows/egl/p3_presenter.h"
 #include "clay/shell/platform/windows/egl/window_surface.h"
 
 namespace clay {
@@ -35,11 +36,16 @@ class DirectCompositionSurface : public WindowSurface {
   DirectCompositionSurface(EGLDisplay display, EGLContext context,
                            EGLConfig config, EGLNativeWindowType window,
                            Microsoft::WRL::ComPtr<IDCompositionDevice2> device,
-                           int width, int height);
+                           int width, int height,
+                           bool enable_display_p3 = false);
 
   ~DirectCompositionSurface() override;
 
   bool Initialize() override;
+
+  ClayColorSpace GetColorSpace() const override {
+    return enable_display_p3_ ? kClayColorSpaceDisplayP3 : kClayColorSpaceSRGB;
+  }
 
   bool Destroy() override;
 
@@ -77,6 +83,10 @@ class DirectCompositionSurface : public WindowSurface {
   // outside of a BeginDraw/EndDraw pair.
   EGLSurface real_surface_ = 0;
 
+  bool enable_display_p3_ = false;
+  bool p3_contents_valid_ = false;
+  P3Presenter p3_presenter_;
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> p3_texture_;
   bool has_alpha_ = true;
   bool first_swap_ = true;
 

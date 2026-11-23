@@ -13,6 +13,7 @@
 
 #include "base/include/closure.h"
 #include "clay/fml/logging.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
@@ -43,9 +44,9 @@ sk_sp<SkImage> SkiaShmImageRepresentation::GetSkImage() {
     }
   });
 
-  GrImageInfo info =
-      GrImageInfo::Make(GetSize().x, GetSize().y, kRGBA_8888_SkColorType,
-                        kPremul_SkAlphaType, SkColorSpace::MakeSRGB());
+  GrImageInfo info = GrImageInfo::Make(
+      GetSize().x, GetSize().y, kRGBA_8888_SkColorType, kPremul_SkAlphaType,
+      ToSkColorSpace(GetBacking()->GetColorSpace()));
 
   const size_t bytes = static_cast<size_t>(GetSize().x) * GetSize().y * 4;
   void* shm_buffer =

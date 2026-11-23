@@ -10,6 +10,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 
 #include "base/include/fml/macros.h"
 #include "clay/common/graphics/msaa_sample_count.h"
@@ -52,6 +53,7 @@ class SK_API_AVAILABLE_CA_METAL_LAYER GPUSurfaceMetalSkia : public Surface {
   // Memoize the previous frame size
   // If changed, damage history should be reset
   skity::Vec2 size_ = {0, 0};
+  std::optional<ClayColorSpace> texture_color_space_;
 
   // |Surface|
   std::unique_ptr<SurfaceFrame> AcquireFrame(const skity::Vec2& size) override;

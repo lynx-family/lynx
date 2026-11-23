@@ -213,6 +213,8 @@ class SwiftShaderSoftwareRenderer final : public ClayHeadlessRendererGL {
                               void* user_data)
       : ClayHeadlessRendererGL(engine), user_data_(user_data) {
     const auto* config_ptr = &config;
+    output_color_space_ =
+        SAFE_ACCESS(config_ptr, color_space, kClayColorSpaceSRGB);
     present_callback_ = SAFE_ACCESS(config_ptr, present_callback, nullptr);
     present_callback_v2_ =
         SAFE_ACCESS(config_ptr, present_callback_v2, nullptr);

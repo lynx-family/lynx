@@ -208,3 +208,107 @@ if (is_headless && enable_skity && enable_software_rendering &&
     }
   }
 }
+
+if (is_headless && !enable_clay_standalone &&
+    ((is_mac && shell_enable_metal) || (is_win && enable_unittests))) {
+  windowless_color_space_test_sources = [
+    "../../../../platform/embedder/windowless/lynx_windowless_renderer.cc",
+    "../../../../platform/embedder/windowless/lynx_windowless_renderer_color_space_unittests.cc",
+    "../../../../platform/embedder/windowless/windowless_ui_task_runner_delegate.cc",
+  ]
+}
+
+if (enable_unittests && is_win && !enable_clay_standalone) {
+  executable("native_view_color_space_unittests") {
+    testonly = true
+    sources = [
+      "../../../../platform/embedder/lynx_native_view.cc",
+      "../../../../platform/embedder/lynx_view_builder.cc",
+      "../../../../platform/embedder/lynx_vsync_monitor.cc",
+      "../../../../platform/embedder/native_view/lynx_texture_view.cc",
+      "../../../../platform/embedder/native_view/lynx_texture_view_color_space_unittests.cc",
+      "../../../lynx_adaptor/native_platform_view.cc",
+      "../../../lynx_adaptor/value_converter.cc",
+      "../../../ui/platform/common/native_view_service_common.cc",
+      "../../common/services/initialize_service.cc",
+    ]
+    configs += [
+      "../../../../clay:config",
+      "../embedder:embedder_gpu_configuration_config",
+    ]
+    deps = [
+      ":headless",
+      "../../../../base/src:base_static",
+      "../../../../base/src:base_values",
+      "../../../../base/src:base_values_extended",
+      "../../../ui:ui",
+      "../../common:platform_overlay_service_fallback",
+      "../../common:presenter_service_fallback",
+      "//third_party/googletest:gtest_main",
+    ]
+    if (is_headless) {
+      sources += windowless_color_space_test_sources
+      deps += [ "../../../../core/base" ]
+    }
+    if (enable_skity) {
+      sources += [ "../common/desktop/codec/desktop_image_codec_service.cc" ]
+      deps += [ "../common/desktop/codec" ]
+    }
+  }
+}
+
+if (is_mac && shell_enable_metal) {
+  executable("color_space_unittests") {
+    testonly = true
+    sources = [
+      "../darwin/macos/framework/Source/FlutterSurface.mm",
+      "../darwin/macos/framework/Source/FlutterSurfaceManager.mm",
+      "metal/color_space_unittests.mm",
+    ]
+    configs += [
+      "../../../../clay:config",
+      "../embedder:embedder_gpu_configuration_config",
+    ]
+    deps = [
+      ":headless",
+      "../../../../base/src:base_static",
+      "../../../../base/trace/native:trace",
+      "../../../ui:ui",
+      "//third_party/googletest:gtest_main",
+    ]
+    if (!enable_clay_standalone) {
+      sources += [
+        "../../../../platform/embedder/lynx_native_view.cc",
+        "../../../../platform/embedder/lynx_view_builder.cc",
+        "../../../../platform/embedder/lynx_vsync_monitor.cc",
+        "../../../../platform/embedder/native_view/lynx_texture_view.cc",
+        "../../../../platform/embedder/native_view/lynx_texture_view_color_space_unittests.cc",
+        "../../../lynx_adaptor/native_platform_view.cc",
+        "../../../lynx_adaptor/value_converter.cc",
+      ]
+      if (is_headless) {
+        sources += windowless_color_space_test_sources
+      }
+      defines = [ "CLAY_TEST_EMBEDDER_API" ]
+      deps += [
+        "../../../../base/src:base_values",
+        "../../../../base/src:base_values_extended",
+      ]
+    }
+    if (enable_skity) {
+      if (!enable_clay_standalone) {
+        sources += [ "../common/desktop/codec/desktop_image_codec_service.cc" ]
+      }
+      deps += [
+        "../common/desktop/codec",
+        "../common/desktop/svg",
+      ]
+    }
+    frameworks = [
+      "AppKit.framework",
+      "CoreGraphics.framework",
+      "IOSurface.framework",
+      "Metal.framework",
+    ]
+  }
+}

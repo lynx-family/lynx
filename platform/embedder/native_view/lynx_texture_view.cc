@@ -4,6 +4,8 @@
 
 #include "platform/embedder/native_view/lynx_texture_view.h"
 
+// cspell:ignore setsurfacecolorspace
+
 #include <algorithm>
 #include <functional>
 #include <limits>
@@ -19,7 +21,7 @@
 #include <unistd.h>
 #endif
 
-#include "lynx_value.h"
+#include "platform/embedder/public/lynx_value.h"
 
 using lynx::pub::LynxValue;
 
@@ -80,7 +82,25 @@ void LynxTextureView::OnLayoutChanged(float left, float top, float width,
 void LynxTextureView::OnMethodInvoked(
     const char* method, const LynxValue& attrs,
     std::function<void(int, LynxValue&&)> callback) {
-  if (strcmp(method, "acquiresurface") == 0) {
+  if (strcmp(method, "setsurfacecolorspace") == 0) {
+    const auto value = attrs.GetProperty("colorSpace");
+    if (value.Type() != lynx_value_string) {
+      callback(kInvalidParameter, LynxValue(LynxValue::kCreateAsNullTag));
+      return;
+    }
+    const auto name = value.StdString();
+    lynx_color_space_e space;
+    if (name == "display-p3") {
+      space = kLynxColorSpaceDisplayP3;
+    } else if (name == "srgb") {
+      space = kLynxColorSpaceSRGB;
+    } else {
+      callback(kInvalidParameter, LynxValue(LynxValue::kCreateAsNullTag));
+      return;
+    }
+    const bool changed = SetSurfaceColorSpace(space);
+    callback(changed ? kSuccess : kInvalidStateError, LynxValue(changed));
+  } else if (strcmp(method, "acquiresurface") == 0) {
     lynx_surface_handle_t* handle = AcquireSurface(width_, height_);
     if (handle) {
 #ifdef _WIN32
@@ -95,6 +115,11 @@ void LynxTextureView::OnMethodInvoked(
       detail.SetProperty("surface", LynxValue(surface));
       detail.SetProperty("width", LynxValue(width_));
       detail.SetProperty("height", LynxValue(height_));
+      detail.SetProperty(
+          "colorSpace",
+          LynxValue(GetSurfaceColorSpace() == kLynxColorSpaceDisplayP3
+                        ? "display-p3"
+                        : "srgb"));
       callback(kSuccess, std::move(detail));
       return;
     }
@@ -122,10 +147,13 @@ void LynxTextureView::OnMethodInvoked(
 #elif defined(__APPLE__)
     static const float transform[3 * 3] = {1, 0, 0, 0, -1, 1, 0, 0, 1};
     IOSurfaceRef ref = IOSurfaceLookup((IOSurfaceID)surface);
-    int width = IOSurfaceGetWidth(ref);
-    int height = IOSurfaceGetHeight(ref);
-    bool ret = PresentSurface(width, height, transform,
-                              reinterpret_cast<lynx_surface_handle_t*>(ref));
+    bool ret = false;
+    if (ref) {
+      ret = PresentSurface(IOSurfaceGetWidth(ref), IOSurfaceGetHeight(ref),
+                           transform,
+                           reinterpret_cast<lynx_surface_handle_t*>(ref));
+      CFRelease(ref);
+    }
 #endif
     callback(kSuccess, LynxValue(ret));
   } else {

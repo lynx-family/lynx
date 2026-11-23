@@ -24,9 +24,12 @@ class SharedImageRepresentation;
 class D3DTextureImageBacking final : public SharedImageBacking {
  public:
   D3DTextureImageBacking(PixelFormat pixel_format, skity::Vec2 size,
-                         std::optional<GraphicsMemoryHandle> gfx_handle = {});
+                         std::optional<GraphicsMemoryHandle> gfx_handle = {},
+                         ClayColorSpace color_space = kClayColorSpaceSRGB);
 
   ~D3DTextureImageBacking() override;
+
+  bool IsValid() const { return d3d11_texture_ && shared_handle_; }
 
   bool HasKeyedMutex() const {
     return (d3d11_texture_desc_.MiscFlags &
@@ -63,7 +66,7 @@ class D3DTextureImageBacking final : public SharedImageBacking {
   // The texture and device should never be used outside the class.
   // User MUST use OpenSharedResource on its own D3D11Device
   Microsoft::WRL::ComPtr<ID3D11Texture2D> d3d11_texture_;
-  D3D11_TEXTURE2D_DESC d3d11_texture_desc_;
+  D3D11_TEXTURE2D_DESC d3d11_texture_desc_ = {};
   // Staging texture used for copy to/from shared memory GMB.
   Microsoft::WRL::ComPtr<ID3D11Texture2D> staging_texture_;
   // Keyed mutex to for usage of staging texture read/write

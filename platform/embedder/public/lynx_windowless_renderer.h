@@ -19,6 +19,15 @@ class LynxWindowlessRenderer
   explicit LynxWindowlessRenderer(lynx_windowless_renderer_type_e type)
       : type_(type) {}
 
+  bool SetColorSpace(lynx_color_space_e color_space) {
+    InitIfNeeded();
+    return lynx_windowless_renderer_set_color_space(windowless_renderer_,
+                                                    color_space);
+  }
+  lynx_color_space_e GetColorSpace() const {
+    return lynx_windowless_renderer_get_color_space(windowless_renderer_);
+  }
+
   void InitIfNeeded() {
     if (windowless_renderer_) {
       return;

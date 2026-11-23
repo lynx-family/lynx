@@ -11,6 +11,7 @@
 #include <memory>
 
 #include "base/include/fml/macros.h"
+#include "clay/public/clay.h"
 #include "clay/shell/gpu/gpu_surface_software.h"
 #include "clay/shell/platform/embedder/embedder_surface.h"
 
@@ -19,6 +20,9 @@ namespace clay {
 class EmbedderSurfaceSoftwareDelegate {
  public:
   virtual ~EmbedderSurfaceSoftwareDelegate() = default;
+  virtual ClayColorSpace GetOutputColorSpace() const {
+    return kClayColorSpaceSRGB;
+  }
   virtual bool OnPresentBackingStore(const void* allocation, size_t row_bytes,
                                      size_t height) = 0;
 };

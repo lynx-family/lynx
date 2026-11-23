@@ -30,6 +30,9 @@ void NativePlatformView::TriggerEvent(const char* name, lynx_value params) {}
 ClaySharedImageSinkRef NativePlatformView::GetSharedImageSink() {
   return nullptr;
 }
+bool NativePlatformView::UpdateSurfaceColorSpace(ClayColorSpace color_space) {
+  return true;
+}
 bool NativePlatformView::PresentSurface(
     int width, int height, const ClayTransformation* transform,
     ClaySharedImageNativeHandle gfx_handle) {

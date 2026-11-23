@@ -7,6 +7,7 @@
 
 import("//build/toolchain/clang.gni")
 import("common/config.gni")
+import("shell/config.gni")
 import("testing/testing.gni")
 
 if (is_win) {
@@ -188,6 +189,10 @@ group("unittests") {
   testonly = true
   public_deps = []
 
+  if (enable_unittests && is_mac && shell_enable_metal) {
+    public_deps += [ "shell/platform/headless:color_space_unittests" ]
+  }
+
   # Compile all unittests targets if enabled.
   if (enable_unittests) {
     public_deps += [
@@ -210,7 +215,14 @@ group("unittests") {
     }
 
     if (is_win) {
-      public_deps += [ "shell/platform/windows:async_preparation_unittests" ]
+      public_deps += [
+        "shell/platform/windows:async_preparation_unittests",
+        "shell/platform/windows:p3_presenter_unittests",
+      ]
+      if (!enable_clay_standalone) {
+        public_deps +=
+            [ "shell/platform/headless:native_view_color_space_unittests" ]
+      }
     }
 
     if (is_mac || is_win) {

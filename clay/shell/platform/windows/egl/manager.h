@@ -60,6 +60,8 @@ class Manager {
   // Returns nullptr on failure.
   virtual std::unique_ptr<WindowSurface> CreateWindowSurface(
       GLImplementationType type, HWND hwnd, size_t width, size_t height);
+  std::unique_ptr<WindowSurface> CreateP3WindowSurface(HWND hwnd, size_t width,
+                                                       size_t height);
   // Check if the current thread has a context bound.
   bool HasContextCurrent();
 

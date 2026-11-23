@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "clay/shell/gpu/gpu_surface_metal_skity.h"
+#include "clay/gfx/color_space.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
@@ -43,6 +44,8 @@ class ScopedMTLTextureInfo {
 
   int64_t texture_id() const { return texture_.texture_id; }
 
+  ClayColorSpace color_space() const { return texture_.color_space; }
+
   id<MTLTexture> texture() const { return (__bridge id<MTLTexture>)(texture_.texture); }
 
  private:
@@ -51,13 +54,14 @@ class ScopedMTLTextureInfo {
 
 std::shared_ptr<skity::GPUSurface> CreateSurfaceFromMetalTexture(
     std::shared_ptr<skity::GPUContext> context, const skity::Vec2& size, id<MTLTexture> texture,
-    uint32_t sample_cnt) {
+    uint32_t sample_cnt, ClayColorSpace color_space = kClayColorSpaceSRGB) {
   skity::GPUSurfaceDescriptorMTL descriptor = {
       {skity::GPUBackendType::kMetal, static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y),
        sample_cnt},
       skity::MTLSurfaceType::kTexture,
       nil,
       texture};
+  descriptor.render_options.color_space = ToSkityColorSpace(color_space);
   return context->CreateSurface(&descriptor);
 }
 
@@ -222,7 +226,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
   }
 
   auto surface = CreateSurfaceFromMetalTexture(context_, frame_info, mtl_texture,
-                                               static_cast<uint32_t>(msaa_samples_));
+                                               static_cast<uint32_t>(msaa_samples_),
+                                               texture_lifetime->color_space());
   if (!surface) {
     FML_LOG(ERROR) << "Could not create gpuSurface from the CAMetalLayer.";
     return nullptr;
@@ -266,9 +271,18 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkity::AcquireFrameFromMTLTexture(
   SurfaceFrame::FramebufferInfo framebuffer_info;
   framebuffer_info.supports_readback = true;
 
-  if (size_ != frame_info) {
+  const auto color_space = texture_lifetime->color_space();
+  framebuffer_info.color_space = color_space;
+  framebuffer_info.color_space_changed =
+      texture_color_space_.has_value() && texture_color_space_ != color_space;
+  if (size_ != frame_info || texture_color_space_ != color_space) {
     damage_.clear();
     size_ = frame_info;
+    texture_color_space_ = color_space;
+  }
+
+  if (texture_lifetime->texture_info().reset_damage) {
+    damage_.erase(texture_id);
   }
 
   if (delegate_->EnablePartialRepaint()) {

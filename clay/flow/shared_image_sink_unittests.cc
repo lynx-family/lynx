@@ -19,8 +19,10 @@ class SharedImageSinkDamageTest
  protected:
   void SetUp() override {
     sink_ = fml::MakeRefCounted<SharedImageSinkManaged>(
-        GetParam(), [this](skity::Vec2 size, auto) {
+        GetParam(),
+        [this](skity::Vec2 size, auto) -> fml::RefPtr<SharedImageBacking> {
           ++allocation_count_;
+          if (reject_allocations_) return nullptr;
           return fml::MakeRefCounted<MockSharedImageBacking>(size);
         });
     sink_->SetFrameAvailableCallback([] {});
@@ -40,7 +42,27 @@ class SharedImageSinkDamageTest
   fml::RefPtr<SharedImageSinkManaged> sink_;
   std::vector<fml::RefPtr<SharedImageBacking>> backings_;
   uint32_t allocation_count_ = 0;
+  bool reject_allocations_ = false;
 };
+
+TEST_P(SharedImageSinkDamageTest, AllocationFailureCanBeRetried) {
+  reject_allocations_ = true;
+  EXPECT_FALSE(std::get<0>(sink_->AcquireBack(size_)));
+  EXPECT_FALSE(std::get<0>(sink_->TryAcquireBack(size_)));
+  EXPECT_FALSE(std::get<0>(sink_->AcquireBackForced(size_)));
+  reject_allocations_ = false;
+  ASSERT_TRUE(std::get<0>(sink_->AcquireBack(size_)));
+  const skity::Vec2 resized{120, 100};
+  reject_allocations_ = true;
+  EXPECT_FALSE(std::get<0>(sink_->AcquireBack(resized)));
+  EXPECT_FALSE(std::get<0>(sink_->TryAcquireBack(resized)));
+  EXPECT_FALSE(std::get<0>(sink_->AcquireBackForced(resized)));
+  reject_allocations_ = false;
+  auto [backing, age] = sink_->AcquireBack(resized);
+  ASSERT_TRUE(backing);
+  EXPECT_EQ(backing->GetSize(), resized);
+  EXPECT_EQ(age, 0u);
+}
 
 TEST_P(SharedImageSinkDamageTest, ReturnedBufferRetainsAllMissedFramesInAge) {
   ASSERT_NO_FATAL_FAILURE(FillQueue());
@@ -94,6 +116,113 @@ TEST_P(SharedImageSinkDamageTest, ResizedPendingBufferHasUnknownContents) {
   EXPECT_EQ(backing->GetSize(), skity::Vec2(120, 90));
   EXPECT_EQ(age, 0u);
   ASSERT_TRUE(sink_->SwapBack(nullptr));
+}
+
+TEST_P(SharedImageSinkDamageTest, ReconfigurationRejectsAnAcquiredBack) {
+  auto [backing, age] = sink_->AcquireBack(size_);
+  ASSERT_TRUE(backing);
+  EXPECT_FALSE(sink_->UpdateSharedImageFactory(
+      [](auto, auto) { return fml::RefPtr<SharedImageBacking>(); }));
+  ASSERT_TRUE(sink_->SwapBack(nullptr));
+  EXPECT_EQ(sink_->UpdateFront(nullptr), backing);
+}
+
+TEST_P(SharedImageSinkDamageTest, EveryAcquirePathReplacesOldGenerations) {
+  auto [previous, initial_age] = sink_->AcquireBack(size_);
+  ASSERT_TRUE(previous);
+  ASSERT_TRUE(sink_->SwapBack(nullptr));
+  ASSERT_EQ(sink_->UpdateFront(nullptr), previous);
+  sink_->ReleaseFront(nullptr);
+  for (int path = 0; path < 3; ++path) {
+    ASSERT_TRUE(sink_->UpdateSharedImageFactory(
+        [this](skity::Vec2 size, auto) -> fml::RefPtr<SharedImageBacking> {
+          if (reject_allocations_) return nullptr;
+          return fml::MakeRefCounted<MockSharedImageBacking>(size);
+        }));
+    reject_allocations_ = true;
+    EXPECT_FALSE(std::get<0>(sink_->AcquireBack(size_)));
+    EXPECT_FALSE(std::get<0>(sink_->TryAcquireBack(size_)));
+    EXPECT_FALSE(std::get<0>(sink_->AcquireBackForced(size_)));
+    reject_allocations_ = false;
+    std::tuple<fml::RefPtr<SharedImageBacking>, uint32_t> acquired;
+    if (path == 0) {
+      acquired = sink_->AcquireBack(size_);
+    } else if (path == 1) {
+      auto [backing, age, status] = sink_->TryAcquireBack(size_);
+      acquired = {backing, age};
+      EXPECT_EQ(status, SharedImageSink::AcquireBackStatus::kSuccess);
+    } else {
+      acquired = sink_->AcquireBackForced(size_);
+    }
+    auto [backing, age] = acquired;
+    ASSERT_TRUE(backing);
+    EXPECT_NE(backing, previous);
+    EXPECT_EQ(age, 0u);
+    ASSERT_TRUE(sink_->SwapBack(nullptr));
+    EXPECT_EQ(sink_->UpdateFront(nullptr), backing);
+    sink_->ReleaseFront(nullptr);
+    previous = backing;
+  }
+}
+
+TEST_P(SharedImageSinkDamageTest, ReconfigurationKeepsQueuedAndCurrentFronts) {
+  ASSERT_NO_FATAL_FAILURE(FillQueue());
+  auto current = sink_->UpdateFront(nullptr);
+  ASSERT_EQ(current, backings_.front());
+  ASSERT_TRUE(sink_->UpdateSharedImageFactory([](skity::Vec2 size, auto) {
+    return fml::MakeRefCounted<MockSharedImageBacking>(size);
+  }));
+  auto [next, age] = sink_->AcquireBackForced(size_);
+  ASSERT_TRUE(next);
+  EXPECT_NE(next, current);
+  EXPECT_EQ(age, 0u);
+  ASSERT_TRUE(sink_->SwapBack(nullptr));
+  EXPECT_EQ(sink_->UpdateFrontToLatest(nullptr), next);
+  EXPECT_EQ(current, backings_.front());
+}
+
+class ReconfigurationFence final : public FenceSync {
+ public:
+  ReconfigurationFence(bool& ready, int& waits,
+                       const fml::RefPtr<SharedImageSinkManaged>& sink)
+      : ready_(ready), waits_(waits), sink_(sink.get()) {}
+  bool ClientWait() override {
+    ++waits_;
+    // This locks the sink again: retirement must wait outside its mutex, with
+    // the producer slot reserved so another configuration cannot intervene.
+    EXPECT_FALSE(sink_->UpdateSharedImageFactory([](skity::Vec2 size, auto) {
+      return fml::MakeRefCounted<MockSharedImageBacking>(size);
+    }));
+    return ready_;
+  }
+  Type GetType() const override { return Type::kClientWaitOnly; }
+
+ private:
+  bool& ready_;
+  int& waits_;
+  SharedImageSinkManaged* sink_;
+};
+
+TEST_P(SharedImageSinkDamageTest, RetiresOldBuffersAfterTheirFenceAndCanRetry) {
+  bool ready = false;
+  int waits = 0;
+  auto [old, initial_age] = sink_->AcquireBack(size_);
+  ASSERT_TRUE(old);
+  ASSERT_TRUE(sink_->SwapBack(nullptr));
+  ASSERT_EQ(sink_->UpdateFront(nullptr), old);
+  sink_->ReleaseFront(
+      std::make_unique<ReconfigurationFence>(ready, waits, sink_));
+  ASSERT_TRUE(sink_->UpdateSharedImageFactory([](skity::Vec2 size, auto) {
+    return fml::MakeRefCounted<MockSharedImageBacking>(size);
+  }));
+  EXPECT_FALSE(std::get<0>(sink_->AcquireBack(size_)));
+  EXPECT_EQ(waits, 1);
+  ready = true;
+  auto [backing, age] = sink_->AcquireBack(size_);
+  ASSERT_TRUE(backing);
+  EXPECT_NE(backing, old);
+  EXPECT_EQ(age, 0u);
+  EXPECT_EQ(waits, 2);
 }
 
 INSTANTIATE_TEST_SUITE_P(DoubleAndTripleBuffer, SharedImageSinkDamageTest,

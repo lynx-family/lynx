@@ -262,29 +262,55 @@ class ClayBitmapCallbackWrapper {
 CLAY_EXTERN_C ClaySharedImageRef ClayCreateSharedImage(
     ClaySharedImageBackingType type,
     ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size) {
-  skity::Vec2 sk_size{static_cast<int32_t>(size->width),
-                      static_cast<int32_t>(size->height)};
-  fml::RefPtr<SharedImageBacking> backing = SharedImageBacking::Create(
-      ClaySharedImageBackingTypeToBackingType(type),
-      ClaySharedImageBackingPixelFormatToPixelFormat(pixel_format), sk_size,
-      {});
-  backing->AddRef();
-  return reinterpret_cast<ClaySharedImageRef>(backing.get());
+  return ClayCreateSharedImageWithColorSpace(type, pixel_format, size,
+                                             kClayColorSpaceSRGB);
 }
 
 CLAY_EXTERN_C ClaySharedImageRef ClayCreateSharedImageFromHandle(
     ClaySharedImageBackingType type,
     ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size,
     ClaySharedImageNativeHandle handle) {
+  return ClayCreateSharedImageFromHandleWithColorSpace(
+      type, pixel_format, size, handle, kClayColorSpaceSRGB);
+}
+
+CLAY_EXTERN_C ClaySharedImageRef ClayCreateSharedImageWithColorSpace(
+    ClaySharedImageBackingType type,
+    ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size,
+    ClayColorSpace color_space) {
+  return ClayCreateSharedImageFromHandleWithColorSpace(type, pixel_format, size,
+                                                       nullptr, color_space);
+}
+
+CLAY_EXTERN_C ClaySharedImageRef ClayCreateSharedImageFromHandleWithColorSpace(
+    ClaySharedImageBackingType type,
+    ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size,
+    ClaySharedImageNativeHandle handle, ClayColorSpace color_space) {
+  if (!size) {
+    return nullptr;
+  }
   skity::Vec2 sk_size{static_cast<int32_t>(size->width),
                       static_cast<int32_t>(size->height)};
-
-  fml::RefPtr<SharedImageBacking> backing = SharedImageBacking::Create(
+  auto backing = SharedImageBacking::Create(
       ClaySharedImageBackingTypeToBackingType(type),
       ClaySharedImageBackingPixelFormatToPixelFormat(pixel_format), sk_size,
-      reinterpret_cast<GraphicsMemoryHandle>(handle));
+      handle ? std::optional<GraphicsMemoryHandle>(
+                   reinterpret_cast<GraphicsMemoryHandle>(handle))
+             : std::nullopt,
+      color_space);
+  if (!backing) {
+    return nullptr;
+  }
   backing->AddRef();
   return reinterpret_cast<ClaySharedImageRef>(backing.get());
+}
+
+CLAY_EXTERN_C ClayColorSpace
+ClaySharedImageGetColorSpace(ClaySharedImageRef shared_image_ref) {
+  return shared_image_ref
+             ? reinterpret_cast<SharedImageBacking*>(shared_image_ref)
+                   ->GetColorSpace()
+             : kClayColorSpaceSRGB;
 }
 
 CLAY_EXTERN_C ClaySharedImageRef
@@ -529,6 +555,28 @@ CLAY_EXTERN_C ClaySharedImageSinkRef
 ClayCreateSharedImageSink(ClaySharedImageSinkBufferMode clay_buffer_mode,
                           ClaySharedImageBackingType type,
                           ClaySharedImageBackingPixelFormat pixel_format) {
+  return ClayCreateSharedImageSinkWithColorSpace(
+      clay_buffer_mode, type, pixel_format, kClayColorSpaceSRGB);
+}
+
+CLAY_EXTERN_C ClaySharedImageSinkRef ClayCreateSharedImageSinkWithColorSpace(
+    ClaySharedImageSinkBufferMode clay_buffer_mode,
+    ClaySharedImageBackingType type,
+    ClaySharedImageBackingPixelFormat pixel_format,
+    ClayColorSpace color_space) {
+  if (color_space != kClayColorSpaceSRGB &&
+      color_space != kClayColorSpaceDisplayP3) {
+    return nullptr;
+  }
+  if (color_space == kClayColorSpaceDisplayP3) {
+#if OS_MACOSX || OS_IOS
+    if (type != kClaySharedImageBackingTypeIOSurface) return nullptr;
+#elif defined(_WIN32)
+    if (type != kClaySharedImageBackingTypeD3DTexture) return nullptr;
+#else
+    return nullptr;
+#endif
+  }
   SharedImageSink::BufferMode buffer_mode;
   switch (clay_buffer_mode) {
     case kClaySharedImageSinkBufferModeSingleBuffer:
@@ -559,8 +607,8 @@ ClayCreateSharedImageSink(ClaySharedImageSinkBufferMode clay_buffer_mode,
   fml::RefPtr<SharedImageSink> sink =
       fml::MakeRefCounted<SharedImageSinkManaged>(
           buffer_mode,
-          [type, pixel_format](skity::Vec2 size,
-                               std::optional<GraphicsMemoryHandle> gfx_handle)
+          [type, pixel_format, color_space](
+              skity::Vec2 size, std::optional<GraphicsMemoryHandle> gfx_handle)
               -> fml::RefPtr<SharedImageBacking> {
             ClaySize clay_size;
             clay_size.width = size.x;
@@ -568,11 +616,16 @@ ClayCreateSharedImageSink(ClaySharedImageSinkBufferMode clay_buffer_mode,
             SharedImageBacking* backing;
             if (gfx_handle.has_value() && gfx_handle.value()) {
               backing = reinterpret_cast<SharedImageBacking*>(
-                  ClayCreateSharedImageFromHandle(
-                      type, pixel_format, &clay_size, gfx_handle.value()));
+                  ClayCreateSharedImageFromHandleWithColorSpace(
+                      type, pixel_format, &clay_size, gfx_handle.value(),
+                      color_space));
             } else {
               backing = reinterpret_cast<SharedImageBacking*>(
-                  ClayCreateSharedImage(type, pixel_format, &clay_size));
+                  ClayCreateSharedImageWithColorSpace(type, pixel_format,
+                                                      &clay_size, color_space));
+            }
+            if (!backing) {
+              return nullptr;
             }
             fml::RefPtr<SharedImageBacking> result(backing);
             backing->Release();

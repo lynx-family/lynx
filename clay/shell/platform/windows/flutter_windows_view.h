@@ -96,6 +96,7 @@ class FlutterWindowsView : public WindowBindingHandlerDelegate,
   void SetPresentDamageRegion(const clay::Rect& region);
 
   std::optional<clay::Rect> GetDamageRegion();
+  ClayColorSpace GetColorSpace() const;
 
   bool RequiresSurfaceYAxisFlip() const;
 

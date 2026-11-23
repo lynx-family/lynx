@@ -16,6 +16,7 @@
 #include "clay/common/graphics/drawable_image.h"
 #include "clay/common/graphics/gl_context_switch.h"
 #include "clay/flow/embedded_views.h"
+#include "clay/public/clay.h"
 
 namespace clay {
 
@@ -36,6 +37,7 @@ struct GLFBOInfo {
   // Whether the frame buffer has a depth/stencil attachment with a stencil
   // plane available for direct rendering.
   bool has_depth_stencil_attachment = false;
+  ClayColorSpace color_space = kClayColorSpaceSRGB;
 };
 
 // Information passed during presentation of a frame.

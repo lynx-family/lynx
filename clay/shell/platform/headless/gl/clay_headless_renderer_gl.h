@@ -52,6 +52,7 @@ class ClayHeadlessRendererGL : public ClayHeadlessRenderer,
   SurfaceFrame::FramebufferInfo GLContextFramebufferInfo() const override;
 
  protected:
+  ClayColorSpace output_color_space_ = kClayColorSpaceSRGB;
   virtual bool MakeCurrent() = 0;
   virtual bool ClearCurrent() = 0;
   virtual int64_t FBO(const ClayFrameInfo& frame_info) = 0;
@@ -86,6 +87,7 @@ class ClayHeadlessRendererSharedImageGL : public ClayHeadlessRendererGL {
   struct FBOSlot {
     ClayOpenGLFramebuffer framebuffer;
     uint32_t buffer_age;
+    ClayColorSpace color_space = kClayColorSpaceSRGB;
     skity::Rect damage_rect;
   };
   bool disable_partial_repaint_ = false;

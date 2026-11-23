@@ -72,6 +72,7 @@ class GPUSurfaceGLSkity : public Surface {
   // Refer to the current GPUSurface in use.
   std::shared_ptr<skity::GPUSurface> gpu_surface_;
   std::shared_ptr<skity::GPUContext> gpu_context_;
+  ClayColorSpace color_space_ = kClayColorSpaceSRGB;
   uint32_t fbo_id_ = 0;
   skity::Vec2 size_;
   uint64_t surface_generation_ = 0;

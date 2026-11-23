@@ -28,6 +28,8 @@ namespace clay {
 // clang-format on
 
 DEF_SWITCHES_START
+DEF_SWITCH(EnableDisplayP3, "enable-display-p3",
+           "Request Display P3 desktop output.")
 DEF_SWITCH(CacheDirPath, "cache-dir-path",
            "Path to the cache directory. "
            "This is different from the persistent_cache_path in embedder.h, "

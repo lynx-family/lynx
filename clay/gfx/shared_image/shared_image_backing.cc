@@ -67,8 +67,9 @@ bool WriteDataToFile(const std::string& file_name, const void* data,
 #endif  // NDEBUG
 
 SharedImageBacking::SharedImageBacking(PixelFormat pixel_format,
-                                       skity::Vec2 size)
-    : pixel_format_(pixel_format), size_(size) {
+                                       skity::Vec2 size,
+                                       ClayColorSpace color_space)
+    : color_space_(color_space), pixel_format_(pixel_format), size_(size) {
   FML_DLOG(INFO) << "Create SharedImageBacking with size: " << size.x << "x"
                  << size.y;
 }
@@ -92,12 +93,21 @@ std::unique_ptr<FenceSync> SharedImageBacking::GetFenceSyncForClient() {
 
 fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
     BackingType type, PixelFormat pixel_format, skity::Vec2 size,
-    std::optional<GraphicsMemoryHandle> gfx_handle) {
+    std::optional<GraphicsMemoryHandle> gfx_handle,
+    ClayColorSpace color_space) {
+  if (color_space != kClayColorSpaceSRGB &&
+      color_space != kClayColorSpaceDisplayP3) {
+    return nullptr;
+  }
+  if (color_space == kClayColorSpaceDisplayP3 &&
+      type != BackingType::kIOSurface && type != BackingType::kD3DTexture) {
+    return nullptr;
+  }
 #if OS_MACOSX || OS_IOS
   if (type == BackingType::kIOSurface) {
     if (__builtin_available(macos 10.6, ios 11.0, tvos 11.0, *)) {
-      return fml::MakeRefCounted<IOSurfaceImageBacking>(pixel_format, size,
-                                                        gfx_handle);
+      return fml::MakeRefCounted<IOSurfaceImageBacking>(
+          pixel_format, size, gfx_handle, color_space);
     }
   } else if (type == BackingType::kCVPixelBuffer) {
     return fml::MakeRefCounted<CVPixelBufferImageBacking>(pixel_format, size,
@@ -105,10 +115,20 @@ fml::RefPtr<SharedImageBacking> SharedImageBacking::Create(
   }
 #elif OS_WIN
   if (type == BackingType::kD3DTexture) {
+    // D3D11 can query both dimensions from an imported texture.
+    const bool infer_size =
+        gfx_handle.value_or(nullptr) && size.x == 0 && size.y == 0;
+    if (!infer_size && (size.x == 0 || size.y == 0)) return nullptr;
     if (D3DTextureImageBacking::IsSupported()) {
-      return fml::MakeRefCounted<D3DTextureImageBacking>(pixel_format, size,
-                                                         gfx_handle);
+      auto backing = fml::MakeRefCounted<D3DTextureImageBacking>(
+          pixel_format, size, gfx_handle, color_space);
+      // A failed native allocation must not reserve an acquired sink slot.
+      if (!backing->IsValid()) return nullptr;
+      return backing;
     } else {
+      if (color_space != kClayColorSpaceSRGB) {
+        return nullptr;
+      }
       FML_LOG(INFO) << "Fallback to D3D9TextureImageBacking because D3D11 is "
                        "not supported.";
       return fml::MakeRefCounted<D3D9TextureImageBacking>(pixel_format, size,

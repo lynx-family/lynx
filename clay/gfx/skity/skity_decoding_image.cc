@@ -59,7 +59,8 @@ void SkityDecodingImage::ScheduleDecodeAndUpload(
   }
   if (auto g_image = image_resource_->GetImage()->GetGraphicsImage()) {
     if (auto sk_image = g_image->gr_image()) {
-      decoded_image_ = g_image->gr_image();
+      decoded_image_ = sk_image;
+      SetColorSpace(sk_image->GetColorSpace());
     }
   }
 }
@@ -74,7 +75,8 @@ void SkityDecodingImage::DecodeImageFinish(bool success,
   // previous frame or empty.
   if (auto g_image = image_resource_->GetImage()->GetGraphicsImage()) {
     if (auto sk_image = g_image->gr_image()) {
-      decoded_image_ = g_image->gr_image();
+      decoded_image_ = sk_image;
+      SetColorSpace(sk_image->GetColorSpace());
     }
   }
   // Decoding is finished, notify Rasterizer to redraw LayerTree.

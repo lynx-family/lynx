@@ -43,6 +43,8 @@ std::shared_ptr<skity::Pixmap> ScalePixmap(
   auto scaled_pixmap = std::make_shared<skity::Pixmap>(
       target_width, target_height, pixmap->GetAlphaType(),
       pixmap->GetColorType());
+  scaled_pixmap->SetColorInfo(pixmap->GetAlphaType(), pixmap->GetColorType(),
+                              pixmap->GetColorSpace());
   if (!image->ScalePixels(scaled_pixmap, nullptr,
                           skity::SamplingOptions(skity::FilterMode::kLinear,
                                                  skity::MipmapMode::kNone))) {

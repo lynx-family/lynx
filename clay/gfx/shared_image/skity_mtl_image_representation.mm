@@ -5,6 +5,7 @@
 #include "clay/gfx/shared_image/skity_mtl_image_representation.h"
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/shared_image/cv_pixelbuffer_image_backing.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/iosurface_image_backing.h"
@@ -57,9 +58,9 @@ std::shared_ptr<SkityImage> SkityMTLImageRepresentation::GetSkityImage() {
   // TODO(yudingqian): This is a workaround that we create a `SkityImage` which wraps the
   // `skity::Image`. Because we need the `destruction_callback` to release the texture and Skity
   // doesn't provide this parameter for now.
-  return std::make_shared<SkityImage>(skity::Image::MakeHWImage(texture),
-                                      result.metal_texture.destruction_callback,
-                                      result.metal_texture.user_data);
+  return std::make_shared<SkityImage>(
+      skity::Image::MakeHWImage(texture, ToSkityColorSpace(GetBacking()->GetColorSpace())),
+      result.metal_texture.destruction_callback, result.metal_texture.user_data);
 }
 
 bool SkityMTLImageRepresentation::EndRead() { return mtl_image_representation_->EndRead(); }

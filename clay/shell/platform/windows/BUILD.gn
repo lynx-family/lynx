@@ -97,6 +97,8 @@ source_set("flutter_windows_source") {
     "egl/graphics_preparation.h",
     "egl/manager.cc",
     "egl/manager.h",
+    "egl/p3_presenter.cc",
+    "egl/p3_presenter.h",
     "egl/surface.cc",
     "egl/surface.h",
     "egl/window_surface.cc",
@@ -154,6 +156,7 @@ source_set("flutter_windows_source") {
 
   libs = [
     "dwmapi.lib",
+    "dxgi.lib",
     "imm32.lib",
   ]
 
@@ -216,6 +219,18 @@ source_set("flutter_windows_source") {
 }
 
 if (enable_unittests) {
+  executable("p3_presenter_unittests") {
+    testonly = true
+    sources = [
+      "egl/p3_presenter.cc",
+      "egl/p3_presenter.h",
+      "egl/p3_presenter_unittests.cc",
+    ]
+    configs += [ "../../../:config" ]
+    deps = [ "//third_party/googletest:gtest_main" ]
+    libs = [ "d3d11.lib" ]
+  }
+
   executable("async_preparation_unittests") {
     testonly = true
     sources = [ "egl/async_preparation_unittests.cc" ]

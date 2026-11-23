@@ -406,6 +406,26 @@ std::unique_ptr<WindowSurface> Manager::CreateWindowSurface(
   return InitializeSurface(std::move(surface));
 }
 
+std::unique_ptr<WindowSurface> Manager::CreateP3WindowSurface(HWND hwnd,
+                                                              size_t width,
+                                                              size_t height) {
+  if (!hwnd || !is_valid_) {
+    return nullptr;
+  }
+  if (TryInitializeDirectCompositionDevice()) {
+    auto surface = InitializeSurface(std::make_unique<DirectCompositionSurface>(
+        display_, render_context_->GetHandle(), config_,
+        static_cast<EGLNativeWindowType>(hwnd), dcomp_device_, width, height,
+        true));
+    if (surface) {
+      return surface;
+    }
+  }
+  FML_LOG(WARNING) << "Display P3 window unavailable; using sRGB.";
+  return CreateWindowSurface(GLImplementationType::kAngleEGLDirectComposition,
+                             hwnd, width, height);
+}
+
 bool Manager::HasContextCurrent() {
   return ::eglGetCurrentContext() != EGL_NO_CONTEXT;
 }
