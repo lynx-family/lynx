@@ -2622,6 +2622,10 @@ public interface com::lynx::tasm::service::ILynxExtensionService {
   public void com.lynx.tasm.service.ILynxExtensionService.onLynxViewDestroy(LynxContext context);
 }
 
+public interface com::lynx::tasm::service::ILynxHostScriptTransportService {
+  public long com.lynx.tasm.service.ILynxHostScriptTransportService.getHostScriptTransport();
+}
+
 public interface com::lynx::tasm::service::ILynxHttpService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxHttpService.getServiceClass();
   public void com.lynx.tasm.service.ILynxHttpService.requestStreaming(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback, @NonNull HttpStreamingDelegate delegate);
