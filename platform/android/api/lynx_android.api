@@ -2372,6 +2372,10 @@ public class com::lynx::tasm::utils::I18nUtil :  {
   public void com.lynx.tasm.utils.I18nUtil.forceRTL(Context context, boolean forceRTL);
 }
 
+public interface com::lynx::tasm::behavior::ui::IAutoUpdateTarget {
+  public void com.lynx.tasm.behavior.ui.IAutoUpdateTarget.scheduleAutoRefresh();
+}
+
 public interface com::lynx::tasm::behavior::ui::UIExposure::ICallBack {
   public boolean com.lynx.tasm.behavior.ui.UIExposure.ICallBack.canSendGlobalEvent();
   public void com.lynx.tasm.behavior.ui.UIExposure.ICallBack.sendGlobalEvent(String name, JavaOnlyArray params);
@@ -4587,6 +4591,9 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.scrollIntoView(boolean isSmooth, String block, String inline);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.scrollIntoView(boolean isSmooth, String block, String inline, Callback callback);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setFocusable(Boolean focusable);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAutoUpdate(boolean autoUpdate);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isAutoUpdate();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.markAutoUpdateDirty();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setIgnoreFocus(@Nullable Dynamic ignoreFocus);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setTestID(@Nullable String tag);
   public String com.lynx.tasm.behavior.ui.LynxBaseUI.getTestID();

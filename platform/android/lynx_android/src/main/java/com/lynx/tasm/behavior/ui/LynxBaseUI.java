@@ -275,6 +275,9 @@ public abstract class LynxBaseUI
 
   private boolean mIsDetachedWithView = false;
   private boolean mNeedsBackgroundRecreation = false;
+  private boolean mAutoUpdate = false;
+  private static final IAutoUpdateTarget AUTO_UPDATE_TARGET_NONE = () -> {};
+  private IAutoUpdateTarget mCachedAutoUpdateTarget = null;
 
   private float mAlpha = 1.0f;
 
@@ -774,6 +777,7 @@ public abstract class LynxBaseUI
       }
     }
     mParent = parent;
+    mCachedAutoUpdateTarget = null;
   }
 
   public void setDrawParent(UIParent drawParent) {
@@ -1115,6 +1119,38 @@ public abstract class LynxBaseUI
   @LynxProp(name = PropsConstants.FOCUSABLE)
   public void setFocusable(Boolean focusable) {
     mFocusable = (focusable != null ? focusable : false);
+  }
+
+  @LynxProp(name = "auto-update", defaultBoolean = false)
+  public void setAutoUpdate(boolean autoUpdate) {
+    mAutoUpdate = autoUpdate;
+  }
+
+  public boolean isAutoUpdate() {
+    return mAutoUpdate;
+  }
+
+  public void markAutoUpdateDirty() {
+    if (mCachedAutoUpdateTarget == null) {
+      LynxBaseUI parent = getParentBaseUI();
+      while (parent != null) {
+        if (parent instanceof IAutoUpdateTarget) {
+          mCachedAutoUpdateTarget = (IAutoUpdateTarget) parent;
+          break;
+        }
+        if (parent.mCachedAutoUpdateTarget != null) {
+          mCachedAutoUpdateTarget = parent.mCachedAutoUpdateTarget;
+          break;
+        }
+        parent = parent.getParentBaseUI();
+      }
+      if (mCachedAutoUpdateTarget == null) {
+        mCachedAutoUpdateTarget = AUTO_UPDATE_TARGET_NONE;
+      }
+    }
+    if (mCachedAutoUpdateTarget != AUTO_UPDATE_TARGET_NONE) {
+      mCachedAutoUpdateTarget.scheduleAutoRefresh();
+    }
   }
 
   @LynxProp(name = PropsConstants.IGNORE_FOCUS)
@@ -2565,6 +2601,8 @@ public abstract class LynxBaseUI
       int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop,
       int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
       int borderRightWidth, int borderBottomWidth, Rect bound) {
+    int oldWidth = mWidth;
+    int oldHeight = mHeight;
     // During the updateLayoutInfo process, onLayoutUpdated is triggered,
     // but onLayoutUpdated is also triggered once more after updateLayoutInfo finishes.
     // Add a flag to avoid redundant triggers.
@@ -2575,6 +2613,9 @@ public abstract class LynxBaseUI
     mSkipLayoutUpdated = false;
     onLayoutUpdated();
     sendLayoutChangeEvent();
+    if (mAutoUpdate && (oldWidth != mWidth || oldHeight != mHeight)) {
+      markAutoUpdateDirty();
+    }
   }
 
   // the target Layout Info, only for transform percentage
