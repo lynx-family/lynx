@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+// cSpell:ignore liga
+
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 
 #include <memory>
@@ -36,6 +38,8 @@ class DetachedTextElement : public TextElement {
   }
 };
 
+using FontFeatures = std::vector<std::pair<std::string, int32_t>>;
+
 struct BackendState {
   bool fail_builder{false};
   bool fail_paragraph{false};
@@ -51,6 +55,7 @@ struct BackendState {
   text::MeasureParams params{};
   std::optional<float> line_height;
   std::optional<std::string> font_variations;
+  std::vector<FontFeatures> font_feature_updates;
   std::vector<int> text_backgrounds;
   std::optional<uint32_t> line_height_alignment;
   std::optional<uint32_t> line_height_trim;
@@ -63,6 +68,7 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
     ++state_.live_builder_count;
     state_.line_height.reset();
     state_.font_variations.reset();
+    state_.font_feature_updates.clear();
     state_.text_backgrounds.clear();
     state_.line_height_alignment.reset();
     state_.line_height_trim.reset();
@@ -92,6 +98,13 @@ class FakeParagraphBuilder : public text::ParagraphBuilder {
                     size_t length) override {
     if (key == kTextPropBackGroundColor && length == sizeof(int)) {
       state_.text_backgrounds.push_back(*static_cast<int*>(value));
+    }
+    if (key == kTextPropFontFeatureSettings) {
+      auto& update = state_.font_feature_updates.emplace_back();
+      const auto* features = static_cast<const text::FontFeature*>(value);
+      for (size_t i = 0; i < length / sizeof(*features); ++i) {
+        update.emplace_back(std::string(features[i].tag, 4), features[i].value);
+      }
     }
     if (key == kTextPropFontVariationSettings) {
       state_.font_variations =
@@ -341,6 +354,40 @@ TEST_F(TextLayoutTextraTest, NormalLineHeightUsesFontMetrics) {
     layout_->DispatchLayoutBefore(&element_);
     EXPECT_FALSE(state_.line_height.has_value());
   }
+}
+
+TEST_F(TextLayoutTextraTest, FontFeaturesRespectOverridesAndRemoval) {
+  auto text = CreateTextWithEventRanges();
+  auto* parent = static_cast<TextElement*>(text.get());
+  auto* child = static_cast<TextElement*>(parent->first_render_child());
+  ASSERT_NE(child, nullptr);
+  child->ConvertToInlineElement();
+
+  const auto id = kPropertyIDFontFeatureSettings;
+  auto set_features = [&](TextElement* element, const char* css) {
+    StyleMap styles;
+    ASSERT_TRUE(UnitHandler::Process(id, lepus::Value(css), styles,
+                                     CSSParserConfigs()));
+    ASSERT_TRUE(element->ResolveStyleValue(id, styles.at(id)));
+  };
+
+  set_features(parent, "'liga' on, 'cv01' 2, 'liga' off");
+  const FontFeatures expected{{"liga", 0}, {"cv01", 2}};
+  layout_->DispatchLayoutBefore(parent);
+  EXPECT_EQ(state_.font_feature_updates, (std::vector<FontFeatures>{expected}));
+
+  set_features(child, "normal");
+  layout_->DispatchLayoutBefore(parent);
+  EXPECT_EQ(state_.font_feature_updates,
+            (std::vector<FontFeatures>{expected, {}}));
+
+  ASSERT_TRUE(child->ResetCSSValue(id));
+  layout_->DispatchLayoutBefore(parent);
+  EXPECT_EQ(state_.font_feature_updates, (std::vector<FontFeatures>{expected}));
+
+  ASSERT_TRUE(parent->ResetCSSValue(id));
+  layout_->DispatchLayoutBefore(parent);
+  EXPECT_TRUE(state_.font_feature_updates.empty());
 }
 
 TEST_F(TextLayoutTextraTest, FontVariationsPreserveAxesAndReset) {

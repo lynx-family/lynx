@@ -69,6 +69,12 @@ struct ImageProps {
   Radius radius;
 };
 
+// A fixed-size OpenType tag and its non-negative feature value.
+struct FontFeature {
+  char tag[4];
+  int32_t value;
+};
+
 struct AutoFontSize {
   bool enabled;
   float min_size;
