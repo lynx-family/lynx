@@ -162,10 +162,14 @@ enum class ClayGradientPositionType {
   kNumber,
 };
 
+// Values match the CSS filter types passed by the Lynx renderer.
 enum class ClayFilterType {
   kNone = 0,
   kGrayScale = 1,
   kBlur = 2,
+  kBrightness = 3,
+  kContrast = 4,
+  kSaturate = 5,
 };
 
 enum class ClayImageRendering {
