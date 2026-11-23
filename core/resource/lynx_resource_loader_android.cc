@@ -8,6 +8,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/jni_helper.h"
 #include "core/resource/lynx_resource_setting.h"
+#include "core/template_bundle/template_codec/magic_number.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxResourceLoader_jni.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxResourceLoader_register_jni.h"
 
@@ -51,6 +52,32 @@ void InvokeCallback(JNIEnv* env, jclass jcaller, jlong response_handler,
       bundle_ptr != 0 ? reinterpret_cast<void*>(bundle_ptr) : nullptr, err_code,
       JNIConvertHelper::ConvertToString(env, err_msg));
   delete handler;
+}
+
+jboolean IsValidBinary(JNIEnv* env, jclass jcaller, jbyteArray data,
+                       jobject buffer) {
+  if (buffer != nullptr) {
+    auto* bytes =
+        static_cast<const uint8_t*>(env->GetDirectBufferAddress(buffer));
+    if (bytes != nullptr) {
+      return lynx::template_codec::IsValidBinary(
+          bytes, static_cast<size_t>(env->GetDirectBufferCapacity(buffer)));
+    }
+  }
+  if (data == nullptr) {
+    return false;
+  }
+  const auto size = env->GetArrayLength(data);
+  // Only inspect the fixed-size header while the array is pinned. Avoid copying
+  // the entire template just to choose its loading path.
+  auto* bytes =
+      static_cast<uint8_t*>(env->GetPrimitiveArrayCritical(data, nullptr));
+  if (bytes == nullptr) {
+    return false;
+  }
+  const bool valid = lynx::template_codec::IsValidBinary(bytes, size);
+  env->ReleasePrimitiveArrayCritical(data, bytes, JNI_ABORT);
+  return valid;
 }
 
 void ConfigLynxResourceSetting(JNIEnv* env, jobject jcaller) {

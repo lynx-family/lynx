@@ -157,10 +157,18 @@ public class LynxResourceLoader {
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
       } break;
       case LynxResourceType.LYNX_RESOURCE_TYPE_FRAME: {
-        // 1. frame only support LynxTemplateResourceFetcher
+        // 1. try to use LynxTemplateResourceFetcher
         LynxResourceRequest.LynxResourceType resourceType =
             LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate;
         if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, resourceType)) {
+          break;
+        }
+        // 2. try to use LynxExternalResourceFetcherWrapper
+        if (fetchTemplateByFetcherWrapper(responseHandler, url, resourceType)) {
+          break;
+        }
+        // 3. try to use LynxResourceProvider
+        if (fetchTemplateByProvider(responseHandler, url, resourceType)) {
           break;
         }
         // invoke callback directly if no provider or fetcher set;
@@ -499,6 +507,8 @@ public class LynxResourceLoader {
 
   static native void nativeInvokeCallback(long responseHandler, byte[] data, long bundleNativePtr,
       ByteBuffer buffer, int errCode, String errMsg);
+
+  static native boolean nativeIsValidBinary(byte[] data, ByteBuffer buffer);
 
   private native void nativeConfigLynxResourceSetting();
 }
