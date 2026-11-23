@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/viscous_fluid_interpolator.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -46,7 +47,8 @@ void ScrollCoordinatorScrollView::SetAttribute(const char* attr_c,
   auto kw = GetKeywordID(attr_c);
   if (kw == KeywordID::kGranularity) {
     granularity_ = attribute_utils::GetNum(value);
-  } else if (kw == KeywordID::kScrollEnable) {
+  } else if (kw == KeywordID::kScrollEnable ||
+             (lynx::IsIOS() && kw == KeywordID::kEnableScroll)) {
     auto scroll_enabled = attribute_utils::GetBool(value, true);
     SetScrollEnabled(scroll_enabled);
   } else if (kw == KeywordID::kHeaderOverSlot) {
@@ -164,6 +166,12 @@ void ScrollCoordinatorScrollView::SyncState() {
   } else {
     state_ = State::OPEN;
   }
+}
+
+bool ScrollCoordinatorScrollView::AllowsDescendantDrag(
+    ScrollDirection direction) const {
+  return !lynx::IsIOS() || direction != ScrollDirection::kVertical ||
+         IsScrollEnabled();
 }
 
 bool ScrollCoordinatorScrollView::CaptureScroll(FloatPoint delta) {
