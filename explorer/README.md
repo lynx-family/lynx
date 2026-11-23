@@ -47,6 +47,19 @@ The iOS Explorer's optional full-Sparkling launch path, container classification
 Legacy parameter mapping, source ownership, and route-entry inventory are
 documented in [Use Sparkling containers in iOS Lynx Explorer](docs/ios-sparkling-container.md).
 
+## Opening production builds with lazy bundles
+
+If iOS Explorer loads the main bundle from a server but fails to load a lazy
+bundle with `File not found: /lazy-bundle/...`, check the production build's
+asset prefix. Explorer treats the root-relative lazy bundle URL as a local
+file path.
+
+In your Rspeedy config, set `output.assetPrefix` to the full URL where you
+serve the build output, including the trailing slash. For example, use
+`http://127.0.0.1:8741/` if you serve the output there in the iOS Simulator.
+Rebuild and open the main bundle from that server. If the hosting URL changes,
+update the prefix and rebuild.
+
 ## Developing the Bundled Lynx Projects
 
 For a standalone native LynxML example, see
