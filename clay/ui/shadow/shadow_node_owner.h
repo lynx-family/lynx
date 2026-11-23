@@ -7,6 +7,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -29,6 +30,17 @@ class ShadowNodeOwner {
   ~ShadowNodeOwner() { context_ = nullptr; }
 
   float Logical2ClayPixelRatio();
+
+  void SetDefaultTextOverflow(bool visible) {
+    default_text_overflow_visible_ = visible;
+  }
+
+  std::optional<bool> DefaultTextOverflow() const {
+    return default_text_overflow_visible_;
+  }
+
+  void SetLegacyTextLayout(bool enabled) { legacy_text_layout_ = enabled; }
+  bool UsesLegacyTextLayout() const { return legacy_text_layout_; }
 
   void SetViewContext(ViewContext* context) { context_ = context; }
   ViewContext* GetViewContext() const { return context_; }
@@ -71,6 +83,8 @@ class ShadowNodeOwner {
   ViewContext* context_ = nullptr;
   RenderDelegate* delegate_ = nullptr;
   LayoutDelegate* layout_delegate_ = nullptr;
+  std::optional<bool> default_text_overflow_visible_;
+  bool legacy_text_layout_ = false;
 
   std::unordered_map<int, ShadowNode*> shadow_node_map_;
 };

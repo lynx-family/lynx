@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <textra/paragraph_style.h>
@@ -115,6 +116,8 @@ class ParagraphTTText : public Paragraph {
   tttext::WriteDirection GetResolvedWriteDirection() const;
 
  private:
+  void AddUTF8TextRun(tttext::Style& style, const std::string& content);
+
   friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
   friend class
       ParagraphTTTextTest_DefaultPlaceholderUsesAlphabeticBaseline_Test;
@@ -126,13 +129,18 @@ class ParagraphTTText : public Paragraph {
   std::unique_ptr<tttext::Paragraph> paragraph_;
   std::unique_ptr<tttext::LayoutRegion> region_;
   std::vector<LineMetrics> line_metrics_;
-  std::vector<size_t> placeholder_pos_;
+  struct PlaceholderInfo {
+    size_t position;
+    bool align_top;
+  };
+  std::vector<PlaceholderInfo> placeholders_;
   TTTextIndexMapper index_mapper_;
   bool need_trim_space_ = false;
 #ifdef ENABLE_SKITY
   skity::Paint sk_paint_;
   tttext::SkityPainter tt_painter_;
   std::vector<std::unique_ptr<tttext::SkityPainter>> tt_painters_;
+  std::vector<std::pair<uint32_t, uint32_t>> synthetic_italic_ranges_;
 #else
   SkPaint sk_paint_;
   tttext::SkiaPainter tt_painter_;

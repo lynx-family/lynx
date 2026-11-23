@@ -12,6 +12,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include "base/include/platform_types.h"
 #include "base/include/string/string_utils.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
 #ifdef ENABLE_SKITY
@@ -158,9 +159,38 @@ std::optional<tttext::FontInfo> ResolveFontInfo(
   return typefaces.front()->GetFontInfo(style.GetTextSize());
 }
 
+template <typename Feature,
+          typename = decltype(Feature::kDiscretionaryHyphen)>
+void EnableDiscretionaryHyphen(tttext::TTTextContext& context, int) {
+  context.EnableFeature(Feature::kDiscretionaryHyphen, true);
+}
+
+// Older TTText headers do not expose the discretionary-hyphen feature.
+template <typename Feature>
+void EnableDiscretionaryHyphen(tttext::TTTextContext&, long) {}
+
 }  // namespace
 
 #ifdef ENABLE_SKITY
+void ParagraphTTText::AddUTF8TextRun(tttext::Style& style,
+                                     const std::string& content) {
+  [[maybe_unused]] const uint32_t start =
+      lynx::IsIOS() ? paragraph_->GetCharCount() : 0;
+  paragraph_->AddTextRun(&style, content.data(),
+                         static_cast<uint32_t>(content.size()));
+  if constexpr (lynx::IsIOS()) {
+    const uint32_t end = paragraph_->GetCharCount();
+    if (style.GetItalic() && start < end) {
+      if (!synthetic_italic_ranges_.empty() &&
+          synthetic_italic_ranges_.back().second == start) {
+        synthetic_italic_ranges_.back().second = end;
+      } else {
+        synthetic_italic_ranges_.emplace_back(start, end);
+      }
+    }
+  }
+}
+
 ParagraphTTText::ParagraphTTText(
     std::shared_ptr<FontCollection> font_collection,
     const tttext::ParagraphStyle& paragraph_style,
@@ -168,6 +198,12 @@ ParagraphTTText::ParagraphTTText(
     : font_collection_(font_collection),
       variation_font_manager_(std::move(variation_font_manager))
 #else
+void ParagraphTTText::AddUTF8TextRun(tttext::Style& style,
+                                     const std::string& content) {
+  paragraph_->AddTextRun(&style, content.data(),
+                         static_cast<uint32_t>(content.size()));
+}
+
 ParagraphTTText::ParagraphTTText(
     std::shared_ptr<FontCollection> font_collection,
     const tttext::ParagraphStyle& paragraph_style)
@@ -239,7 +275,7 @@ const char* ParagraphTTText::GetSingleLineGeometryRejectionReason(
   }
 
   // This covers inline views/images and the placeholder used for text-indent.
-  if (!placeholder_pos_.empty()) {
+  if (!placeholders_.empty()) {
     return "has_placeholder";
   }
   if (region_->GetLineCount() != 1) {
@@ -319,6 +355,9 @@ void ParagraphTTText::Layout(double width) {
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
   context.SetEnableSystemFontAdjust(false);
+  if constexpr (lynx::IsIOS()) {
+    EnableDiscretionaryHyphen<tttext::FeatureOption>(context, 0);
+  }
 #if defined(ENABLE_SKITY)
   if (variation_font_manager_ && variation_font_manager_->HasVariations()) {
     // Dynamic aliases are paragraph-local. Do not let TextLayout's shared
@@ -418,6 +457,16 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
   std::vector<TextBox> result;
   start = index_mapper_.ToTTTextPosition(start);
   end = index_mapper_.ToTTTextRangeEnd(end);
+  bool align_top = false;
+  if (end == start + 1 && !placeholders_.empty()) {
+    const auto placeholder = std::lower_bound(
+        placeholders_.begin(), placeholders_.end(), start,
+        [](const PlaceholderInfo& item, size_t position) {
+          return item.position < position;
+        });
+    align_top = placeholder != placeholders_.end() &&
+                placeholder->position == start && placeholder->align_top;
+  }
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
     size_t start_index = text_line->GetStartCharPos();
@@ -433,6 +482,9 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
     float rect[4] = {0};
     text_line->GetBoundingRectByCharRange(rect, std::max(start, start_index),
                                           std::min(end, end_index));
+    if (align_top) {
+      rect[1] = text_line->GetLineTop();
+    }
     result.push_back(
         TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
                 TextDirection::ltr));
@@ -445,11 +497,15 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForPlaceholders() {
     auto* text_line = region_->GetLine(k);
     size_t start_index = text_line->GetStartCharPos();
     size_t end_index = text_line->GetEndCharPos();
-    for (size_t i = 0; i < placeholder_pos_.size(); i++) {
-      if (placeholder_pos_[i] >= start_index &&
-          placeholder_pos_[i] < end_index) {
+    for (size_t i = 0; i < placeholders_.size(); i++) {
+      const auto& placeholder = placeholders_[i];
+      if (placeholder.position >= start_index &&
+          placeholder.position < end_index) {
         float rect[4] = {0};
-        text_line->GetCharBoundingRect(rect, placeholder_pos_[i]);
+        text_line->GetCharBoundingRect(rect, placeholder.position);
+        if (placeholder.align_top) {
+          rect[1] = text_line->GetLineTop();
+        }
         if (rect[2] != 0 && rect[3] != 0) {
           result.push_back(
               TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
@@ -535,16 +591,42 @@ void ParagraphTTText::UpdateForegroundPaint(size_t text_size,
 void ParagraphTTText::UpdateForegroundPaint(size_t start,
                                             size_t end,
                                             skity::Paint paint) {
-  // Make sure start and end are valid positions.
-  tttext::Style style;
-  auto skity_painter = std::make_unique<tttext::SkityPainter>();
-  tttext::SkityPainter* tt_painter = skity_painter.get();
-  tt_painters_.push_back(std::move(skity_painter));
-  tt_painter->platform_painter_ = std::make_unique<skity::Paint>(paint);
-  style.SetForegroundPainter(tt_painter);
-  start = index_mapper_.ToTTTextPosition(start);
-  end = index_mapper_.ToTTTextRangeEnd(end);
-  paragraph_->ApplyStyleInRange(style, start, end - start);
+  uint32_t cursor = index_mapper_.ToTTTextPosition(start);
+  const uint32_t end_char = index_mapper_.ToTTTextRangeEnd(end);
+  tttext::SkityPainter* normal_painter = nullptr;
+  tttext::SkityPainter* italic_painter = nullptr;
+  auto apply_paint = [&](uint32_t begin, uint32_t end, bool italic) {
+    if (begin >= end) {
+      return;
+    }
+    auto*& painter = italic ? italic_painter : normal_painter;
+    if (!painter) {
+      auto foreground = std::make_unique<tttext::SkityPainter>();
+      painter = foreground.get();
+      painter->SetItalic(italic);
+      painter->platform_painter_ = std::make_unique<skity::Paint>(paint);
+      tt_painters_.push_back(std::move(foreground));
+    }
+    tttext::Style style;
+    style.SetForegroundPainter(painter);
+    paragraph_->ApplyStyleInRange(style, begin, end - begin);
+  };
+
+  // TTText's custom foreground painter must provide the synthetic italic
+  // style itself. A gradient can span both italic and upright text runs.
+  for (const auto& [italic_begin, italic_end] : synthetic_italic_ranges_) {
+    if (italic_begin >= end_char) {
+      break;
+    }
+    if (italic_end <= cursor) {
+      continue;
+    }
+    apply_paint(cursor, italic_begin, false);
+    apply_paint(std::max(cursor, italic_begin), std::min(italic_end, end_char),
+                true);
+    cursor = std::min(italic_end, end_char);
+  }
+  apply_paint(cursor, end_char, false);
 }
 #endif
 
@@ -558,7 +640,8 @@ void ParagraphTTText::AddPlaceholder(tttext::Style& style,
   auto font_info = ResolveFontInfo(font_collection_, style);
 #endif
   auto delegate = std::make_unique<TTShapeRun>(span, style, font_info);
-  placeholder_pos_.push_back(paragraph_->GetCharCount());
+  placeholders_.push_back({paragraph_->GetCharCount(),
+                           span.alignment == PlaceholderAlignment::kTop});
   index_mapper_.AppendText(u"\uFFFC");
   paragraph_->AddShapeRun(&style, std::move(delegate), is_float);
 }
@@ -569,16 +652,15 @@ void ParagraphTTText::AddTextRun(tttext::Style& style,
       content.substr(0, content.find(u'\0'));
   index_mapper_.AppendText(supported_content);
   const std::string utf8_content = lynx::base::U16StringToU8(supported_content);
-  paragraph_->AddTextRun(&style, utf8_content.data(),
-                         static_cast<uint32_t>(utf8_content.size()));
+  AddUTF8TextRun(style, utf8_content);
 }
 void ParagraphTTText::AddTextRun(tttext::Style& style,
                                  const std::string& content) {
   const std::string supported_content = content.substr(0, content.find('\0'));
   index_mapper_.AppendText(lynx::base::U8StringToU16(supported_content));
-  paragraph_->AddTextRun(&style, supported_content.data(),
-                         static_cast<uint32_t>(supported_content.size()));
+  AddUTF8TextRun(style, supported_content);
 }
+
 uint32_t ParagraphTTText::GetTextSize() const {
   return static_cast<uint32_t>(index_mapper_.GetUTF16Size());
 }

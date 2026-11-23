@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/platform_types.h"
 #include "build/build_config.h"
 #include "clay/fml/logging.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
@@ -275,6 +276,9 @@ void UIDelegateClay::OnPageConfigDecoded(
     page_view->SetAlignMouseEventWithW3C(config->GetAlignMouseEventWithW3C());
     page_view->SetEnablePointerEvents(config->GetEnableEventHandleRefactor());
     page_view->SetEnableMouseDragScroll(config->GetEnableMouseDragScroll());
+    if constexpr (lynx::IsIOS()) {
+      page_view->SetDefaultTextOverflow(config->GetEnableTextOverflow());
+    }
     // Set exposure props.
     int observer_frame_rate = config->GetObserverFrameRate();
     bool enable_exposure_ui_margin = config->GetEnableExposureUIMargin();

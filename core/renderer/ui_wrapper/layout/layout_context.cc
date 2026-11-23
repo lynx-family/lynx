@@ -15,6 +15,7 @@
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#include "base/include/platform_types.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -1047,6 +1048,9 @@ void LayoutContext::SetPageConfigForLayoutThread(
   page_config_ = config;
   if (page_config_) {
     layout_configs_ = page_config_->GetLayoutConfigs();
+    if (lynx::IsIOS() && platform_impl_) {
+      platform_impl_->SetPageConfig(*page_config_);
+    }
   }
   lynx_env_config_.SetFontScaleSpOnly(layout_configs_.font_scale_sp_only_);
 }

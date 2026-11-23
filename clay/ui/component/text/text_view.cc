@@ -143,9 +143,18 @@ TextView::TextView(int id, const std::string& tag,
                    std::unique_ptr<RenderObject> render_object,
                    PageView* page_view)
     : WithTypeInfo(id, tag, std::move(render_object), page_view),
-      weak_factory_(this) {}
+      weak_factory_(this) {
+  if (const auto overflow = page_view->DefaultTextOverflow()) {
+    SetOverflowWithMask(CSSProperty::OVERFLOW_XY, static_cast<int>(*overflow));
+  }
+}
 
 TextView::~TextView() { HideSelectionPopup(); }
+
+ClayOverflowType TextView::DefaultOverflowForStyle() const {
+  return page_view()->DefaultTextOverflow().value_or(
+      BaseView::DefaultOverflowForStyle());
+}
 
 void TextView::SetAttribute(const char* attr, const clay::Value& value) {
   auto kw = GetKeywordID(attr);

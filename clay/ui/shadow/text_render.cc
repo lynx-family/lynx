@@ -11,10 +11,13 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
+#include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/trail_settings.h"
 #include "clay/fml/logging.h"
@@ -176,6 +179,7 @@ static bool InlineTruncationTextBoxesFit(txt::Paragraph* paragraph,
 
 clay::Value TextRender::GetTextInfo(const char* text, const clay::Value& params,
                                     const PageView* page_view) {
+  constexpr bool use_ios_measurement_contract = lynx::IsIOS();
   const auto& info = utils::GetMap(params);
   TextStyle text_style;
   double fallback_pixel_ratio = 1.0;
@@ -189,6 +193,13 @@ clay::Value TextRender::GetTextInfo(const char* text, const clay::Value& params,
   auto font_size_str = utils::GetCString(utils::GetMapItem(info, "fontSize"));
   char* endptr;
   double num = std::strtod(font_size_str.c_str(), &endptr);
+  if (use_ios_measurement_contract &&
+      (!text || !*text || font_size_str.empty() ||
+       (endptr != font_size_str.c_str() && num == 0))) {
+    clay::Value::Map result;
+    result.emplace("width", clay::Value(0.f));
+    return clay::Value(std::move(result));
+  }
   if (endptr == font_size_str.c_str()) {
     text_style.font_size =
         page_view
@@ -213,24 +224,40 @@ clay::Value TextRender::GetTextInfo(const char* text, const clay::Value& params,
     }
   }
 
-  auto it_max_len = info.find("maxLine");
-  if (it_max_len != info.end()) {
-    text_style.max_lines = utils::GetDouble(it_max_len->second);
-  } else {
+  const bool has_max_width = std::isfinite(layout_width) && layout_width > 0 &&
+                             layout_width < std::numeric_limits<double>::max();
+  const bool return_content = !use_ios_measurement_contract || has_max_width;
+  if (!return_content) {
+    layout_width = std::numeric_limits<double>::max();
     text_style.max_lines = 1;
+  } else {
+    const auto it_max_len = info.find("maxLine");
+    if (it_max_len != info.end()) {
+      const double max_lines = utils::GetDouble(it_max_len->second);
+      if (!use_ios_measurement_contract ||
+          (max_lines >= 1 &&
+           max_lines <= std::numeric_limits<uint32_t>::max())) {
+        text_style.max_lines = max_lines;
+      }
+    } else if (!use_ios_measurement_contract) {
+      text_style.max_lines = 1;
+    }
+  }
+  if constexpr (use_ios_measurement_contract) {
+    const std::string font_family =
+        utils::GetCString(utils::GetMapItem(info, "fontFamily"));
+    if (!font_family.empty()) {
+      text_style.font_family = font_family;
+    }
   }
   auto builder = std::make_unique<TextParagraphBuilder>(true, text_style);
-  builder->AddText(UnicodeUtil::Utf8ToUtf16(text));
+  if constexpr (use_ios_measurement_contract) {
+    builder->PushStyle(text_style);
+  }
+  const auto layout_text = UnicodeUtil::Utf8ToUtf16(text);
+  builder->AddText(layout_text);
   auto paragraph = Build(std::move(builder));
   paragraph->Layout(layout_width);
-  auto line_metrics = paragraph->GetLineMetrics();
-  clay::Value::Array content_array(line_metrics.size());
-  for (size_t i = 0; i < content_array.size(); i++) {
-    auto value = clay::Value(
-        std::string(text + line_metrics[i].start_index,
-                    line_metrics[i].end_index - line_metrics[i].start_index));
-    content_array[i] = std::move(value);
-  }
   clay::Value::Map ret;
   auto measured_width =
       std::min(layout_width, paragraph->GetMaxIntrinsicWidth());
@@ -238,6 +265,19 @@ clay::Value TextRender::GetTextInfo(const char* text, const clay::Value& params,
               clay::Value(page_view ? page_view->ConvertTo<kPixelTypeLogical>(
                                           measured_width)
                                     : measured_width / fallback_pixel_ratio));
+  if (!return_content) {
+    return clay::Value(std::move(ret));
+  }
+
+  const auto& line_metrics = paragraph->GetLineMetrics();
+  clay::Value::Array content_array;
+  content_array.reserve(line_metrics.size());
+  const std::u16string_view text_view(layout_text);
+  for (const auto& line : line_metrics) {
+    auto line_text =
+        text_view.substr(line.start_index, line.end_index - line.start_index);
+    content_array.emplace_back(lynx::base::U16StringToU8(line_text));
+  }
   ret.emplace("content", clay::Value(std::move(content_array)));
   return clay::Value(std::move(ret));
 }
@@ -506,12 +546,15 @@ std::vector<LineInfo> TextRender::GetLineInfo() {
 }
 
 std::unique_ptr<txt::Paragraph> TextRender::LayoutParagraph(
-    double layout_width) {
+    double layout_width, std::optional<size_t> max_lines) {
   TRACE_EVENT("clay", "TextRender::LayoutParagraph");
 #ifndef CLAY_ENABLE_TTTEXT
   ReprocessAttributeIfNeeded(layout_width);
 #endif
   auto text_style = measure_node_->text_style_.value();
+  if (max_lines) {
+    text_style.max_lines = *max_lines;
+  }
   if (text_style.white_space == WhiteSpace::kNoWrap) {
     text_style.max_lines = 1;
     if (text_style.overflow != TextOverflow::kEllipsis) {
@@ -566,12 +609,19 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
   auto layout_width = context_measure->layout_width_;
 
   const bool force_rebuild = update_flag_ != TextUpdateFlag::kUpdateFlagNone;
-  const bool should_layout =
-      force_rebuild || !cache_paragraph_ || prev_layout_width_ != layout_width;
-
   if (force_rebuild) {
     measure_node_->PreLayout(nullptr);
   }
+
+  std::optional<float> ellipsis_height;
+  if (constraint.height_mode != MeasureMode::kIndefinite &&
+      measure_node_->text_style_->overflow == TextOverflow::kEllipsis &&
+      measure_node_->ShouldTruncateToHeight()) {
+    ellipsis_height = constraint.height;
+  }
+  const bool should_layout = force_rebuild || !cache_paragraph_ ||
+                             prev_layout_width_ != layout_width ||
+                             prev_ellipsis_height_ != ellipsis_height;
 
   std::unique_ptr<txt::Paragraph> paragraph;
   if (should_layout) {
@@ -598,6 +648,21 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
       measure_node_->SetTextPaintAlign(TextAlignment::kLeft);
     }
     paragraph = LayoutParagraph(layout_width);
+    if (ellipsis_height && paragraph->GetHeight() > *ellipsis_height) {
+      const auto& lines = paragraph->GetLineMetrics();
+      size_t fitting_lines = 0;
+      for (const auto& line : lines) {
+        if (line.baseline + line.descent > *ellipsis_height) {
+          break;
+        }
+        ++fitting_lines;
+      }
+      // Keep the first line available for clipping in short text boxes.
+      fitting_lines = std::max<size_t>(1, fitting_lines);
+      if (fitting_lines < lines.size()) {
+        paragraph = LayoutParagraph(layout_width, fitting_lines);
+      }
+    }
     cache_paragraph_ = std::move(paragraph);
     measured_width_ = std::ceil(cache_paragraph_->GetMaxIntrinsicWidth());
     if (measure_node_->text_style_->line_spacing.has_value() &&
@@ -625,6 +690,7 @@ void TextRender::BuildTextLayout(const MeasureConstraint& constraint,
 
   update_flag_ = TextUpdateFlag::kUpdateFlagNone;
   prev_layout_width_ = layout_width;
+  prev_ellipsis_height_ = ellipsis_height;
 }
 
 #ifndef CLAY_ENABLE_TTTEXT

@@ -7,10 +7,12 @@
 #include <algorithm>
 #include <map>
 #include <optional>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/rendering_backend.h"
@@ -19,6 +21,10 @@
 #include "clay/ui/component/text/text_style.h"
 #include "clay/ui/painter/text_painter.h"
 #include "clay/ui/rendering/renderer.h"
+
+namespace skity {
+class Canvas;
+}  // namespace skity
 
 namespace clay {
 
@@ -85,7 +91,7 @@ void RenderText::Paint(PaintingContext& context, const FloatPoint& offset) {
                           const FloatPoint& layer_offset) {
       RenderBox::Paint(ctx, layer_offset);
       // Paint inline children background first.
-      RenderBox::PaintChildren(ctx, layer_offset);
+      PaintInlineChildren(ctx, layer_offset);
     };
 
     GraphicsContext child_context(
@@ -110,35 +116,77 @@ void RenderText::Paint(PaintingContext& context, const FloatPoint& offset) {
   // Draw text as normal.
   RenderBox::Paint(context, offset);
   // Paint inline children background first.
-  RenderBox::PaintChildren(context, offset);
+  PaintInlineChildren(context, offset);
   if (painter_->CanPaint()) {
-    FloatPoint paint_offset = offset + PaintOffset();
-    GraphicsContext* graphics_context = context.GetGraphicsContext();
-    PaintText(graphics_context, paint_offset);
+    const FloatPoint paint_offset = offset + PaintOffset();
+    if constexpr (lynx::IsIOS() && std::is_same_v<GrCanvas, skity::Canvas>) {
+      // Record each styled glyph run before clipping the composited text.
+      if (const auto clip = TextClipRect(paint_offset)) {
+        context.PushClipRect(
+            *clip, paint_offset,
+            [this](PaintingContext& ctx, const FloatPoint& origin) {
+              PaintText(ctx.GetGraphicsContext(), origin, /*as_mask=*/false,
+                        /*clip_in_canvas=*/false);
+            });
+        return;
+      }
+    }
+    PaintText(context.GetGraphicsContext(), paint_offset);
   }
 }
 
-void RenderText::PaintText(GraphicsContext* graphics_context,
-                           const FloatPoint& offset, bool as_mask) {
-  GraphicsContext::AutoRestore saver(graphics_context, true);
-  graphics_context->Translate(offset.x(), offset.y());
-  bool needs_clip_x = text_overflow_ == TextOverflow::kClip ||
+void RenderText::PaintInlineChildren(PaintingContext& context,
+                                     const FloatPoint& offset) {
+  if (!CanHaveChildren()) {
+    return;
+  }
+  if (!lynx::IsIOS() || !HasOverflowClip()) {
+    RenderBox::PaintChildren(context, offset);
+    return;
+  }
+
+  const auto origin = offset + PaintOffset();
+  const auto overflow = Overflow();
+  const bool clip_x = overflow != CSSProperty::OVERFLOW_X;
+  const bool clip_y = overflow != CSSProperty::OVERFLOW_Y;
+  const FloatRect clip(origin.x() - (clip_x ? 0 : kUnboundedClipExtent),
+                       origin.y() - (clip_y ? 0 : kUnboundedClipExtent),
+                       clip_x ? ContentWidth() : 2 * kUnboundedClipExtent,
+                       clip_y ? ContentHeight() : 2 * kUnboundedClipExtent);
+  context.PushClipRect(clip, offset,
+                       [this](PaintingContext& ctx, const FloatPoint& origin) {
+                         RenderBox::PaintChildren(ctx, origin);
+                       });
+}
+
+std::optional<FloatRect> RenderText::TextClipRect(
+    const FloatPoint& offset) const {
+  const bool clip_x = text_overflow_ == TextOverflow::kClip ||
                       Overflow() == CSSProperty::OVERFLOW_Y ||
                       Overflow() == CSSProperty::OVERFLOW_HIDDEN;
-  bool needs_clip_y = Overflow() == CSSProperty::OVERFLOW_X ||
+  const bool clip_y = Overflow() == CSSProperty::OVERFLOW_X ||
                       Overflow() == CSSProperty::OVERFLOW_HIDDEN;
-  if (!needs_clip_x && needs_clip_y) {
-    skity::Rect rect = skity::Rect::MakeLTRB(
-        -kUnboundedClipExtent, 0, kUnboundedClipExtent, ContentHeight());
-    graphics_context->ClipRect(rect, GrClipOp::kIntersect, false);
-  } else if (needs_clip_x && !needs_clip_y) {
-    skity::Rect rect = skity::Rect::MakeLTRB(
-        0, -kUnboundedClipExtent, ContentWidth(), kUnboundedClipExtent);
-    graphics_context->ClipRect(rect, GrClipOp::kIntersect, false);
-  } else if (needs_clip_x && needs_clip_y) {
-    skity::Rect rect =
-        skity::Rect::MakeXYWH(0, 0, ContentWidth(), ContentHeight());
-    graphics_context->ClipRect(rect, GrClipOp::kIntersect, false);
+  if (!clip_x && !clip_y) {
+    return std::nullopt;
+  }
+  return FloatRect(offset.x() - (clip_x ? 0 : kUnboundedClipExtent),
+                   offset.y() - (clip_y ? 0 : kUnboundedClipExtent),
+                   clip_x ? ContentWidth() : 2 * kUnboundedClipExtent,
+                   clip_y ? ContentHeight() : 2 * kUnboundedClipExtent);
+}
+
+void RenderText::PaintText(GraphicsContext* graphics_context,
+                           const FloatPoint& offset, bool as_mask,
+                           bool clip_in_canvas) {
+  GraphicsContext::AutoRestore saver(graphics_context, true);
+  graphics_context->Translate(offset.x(), offset.y());
+  if (clip_in_canvas) {
+    if (const auto clip = TextClipRect(FloatPoint())) {
+      graphics_context->ClipRect(
+          skity::Rect::MakeXYWH(clip->x(), clip->y(), clip->width(),
+                                clip->height()),
+          GrClipOp::kIntersect, false);
+    }
   }
   painter_->SetWidth(ContentWidth());
   painter_->SetHeight(ContentHeight());

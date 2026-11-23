@@ -24,6 +24,8 @@ class LynxShell;
 }  // namespace shell
 namespace tasm {
 
+class PageConfig;
+
 using CSSFontFaceAttrsMap = std::unordered_map<std::string, std::string>;
 
 using CSSFontFaceRule = std::pair<std::string, CSSFontFaceAttrsMap>;
@@ -67,6 +69,7 @@ class LayoutCtxPlatformImpl {
   ReleasePlatformBundleHolder() {
     return std::unique_ptr<PlatformExtraBundleHolder>();
   }
+  virtual void SetPageConfig(const PageConfig& config) {}
 };
 
 }  // namespace tasm
