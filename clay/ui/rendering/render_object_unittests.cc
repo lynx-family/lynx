@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "base/include/platform_types.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/rendering/render_box.h"
 #include "clay/ui/rendering/render_image.h"
@@ -144,6 +145,29 @@ TEST_F(RenderObjectTest, BoxModel) {
   EXPECT_EQ(obj->PaddingTop(), 10.f);
   EXPECT_EQ(obj->PaddingRight(), 20.f);
   EXPECT_EQ(obj->PaddingBottom(), 20.f);
+}
+
+TEST_F(RenderObjectTest, ShadowBoundsRespectPlatformCoordinates) {
+  auto* child = nodeList[3].get();
+  child->SetLeft(100.f);
+  child->SetTop(50.f);
+  child->SetWidth(40.f);
+  child->SetHeight(30.f);
+
+  child->SetShadows({Shadow{false, 12.f, 8.f, 0.f, 0.f, Color(SK_ColorBLACK)}});
+  EXPECT_EQ(child->GetFrameRectEx(),
+            lynx::IsIOS() ? FloatRect(0.f, 0.f, 52.f, 38.f)
+                          : FloatRect(-88.f, -42.f, 128.f, 72.f));
+  EXPECT_EQ(child->OffsetInLayer(),
+            lynx::IsIOS() ? FloatPoint(100.f, 50.f) : FloatPoint(12.f, 8.f));
+
+  child->SetShadows(
+      {Shadow{false, -12.f, -8.f, 0.f, 0.f, Color(SK_ColorBLACK)}});
+  EXPECT_EQ(child->GetFrameRectEx(),
+            lynx::IsIOS() ? FloatRect(-12.f, -8.f, 52.f, 38.f)
+                          : FloatRect(-112.f, -58.f, 152.f, 88.f));
+  EXPECT_EQ(child->OffsetInLayer(),
+            lynx::IsIOS() ? FloatPoint(88.f, 42.f) : FloatPoint());
 }
 
 TEST_F(RenderObjectTest, PaintOrder) {
