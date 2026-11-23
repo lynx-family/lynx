@@ -749,7 +749,7 @@ TEST_F(CSSKeyframeManagerTest,
   auto test_manager = InitTestKeyframeManager(test_element.get());
   base::Vector<starlight::AnimationData> animation_data;
   animation_data.emplace_back(InitAnimationData(
-      base::String("test"), 1000, 0, starlight::TimingFunctionData(), 1,
+      base::String("test"), 1000, -1000, starlight::TimingFunctionData(), 5,
       starlight::AnimationFillModeType::kBoth,
       starlight::AnimationDirectionType::kNormal,
       starlight::AnimationPlayStateType::kRunning));
@@ -765,8 +765,16 @@ TEST_F(CSSKeyframeManagerTest,
   auto start_events = test_manager->TakePendingAnimationEventsForNewPipeline();
   ASSERT_EQ(1U, start_events.size());
   EXPECT_TRUE(start_events[0].send_start_event);
+  EXPECT_EQ(0, start_events[0].iteration_events_due);
 
-  auto end_time = fml::TimePoint::FromTicks(2000 * 1000 * 1000);
+  auto later_time = start_time + fml::TimeDelta::FromSeconds(2);
+  test_manager->CollectAnimationUpdatesForNewPipeline(later_time);
+  auto iteration_events =
+      test_manager->TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(1U, iteration_events.size());
+  EXPECT_EQ(1, iteration_events[0].iteration_events_due);
+
+  auto end_time = start_time + fml::TimeDelta::FromSeconds(4);
   auto end_sample =
       test_manager->CollectAnimationUpdatesForNewPipeline(end_time);
   const auto* end_value =
@@ -776,6 +784,7 @@ TEST_F(CSSKeyframeManagerTest,
   auto end_events = test_manager->TakePendingAnimationEventsForNewPipeline();
   ASSERT_EQ(1U, end_events.size());
   EXPECT_TRUE(end_events[0].send_end_event);
+  EXPECT_EQ(0, end_events[0].iteration_events_due);
 
   auto repeated_sample =
       test_manager->CollectAnimationUpdatesForNewPipeline(end_time);

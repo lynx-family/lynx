@@ -406,7 +406,7 @@ TEST(KeyframeModelTest, TrimTimeToCurrentIteration) {
 }
 
 TEST(KeyframeModelTest, CountIterationEventsDueOnlyForForwardProgress) {
-  EXPECT_EQ(gfx::CountIterationEventsDue(1, 3), 2);
+  EXPECT_EQ(gfx::CountIterationEventsDue(1, 3), 1);
   EXPECT_EQ(gfx::CountIterationEventsDue(2, 2), 0);
   EXPECT_EQ(gfx::CountIterationEventsDue(3, 1), 0);
 }

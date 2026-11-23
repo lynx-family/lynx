@@ -222,10 +222,8 @@ TrimmedAnimationTime TrimTimeToCurrentIteration(
 
 int CountIterationEventsDue(int old_iteration_count,
                             int current_iteration_count) {
-  if (current_iteration_count <= old_iteration_count) {
-    return 0;
-  }
-  return current_iteration_count - old_iteration_count;
+  // A sample reports one iteration event even across several boundaries.
+  return current_iteration_count > old_iteration_count ? 1 : 0;
 }
 
 }  // namespace gfx
