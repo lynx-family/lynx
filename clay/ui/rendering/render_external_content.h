@@ -27,6 +27,9 @@ class RenderExternalContent : public RenderBox {
   // For hybrid composition
   void SetViewId(int64_t view_id);
   bool HasViewId() const { return view_id_.has_value(); }
+  void SetClipPlatformViewToBorderRadius() {
+    clip_platform_view_to_border_radius_ = true;
+  }
 
   // For drawable image layer
   void SetDrawableImageId(int64_t drawable_image_id);
@@ -39,6 +42,7 @@ class RenderExternalContent : public RenderBox {
  private:
   DrawableImage::FitMode fit_mode_ = DrawableImage::FitMode::kScaleToFill;
   std::optional<bool> has_clip_;
+  bool clip_platform_view_to_border_radius_ = false;
   std::optional<int64_t> view_id_;  // has value if use hybrid composition
   std::optional<int64_t>
       drawable_image_id_;  // has value if use drawable image layer
