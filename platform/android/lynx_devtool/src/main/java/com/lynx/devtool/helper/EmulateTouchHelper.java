@@ -7,7 +7,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.view.MotionEvent;
-import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.devtoolwrapper.ScreenshotMode;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.base.LLog;
@@ -37,8 +36,8 @@ public class EmulateTouchHelper {
     mLynxView = new WeakReference<>(lynxView);
   }
 
-  public void emulateTouch(String type, int x, int y, float deltaX, float deltaY, String button,
-      IDevToolDelegate devToolDelegate) {
+  public void emulateTouch(
+      String type, int x, int y, float deltaX, float deltaY, String button, String captureMode) {
     if (type == null) {
       LLog.e(TAG, "emulateTouch: type is null");
       return;
@@ -49,13 +48,7 @@ public class EmulateTouchHelper {
       return;
     }
 
-    if (devToolDelegate == null) {
-      LLog.e(TAG, "emulateTouch: devToolDelegate is null");
-      return;
-    }
-
-    if (devToolDelegate.getActualScreenshotMode().equals(
-            ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN)) {
+    if (ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN.equals(captureMode)) {
       int[] outLocation = new int[2];
       view.getLocationOnScreen(outLocation);
       x -= outLocation[0];

@@ -14,6 +14,10 @@ public class ScreenCastHelper {
   private WeakReference<LynxView> mLynxView;
   private volatile boolean mPaused;
   private volatile boolean mScreencastEnabled;
+  private static WeakReference<ScreenCastHelper> sLegacyOwner = new WeakReference<>(null);
+  private ScreencastSession mSession;
+  private String mCaptureMode;
+  private volatile int mLegacyGeneration;
 
   public ScreenCastHelper(DevToolPlatformAndroidDelegate platformDelegate, LynxView lynxView) {
     mPlatformDelegate = new WeakReference<>(platformDelegate);
@@ -23,23 +27,46 @@ public class ScreenCastHelper {
   }
 
   public void attach(LynxView lynxView) {
+    if (mSession != null) {
+      stopCasting();
+    }
     mLynxView = new WeakReference<>(lynxView);
-    ScreenCapturer.getInstance().attachView(lynxView);
+    if (mScreencastEnabled && mSession == null) {
+      ScreenCapturer.getInstance().attachView(lynxView);
+    }
   }
 
   public void startCasting(int quality, int maxWidth, int maxHeight, String screenShotMode,
       String format, IDevToolDelegate devToolDelegate) {
+    stopCasting();
+    ScreenCastHelper previous = sLegacyOwner.get();
+    if (previous != null && previous != this) {
+      previous.stopCasting();
+    }
+    sLegacyOwner = new WeakReference<>(this);
+    mPaused = false;
     mScreencastEnabled = true;
     DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
     if (platformDelegate != null) {
       platformDelegate.dispatchScreencastVisibilityChanged(true);
     }
+    if (!"png".equalsIgnoreCase(format) && devToolDelegate != null
+        && !devToolDelegate.isClayRenderer() && maxWidth > 0 && maxHeight > 0) {
+      mCaptureMode = screenShotMode;
+      mSession = new ScreencastSession(
+          mLynxView.get(), platformDelegate, screenShotMode, maxWidth, maxHeight, quality);
+      return;
+    }
     ScreenCapturer.getInstance().attachView(mLynxView.get());
     ScreenCapturer.getInstance().setDevToolDelegate(devToolDelegate);
+    final int generation = mLegacyGeneration;
     ScreenCapturer.getInstance().startCapture(maxWidth, maxHeight, quality, screenShotMode, format,
         new ScreenCapturer.ScreenshotListener() {
           @Override
           public void onNewScreenshotBitmapData(String screenData, long timeCost) {
+            if (generation != mLegacyGeneration || !mScreencastEnabled || mPaused) {
+              return;
+            }
             ScreenCapturer.ScreenMetadata metadata =
                 ScreenCapturer.getInstance().getScreenMetadata();
             // nanosecond to millisecond
@@ -53,11 +80,27 @@ public class ScreenCastHelper {
         });
   }
 
+  public String getCaptureMode(IDevToolDelegate delegate) {
+    return mSession != null ? mCaptureMode : delegate.getActualScreenshotMode();
+  }
+
   public void stopCasting() {
+    if (!mScreencastEnabled) {
+      return;
+    }
+    if (sLegacyOwner.get() == this) {
+      sLegacyOwner.clear();
+    }
+    mLegacyGeneration++;
+    if (mSession != null) {
+      mSession.stop();
+      mSession = null;
+    } else if (mLynxView.get() != null) {
+      ScreenCapturer.getInstance().stopCapture(mLynxView.get());
+    }
     mScreencastEnabled = false;
     LynxView lynxView = mLynxView.get();
     if (lynxView != null) {
-      ScreenCapturer.getInstance().stopCapture(lynxView);
       DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
       if (platformDelegate != null) {
         platformDelegate.dispatchScreencastVisibilityChanged(false);
@@ -68,13 +111,18 @@ public class ScreenCastHelper {
   public void continueCasting() {
     if (mScreencastEnabled) {
       if (mPaused) {
-        ScreenCapturer.getInstance().clearScreenshotBitmapDataCache();
         mPaused = false;
+        if (mSession != null) {
+          mSession.setPaused(false);
+        }
         DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
         if (platformDelegate != null) {
           platformDelegate.dispatchScreencastVisibilityChanged(true);
         }
-        ScreenCapturer.getInstance().triggerNextCapture();
+        if (mSession == null) {
+          ScreenCapturer.getInstance().clearScreenshotBitmapDataCache();
+          ScreenCapturer.getInstance().triggerNextCapture();
+        }
       }
     }
   }
@@ -83,6 +131,9 @@ public class ScreenCastHelper {
     if (mScreencastEnabled) {
       if (!mPaused) {
         mPaused = true;
+        if (mSession != null) {
+          mSession.setPaused(true);
+        }
         DevToolPlatformAndroidDelegate platformDelegate = mPlatformDelegate.get();
         if (platformDelegate != null) {
           platformDelegate.dispatchScreencastVisibilityChanged(false);
@@ -92,7 +143,11 @@ public class ScreenCastHelper {
   }
 
   public void onAckReceived() {
-    ScreenCapturer.getInstance().onAckReceived();
+    if (mSession != null) {
+      mSession.acknowledge();
+    } else if (mScreencastEnabled) {
+      ScreenCapturer.getInstance().onAckReceived();
+    }
   }
 
   public void sendCardPreview(IDevToolDelegate devToolDelegate) {
