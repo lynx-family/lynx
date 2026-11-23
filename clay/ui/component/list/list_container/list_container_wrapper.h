@@ -19,6 +19,7 @@ class ListContainerWrapper
  public:
   ListContainerWrapper(int32_t id, PageView* page_view);
 
+  void SetDirection(int type) override;
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
   void BeforeSetAttribute(const clay::Value::Map& attributes) override;
   void DidUpdateAttributes() override;

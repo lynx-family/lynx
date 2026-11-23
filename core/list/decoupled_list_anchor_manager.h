@@ -127,6 +127,7 @@ class ListAnchorManager {
   void FindAnchor(AnchorInfo& anchor_info, bool from_begin,
                   int finishing_binding_index);
   void FindAnchorFromRef(AnchorInfo& anchor_info);
+  void SetAnchorAtStart(AnchorInfo& anchor_info);
   bool FindAnchorFromPendingData(AnchorInfo& anchor_info);
   void FindAnchorFromChildren(AnchorInfo& anchor_info,
                               int finishing_binding_index);
