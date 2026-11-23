@@ -1044,8 +1044,12 @@ static void AddLameCurveToPath(GrPath& path, float rx, float ry, float cx,
 
 void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
                                  bool is_clip_path) {
+  if (array.empty()) {
+    return;
+  }
   auto shape_type = static_cast<ClayBasicShapeType>(utils::GetInt(array[0]));
   auto& path_data = is_clip_path ? clip_path_data_ : offset_path_data_;
+  ClipPathData shape;
   switch (shape_type) {
     case ClayBasicShapeType::kCircle: {
       ClayPlatformLength radius_length, x_pos_length, y_pos_length;
@@ -1057,14 +1061,8 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error Circle format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
-      path_data->params.emplace_back(radius_length);
-      path_data->params.emplace_back(radius_length);
-      path_data->params.emplace_back(x_pos_length);
-      path_data->params.emplace_back(y_pos_length);
-      path_data->clip_type = ClipPathData::ClipType::kCircle;
+      shape.clip_type = ClipPathData::ClipType::kCircle;
+      shape.params = {radius_length, radius_length, x_pos_length, y_pos_length};
       break;
     }
     case ClayBasicShapeType::kEllipse: {
@@ -1078,14 +1076,8 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error Ellipse format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
-      path_data->params.emplace_back(x_length);
-      path_data->params.emplace_back(y_length);
-      path_data->params.emplace_back(x_pos_length);
-      path_data->params.emplace_back(y_pos_length);
-      path_data->clip_type = ClipPathData::ClipType::kEllipse;
+      shape.clip_type = ClipPathData::ClipType::kEllipse;
+      shape.params = {x_length, y_length, x_pos_length, y_pos_length};
       break;
     }
     case ClayBasicShapeType::kPath: {
@@ -1106,39 +1098,30 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
       } else {
         render_object()->SetOffsetPath(path);
       }
-      break;
+      return;
     }
     case ClayBasicShapeType::kSuperEllipse: {
       ClayPlatformLength radius_x, radius_y, center_x, center_y;
-      ClayPlatformLength exponent_x, exponent_y;
       bool result = true;
       result &= utils::TryGetPlatformLength(array, 1, radius_x);
       result &= utils::TryGetPlatformLength(array, 3, radius_y);
       result &= utils::TryGetPlatformLength(array, 7, center_x);
       result &= utils::TryGetPlatformLength(array, 9, center_y);
       if (!result) {
-        FML_DLOG(ERROR) << "Setting clip-path: error inset format!";
+        FML_DLOG(ERROR) << "Setting clip-path: error super-ellipse format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
-      path_data->params.emplace_back(radius_x);
-      path_data->params.emplace_back(radius_y);
-      path_data->params.emplace_back(center_x);
-      path_data->params.emplace_back(center_y);
-      path_data->exponents.emplace_back(array[5].GetDouble());
-      path_data->exponents.emplace_back(array[6].GetDouble());
-      path_data->clip_type = ClipPathData::ClipType::kSuperEllipse;
+      shape.clip_type = ClipPathData::ClipType::kSuperEllipse;
+      shape.params = {radius_x, radius_y, center_x, center_y};
+      shape.exponents = {array[5].GetDouble(), array[6].GetDouble()};
       break;
     }
     case ClayBasicShapeType::kInset: {
-      // begin handling inset function params
-      // clang-format off
-      // params arrange as:
-      // first 8 fields are inset:
-      // | top | lengthUnit | right | lengthUnit | bottom | lengthUnit | left | lengthUnit |
-      // clang-format on
+      const size_t size = array.size();
+      if (size != 9 && size != 25 && size != 27) {
+        FML_DLOG(ERROR) << "Setting clip-path: error inset size!";
+        return;
+      }
       ClayPlatformLength top_length, right_length, bottom_length, left_length;
       bool result = true;
       result &= utils::TryGetPlatformLength(array, 1, top_length);
@@ -1150,74 +1133,39 @@ void BaseView::SetClipOffsetPath(const clay::Value::Array& array,
         FML_DLOG(ERROR) << "Setting clip-path: error inset format!";
         return;
       }
-      if (!path_data.has_value()) {
-        path_data = ClipPathData{};
-      }
-      path_data->params.emplace_back(top_length);
-      path_data->params.emplace_back(right_length);
-      path_data->params.emplace_back(bottom_length);
-      path_data->params.emplace_back(left_length);
-      // rounded corner's radius value start at index 9
-      int radius_offset = 9;
-      if (array.size() == 9) {
-        // Rect only has first 8 params.
-        path_data->corner_type = ClipPathData::CornerType::kCornerRect;
-      }
-      if (array.size() == 27) {
-        // super-ellipse has two more fields for exponents before border-radius.
-        // | exponent-x | exponent-y | border-radius ...|
-        path_data->exponents.emplace_back(array[9].GetDouble());
-        path_data->exponents.emplace_back(array[10].GetDouble());
-        radius_offset = 11;
-        path_data->corner_type =
-            ClipPathData::CornerType::kCornerSuperElliptical;
-      }
-      if (array.size() == 27 || array.size() == 25) {
-        // clang-format off
-        // inset with rounded and lame corner has 16 radius fields:
-        // |   top-left-x  | lengthUnit |   top-left-y   | lengthUnit |
-        // top-right-x  | lengthUnit | |  top-right-y  | lengthUnit |
-        // bottom-right-x | lengthUnit | bottom-right-y | lengthUnit | |
-        // bottom-left-x | lengthUnit |  bottom-left-y | lengthUnit |
-        // clang-format on
-        ClipPathData::BorderRadius radius_top_left, radius_top_right,
-            radius_bottom_right, radius_bottom_left;
-        utils::TryGetPlatformLength(array, 0 + radius_offset,
-                                    radius_top_left.x);
-        utils::TryGetPlatformLength(array, 2 + radius_offset,
-                                    radius_top_left.y);
-        utils::TryGetPlatformLength(array, 4 + radius_offset,
-                                    radius_top_right.x);
-        utils::TryGetPlatformLength(array, 6 + radius_offset,
-                                    radius_top_right.y);
-        utils::TryGetPlatformLength(array, 8 + radius_offset,
-                                    radius_bottom_right.x);
-        utils::TryGetPlatformLength(array, 12 + radius_offset,
-                                    radius_bottom_right.y);
-        utils::TryGetPlatformLength(array, 12 + radius_offset,
-                                    radius_bottom_left.x);
-        utils::TryGetPlatformLength(array, 14 + radius_offset,
-                                    radius_bottom_left.y);
 
-        path_data->radius.emplace_back(radius_top_left);
-        path_data->radius.emplace_back(radius_top_right);
-        path_data->radius.emplace_back(radius_bottom_right);
-        path_data->radius.emplace_back(radius_bottom_left);
-        if (array.size() == 25) {
-          path_data->corner_type = ClipPathData::CornerType::kCornerRounded;
+      shape.clip_type = ClipPathData::ClipType::kInset;
+      shape.params = {top_length, right_length, bottom_length, left_length};
+      shape.corner_type = ClipPathData::CornerType::kCornerRect;
+      if (size != 9) {
+        int radius_offset = 9;
+        shape.corner_type = ClipPathData::CornerType::kCornerRounded;
+        if (size == 27) {
+          // Superellipse exponents precede the four (x, y) radius pairs.
+          shape.exponents = {array[9].GetDouble(), array[10].GetDouble()};
+          shape.corner_type = ClipPathData::CornerType::kCornerSuperElliptical;
+          radius_offset = 11;
         }
-      } else {
-        // invalid params array
-        return;
+        for (int corner = 0; corner < 4; ++corner) {
+          const int index = radius_offset + corner * 4;
+          ClipPathData::BorderRadius radius;
+          if (!utils::TryGetPlatformLength(array, index, radius.x) ||
+              !utils::TryGetPlatformLength(array, index + 2, radius.y)) {
+            FML_DLOG(ERROR) << "Setting clip-path: error inset radius!";
+            return;
+          }
+          shape.radius.push_back(radius);
+        }
       }
-      path_data->clip_type = ClipPathData::ClipType::kInset;
       break;
     }
-    case ClayBasicShapeType::kUnknown: {
+    case ClayBasicShapeType::kUnknown:
+    default:
       FML_DLOG(ERROR) << "Setting clip-path: Unknown type.";
-      break;
-    }
+      return;
   }
+  path_data = std::move(shape);
+  DrawClipPath(is_clip_path);
 }
 
 void BaseView::DrawClipPath(bool is_clip_path) {
@@ -1285,10 +1233,10 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       if (path_data->params.size() != 4) {
         break;
       }
-      double top = utils::ResolvePlatformLength(path_data->params[0], width_);
+      double top = utils::ResolvePlatformLength(path_data->params[0], height_);
       double right = utils::ResolvePlatformLength(path_data->params[1], width_);
       double bottom =
-          utils::ResolvePlatformLength(path_data->params[2], width_);
+          utils::ResolvePlatformLength(path_data->params[2], height_);
       double left = utils::ResolvePlatformLength(path_data->params[3], width_);
 
       // Adjust inset value, values are proportionally reduce the inset effect
@@ -1305,6 +1253,16 @@ void BaseView::DrawClipPath(bool is_clip_path) {
         double s = width_ / h_inset;
         left *= s;
         right *= s;
+      }
+
+      // A plain inset has no corner radii.
+      if (path_data->corner_type == ClipPathData::CornerType::kCornerRect) {
+        const auto rect =
+            skity::Rect::MakeLTRB(left, top, width_ - right, height_ - bottom);
+        GrPath path;
+        PATH_ADD_RECT(path, rect);
+        SET_PATH(path);
+        break;
       }
 
       float radius_top_left_x =
@@ -1324,14 +1282,6 @@ void BaseView::DrawClipPath(bool is_clip_path) {
       float radius_bottom_left_y =
           utils::ResolvePlatformLength(path_data->radius[3].y, width_);
       switch (path_data->corner_type) {
-        case ClipPathData::CornerType::kCornerRect: {
-          GrPath path;
-          skity::Rect rect = skity::Rect::MakeLTRB(left, top, width_ - right,
-                                                   height_ - bottom);
-          PATH_ADD_RECT(path, rect);
-          SET_PATH(path);
-          break;
-        }
         case ClipPathData::CornerType::kCornerRounded: {
           GrPath path;
           skity::Vec2 radii[4] = {
@@ -1391,6 +1341,7 @@ void BaseView::DrawClipPath(bool is_clip_path) {
           SET_PATH(path);
           break;
         }
+        case ClipPathData::CornerType::kCornerRect:
         case ClipPathData::CornerType::kUnknown:
           break;
       }

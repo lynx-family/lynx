@@ -7,10 +7,12 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "base/include/auto_reset.h"
 #include "clay/fml/logging.h"
+#include "clay/gfx/rendering_backend.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/base_view.h"
@@ -35,6 +37,17 @@ namespace {
 
 constexpr uint32_t kPointerEventsAuto = 0;
 constexpr uint32_t kPointerEventsNone = 1;
+
+Value BasicShape(ClayBasicShapeType type,
+                 std::initializer_list<ClayPlatformLength> lengths) {
+  Value::Array shape;
+  shape.emplace_back(static_cast<int32_t>(type));
+  for (const auto& length : lengths) {
+    shape.emplace_back(length.value);
+    shape.emplace_back(static_cast<int32_t>(length.unit));
+  }
+  return Value(std::move(shape));
+}
 
 }  // namespace
 
@@ -213,6 +226,92 @@ TEST_F_UI(BaseViewTest, BackgroundLoadRequiresListenerAndPreservesDetail) {
   detail.emplace("height", Value(48));
   view.NotifyBackgroundEvent(true, std::move(detail));
   EXPECT_EQ(event_count, 1);
+}
+
+TEST_F_UI(BaseViewTest, InsetPercentagesFollowEachAxisAndResize) {
+  constexpr auto kPercent = ClayPlatformLengthUnit::kPercentage;
+  View view(42, page_.get());
+  view.SetBound(0, 0, 200, 100);
+  view.SetAttribute("clip-path",
+                    BasicShape(ClayBasicShapeType::kInset, {{0.1, kPercent},
+                                                            {0.2, kPercent},
+                                                            {0.1, kPercent},
+                                                            {0.2, kPercent}}));
+
+  auto& clip = view.render_object()->ClipPath();
+  ASSERT_TRUE(std::holds_alternative<GrPath>(clip));
+  GrPath expected;
+  PATH_ADD_RECT(expected, skity::Rect::MakeLTRB(40, 10, 160, 90));
+  EXPECT_EQ(std::get<GrPath>(clip), expected);
+
+  view.SetBound(0, 0, 200, 150);
+  ASSERT_TRUE(std::holds_alternative<GrPath>(clip));
+  GrPath resized;
+  PATH_ADD_RECT(resized, skity::Rect::MakeLTRB(40, 15, 160, 135));
+  EXPECT_EQ(std::get<GrPath>(clip), resized);
+}
+
+TEST_F_UI(BaseViewTest, InsetShapeChangesWithoutResizing) {
+  constexpr auto kNumber = ClayPlatformLengthUnit::kNumber;
+  View view(42, page_.get());
+  view.SetBound(0, 0, 200, 100);
+  const auto inset =
+      BasicShape(ClayBasicShapeType::kInset,
+                 {{10, kNumber}, {20, kNumber}, {10, kNumber}, {20, kNumber}});
+  view.SetAttribute("clip-path", inset);
+  auto& clip = view.render_object()->ClipPath();
+  ASSERT_TRUE(std::holds_alternative<GrPath>(clip));
+
+  view.SetAttribute("clip-path",
+                    BasicShape(ClayBasicShapeType::kCircle,
+                               {{25, kNumber}, {70, kNumber}, {50, kNumber}}));
+  ASSERT_TRUE(std::holds_alternative<FloatRoundedRect>(clip));
+  FloatRoundedRect circle;
+  circle.SetOval({45, 25, 50, 50});
+  EXPECT_EQ(std::get<FloatRoundedRect>(clip), circle);
+
+  view.SetAttribute(
+      "clip-path",
+      BasicShape(ClayBasicShapeType::kEllipse,
+                 {{30, kNumber}, {20, kNumber}, {70, kNumber}, {50, kNumber}}));
+  ASSERT_TRUE(std::holds_alternative<FloatRoundedRect>(clip));
+  FloatRoundedRect ellipse;
+  ellipse.SetOval({40, 30, 60, 40});
+  EXPECT_EQ(std::get<FloatRoundedRect>(clip), ellipse);
+
+  view.SetAttribute("clip-path", inset);
+  ASSERT_TRUE(std::holds_alternative<GrPath>(clip));
+  GrPath expected;
+  PATH_ADD_RECT(expected, skity::Rect::MakeLTRB(20, 10, 180, 90));
+  EXPECT_EQ(std::get<GrPath>(clip), expected);
+}
+
+TEST_F_UI(BaseViewTest, RoundedInsetPreservesCornerRadii) {
+  constexpr auto kNumber = ClayPlatformLengthUnit::kNumber;
+  View view(42, page_.get());
+  view.SetBound(0, 0, 200, 100);
+  view.SetAttribute("clip-path",
+                    BasicShape(ClayBasicShapeType::kInset, {{10, kNumber},
+                                                            {0, kNumber},
+                                                            {0, kNumber},
+                                                            {10, kNumber},
+                                                            {24, kNumber},
+                                                            {8, kNumber},
+                                                            {6, kNumber},
+                                                            {16, kNumber},
+                                                            {12, kNumber},
+                                                            {4, kNumber},
+                                                            {16, kNumber},
+                                                            {24, kNumber}}));
+
+  const auto& clip = view.render_object()->ClipPath();
+  ASSERT_TRUE(std::holds_alternative<GrPath>(clip));
+  skity::Vec2 radii[4] = {{24, 8}, {6, 16}, {12, 4}, {16, 24}};
+  skity::RRect rrect;
+  rrect.SetRectRadii(skity::Rect::MakeLTRB(10, 10, 200, 100), radii);
+  GrPath expected;
+  PATH_ADD_RRECT(expected, rrect);
+  EXPECT_EQ(std::get<GrPath>(clip), expected);
 }
 
 TEST_F_UI(BaseViewTest, LayoutChangeReportsLogicalBoundsOnlyWithListener) {
