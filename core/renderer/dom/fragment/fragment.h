@@ -198,10 +198,10 @@ class Fragment : public BaseElementContainer {
   bool ReconcileSelfPlacement(const StackingState& prev,
                               const StackingState& next);
   Fragment* ReconcileStackingDescendants(bool current_stacking_context);
-  void RefreshDrawingOffsetsIfNeeded(Fragment* previous_parent,
-                                     const StackingState& prev,
-                                     const StackingState& next,
-                                     Fragment* descendants_target);
+  void MarkDrawingOffsetsDirtyIfNeeded(Fragment* previous_parent,
+                                       const StackingState& prev,
+                                       const StackingState& next,
+                                       Fragment* descendants_target);
   void ReconcileStackingState(bool handle_fixed);
   void InvalidateLayerPropertiesIfSizeChanged(
       const LayoutResultForRendering& layout_result_for_rendering);

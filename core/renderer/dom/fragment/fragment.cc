@@ -347,20 +347,21 @@ Fragment* Fragment::ReconcileStackingDescendants(
   return descendants_target;
 }
 
-void Fragment::RefreshDrawingOffsetsIfNeeded(Fragment* previous_parent,
-                                             const StackingState& prev,
-                                             const StackingState& next,
-                                             Fragment* descendants_target) {
-  // Refresh legacy coordinates only when their parent or fixed/context basis
-  // changes. Other style updates and z-index-only sorting do not need a walk.
+void Fragment::MarkDrawingOffsetsDirtyIfNeeded(Fragment* previous_parent,
+                                               const StackingState& prev,
+                                               const StackingState& next,
+                                               Fragment* descendants_target) {
+  // Defer legacy coordinate refreshes to dirty stacking context flush so
+  // multiple sibling updates share one walk. Other style updates and
+  // z-index-only sorting do not mark a refresh.
   if (fragment_parent() != nullptr &&
       (previous_parent != fragment_parent() || prev.fixed != next.fixed ||
        prev.is_stacking_context != next.is_stacking_context)) {
-    fragment_parent()->RefreshDrawingOffsetsRecursively();
+    fragment_parent()->MarkDirtyState(kNeedRefreshDrawingOffsets);
   }
   if (descendants_target != nullptr &&
       descendants_target != fragment_parent()) {
-    descendants_target->RefreshDrawingOffsetsRecursively();
+    descendants_target->MarkDirtyState(kNeedRefreshDrawingOffsets);
   }
 }
 
@@ -386,72 +387,77 @@ void Fragment::ReconcileStackingState(bool handle_fixed) {
     descendants_target = ReconcileStackingDescendants(next.is_stacking_context);
   }
 
-  RefreshDrawingOffsetsIfNeeded(previous_parent, prev, next,
-                                descendants_target);
+  MarkDrawingOffsetsDirtyIfNeeded(previous_parent, prev, next,
+                                  descendants_target);
 }
 
 void Fragment::UpdateZIndexList() {
-  // If do not need sort z-index child and fixed child, we should not update
-  // z-index list.
-  if (!NeedSortZChild() && !NeedSortFixedChild()) {
+  const bool need_sort = NeedSortZChild() || NeedSortFixedChild();
+  const bool need_refresh_offsets = NeedRefreshDrawingOffsets();
+  if (!need_sort && !need_refresh_offsets) {
     return;
   }
 
-  // Sorts the children based on their stacking context.
-  // The sorting order is as follows:
-  // 1. Nodes with a negative z-index, sorted by z-index.
-  // 2. Nodes with a z-index of 0 that are not fixed, maintaining their relative
-  //    order.
-  // 3. Nodes with a z-index of 0 that are fixed, sorted by CompareElementOrder.
-  // 4. Nodes with a positive z-index, sorted by z-index.
-  // If the order of children changes after sorting, NeedRedraw is marked.
-  auto get_group = [](const Fragment* fragment) {
-    int z_index = fragment->old_z_index();
-    if (z_index < 0) {
-      return 0;  // Group 0: negative z-index
-    }
-    if (z_index > 0) {
-      return 3;  // Group 3: positive z-index
-    }
-    // z-index is 0
-    if (fragment->was_position_fixed()) {
-      return 2;  // Group 2: fixed
-    }
-    return 1;  // Group 1: not fixed
-  };
+  if (need_sort) {
+    // Sorts the children based on their stacking context.
+    // The sorting order is as follows:
+    // 1. Nodes with a negative z-index, sorted by z-index.
+    // 2. Nodes with a z-index of 0 that are not fixed, maintaining their
+    //    relative order.
+    // 3. Nodes with a z-index of 0 that are fixed, sorted by
+    //    CompareElementOrder.
+    // 4. Nodes with a positive z-index, sorted by z-index.
+    // If the order of children changes after sorting, NeedRedraw is marked.
+    auto get_group = [](const Fragment* fragment) {
+      int z_index = fragment->old_z_index();
+      if (z_index < 0) {
+        return 0;  // Group 0: negative z-index
+      }
+      if (z_index > 0) {
+        return 3;  // Group 3: positive z-index
+      }
+      // z-index is 0
+      if (fragment->was_position_fixed()) {
+        return 2;  // Group 2: fixed
+      }
+      return 1;  // Group 1: not fixed
+    };
 
-  auto comparator = [&](const Fragment* a, const Fragment* b) {
-    int group_a = get_group(a);
-    int group_b = get_group(b);
+    auto comparator = [&](const Fragment* a, const Fragment* b) {
+      int group_a = get_group(a);
+      int group_b = get_group(b);
 
-    if (group_a != group_b) {
-      return group_a < group_b;
-    }
+      if (group_a != group_b) {
+        return group_a < group_b;
+      }
 
-    // Same group, sort within the group
-    switch (group_a) {
-      case 0:  // negative z-index
-      case 3:  // positive z-index
-        if (a->old_z_index() != b->old_z_index()) {
-          return a->old_z_index() < b->old_z_index();
-        }
-        return BaseElementContainer::CompareElementOrder(a->element(),
-                                                         b->element()) < 0;
-      case 2:  // fixed, z-index 0
-        return BaseElementContainer::CompareElementOrder(a->element(),
-                                                         b->element()) < 0;
-      case 1:  // not fixed, z-index 0
-      default:
-        return false;
-    }
-  };
+      // Same group, sort within the group
+      switch (group_a) {
+        case 0:  // negative z-index
+        case 3:  // positive z-index
+          if (a->old_z_index() != b->old_z_index()) {
+            return a->old_z_index() < b->old_z_index();
+          }
+          return BaseElementContainer::CompareElementOrder(a->element(),
+                                                           b->element()) < 0;
+        case 2:  // fixed, z-index 0
+          return BaseElementContainer::CompareElementOrder(a->element(),
+                                                           b->element()) < 0;
+        case 1:  // not fixed, z-index 0
+        default:
+          return false;
+      }
+    };
 
-  std::stable_sort(children_.begin(), children_.end(), comparator);
+    std::stable_sort(children_.begin(), children_.end(), comparator);
+    InvalidateForRedraw();
+
+    ResetDirtyState(kNeedSortZChild);
+    ResetDirtyState(kNeedSortFixedChild);
+  }
+
   RefreshDrawingOffsetsRecursively();
-  InvalidateForRedraw();
-
-  ResetDirtyState(kNeedSortZChild);
-  ResetDirtyState(kNeedSortFixedChild);
+  ResetDirtyState(kNeedRefreshDrawingOffsets);
 }
 
 void Fragment::CreatePaintingNode(
