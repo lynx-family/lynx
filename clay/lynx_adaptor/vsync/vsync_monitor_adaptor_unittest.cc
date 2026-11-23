@@ -22,9 +22,16 @@ class RecordingVSyncMonitor final
     ++request_count;
     pending_callback = std::move(callback);
   }
+  std::shared_ptr<lynx::base::VSyncFrameTickWork> AcquireFrameTickWork(
+      int64_t start) override {
+    acquired_start = start;
+    return work;
+  }
 
   int request_count = 0;
   Callback pending_callback;
+  int64_t acquired_start = 0;
+  std::shared_ptr<lynx::base::VSyncFrameTickWork> work;
 };
 
 TEST(VSyncMonitorAdaptorTest, NullSourceLeavesSystemVsyncAvailable) {
@@ -63,6 +70,58 @@ TEST(VSyncMonitorAdaptorTest, LastRequestCallbackCopyReleasesSource) {
   EXPECT_FALSE(weak_monitor.expired());
   request_copy = {};
   EXPECT_TRUE(weak_monitor.expired());
+}
+
+TEST(VSyncMonitorAdaptorTest, AcquiresWorkBeforeReturningFromHostSignal) {
+  class Work final : public lynx::base::VSyncFrameTickWork {
+   public:
+    void Complete() override { completed = true; }
+    bool completed = false;
+  };
+  auto monitor = std::make_shared<RecordingVSyncMonitor>();
+  auto work = std::make_shared<Work>();
+  monitor->work = work;
+  auto request = MakeVsyncRequestCallback(monitor);
+  auto request_copy = request;
+  std::shared_ptr<lynx::base::VSyncFrameTickWork> pending;
+  request_copy.RequestWithFrameTickWork(
+      [&](int64_t start, int64_t target, auto token) {
+        EXPECT_EQ(start, 100);
+        EXPECT_EQ(target, 200);
+        EXPECT_EQ(monitor->acquired_start, 100);
+        pending = std::move(token);
+      });
+  auto reply = std::move(monitor->pending_callback);
+  reply(100, 200);
+  EXPECT_EQ(pending, work);
+  EXPECT_FALSE(work->completed);
+  pending->Complete();
+  EXPECT_TRUE(work->completed);
+}
+
+TEST(VSyncMonitorAdaptorTest, LegacySourceDeliversWithoutWork) {
+  VsyncRequestCallback request{
+      [](VsyncSignalCallback callback) { callback(100, 200); }};
+  bool delivered = false;
+  request.RequestWithFrameTickWork(
+      [&](int64_t start, int64_t target, auto work) {
+        EXPECT_EQ(start, 100);
+        EXPECT_EQ(target, 200);
+        EXPECT_EQ(work, nullptr);
+        delivered = true;
+      });
+  EXPECT_TRUE(delivered);
+}
+
+TEST(VSyncMonitorAdaptorTest, PendingWorkCallbackDoesNotRetainSource) {
+  auto monitor = std::make_shared<RecordingVSyncMonitor>();
+  std::weak_ptr<RecordingVSyncMonitor> weak = monitor;
+  auto request = MakeVsyncRequestCallback(monitor);
+  request.RequestWithFrameTickWork([](int64_t, int64_t, auto) {});
+  auto reply = std::move(monitor->pending_callback);
+  monitor.reset();
+  request = {};
+  EXPECT_TRUE(weak.expired());
 }
 
 }  // namespace
