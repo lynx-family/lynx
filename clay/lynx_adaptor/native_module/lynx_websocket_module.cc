@@ -4,6 +4,8 @@
 
 #include "clay/lynx_adaptor/native_module/lynx_websocket_module.h"
 
+#include <atomic>
+#include <mutex>
 #include <random>
 #include <string_view>
 #include <thread>
@@ -12,19 +14,28 @@
 #include <vector>
 
 #if defined(_WIN32)
+// cspell:ignore ioctlsocket
 #include <malloc.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #define CLOSESOCKET closesocket
+#define INVALID_SOCK INVALID_SOCKET
+#define SHUT_BOTH SD_BOTH
 #define alloca _alloca
 #else
 #include <alloca.h>
+#include <fcntl.h>
 #include <netdb.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include <cerrno>
 #define SOCKET int
 #define CLOSESOCKET ::close
+#define INVALID_SOCK (-1)
+#define SHUT_BOTH SHUT_RDWR
 #endif
 
 #include <openssl/ssl.h>
@@ -57,7 +68,7 @@ std::string GenerateSecWebsocketKey() {
 }
 }  // namespace
 
-class SimpleWebSocket {
+class SimpleWebSocket : public std::enable_shared_from_this<SimpleWebSocket> {
  public:
   SimpleWebSocket(std::weak_ptr<shell::LynxRuntimeProxy> runtime_proxy,
                   const std::string& url, std::vector<std::string> protocols,
@@ -66,36 +77,42 @@ class SimpleWebSocket {
         url_(url),
         protocols_(std::move(protocols)),
         headers_(std::move(headers)),
-        runtime_proxy_(runtime_proxy) {
-    thread_ = std::make_unique<std::thread>([this]() { run(); });
+        runtime_proxy_(runtime_proxy) {}
+
+  void Start() {
+    auto self = shared_from_this();
+    std::thread([self = std::move(self)]() { self->run(); }).detach();
   }
-  ~SimpleWebSocket() { Close(0, ""); }
 
-  void Close(double code, const std::string& reason) {
-    code_ = code;
-    reason_ = reason;
-
-    if (socket_) {
-      CLOSESOCKET(socket_);
-    }
-    if (ssl_) {
-      SSL_shutdown(ssl_);
-    }
-    if (thread_) {
-      if (thread_->joinable()) {
-        thread_->join();
-      }
-      thread_.reset();
-    }
+  ~SimpleWebSocket() {
     if (ssl_) {
       SSL_free(ssl_);
       ssl_ = nullptr;
     }
-    socket_ = 0;
+    if (socket_ != INVALID_SOCK) {
+      CLOSESOCKET(socket_);
+      socket_ = INVALID_SOCK;
+    }
+  }
+
+  void Close(double code, const std::string& reason) {
+    SOCKET sock = INVALID_SOCK;
+    {
+      std::lock_guard<std::mutex> lock(state_mutex_);
+      if (closed_.exchange(true)) {
+        return;
+      }
+      code_ = code;
+      reason_ = reason;
+      sock = socket_;
+    }
+    if (sock != INVALID_SOCK) {
+      ::shutdown(sock, SHUT_BOTH);
+    }
   }
 
   void Ping() {
-    if (!socket_) {
+    if (!ready_.load() || closed_.load()) {
       return;
     }
     uint8_t txb[16];
@@ -113,7 +130,7 @@ class SimpleWebSocket {
   }
 
   void Write(const std::string& data) {
-    if (!socket_) {
+    if (!ready_.load() || closed_.load()) {
       return;
     }
     const char* payload = data.data();
@@ -197,12 +214,102 @@ class SimpleWebSocket {
     }
 
     {
+      double code = 0;
+      std::string reason;
+      {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        code = code_;
+        reason = reason_;
+      }
       clay::Value::Map map;
       map["id"] = clay::Value(id_);
-      map["code"] = clay::Value(code_);
-      map["reason"] = clay::Value(reason_);
+      map["code"] = clay::Value(code);
+      map["reason"] = clay::Value(reason);
       emit("websocketClosed", std::move(map));
     }
+  }
+
+  bool ConnectSocket(SOCKET sockfd, const struct sockaddr* addr,
+                     socklen_t addrlen) {
+#if defined(_WIN32)
+    u_long non_blocking = 1;
+    if (::ioctlsocket(sockfd, FIONBIO, &non_blocking) != 0) {
+      return false;
+    }
+    int res = ::connect(sockfd, addr, addrlen);
+    if (res != 0) {
+      if (WSAGetLastError() != WSAEWOULDBLOCK) {
+        return false;
+      }
+      while (true) {
+        if (closed_.load()) {
+          return false;
+        }
+        fd_set write_fds;
+        fd_set except_fds;
+        FD_ZERO(&write_fds);
+        FD_ZERO(&except_fds);
+        FD_SET(sockfd, &write_fds);
+        FD_SET(sockfd, &except_fds);
+        timeval tv{0, 100 * 1000};
+        int ready = ::select(0, nullptr, &write_fds, &except_fds, &tv);
+        if (ready == 0) {
+          continue;
+        }
+        if (ready < 0) {
+          return false;
+        }
+        int err = 0;
+        int err_len = sizeof(err);
+        if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR,
+                         reinterpret_cast<char*>(&err), &err_len) != 0 ||
+            err != 0) {
+          return false;
+        }
+        break;
+      }
+    }
+    non_blocking = 0;
+    return ::ioctlsocket(sockfd, FIONBIO, &non_blocking) == 0;
+#else
+    int flags = ::fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1 || ::fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) == -1) {
+      return false;
+    }
+    int res = ::connect(sockfd, addr, addrlen);
+    if (res != 0) {
+      if (errno != EINPROGRESS) {
+        return false;
+      }
+      while (true) {
+        if (closed_.load()) {
+          return false;
+        }
+        struct pollfd pfd;
+        pfd.fd = sockfd;
+        pfd.events = POLLOUT;
+        pfd.revents = 0;
+        int ready = ::poll(&pfd, 1, 100);
+        if (ready == 0) {
+          continue;
+        }
+        if (ready < 0) {
+          if (errno == EINTR) {
+            continue;
+          }
+          return false;
+        }
+        int err = 0;
+        socklen_t err_len = sizeof(err);
+        if (::getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &err, &err_len) != 0 ||
+            err != 0) {
+          return false;
+        }
+        break;
+      }
+    }
+    return ::fcntl(sockfd, F_SETFL, flags) != -1;
+#endif
   }
 
   bool Connect() {
@@ -260,6 +367,10 @@ class SimpleWebSocket {
     const std::string host(host_view);
     const std::string path(path_view);
 
+    if (closed_.load()) {
+      return false;
+    }
+
     struct addrinfo ai, *sai;
     memset(&ai, 0, sizeof ai);
     ai.ai_family = AF_INET;
@@ -271,21 +382,35 @@ class SimpleWebSocket {
       return false;
     }
 
+    SOCKET connected_socket = INVALID_SOCK;
     for (auto p = sai; p != NULL; p = p->ai_next) {
-      auto sockfd = ::socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-      if (sockfd == -1) {
+      if (closed_.load()) {
+        break;
+      }
+      SOCKET sockfd = ::socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+      if (sockfd == INVALID_SOCK) {
         continue;
       }
-      if (::connect(sockfd, p->ai_addr, p->ai_addrlen) != -1) {
-        socket_ = sockfd;
+      if (ConnectSocket(sockfd, p->ai_addr,
+                        static_cast<socklen_t>(p->ai_addrlen))) {
+        connected_socket = sockfd;
         break;
       }
       CLOSESOCKET(sockfd);
     }
     ::freeaddrinfo(sai);
 
-    if (socket_ == 0) {
+    if (connected_socket == INVALID_SOCK) {
       return false;
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(state_mutex_);
+      if (closed_.load()) {
+        CLOSESOCKET(connected_socket);
+        return false;
+      }
+      socket_ = connected_socket;
     }
 
     if (wss) {
@@ -295,9 +420,8 @@ class SimpleWebSocket {
 
       if (SSL_connect(ssl) <= 0) {
         ERR_print_errors_fp(stderr);
+        SSL_free(ssl);
         SSL_CTX_free(ctx);
-        CLOSESOCKET(socket_);
-        socket_ = 0;
         return false;
       }
       SSL_CTX_free(ctx);
@@ -371,6 +495,10 @@ class SimpleWebSocket {
       // Prefer to validate handshake with `Sec-WebSocket-Accept` from server
       // here.
     }
+    if (closed_.load()) {
+      return false;
+    }
+    ready_.store(true);
     return true;
   }
 
@@ -454,15 +582,17 @@ class SimpleWebSocket {
   }
 
   int id_;
-  SOCKET socket_ = 0;
+  SOCKET socket_ = INVALID_SOCK;
   SSL* ssl_ = nullptr;
   std::string url_;
   std::string protocol_;
   std::vector<std::string> protocols_;
   std::unordered_map<std::string, std::string> headers_;
-  std::unique_ptr<std::thread> thread_;
   std::weak_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
-  double code_;
+  std::mutex state_mutex_;
+  std::atomic<bool> closed_{false};
+  std::atomic<bool> ready_{false};
+  double code_ = 0;
   std::string reason_;
 };
 
@@ -484,8 +614,9 @@ LynxWebSocketModule::LynxWebSocketModule(
 
 LynxWebSocketModule::~LynxWebSocketModule() {
   for (const auto& [id, ws] : sockets_) {
-    delete ws;
+    ws->Close(0, "");
   }
+  sockets_.clear();
 }
 
 std::unique_ptr<pub::Value> LynxWebSocketModule::connect(
@@ -512,12 +643,13 @@ std::unique_ptr<pub::Value> LynxWebSocketModule::connect(
           });
     }
   }
-  auto ws = new SimpleWebSocket(runtime_proxy_, url, std::move(protocols),
-                                std::move(headers), id);
+  auto ws = std::make_shared<SimpleWebSocket>(
+      runtime_proxy_, url, std::move(protocols), std::move(headers), id);
   if (auto search = sockets_.find(id); search != sockets_.end()) {
-    delete search->second;
+    search->second->Close(0, "");
   }
   sockets_[id] = ws;
+  ws->Start();
   return std::make_unique<lynx::ClayValue>(clay::Value(true));
 };
 
@@ -547,7 +679,6 @@ std::unique_ptr<pub::Value> LynxWebSocketModule::close(
   int id = static_cast<int>(args->GetValueAtIndex(2)->Number());
   if (auto search = sockets_.find(id); search != sockets_.end()) {
     search->second->Close(code, reason);
-    delete search->second;
     sockets_.erase(search);
   }
   return std::make_unique<lynx::ClayValue>(clay::Value(true));

@@ -44,7 +44,7 @@ class LynxWebSocketModule
                                     const runtime::CallbackMap& callbacks);
 
  private:
-  std::unordered_map<int, SimpleWebSocket*> sockets_;
+  std::unordered_map<int, std::shared_ptr<SimpleWebSocket>> sockets_;
 };
 
 }  // namespace lynx
