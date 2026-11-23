@@ -509,6 +509,26 @@ TEST_F_UI(KeyFrameTest, DuplicateSameNameAnimationDataKeepsLastEntry) {
             duplicate_data.duration);
 }
 
+TEST_F_UI(KeyFrameTest, LegacyUpdateSkipsInactiveKeyframes) {
+  page_->SetKeyframesData(CreateKeyFrameData1());
+  auto* manager = animator_view_->KeyframesMgr();
+  AnimationData no_duration = start_data_;
+  no_duration.duration = 0;
+  AnimationData no_iterations = start_data_;
+  no_iterations.iteration_count = 0;
+
+  manager->UpdateData({no_duration}, true);
+  EXPECT_TRUE(manager->animations().empty());
+  manager->UpdateData({no_iterations}, true);
+  EXPECT_TRUE(manager->animations().empty());
+
+  manager->UpdateData({no_iterations});
+  ASSERT_EQ(manager->animations().size(), 1u);
+  manager->UpdateData({start_data_}, true);
+  ASSERT_EQ(manager->animations().size(), 1u);
+  EXPECT_EQ(manager->animations().front().data.iteration_count, 1);
+}
+
 // Test fillmode forwards changed to backwards
 TEST_F_UI(KeyFrameTest, ChangeFillmode) {
   AnimationData update_data{"opacity_test",

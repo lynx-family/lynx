@@ -98,8 +98,17 @@ KeyframesManager::KeyframesManager(AnimatorTarget* target) : target_(target) {}
 KeyframesManager::~KeyframesManager() { CancelAllAnimators(); }
 
 KeyframesManager::UpdateDataResult KeyframesManager::UpdateData(
-    const std::vector<AnimationData>& data) {
+    const std::vector<AnimationData>& data, bool skip_inactive_keyframes) {
   std::vector<AnimationData> normalized_data = NormalizeAnimationData(data);
+  if (skip_inactive_keyframes) {
+    normalized_data.erase(
+        std::remove_if(normalized_data.begin(), normalized_data.end(),
+                       [](const AnimationData& animation) {
+                         return animation.duration <= 0 ||
+                                animation.iteration_count <= 0;
+                       }),
+        normalized_data.end());
+  }
   bool data_has_changed = normalized_data.size() != animations_.size();
   for (size_t i = 0; i < normalized_data.size(); ++i) {
     if (data_has_changed) {
