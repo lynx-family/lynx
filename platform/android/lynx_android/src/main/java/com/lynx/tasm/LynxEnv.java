@@ -169,7 +169,6 @@ public class LynxEnv {
 
   protected boolean mEnableFlattenImageFlickerFix = false;
   protected boolean mDisableBigImageHelper = false;
-  protected boolean mEnableDataListFix = false;
   private boolean mEnableClearUpdatedDataList = false;
 
   protected boolean mEnableImageEventReport = false;
@@ -357,7 +356,6 @@ public class LynxEnv {
     initEnableCheckAccessFromNonUiThread();
     initEnableLazyInitA11y();
     initEnableTextLayoutCache();
-    initEnableDataListFix();
     initEnableClearUpdatedDataList();
 
     // FSP related initializations
@@ -1548,10 +1546,6 @@ public class LynxEnv {
     }
   }
 
-  boolean enableDataListFix() {
-    return mEnableDataListFix;
-  }
-
   boolean enableClearUpdatedDataList() {
     return mEnableClearUpdatedDataList;
   }
@@ -1594,10 +1588,6 @@ public class LynxEnv {
         }
       }
     }
-  }
-
-  private void initEnableDataListFix() {
-    mEnableDataListFix = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_DATA_LIST_FIX, false);
   }
 
   private void initEnableClearUpdatedDataList() {

@@ -2281,15 +2281,15 @@ public class LynxTemplateRender
   // called after renderTemplate or updateData.
   private void postRenderOrUpdateData(TemplateData data) {
     if (data != null) {
-      if (LynxEnv.inst().enableDataListFix()) {
+      if (LynxEnv.inst().enableClearUpdatedDataList()) {
         data.bindContext(mLynxContext);
+      } else {
+        // add to updatedList and recycle it manually at destroy period.
+        updatedDataList.add(data);
+        LLog.i(TAG,
+            "retain TemplateData for lifecycle, url=" + getTemplateUrl() + ", data=" + data
+                + ", listSize=" + updatedDataList.size());
       }
-      // add to updatedList and recycle it manually at destroy period.
-      updatedDataList.add(data);
-      LLog.i(TAG,
-          "retain TemplateData for lifecycle, url=" + getTemplateUrl() + ", data=" + data
-              + ", listSize=" + updatedDataList.size()
-              + ", bindContextEnabled=" + LynxEnv.inst().enableDataListFix());
     }
   }
 
@@ -2334,9 +2334,6 @@ public class LynxTemplateRender
       }
       nativeResetDataByPreParsedData(mNativePtr, mNativeLifecycle, data.getNativePtr(),
           data.processorName(), data.isReadOnly(), data);
-      if (LynxEnv.inst().enableClearUpdatedDataList()) {
-        updatedDataList.clear();
-      }
     }
     postRenderOrUpdateData(data);
     LLog.i(TAG, formatLynxMessage("reset"));
@@ -2380,9 +2377,6 @@ public class LynxTemplateRender
       nativeReloadTemplate(mNativePtr, mNativeLifecycle, data.getNativePtr(), propsNativePtr,
           data.processorName(), data.isReadOnly(), newGlobalProps, data,
           timingOption.toJavaOnlyMap());
-      if (LynxEnv.inst().enableClearUpdatedDataList()) {
-        updatedDataList.clear();
-      }
     }
     postRenderOrUpdateData(data);
     LLog.i(TAG, formatLynxMessage("reload"));
