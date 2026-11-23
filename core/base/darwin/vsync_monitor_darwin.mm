@@ -119,7 +119,7 @@ VSyncMonitor &GetUIFrameSource(bool high_refresh_rate) {
   static base::NoDestructor<FrameSources> sources;
   auto &monitor = high_refresh_rate ? sources->high_refresh : sources->standard;
   if (!monitor) {
-    monitor = VSyncMonitor::Create(false);
+    monitor = std::make_shared<VSyncMonitorIOS>();
     monitor->BindTaskRunner(fml::MessageLoop::EnsureInitializedForCurrentThread().GetTaskRunner());
     monitor->Init();
     if (high_refresh_rate) {
@@ -130,11 +130,8 @@ VSyncMonitor &GetUIFrameSource(bool high_refresh_rate) {
 }
 
 class UIVSyncMonitorIOS final : public VSyncMonitor {
- public:
-  UIVSyncMonitorIOS() : VSyncMonitor(true) {}
-
  private:
-  void RequestVSyncOnUIThread() override {
+  void RequestVSync() override {
     const bool high_refresh_rate = high_refresh_rate_;
     auto weak_monitor = weak_from_this();
     dispatch_block_t request = ^{
@@ -170,7 +167,7 @@ std::shared_ptr<VSyncMonitor> VSyncMonitor::Create(bool is_on_ui_thread) {
   if (is_on_ui_thread) {
     return std::make_shared<UIVSyncMonitorIOS>();
   }
-  return std::make_shared<VSyncMonitorIOS>(false, false);
+  return std::make_shared<VSyncMonitorIOS>();
 }
 
 class LynxVSyncPulsePuppet {
@@ -190,13 +187,7 @@ class LynxVSyncPulsePuppet {
   LynxVSyncPulse *delegate = nullptr;
 };
 
-VSyncMonitorIOS::VSyncMonitorIOS(bool init_in_current_loop, bool is_on_ui_thread,
-                                 bool is_vsync_post_task_by_emergency)
-    : VSyncMonitor(is_on_ui_thread, is_vsync_post_task_by_emergency) {
-  if (init_in_current_loop) {
-    Init();
-  }
-}
+VSyncMonitorIOS::VSyncMonitorIOS() = default;
 
 void VSyncMonitorIOS::Init() {
   if (!delegate_) {
@@ -226,21 +217,6 @@ void VSyncMonitorIOS::RequestVSyncOnUIThread(Callback callback) {
     return;
   }
   callback_ = std::move(callback);
-  if ([NSThread isMainThread]) {
-    RequestVSync();
-  } else {
-    std::weak_ptr<VSyncMonitorIOS> weak_self =
-        std::static_pointer_cast<VSyncMonitorIOS>(shared_from_this());
-    dispatch_async(dispatch_get_main_queue(), ^{
-      auto strong_self = weak_self.lock();
-      if (strong_self) {
-        strong_self->RequestVSync();
-      }
-    });
-  }
-}
-
-void VSyncMonitorIOS::RequestVSyncOnUIThread() {
   if ([NSThread isMainThread]) {
     RequestVSync();
   } else {
