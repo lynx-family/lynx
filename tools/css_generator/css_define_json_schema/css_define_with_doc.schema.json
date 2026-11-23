@@ -191,7 +191,10 @@
         "enum": [
           "ios",
           "android",
+          "harmony",
           "clay_android",
+          "clay_ios",
+          "clay_harmony",
           "clay_macos",
           "clay_windows",
           "web_lynx"
@@ -205,7 +208,7 @@
     "spec_url_value": {
       "type": "string",
       "format": "uri",
-      "pattern": "(^https://[^#]+#.+)|(^https://github.com/WebAssembly/.+)|(^https://registry.khronos.org/webgl/extensions/[^/]+/)"
+      "pattern": "(^https://[^#]+#.+)|(^https://github.com/WebAssembly/.+)"
     },
     "impl_url_value": {
       "type": "string",
@@ -283,13 +286,13 @@
         }
       },
       "patternProperties": {
-        "^(?!__compat)[a-zA-Z_0-9-$@]*$": {
+        "^(?!__compat)[a-zA-Z_0-9-$@()]*$": {
           "$ref": "#/definitions/identifier"
         }
       },
       "additionalProperties": false,
       "errorMessage": {
-        "additionalProperties": "Feature names can only contain alphanumerical characters or the following symbols: _-$@"
+        "additionalProperties": "Feature names can only contain alphanumerical characters or the following symbols: _-$@()"
       },
       "tsType": "{[key: string]: Identifier} & {__compat?: CompatStatement};"
     },
@@ -301,14 +304,14 @@
         }
       },
       "patternProperties": {
-        "^(?!__compat)[a-zA-Z_0-9-$@]*$": {
+        "^(?!__compat)[a-zA-Z_0-9-$@()]*$": {
           "$ref": "#/definitions/lynx_extensions_identifier",
           "tsType": "Identifier"
         }
       },
       "additionalProperties": false,
       "errorMessage": {
-        "additionalProperties": "Feature names can only contain alphanumerical characters or the following symbols: _-$@"
+        "additionalProperties": "Feature names can only contain alphanumerical characters or the following symbols: _-$@()"
       },
       "tsType": "{[key: string]: Identifier} & {__compat?: CompatStatement}"
     }
@@ -323,7 +326,22 @@
       "type": "integer"
     },
     "type": {
-      "type": "string"
+      "type": "string",
+      "enum": [
+        "color",
+        "length",
+        "time",
+        "number",
+        "non-negative-number",
+        "enum",
+        "complex",
+        "string",
+        "bool",
+        "border-width",
+        "border-style",
+        "timing-function",
+        "animation-property"
+      ]
     },
     "default_value": {
       "type": "string"
@@ -449,12 +467,17 @@
       "maxProperties": 1,
       "minProperties": 1
     },
+    "formal_syntax": {
+      "type": "string",
+      "description": "CSS Value Definition Syntax for the property."
+    },
     "is_shorthand": {
       "type": "boolean",
       "default": false,
       "description": "This value will be true if the feature is a shorthand."
     }
   },
+  "additionalProperties": false,
   "required": [
     "name",
     "id",
