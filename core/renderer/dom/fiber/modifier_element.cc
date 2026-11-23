@@ -20,6 +20,7 @@
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
+#include "core/renderer/dom/fiber/compose_draw_recording_decoder.h"
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_graphics_layer.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
@@ -92,6 +93,9 @@ BASE_STATIC_STRING_DECL(kOp, "op");
 BASE_STATIC_STRING_DECL(kPrevious, "previous");
 BASE_STATIC_STRING_DECL(kResolve, "resolve");
 BASE_STATIC_STRING_DECL(kResolveRecording, "resolveRecording");
+BASE_STATIC_STRING_DECL(kDrawRecording, "drawRecording");
+BASE_STATIC_STRING_DECL(kDrawDensity, "drawDensity");
+BASE_STATIC_STRING_DECL(kDrawRtl, "drawRtl");
 BASE_STATIC_STRING_DECL(kLeft, "left");
 BASE_STATIC_STRING_DECL(kRight, "right");
 BASE_STATIC_STRING_DECL(kPropertyId, "propertyId");
@@ -145,6 +149,7 @@ struct ModifierOperation {
   bool event_target{false};
   bool share_touch_target{false};
   bool supports_draw_reuse{false};
+  fml::RefPtr<CustomDrawHandler> box_draw;
   float minimum_touch_target_px{0.f};
   int scroll_binding_id{0};
   bool scroll_vertical{true};
@@ -168,6 +173,7 @@ struct ModifierFramePlan {
   size_t frame_count{0};
   bool owner_uses_layout_box{false};
   bool has_draw_callbacks{false};
+  bool requires_draw_runtime{false};
   bool has_offset{false};
   bool has_size_range{false};
   bool has_wrap_content{false};
@@ -504,9 +510,35 @@ bool ParseModifierOperation(const lepus::Value& node,
     case kModifierOpOffset:
     case kModifierOpSizeRange:
       return ParseLayoutOperation(node, operation, error);
-    case kModifierOpGraphicsLayer:
     case kModifierOpDrawBehind:
-    case kModifierOpDrawForeground:
+    case kModifierOpDrawForeground: {
+      const auto recording = node.GetProperty(kDrawRecording);
+      if (!recording.IsEmpty()) {
+        double density;
+        const auto rtl = ReadModifierProperty(node, kDrawRtl);
+        if (!rtl.IsBool() ||
+            !ReadFiniteNumberProperty(node, kDrawDensity, &density) ||
+            density < 0 || density > std::numeric_limits<float>::max()) {
+          *error = "invalid recording draw context";
+          return false;
+        }
+        detail::DrawRecordingContext context;
+        if (density != 0) context.density_override = density;
+        context.rtl = rtl.Bool();
+        const auto phase = operation->op == kModifierOpDrawForeground
+                               ? ComposeDrawPhase::kForeground
+                               : ComposeDrawPhase::kBehind;
+        if (const auto failure = detail::BindBoxRecording(
+                recording, phase, context, &operation->box_draw)) {
+          *error = "invalid box recording (code " +
+                   std::to_string(static_cast<int>(failure->code)) + ")";
+          return false;
+        }
+        return true;
+      }
+      [[fallthrough]];
+    }
+    case kModifierOpGraphicsLayer:
     case kModifierOpScopedClip:
       operation->callback = node.GetProperty(kResolve);
       if (operation->op == kModifierOpScopedClip &&
@@ -692,6 +724,7 @@ bool BuildModifierFramePlan(const lepus::Value& modifier_tail,
       scoped_clip = nullptr;
     } else if (IsDrawOperation(operation.op)) {
       plan->has_draw_callbacks = true;
+      plan->requires_draw_runtime |= !operation.box_draw;
       // Keep preceding effects outside the following Element's drawing hook.
       ++plan->frame_count;
       sizing_prefix_axes = 0;
@@ -1274,8 +1307,8 @@ void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
   // stable content Element. Include that Element: the innermost drawing hook
   // can bind directly to it. Do not visit its application-owned children.
   for (auto* target = mount_root;; target = target->GetChildAt(0)) {
-    if (target->HasCustomDrawFunctions()) {
-      target->SetCustomDrawFunctions({});
+    if (target->HasCustomDrawHandler()) {
+      target->SetCustomDrawHandler(nullptr);
     }
     if (target == content_element) {
       break;
@@ -1283,8 +1316,8 @@ void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
   }
 }
 
-void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
-                               Element* mount_root, Element* content_element,
+void BindModifierDrawCallbacks(ModifierFramePlan& plan, Element* mount_root,
+                               Element* content_element,
                                runtime::MTSRuntime* registration_context) {
   // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
   // The stable content Element is not a frame; OperationTarget selects it when
@@ -1295,7 +1328,7 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
     frames.emplace_back(target);
   }
 
-  for (const auto& operation : plan.operations) {
+  for (auto& operation : plan.operations) {
     if (!IsDrawOperation(operation.op)) {
       continue;
     }
@@ -1309,16 +1342,20 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
       target->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
       continue;
     }
-    target->SetCustomDrawFunctions(
+    if (operation.box_draw) {
+      target->SetCustomDrawHandler(std::move(operation.box_draw));
+      continue;
+    }
+    target->SetCustomDrawHandler(
         operation.op == kModifierOpGraphicsLayer
             ? GraphicsLayerDrawFunctions(registration_context,
-                                         operation.callback)
+                                         std::move(operation.callback))
         : operation.op == kModifierOpDrawForeground
             ? ComposeDrawForegroundFunctions(registration_context,
-                                             operation.callback,
+                                             std::move(operation.callback),
                                              operation.supports_draw_reuse)
             : ComposeDrawBehindFunctions(registration_context,
-                                         operation.callback,
+                                         std::move(operation.callback),
                                          operation.op == kModifierOpScopedClip
                                              ? ComposeDrawPhase::kClip
                                              : ComposeDrawPhase::kBehind,
@@ -1679,7 +1716,7 @@ ComposeModifierApplicator::ApplyResult ComposeModifierApplicator::Apply(
     return {false, 0, "Modifier attachment requires a registering runtime"};
   }
   if (plan.has_draw_callbacks) {
-    if (!registration_context) {
+    if (plan.requires_draw_runtime && !registration_context) {
       return {false, 0, "drawing modifiers require a registering runtime"};
     }
     if (!manager->IsFragmentLayerRenderModeOn()) {

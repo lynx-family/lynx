@@ -11,10 +11,13 @@
 #include <optional>
 #include <string>
 
+#include "base/include/fml/memory/ref_ptr.h"
+
 namespace lynx::lepus {
 class Value;
 }
 namespace lynx::tasm {
+class CustomDrawHandler;
 class DisplayList;
 enum class ComposeDrawPhase;
 
@@ -33,14 +36,15 @@ struct DrawRecordingError {
 };
 
 namespace detail {
-// Temporary internal entry point while v1 validation and lowering are
-// introduced independently of the legacy Fragment callback protocol. Errors
-// preserve both outputs; success transfers a complete standalone compiled
-// display list.
-std::optional<DrawRecordingError> DecodeV1DrawDisplayList(
-    const lepus::Value& input, double pixels, ComposeDrawPhase phase,
-    DisplayList* output, bool* has_outset_shadow);
+struct DrawRecordingContext {
+  std::optional<double> density_override;
+  bool rtl{false};
+};
 
+std::optional<DrawRecordingError> BindBoxRecording(
+    const lepus::Value& input, ComposeDrawPhase phase,
+    const DrawRecordingContext& context,
+    fml::RefPtr<CustomDrawHandler>* handler);
 // Compile into standalone storage under fixed SDK limits. Every error leaves
 // both outputs unchanged; success transfers the complete list and shadow
 // effect.

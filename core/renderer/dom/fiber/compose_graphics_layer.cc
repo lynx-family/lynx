@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <utility>
 
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
@@ -95,67 +96,80 @@ gfx::Matrix44 LayerTransform(const lepus::Value& properties, float width,
   return matrix;
 }
 
+class GraphicsLayerDrawHandler final : public CustomDrawHandler {
+ public:
+  GraphicsLayerDrawHandler(runtime::MTSRuntime* runtime, lepus::Value callback)
+      : CustomDrawHandler(kLayerProperties | kRequiresLayer | kMayReenter),
+        runtime_(runtime),
+        callback_(std::move(callback)) {}
+
+  void Draw(Fragment& fragment, DisplayListBuilder& builder,
+            Phase /*phase*/) override {
+    auto* target = fragment.element();
+    // Fragment retains its last binding until Flush installs a replacement.
+    // A pending replacement or removal must not invoke this closure.
+    if (!target->IsAttached() || !target->HasCustomDrawHandler() ||
+        (target->dirty() & Element::kDirtyCustomDraw)) {
+      return;
+    }
+    const double pixels = target->element_manager()
+                              ->GetLynxEnvConfig()
+                              .PhysicalPixelsPerLayoutUnit();
+    const lepus::Value width(target->width() * pixels);
+    const lepus::Value height(target->height() * pixels);
+    const lepus::Value element{fml::RefPtr<Element>(target)};
+    const lepus::Value* args[] = {&element, &width, &height};
+    // Already inside the rendering pipeline. Invoke the owning context
+    // directly. Supply this layer's Element so the closure can observe
+    // State and invalidate its target without rewriting the Modifier IR.
+    const auto value = runtime_->GetMTSContext()
+                           ->CallClosureArgs(callback_, args, 3)
+                           .ToLepusValue();
+    if (value.IsEmpty()) return;
+    if (!value.IsObject()) {
+      LOGE("graphicsLayer resolver returned invalid properties");
+      return;
+    }
+    // Alpha is optional so previously built transform-only templates keep
+    // their ordinary opacity. An absent key reads like null, so test the
+    // key itself. Validate before emitting any custom output.
+    static constexpr char kAlpha[] = "alpha";
+    const auto alpha_value =
+        value.GetProperty(BASE_STATIC_STRING(kAlpha)).ToLepusValue();
+    float alpha = 1.f;
+    if (value.Contains(BASE_STATIC_STRING(kAlpha)) &&
+        !alpha_value.IsUndefined()) {
+      if (!alpha_value.IsNumber() || !std::isfinite(alpha_value.Number())) {
+        LOGE("graphicsLayer resolver returned invalid alpha");
+        return;
+      }
+      alpha =
+          static_cast<float>(std::max(0., std::min(1., alpha_value.Number())));
+    }
+    const auto transform =
+        LayerTransform(value, target->width(), target->height(), pixels);
+    target->SetCustomLayerTransform(transform);
+    builder.Transform(transform);
+    // The innermost layer can bind to the content Element itself. Preserve
+    // opacity from the content (for example an image's own alpha) and apply
+    // the layer's opacity to that output. Removal restores the ordinary
+    // value.
+    builder.Opacity(alpha * target->computed_css_style()->GetOpacity());
+  }
+
+ private:
+  runtime::MTSRuntime* runtime_;
+  lepus::Value callback_;
+};
+
 }  // namespace
 
 // Fragment owns the hook and property invalidation. No layer state is retained
 // here: each property update evaluates one closure and records its result.
-CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback) {
-  CustomDrawFunctions functions;
-  functions.draw_layer_properties =
-      [runtime, callback](Fragment& fragment, DisplayListBuilder& builder) {
-        auto* target = fragment.element();
-        // Fragment retains its last binding until Flush installs a replacement.
-        // A pending replacement or removal must not invoke this closure.
-        if (!target->IsAttached() || !target->HasCustomDrawFunctions() ||
-            (target->dirty() & Element::kDirtyCustomDraw)) {
-          return;
-        }
-        const double pixels = target->element_manager()
-                                  ->GetLynxEnvConfig()
-                                  .PhysicalPixelsPerLayoutUnit();
-        const lepus::Value width(target->width() * pixels);
-        const lepus::Value height(target->height() * pixels);
-        const lepus::Value element{fml::RefPtr<Element>(target)};
-        const lepus::Value* args[] = {&element, &width, &height};
-        // Already inside the rendering pipeline. Invoke the owning context
-        // directly. Supply this layer's Element so the closure can observe
-        // State and invalidate its target without rewriting the Modifier IR.
-        const auto value = runtime->GetMTSContext()
-                               ->CallClosureArgs(callback, args, 3)
-                               .ToLepusValue();
-        if (value.IsEmpty()) return;
-        if (!value.IsObject()) {
-          LOGE("graphicsLayer resolver returned invalid properties");
-          return;
-        }
-        // Alpha is optional so previously built transform-only templates keep
-        // their ordinary opacity. An absent key reads like null, so test the
-        // key itself. Validate before emitting any custom output.
-        static constexpr char kAlpha[] = "alpha";
-        const auto alpha_value =
-            value.GetProperty(BASE_STATIC_STRING(kAlpha)).ToLepusValue();
-        float alpha = 1.f;
-        if (value.Contains(BASE_STATIC_STRING(kAlpha)) &&
-            !alpha_value.IsUndefined()) {
-          if (!alpha_value.IsNumber() || !std::isfinite(alpha_value.Number())) {
-            LOGE("graphicsLayer resolver returned invalid alpha");
-            return;
-          }
-          alpha = static_cast<float>(
-              std::max(0., std::min(1., alpha_value.Number())));
-        }
-        const auto transform =
-            LayerTransform(value, target->width(), target->height(), pixels);
-        target->SetCustomLayerTransform(transform);
-        builder.Transform(transform);
-        // The innermost layer can bind to the content Element itself. Preserve
-        // opacity from the content (for example an image's own alpha) and apply
-        // the layer's opacity to that output. Removal restores the ordinary
-        // value.
-        builder.Opacity(alpha * target->computed_css_style()->GetOpacity());
-      };
-  return functions;
+fml::RefPtr<CustomDrawHandler> GraphicsLayerDrawFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback) {
+  return fml::MakeRefCounted<GraphicsLayerDrawHandler>(runtime,
+                                                       std::move(callback));
 }
 
 }  // namespace tasm

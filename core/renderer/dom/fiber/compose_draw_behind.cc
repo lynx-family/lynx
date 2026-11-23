@@ -4,7 +4,7 @@
 
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
 
-#include <memory>
+#include <optional>
 #include <utility>
 
 #include "base/include/log/logging.h"
@@ -36,17 +36,18 @@ void LogError(ComposeDrawPhase phase, const DrawRecordingError& error) {
                          << " namespace=" << error.name_space);
 }
 
-}  // namespace
+class ComposeDrawHandler final : public CustomDrawHandler {
+ public:
+  ComposeDrawHandler(runtime::MTSRuntime* runtime, lepus::Value callback,
+                     ComposeDrawPhase phase, bool supports_reuse)
+      : CustomDrawHandler(FlagsForPhase(phase)),
+        runtime_(runtime),
+        callback_(std::move(callback)),
+        phase_(phase),
+        supports_reuse_(supports_reuse) {}
 
-CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback,
-                                               ComposeDrawPhase phase,
-                                               bool supports_reuse) {
-  CustomDrawFunctions functions;
-  auto draw = [runtime, callback, phase, supports_reuse,
-               cached = std::shared_ptr<const DisplayList>{},
-               cached_pixels = 0., cached_has_shadow = false](
-                  Fragment& fragment, DisplayListBuilder& builder) mutable {
+  void Draw(Fragment& fragment, DisplayListBuilder& builder,
+            Phase /*phase*/) override {
     auto* target = fragment.element();
     const double pixels = target->element_manager()
                               ->GetLynxEnvConfig()
@@ -55,50 +56,71 @@ CustomDrawFunctions ComposeDrawBehindFunctions(runtime::MTSRuntime* runtime,
     const lepus::Value width(target->width() * pixels);
     const lepus::Value height(target->height() * pixels);
     const lepus::Value* args[] = {&element, &width, &height};
-    const auto value = runtime->GetMTSContext()
-                           ->CallClosureArgs(callback, args, 3)
-                           .ToLepusValue();
-    if (value.IsEmpty()) return;
+    auto recording = runtime_->GetMTSContext()
+                         ->CallClosureArgs(callback_, args, 3)
+                         .ToLepusValue();
+    if (recording.IsEmpty()) return;
     DisplayList decoded;
     const DisplayList* drawing = &decoded;
     bool has_shadow = false;
-    const bool can_reuse = supports_reuse && value.GetProperty(0).Bool();
-    if (can_reuse && cached && cached_pixels == pixels) {
-      drawing = cached.get();
-      has_shadow = cached_has_shadow;
+    const bool can_reuse = supports_reuse_ && recording.GetProperty(0).Bool();
+    if (can_reuse && cached_ && cached_pixels_ == pixels) {
+      drawing = &*cached_;
+      has_shadow = cached_has_shadow_;
     } else {
-      cached.reset();
-      const auto recording = supports_reuse ? value.GetProperty(1) : value;
+      cached_.reset();
+      if (supports_reuse_) recording = recording.GetProperty(1);
       if (const auto error = detail::DecodeDrawDisplayList(
-              recording, pixels, phase, &decoded, &has_shadow)) {
-        LogError(phase, *error);
+              recording, pixels, phase_, &decoded, &has_shadow)) {
+        LogError(phase_, *error);
         return;
       }
     }
     if (!builder.AppendDrawingContent(*drawing)) {
-      LogError(phase, {DrawRecordingError::Code::kCapacity,
-                       DrawRecordingError::kNoCommand,
-                       {}});
+      LogError(phase_, {DrawRecordingError::Code::kCapacity,
+                        DrawRecordingError::kNoCommand,
+                        {}});
       return;
     }
     if (has_shadow) fragment.MarkCustomOutsetShadowDrawn();
-    if (supports_reuse) {
-      if (drawing == &decoded)
-        cached = std::make_shared<const DisplayList>(std::move(decoded));
-      cached_pixels = pixels;
-      cached_has_shadow = has_shadow;
+    if (supports_reuse_) {
+      if (drawing == &decoded) cached_.emplace(std::move(decoded));
+      cached_pixels_ = pixels;
+      cached_has_shadow_ = has_shadow;
     }
-  };
-  if (phase == ComposeDrawPhase::kForeground)
-    functions.draw_foreground = std::move(draw);
-  else
-    functions.draw_behind = std::move(draw);
-  return functions;
+  }
+
+ private:
+  static uint8_t FlagsForPhase(ComposeDrawPhase phase) {
+    uint8_t flags =
+        (phase == ComposeDrawPhase::kForeground ? kForeground : kBehind) |
+        kMayReenter;
+    if (phase == ComposeDrawPhase::kClip) {
+      flags |= kRequiresLayer;
+    }
+    return flags;
+  }
+
+  runtime::MTSRuntime* runtime_;
+  lepus::Value callback_;
+  std::optional<DisplayList> cached_;
+  double cached_pixels_{0.};
+  ComposeDrawPhase phase_;
+  bool supports_reuse_{false};
+  bool cached_has_shadow_{false};
+};
+
+}  // namespace
+
+fml::RefPtr<CustomDrawHandler> ComposeDrawBehindFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback, ComposeDrawPhase phase,
+    bool supports_reuse) {
+  return fml::MakeRefCounted<ComposeDrawHandler>(runtime, std::move(callback),
+                                                 phase, supports_reuse);
 }
 
-CustomDrawFunctions ComposeDrawForegroundFunctions(runtime::MTSRuntime* runtime,
-                                                   lepus::Value callback,
-                                                   bool supports_reuse) {
+fml::RefPtr<CustomDrawHandler> ComposeDrawForegroundFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback, bool supports_reuse) {
   return ComposeDrawBehindFunctions(runtime, std::move(callback),
                                     ComposeDrawPhase::kForeground,
                                     supports_reuse);

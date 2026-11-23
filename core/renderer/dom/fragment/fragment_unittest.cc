@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
@@ -18,6 +19,7 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
+#include "base/include/vector.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
@@ -25,6 +27,7 @@
 #include "core/renderer/dom/fiber/compose_element_handle.h"
 #include "core/renderer/dom/fiber/compose_modifier_applicator.h"
 #include "core/renderer/dom/fiber/image_element.h"
+#include "core/renderer/dom/fiber/testing/compose_draw_recording_contract_test_helpers.h"
 #include "core/renderer/dom/fiber/text_element.h"
 #include "core/renderer/dom/fiber/view_element.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
@@ -54,6 +57,58 @@
 
 namespace lynx {
 namespace tasm {
+
+struct TestCustomDrawCallbacks {
+  using Callback = std::function<void(Fragment&, DisplayListBuilder&)>;
+  Callback draw_behind;
+  Callback draw_foreground;
+  Callback draw_layer_properties;
+  bool requires_layer = false;
+};
+
+class LambdaCustomDrawHandler final : public CustomDrawHandler {
+ public:
+  explicit LambdaCustomDrawHandler(TestCustomDrawCallbacks callbacks)
+      : CustomDrawHandler(ComputeFlags(callbacks)),
+        callbacks_(std::move(callbacks)) {}
+
+  void Draw(Fragment& fragment, DisplayListBuilder& builder,
+            Phase phase) override {
+    switch (phase) {
+      case Phase::kBehind:
+        if (callbacks_.draw_behind) callbacks_.draw_behind(fragment, builder);
+        break;
+      case Phase::kForeground:
+        if (callbacks_.draw_foreground) {
+          callbacks_.draw_foreground(fragment, builder);
+        }
+        break;
+      case Phase::kLayerProperties:
+        if (callbacks_.draw_layer_properties) {
+          callbacks_.draw_layer_properties(fragment, builder);
+        }
+        break;
+    }
+  }
+
+ private:
+  static uint8_t ComputeFlags(const TestCustomDrawCallbacks& callbacks) {
+    uint8_t flags = kNone;
+    if (callbacks.draw_behind) flags |= kBehind;
+    if (callbacks.draw_foreground) flags |= kForeground;
+    if (callbacks.draw_layer_properties) flags |= kLayerProperties;
+    if (callbacks.requires_layer) flags |= kRequiresLayer;
+    if (flags != kNone) flags |= kMayReenter;
+    return flags;
+  }
+
+  TestCustomDrawCallbacks callbacks_;
+};
+
+fml::RefPtr<CustomDrawHandler> MakeCustomDrawHandler(
+    TestCustomDrawCallbacks callbacks) {
+  return fml::MakeRefCounted<LambdaCustomDrawHandler>(std::move(callbacks));
+}
 
 // Forward-declared from fragment.cc: computes outset-adjusted border radius
 // per W3C CSS Backgrounds and Borders Module Level 3.
@@ -1044,7 +1099,7 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
     auto override_path =
         gfx::Path::MakeRect(30, 40, gfx::GetTestPathImplFactory());
     bool emit_override = true;
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_layer_properties = [&](Fragment&,
                                           DisplayListBuilder& builder) {
       if (emit_override) {
@@ -1052,7 +1107,7 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
                                  4);
       }
     };
-    view->SetCustomDrawFunctions(std::move(functions));
+    view->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
     page->InsertNode(view);
     page->FlushActionsAsRoot();
     auto* owner = view->fragment_impl();
@@ -1081,7 +1136,7 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
     owner->InvalidateForSubtreeProperty();
     owner->Draw();
     EXPECT_EQ(renderer->GetClipPath(), override_path.get());
-    view->SetCustomDrawFunctions({});
+    view->SetCustomDrawHandler(nullptr);
     page->FlushActionsAsRoot();
     owner->Draw();
     EXPECT_EQ(renderer->GetClipPath(), css_path.get());
@@ -1151,7 +1206,7 @@ TEST_P(CustomDrawFlushTest,
   page->InsertNode(element);
   int calls = 0;
   auto binding = [&calls](int value) {
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_foreground =
         [&calls, value](Fragment&, DisplayListBuilder&) { calls += value; };
     return functions;
@@ -1161,7 +1216,7 @@ TEST_P(CustomDrawFlushTest,
     element->fragment_impl()->OnDraw(builder);
     return builder.Build();
   };
-  element->SetCustomDrawFunctions(binding(1));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(binding(1)));
   EXPECT_TRUE(element->dirty() & Element::kDirtyCustomDraw);
   EXPECT_FALSE(element->fragment_impl()->HasCustomDraw());
   EXPECT_EQ(calls, 0);
@@ -1172,7 +1227,7 @@ TEST_P(CustomDrawFlushTest,
   draw();
   EXPECT_EQ(calls, 1);
   auto replacement = binding(10);
-  element->SetCustomDrawFunctions(std::move(replacement));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(replacement)));
   element->fragment_impl()->InvalidateForRedraw();
   draw();
   EXPECT_EQ(calls, 2);
@@ -1183,7 +1238,8 @@ TEST_P(CustomDrawFlushTest,
   EXPECT_FALSE(element->dirty() & Element::kDirtyCustomDraw);
   draw();
   EXPECT_EQ(calls, 12);
-  element->SetCustomDrawFunctions({});
+  element->SetCustomDrawHandler(MakeCustomDrawHandler({}));
+  EXPECT_FALSE(element->HasCustomDrawHandler());
   EXPECT_TRUE(element->fragment_impl()->HasCustomDraw());
   page->FlushActionsAsRoot();
   EXPECT_FALSE(element->fragment_impl()->HasCustomDraw());
@@ -1197,11 +1253,11 @@ TEST_F(FragmentDrawTest, CustomDrawBehindRecordsCommandsBeforeDefaultContent) {
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder builder;
   element->fragment_impl()->OnDraw(builder);
@@ -1229,7 +1285,7 @@ TEST_P(CustomDrawFlushTest,
   int layers = 0;
   bool emit_transform = true;
   bool emit_opacity = true;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [&](Fragment&, DisplayListBuilder&) { ++behind; };
   functions.draw_foreground = [&](Fragment&, DisplayListBuilder&) {
     ++foreground;
@@ -1244,7 +1300,7 @@ TEST_P(CustomDrawFlushTest,
     }
     if (emit_opacity) builder.Opacity(0.8f);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   auto* fragment = element->fragment_impl();
   ASSERT_TRUE(fragment->has_platform_renderer_);
@@ -1291,7 +1347,7 @@ TEST_P(CustomDrawFlushTest,
   fragment->InvalidateForSubtreeProperty();
   draw(40, 60, 0.8f, false);
   EXPECT_EQ(layers, 4);
-  element->SetCustomDrawFunctions({});
+  element->SetCustomDrawHandler(nullptr);
   // Re-resolving an unrelated style in the same flush must not erase the
   // explicit reset of the unchanged transform and opacity.
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
@@ -1320,7 +1376,7 @@ TEST_F(FragmentDrawTest, CustomForegroundOverflowClipIsIndependentOfChildren) {
   element->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
   element->SetStyle(kPropertyIDBorderRadius, lepus::Value("20px"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment& fragment,
                                  DisplayListBuilder& builder) {
     const auto& size = fragment.LayoutResult().layout_result.size_;
@@ -1330,7 +1386,7 @@ TEST_F(FragmentDrawTest, CustomForegroundOverflowClipIsIndependentOfChildren) {
     int32_t index = -1;
     builder.RecordBoxModel(rect, index).Fill(0xff00ff00, index);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
 
   auto draw = [&](bool expect_clip) {
     page->FlushActionsAsRoot();
@@ -1398,14 +1454,14 @@ TEST_P(CustomDrawFlushTest,
   page->fragment_impl()->Draw();
   manager->need_layout_ = false;
 
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff00ff00);
   };
   functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
-  element->SetCustomDrawFunctions(functions);
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(functions));
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
   ASSERT_FALSE(fragment->has_platform_renderer_);
@@ -1430,7 +1486,7 @@ TEST_P(CustomDrawFlushTest,
   functions.draw_layer_properties = [](Fragment&, DisplayListBuilder& builder) {
     builder.Opacity(0.75f);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
   ASSERT_TRUE(fragment->has_platform_renderer_);
@@ -1457,7 +1513,7 @@ TEST_P(CustomDrawFlushTest,
   EXPECT_FLOAT_EQ(opacity->data.opacity, 0.75f);
 
   manager->need_layout_ = false;
-  element->SetCustomDrawFunctions({});
+  element->SetCustomDrawHandler(nullptr);
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
   EXPECT_TRUE(fragment->has_platform_renderer_);
@@ -1486,7 +1542,7 @@ TEST_F(FragmentDrawTest, CustomDrawBehindIsRetainedOnPropertyOnlyUpdates) {
   page->InsertNode(element);
   int behind = 0;
   int draws = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [&behind](Fragment&, DisplayListBuilder& builder) {
     ++behind;
     RecordCustomDrawRect(builder, 0xff0000ff);
@@ -1494,7 +1550,7 @@ TEST_F(FragmentDrawTest, CustomDrawBehindIsRetainedOnPropertyOnlyUpdates) {
   functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
     ++draws;
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder first;
   element->fragment_impl()->OnDraw(first);
@@ -1569,7 +1625,7 @@ TEST_F(FragmentDrawTest, CustomDrawHooksPreserveNestedBeforeAfterOrder) {
   page->InsertNode(outer);
   std::vector<int> order;
   auto binding = [&order](int before, int after) {
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_behind = [&order, before](Fragment&, DisplayListBuilder&) {
       order.push_back(before);
     };
@@ -1579,8 +1635,8 @@ TEST_F(FragmentDrawTest, CustomDrawHooksPreserveNestedBeforeAfterOrder) {
     };
     return functions;
   };
-  outer->SetCustomDrawFunctions(binding(1, 4));
-  inner->SetCustomDrawFunctions(binding(2, 3));
+  outer->SetCustomDrawHandler(MakeCustomDrawHandler(binding(1, 4)));
+  inner->SetCustomDrawHandler(MakeCustomDrawHandler(binding(2, 3)));
   page->FlushActionsAsRoot();
   EXPECT_FALSE(outer->fragment_impl()->has_platform_renderer_);
   EXPECT_FALSE(inner->fragment_impl()->has_platform_renderer_);
@@ -1594,14 +1650,14 @@ TEST_F(FragmentDrawTest, CustomDrawHooksRecordBeforeAndAfterDefaultContent) {
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff00ff00);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder builder;
   element->fragment_impl()->OnDraw(builder);
@@ -1623,11 +1679,11 @@ TEST_F(FragmentDrawTest, CustomOnDrawPreservesDefaultContent) {
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder builder;
   element->fragment_impl()->OnDraw(builder);
@@ -1645,11 +1701,11 @@ TEST_F(FragmentDrawTest, CustomDrawCallbacksAreBoundToOneElementInstance) {
   auto source = manager->CreateFiberView();
   page->InsertNode(source);
   int calls = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [&calls](Fragment&, DisplayListBuilder&) {
     ++calls;
   };
-  source->SetCustomDrawFunctions(std::move(functions));
+  source->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   auto clone = source->CloneElement(false);
   clone->AttachToElementManager(manager.get(), nullptr, false);
   page->InsertNode(clone);
@@ -1687,9 +1743,9 @@ TEST_P(CustomDrawFlushTest, CustomDrawDoesNotAddPaintingUpdate) {
   ASSERT_GT(style_updates, 0);
   if (std::get<0>(GetParam()) == 0) EXPECT_EQ(style_updates, 1);
   counter->updates = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder&) {};
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
   page->FlushActionsAsRoot();
   EXPECT_EQ(counter->updates, style_updates);
@@ -1705,7 +1761,7 @@ TEST_F(FragmentDrawTest, CustomForegroundPreservesRetainedContent) {
   child->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
   element->InsertNode(child);
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RoundedRectangle rect;
     rect.SetWidth(10);
@@ -1713,7 +1769,7 @@ TEST_F(FragmentDrawTest, CustomForegroundPreservesRetainedContent) {
     int32_t index = -1;
     builder.RecordBoxModel(rect, index).Fill(0xff00ff00, index);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   auto* fragment = element->fragment_impl();
   ASSERT_TRUE(fragment->has_platform_renderer_);
@@ -1843,6 +1899,15 @@ class ComposeGraphicsLayerDrawTest : public FragmentDrawTest {
 
 class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
  public:
+  static std::string V1(
+      const std::string& commands = "[[1,0,0]]",
+      const std::string& paths = "[[1,10,20,width-10,height-20]]",
+      const std::string& paints = "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+      const std::string& features =
+          "['paint.blend.SrcOver','paint.solid','paint.srgb','path.rect']") {
+    return "['lynx.draw.recording',1,0," + commands + "," + paths + "," +
+           paints + ",[]," + features + ",[]]";
+  }
   lepus::Value Behind(const std::string& expression,
                       const lepus::Value& previous = {}, int op = 12) {
     auto node = lepus::Dictionary::Create();
@@ -1880,22 +1945,21 @@ class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
 
 class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
  public:
-  static std::string LegacyRect() {
-    return "[[1,10,20,width-10,height-20,0x40123456]]";
+  static std::string LogicalRecording(const std::string& path_payload) {
+    return V1("[[1,0,0]]",
+              "[[255,'lynx.logical-box',1," + path_payload + ",[]]]");
   }
 
-  static void Prefix(DisplayListBuilder* builder) {
-    RoundedRectangle box;
-    box.SetWidth(13);
-    box.SetHeight(17);
-    int32_t index;
-    builder->RecordBoxModel(box, index);
-    builder->LinearGradient(180, {0xff010203, 0xff040506}, {0, 1}, index, index,
-                            1, 1);
+  lepus::Value Box(int op, const std::string& path_payload,
+                   const std::string& density = "0", bool rtl = false) {
+    return Eval("({op:" + std::to_string(op) + ",drawDensity:" + density +
+                ",drawRtl:" + (rtl ? "true" : "false") +
+                ",drawRecording:" + LogicalRecording(path_payload) +
+                ",resolve:function(){globalThis.layerCalls++;}})");
   }
 
-  static std::vector<uint32_t> Fills(const DisplayList& list) {
-    std::vector<uint32_t> fills;
+  static base::Vector<uint32_t> Fills(const DisplayList& list) {
+    base::Vector<uint32_t> fills;
     DisplayListReader reader(list);
     while (reader.HasNext()) {
       const auto& item = reader.Next();
@@ -1912,6 +1976,349 @@ class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
   }
 };
 
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       ReplacingBackgroundWaitsForItsOwnSubtreeFlush) {
+  auto background = [this](uint32_t color) {
+    return Eval(
+        "({op:12,drawDensity:1,drawRtl:false,drawRecording:" +
+        V1("[[1,0,0]]", "[[255,'lynx.logical-box',1,[null],[]]]",
+           "[[[1," + std::to_string(color) + "],[1,0,true,null],[1],[]]]") +
+        "})");
+  };
+  constexpr uint32_t before = 0xff123456;
+  constexpr uint32_t after = 0xffabcdef;
+  Install(background(before));
+  manager->SetFiberPageElement(page_);
+  auto sibling = manager->CreateFiberView();
+  page_->InsertNode(sibling);
+  page_->FlushActionsAsRoot();
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  ASSERT_THAT(Fills(Draw(content)), ::testing::ElementsAre(before));
+  manager->need_layout_ = false;
+
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(handle_.get(), background(after),
+                                               nullptr)
+                  .success);
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinishForFiber(
+      options, [](bool layout) { EXPECT_FALSE(layout); }, sibling.get());
+  handle_->mount_root()->FlushActionsAsRoot();
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(after));
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       BoundBackgroundUsesCurrentGeometryWithoutCallingRuntime) {
+  const auto gradient =
+      V1("[[1,0,0]]", "[[255,'lynx.logical-box',1,[null,1,50,4,8,0],[]]]",
+         "[[[255,'lynx.scope-linear',1,[0,0,null,0,[4294967295,4278190080],[0,"
+         "1]],[]],"
+         "[1,0,true,null],[1],[]]]");
+  auto node =
+      Eval("({op:12,drawDensity:1,drawRtl:false,drawRecording:" + gradient +
+           ",resolve:function(){globalThis.layerCalls++;}})");
+  Install(node);
+  auto* content = handle_->content_element().get();
+  for (const auto& dimensions : {std::pair{100, 60}, {100, 60}, {36, 100}}) {
+    Size(content, dimensions.first, dimensions.second);
+    auto list = Draw(content);
+    const auto items = CollectDisplayListItems(list);
+    int gradients = 0;
+    base::Vector<DisplayListItem> boxes;
+    for (const auto& item : items) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kLinearGradient) continue;
+      ++gradients;
+      const auto& paint = item.payload.linear_gradient;
+      ASSERT_LT(static_cast<size_t>(paint.clip_index), boxes.size());
+      const auto& box = boxes[paint.clip_index].payload.record_box;
+      EXPECT_FLOAT_EQ(box.w, dimensions.first);
+      EXPECT_FLOAT_EQ(box.h, dimensions.second);
+      EXPECT_FLOAT_EQ(box.radii[0],
+                      std::min(dimensions.first, dimensions.second) * .5f);
+      EXPECT_FLOAT_EQ(box.radii[2], 4);
+      EXPECT_FLOAT_EQ(paint.angle, 90);
+    }
+    EXPECT_EQ(gradients, 1);
+  }
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  auto scaled = Draw(content);
+  bool found_scaled_box = false;
+  for (const auto& item : CollectDisplayListItems(scaled)) {
+    if (item.type == DisplayListOpType::kRecordBox &&
+        item.payload.record_box.has_radii) {
+      EXPECT_FLOAT_EQ(item.payload.record_box.radii[0], 18);
+      EXPECT_FLOAT_EQ(item.payload.record_box.radii[2], 2);
+      found_scaled_box = true;
+    }
+  }
+  EXPECT_TRUE(found_scaled_box);
+  auto solid = Box(12, "[null]", "1");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), solid, nullptr).success);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(content->fragment_impl()->HasCustomDraw());
+  EXPECT_TRUE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  EXPECT_FALSE(
+      content->fragment_impl()->custom_draw_handler_->HasDrawForeground());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->RequiresLayer());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->MayReenter());
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0x40123456));
+  auto invalid = Box(12, "[null,16,1,2,3,4]", "1");
+  EXPECT_FALSE(ComposeModifierApplicator::Apply(handle_.get(), invalid, nullptr)
+                   .success);
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0x40123456));
+  Rebind({});
+  EXPECT_TRUE(Fills(Draw(content)).empty());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       BoundBorderResizesInForegroundWithoutCallingRuntime) {
+  // Density 1 preserves physical corner radii; width 0 is a one-pixel hairline.
+  auto border = Box(17, "[0,1,50,4,8,0]", "1");
+  Install(Style(kPropertyIDBackgroundColor, "blue", border));
+  auto* content = handle_->content_element().get();
+  ASSERT_TRUE(content->fragment_impl()->HasCustomDraw());
+  EXPECT_TRUE(
+      content->fragment_impl()->custom_draw_handler_->HasDrawForeground());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->RequiresLayer());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->MayReenter());
+  for (const auto scale : {1.f, 3.f}) {
+    manager->lynx_env_config_.UpdateDevicePixelRatio(scale);
+    for (const float width : {80.f, 80.f, 12.f}) {
+      Size(content, width, 40);
+      const auto list = Draw(content);
+      base::Vector<DisplayListItem> boxes;
+      base::Vector<DisplayListOpType> paints;
+      for (const auto& item : CollectDisplayListItems(list)) {
+        if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+        if (item.type == DisplayListOpType::kFill) paints.push_back(item.type);
+        if (item.type != DisplayListOpType::kBorder) continue;
+        paints.push_back(item.type);
+        const auto& indices = item.payload.border;
+        const auto& outer = boxes.at(indices.out_index).payload.record_box;
+        const auto& inner = boxes.at(indices.inner_index).payload.record_box;
+        EXPECT_FLOAT_EQ(outer.w, width);
+        EXPECT_FLOAT_EQ(outer.radii[0], std::min(width, 40.f) / 2);
+        EXPECT_FLOAT_EQ(inner.x, 1.f / scale);
+        EXPECT_FLOAT_EQ(inner.y, 1.f / scale);
+        EXPECT_FLOAT_EQ(inner.w, width - 2.f / scale);
+        EXPECT_FLOAT_EQ(inner.radii[0], outer.radii[0] - 1.f / scale);
+      }
+      EXPECT_THAT(paints, ::testing::ElementsAre(DisplayListOpType::kFill,
+                                                 DisplayListOpType::kBorder));
+    }
+  }
+  auto thick = Box(17, "[100,1,50,4,8,0]", "1");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), thick, nullptr).success);
+  page_->FlushActionsAsRoot();
+  Size(content, 12, 40);
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0u, 0x40123456u));
+  auto invalid = Box(17, "[-1,1,50,4,8,0]", "1");
+  EXPECT_FALSE(ComposeModifierApplicator::Apply(handle_.get(), invalid, nullptr)
+                   .success);
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0u, 0x40123456u));
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+class ComposeDrawLogicalBoxTest : public ComposeDrawRecordingIntegrationTest {
+ public:
+  void ExpectRoundedFill(Element* target, float width, float height,
+                         std::array<float, 4> radii) {
+    base::Vector<DisplayListItem> boxes;
+    int fills = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(target))) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kFill ||
+          item.payload.fill.color != 0x40123456)
+        continue;
+      ++fills;
+      const auto& box =
+          boxes.at(item.payload.fill.clip_index).payload.record_box;
+      EXPECT_FLOAT_EQ(box.w, width);
+      EXPECT_FLOAT_EQ(box.h, height);
+      for (size_t i = 0; i < radii.size(); ++i) {
+        EXPECT_FLOAT_EQ(box.radii[2 * i], radii[i]);
+        EXPECT_FLOAT_EQ(box.radii[2 * i + 1], radii[i]);
+      }
+    }
+    EXPECT_EQ(fills, 1);
+  }
+};
+
+TEST_F(ComposeDrawLogicalBoxTest, UsesCurrentSizeDensityAndBoundDirection) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 2.f, 1.0);
+  Install(Box(12, "[null,2,2,25,3,4]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 100, 60);
+  ExpectRoundedFill(target, 100, 60, {4, 15, 6, 8});
+  manager->lynx_env_config_.UpdateDevicePixelRatio(3.f);
+  ExpectRoundedFill(target, 100, 60, {6, 15, 9, 12});
+  Size(target, 32, 60);
+  ExpectRoundedFill(target, 32, 60, {6, 8, 9, 12});
+
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(
+          handle_.get(), Box(12, "[null,2,2,25,3,4]", "1.5", true), nullptr)
+          .success);
+  page_->FlushActionsAsRoot();
+  ExpectRoundedFill(target, 32, 60, {8, 3, 6, 4.5});
+  // Point-based layout converts resolved physical radii back to layout units.
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 1.f, 3.0);
+  ExpectRoundedFill(target, 32, 60, {8, 1, 2, 1.5});
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest,
+       BothPhasesUseIndependentPerNodeContextsAtTheirCarriers) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 2.f, 1.0);
+  auto chain = [this](const std::string& background_density,
+                      bool background_rtl, const std::string& border_density,
+                      bool border_rtl) {
+    auto background =
+        Box(12, "[null,2,2,25,3,4]", background_density, background_rtl);
+    auto border = Box(17, "[1.1,0,1,2,3,4]", border_density, border_rtl);
+    border.SetProperty("previous", background);
+    return border;
+  };
+  Install(chain("0", false, "2.5", true));
+  auto* border = handle_->content_element().get();
+  auto* background = border->parent();
+  ASSERT_NE(background, nullptr);
+  EXPECT_FALSE(background->fragment_impl()->has_platform_renderer_);
+  EXPECT_FALSE(border->fragment_impl()->has_platform_renderer_);
+  Size(background, 100, 60);
+  Size(border, 40, 20);
+  auto expect_border = [this, border](float inset, std::array<float, 4> radii) {
+    base::Vector<DisplayListItem> boxes;
+    int borders = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(border))) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kBorder) continue;
+      ++borders;
+      const auto& outer =
+          boxes.at(item.payload.border.out_index).payload.record_box;
+      const auto& inner =
+          boxes.at(item.payload.border.inner_index).payload.record_box;
+      EXPECT_FLOAT_EQ(outer.w, 40);
+      EXPECT_FLOAT_EQ(outer.h, 20);
+      EXPECT_FLOAT_EQ(inner.x, inset);
+      EXPECT_FLOAT_EQ(inner.w, 40 - 2 * inset);
+      for (size_t i = 0; i < radii.size(); ++i) {
+        EXPECT_FLOAT_EQ(outer.radii[2 * i], radii[i]);
+        EXPECT_FLOAT_EQ(outer.radii[2 * i + 1], radii[i]);
+      }
+    }
+    EXPECT_EQ(borders, 1);
+  };
+  ExpectRoundedFill(background, 100, 60, {4, 15, 6, 8});
+  expect_border(3, {5, 2.5, 10, 7.5});
+
+  Rebind(chain("3", true, "3.5", false));
+  ASSERT_EQ(border->parent(), background);
+  ExpectRoundedFill(background, 100, 60, {15, 6, 12, 9});
+  expect_border(4, {3.5, 7, 10.5, 14});
+
+  ASSERT_FALSE(ComposeModifierApplicator::Apply(
+                   handle_.get(), chain("1", false, "NaN", true), nullptr)
+                   .success);
+  ExpectRoundedFill(background, 100, 60, {15, 6, 12, 9});
+  expect_border(4, {3.5, 7, 10.5, 14});
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest, PercentCornersUseModifierPaddingBoundary) {
+  for (bool padding_before : {false, true}) {
+    auto size = Eval("({op:8,specifiedAxes:3,width:100,height:60})");
+    auto padding = Eval("({op:7,start:8,top:8,end:8,bottom:8})");
+    auto box = Box(12, "[null,1,50,0,0,0]");
+    auto& first = padding_before ? padding : box;
+    auto& last = padding_before ? box : padding;
+    first.SetProperty("previous", size);
+    last.SetProperty("previous", first);
+    Install(last);
+    page_->Layout(std::make_shared<PipelineOptions>());
+    auto* target = handle_->mount_root().get();
+    while (target && !target->fragment_impl()->HasCustomDraw())
+      target = target->GetChildAt(0);
+    ASSERT_NE(target, nullptr);
+    const float width = padding_before ? 84 : 100;
+    const float height = padding_before ? 44 : 60;
+    ExpectRoundedFill(target, width, height, {height / 2, 0, 0, 0});
+  }
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest,
+       ForegroundResolvesDpAndHairlineInPhysicalPixels) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 1.f, 3.0);
+  Install(Box(17, "[0]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 40, 20);
+  auto expect_border = [&](float inset) {
+    base::Vector<DisplayListItem> boxes;
+    int borders = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(target))) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kBorder) continue;
+      ++borders;
+      const auto& inner =
+          boxes.at(item.payload.border.inner_index).payload.record_box;
+      EXPECT_FLOAT_EQ(inner.x, inset);
+      EXPECT_FLOAT_EQ(inner.w, 40 - 2 * inset);
+    }
+    EXPECT_EQ(borders, 1);
+  };
+  expect_border(1.f / 3);
+  Rebind(Box(17, "[1.1]"));
+  expect_border(4.f / 3);
+  Rebind(Box(17, "[1.1]", "1.5"));
+  expect_border(2.f / 3);
+  Rebind(Box(17, "[0.400000000001]", "2.5"));
+  expect_border(2.f / 3);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest, RejectsMalformedBindingAtomically) {
+  Install(Box(12, "[null]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 32, 60);
+  const auto invalid = {Box(12, "null"),
+                        Box(12, "[null,0]"),
+                        Box(12, "[0]", "1", true),
+                        Box(17, "[null]", "1", true),
+                        Box(17, "[-1]", "1"),
+                        Box(17, "[Infinity]"),
+                        Box(17, "[3.5e38]"),
+                        Box(12, "[null,16,0,0,0,0]"),
+                        Box(12, "[null,1,101,0,0,0]"),
+                        Box(12, "[null,0,0,-1,0,0]", "0", true),
+                        Box(12, "[null,0,0,NaN,0,0]"),
+                        Box(12, "[null,0,0,3.5e38,0,0]")};
+  for (const auto& node : invalid) {
+    EXPECT_FALSE(
+        ComposeModifierApplicator::Apply(handle_.get(), node, nullptr).success);
+    EXPECT_THAT(Fills(Draw(target)), ::testing::ElementsAre(0x40123456));
+  }
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest, RejectsRemovedChainContextAtomically) {
+  Install(Box(12, "[null,2,2,25,3,4]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 100, 60);
+  auto context = Eval("({op:20,drawDensity:3,drawRtl:true})");
+  // The child is valid on its own, so only the removed op20 can reject it.
+  context.SetProperty("previous", Box(12, "[null,0,1,1,1,1]"));
+  EXPECT_FALSE(ComposeModifierApplicator::Apply(handle_.get(), context, nullptr)
+                   .success);
+  ExpectRoundedFill(target, 100, 60, {2, 15, 3, 4});
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
 class ComposeDrawReuseIntegrationTest
     : public ComposeDrawRecordingIntegrationTest {
  public:
@@ -1923,10 +2330,11 @@ class ComposeDrawReuseIntegrationTest
   static std::string Wire(
       const std::string& bounds = "10,20,width-10,height-20",
       uint32_t color = 0x40123456) {
-    return "[[1," + bounds + "," + std::to_string(color) + "]]";
+    return V1("[[1,0,0]]", "[[1," + bounds + "]]",
+              "[[[1," + std::to_string(color) + "],[1,0,true,null],[1],[]]]");
   }
 
-  static std::string EmptyWire() { return "[]"; }
+  static std::string EmptyWire() { return V1("[]", "[]", "[]", "[]"); }
 
   lepus::Value Cached(const std::string& body,
                       const lepus::Value& previous = {}, int op = 12) {
@@ -1951,6 +2359,112 @@ class ComposeDrawReuseIntegrationTest
 };
 
 TEST_F(ComposeDrawReuseIntegrationTest,
+       StaticRecordingSkipsBothResolversUntilStaticIsAbsent) {
+  for (int op : {12, 17}) {
+    SCOPED_TRACE(op);
+    Eval("globalThis.legacyCalls=0;globalThis.resolveCalls=0;");
+    auto callbacks =
+        Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", {}, op);
+    auto node = Box(op, op == 12 ? "[null]" : "[100]");
+    node.SetProperty("resolve", callbacks.GetProperty("resolve"));
+    node.SetProperty("resolveRecording",
+                     callbacks.GetProperty("resolveRecording"));
+    Install(node);
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0x40123456));
+
+    // The inclusive upper density bound also binds without a runtime.
+    node.SetProperty(
+        "drawDensity",
+        lepus::Value(static_cast<double>(std::numeric_limits<float>::max())));
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(handle_.get(), node, nullptr).success);
+    page_->FlushActionsAsRoot();
+    ASSERT_TRUE(content->fragment_impl()->HasCustomDraw());
+    EXPECT_FALSE(content->fragment_impl()->has_platform_renderer_);
+    EXPECT_FALSE(
+        content->fragment_impl()->custom_draw_handler_->RequiresLayer());
+    EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->MayReenter());
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0x40123456));
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 0);
+
+    Rebind(callbacks);
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0xff00ff00));
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 1);
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+    for (const auto* empty : {"null", "undefined"}) {
+      callbacks.SetProperty("drawRecording", Eval(empty));
+      Rebind(callbacks);
+      EXPECT_THAT(Fills(Resolve(content, op)),
+                  ::testing::ElementsAre(0xff00ff00));
+    }
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
+    Rebind(Behind("(globalThis.legacyCalls++," + Wire() + ")", {}, op));
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0x40123456));
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 1);
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       MalformedStaticWireAndContextRejectWithoutCallingFallback) {
+  for (int op : {12, 17}) {
+    SCOPED_TRACE(op);
+    const std::string payload = op == 12 ? "[null]" : "[100]";
+    const auto wire = LogicalRecording(payload);
+    const auto callbacks =
+        Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", {}, op);
+    Install(Box(op, payload));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    auto expect_rejected = [&](const std::string& recording,
+                               const std::string& context) {
+      SCOPED_TRACE(recording);
+      SCOPED_TRACE(context);
+      auto node = Eval("({op:" + std::to_string(op) +
+                       ",drawRecording:" + recording + "," + context + "})");
+      node.SetProperty("resolve", callbacks.GetProperty("resolve"));
+      node.SetProperty("resolveRecording",
+                       callbacks.GetProperty("resolveRecording"));
+      EXPECT_FALSE(
+          ComposeModifierApplicator::Apply(handle_.get(), node, runtime_.get())
+              .success);
+      EXPECT_THAT(Fills(Resolve(content, op)),
+                  ::testing::ElementsAre(0x40123456));
+      EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+      EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 0);
+    };
+    for (const auto* context :
+         {"drawRtl:false", "drawDensity:0", "drawDensity:null,drawRtl:false",
+          "drawDensity:undefined,drawRtl:false", "drawDensity:-1,drawRtl:false",
+          "drawDensity:NaN,drawRtl:false", "drawDensity:Infinity,drawRtl:false",
+          "drawDensity:-Infinity,drawRtl:false",
+          "drawDensity:3.5e38,drawRtl:false", "drawDensity:'1',drawRtl:false",
+          "drawDensity:true,drawRtl:false", "drawDensity:0,drawRtl:null",
+          "drawDensity:0,drawRtl:undefined", "drawDensity:0,drawRtl:0",
+          "drawDensity:0,drawRtl:'false'"}) {
+      expect_rejected(wire, context);
+    }
+    for (const auto& recording : base::Vector<std::string>{
+             "[]", "['lynx.draw.recording',2,0,[],[],[],[],[],[]]",
+             Wire("0,0,20,10"),
+             V1("[[1,0,0]]", "[[255,'lynx.scope-box',1,[],[]]]"),
+             "(function(){const a=" + wire + ";a[5][0][1][1]=1;return a;})()",
+             "(function(){const a=" + wire +
+                 ";a[8]=[['duplicate',0],['duplicate',1]];return a;})()"}) {
+      expect_rejected(recording, "drawDensity:0,drawRtl:false");
+    }
+    EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
        ProducerReusesRecordingAndRebuildsAfterSizeChangesInFullSubmission) {
   Install(Cached(
       "if(globalThis.savedWidth===width&&globalThis.savedHeight==="
@@ -1962,24 +2476,26 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   auto* fragment = content->fragment_impl();
+  ASSERT_FALSE(fragment->has_platform_renderer_);
+  auto* owner = page_->fragment_impl();
   auto* context = static_cast<NativeMockPaintingContext*>(
       manager->painting_context()->impl());
   auto* ref = context->GetNativePlatformRef();
   for (int iteration = 0; iteration < 3; ++iteration) {
     fragment->InvalidateForRedraw();
-    fragment->Draw();
-    const auto* list = ref->GetDisplayListForRenderer(fragment->id());
+    owner->Draw();
+    const auto* list = ref->GetDisplayListForRenderer(owner->id());
     ASSERT_NE(list, nullptr);
     EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0x40123456));
     EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 1);
   }
-  fragment->InvalidateForSubtreeProperty();
-  fragment->Draw();
+  owner->InvalidateForSubtreeProperty();
+  owner->Draw();
   EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
   Size(content, 120, 80);
-  fragment->Draw();
+  owner->Draw();
   EXPECT_EQ(Eval("globalThis.wireBuilds").Number(), 2);
-  const auto* resized = ref->GetDisplayListForRenderer(fragment->id());
+  const auto* resized = ref->GetDisplayListForRenderer(owner->id());
   ASSERT_NE(resized, nullptr);
   bool found = false;
   for (const auto& item : CollectDisplayListItems(*resized)) {
@@ -1991,6 +2507,41 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   EXPECT_TRUE(found);
   EXPECT_EQ(Eval("globalThis.resolveArgCount").Number(), 3);
   EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       InvalidDevicePixelRatiosLeaveOnlyCSSBackgroundInFullSubmission) {
+  Install(Style(kPropertyIDBackgroundColor, "blue",
+                Cached("return [true," + Wire("10,20,40,20") + "];")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto* fragment = content->fragment_impl();
+  auto* owner = page_->fragment_impl();
+  auto* context = static_cast<NativeMockPaintingContext*>(
+      manager->painting_context()->impl());
+  auto* ref = context->GetNativePlatformRef();
+  const auto expect_submission = [&](bool custom_draw) {
+    fragment->InvalidateForRedraw();
+    owner->Draw();
+    const auto* list = ref->GetDisplayListForRenderer(owner->id());
+    ASSERT_NE(list, nullptr);
+    if (custom_draw) {
+      EXPECT_THAT(Fills(*list),
+                  ::testing::UnorderedElementsAre(0xff0000ff, 0x40123456));
+    } else {
+      EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0xff0000ff));
+    }
+  };
+  expect_submission(true);
+  for (float pixels : {0.f, -1.f, std::numeric_limits<float>::quiet_NaN(),
+                       std::numeric_limits<float>::infinity(),
+                       -std::numeric_limits<float>::infinity()}) {
+    SCOPED_TRACE(pixels);
+    manager->GetLynxEnvConfig().UpdateDevicePixelRatio(pixels);
+    expect_submission(false);
+  }
+  manager->GetLynxEnvConfig().UpdateDevicePixelRatio(1.f);
+  expect_submission(true);
 }
 
 TEST_F(ComposeDrawReuseIntegrationTest,
@@ -2053,10 +2604,10 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   const auto behind = Cached("return [true," + Wire() + "];");
   Install(Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", behind,
                  17));
-  std::vector<Element*> boundaries;
+  base::Vector<Element*> boundaries;
   for (auto* target = handle_->mount_root().get(); target;
        target = target->GetChildAt(0)) {
-    if (target->HasCustomDrawFunctions()) boundaries.push_back(target);
+    if (target->HasCustomDrawHandler()) boundaries.push_back(target);
     Size(target, 100, 60);
     if (target->GetChildCount() == 0) break;
   }
@@ -2072,14 +2623,717 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   }
 }
 
+TEST_F(ComposeDrawReuseIntegrationTest,
+       CachedBorderAndShadowRelocateForEachDestinationPrefix) {
+  const auto wire = V1(
+      "[[1,2,0],[9,0,0,-2,3,4,1,0,1]]",
+      "[[2,0,0,40,20,4,4,4,4,4,4,4,4],[2,2,2,36,16,2,2,2,2,2,2,2,2],[3,0,1]]",
+      "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+      "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
+      "'path.border-clip','path.roundrect']");
+  Install(Cached("return [true," + wire + "];"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (int prefix : {1, 3, 1}) {
+    DisplayListBuilder builder;
+    for (int i = 0; i < prefix; ++i)
+      testing::contract_fixture::Prefix(&builder);
+    content->fragment_impl()->custom_outset_shadow_drawn_ = false;
+    content->fragment_impl()->DrawBehind(builder);
+    EXPECT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
+    EXPECT_EQ(builder.BoxModelCount(), static_cast<size_t>(prefix + 4));
+    int borders = 0;
+    int shadows = 0;
+    for (const auto& item : CollectDisplayListItems(builder.Build())) {
+      if (item.type == DisplayListOpType::kBorder) {
+        ++borders;
+        EXPECT_EQ(item.payload.border.out_index, prefix);
+        EXPECT_EQ(item.payload.border.inner_index, prefix + 1);
+        for (uint32_t color : item.payload.border.colors)
+          EXPECT_EQ(color, 0x40123456);
+      } else if (item.type == DisplayListOpType::kBoxShadow) {
+        ++shadows;
+        EXPECT_EQ(item.payload.box_shadow.clip_box_index, prefix + 2);
+        EXPECT_EQ(item.payload.box_shadow.shadow_box_index, prefix + 3);
+        EXPECT_EQ(item.payload.box_shadow.color, 0x40123456);
+        EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
+      }
+    }
+    EXPECT_EQ(borders, 1);
+    EXPECT_EQ(shadows, 1);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       UnsupportedReplacementCannotReusePreviouslyCompiledContent) {
+  const auto unsupported =
+      V1("[[2],[4,1,0,0,1,1,0],[1,0,0],[3]]", "[[1,0,0,40,20]]");
+  Install(Cached("return globalThis.stage===0?[false," + Wire() +
+                 "]:[globalThis.stage===2," + unsupported + "];"));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  for (int stage = 0; stage < 3; ++stage) {
+    Eval("globalThis.stage=" + std::to_string(stage));
+    const auto list = Resolve(content);
+    if (stage == 0)
+      EXPECT_THAT(Fills(list), ::testing::ElementsAre(0x40123456));
+    else
+      EXPECT_EQ(list.GetContentItemsSize(), 0u);
+  }
+}
+
+class ComposeDrawRecordingExactRejectionIntegrationTest
+    : public ComposeDrawRecordingIntegrationTest,
+      public ::testing::WithParamInterface<
+          testing::contract_fixture::UnsupportedScene> {};
+
+TEST_P(ComposeDrawRecordingExactRejectionIntegrationTest,
+       AttachedAuthoredWireRejectsWithoutPartialDrawing) {
+  const auto& scene = GetParam();
+  manager->lynx_env_config_.UpdateDevicePixelRatio(3.5);
+  Eval("globalThis.rejectScene = false; globalThis.drawCalls = 0");
+  Install(Style(kPropertyIDBackgroundColor, "blue",
+                Behind("(globalThis.rejectionSize = [width,height],"
+                       "globalThis.rejectScene ? " +
+                       std::string(scene.wire) + " : " + V1() + ")")));
+  auto* content = handle_->content_element().get();
+  Size(page_.get(), 64, 40);
+  Size(handle_->mount_root().get(), 64, 40);
+  Size(content, 64, 40);
+  auto* owner = page_->fragment_impl();
+  auto* ref = static_cast<NativeMockPaintingContext*>(
+                  manager->painting_context()->impl())
+                  ->GetNativePlatformRef();
+  owner->Draw();
+  const auto* list = ref->GetDisplayListForRenderer(owner->id());
+  ASSERT_NE(list, nullptr);
+  EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0x40123456, 0xff0000ff));
+  Eval("globalThis.rejectScene = true");
+  Invalidate(lepus::Value(handle_));
+  owner->Draw();
+  list = ref->GetDisplayListForRenderer(owner->id());
+  ASSERT_NE(list, nullptr);
+  EXPECT_THAT(Fills(*list), ::testing::ElementsAre(0xff0000ff));
+  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+  const auto size = Eval("globalThis.rejectionSize");
+  ASSERT_EQ(size.GetLength(), 2);
+  EXPECT_DOUBLE_EQ(size.GetProperty(0u).Number(), 224);
+  EXPECT_DOUBLE_EQ(size.GetProperty(1u).Number(), 140);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AuthoredScenes, ComposeDrawRecordingExactRejectionIntegrationTest,
+    ::testing::ValuesIn(testing::contract_fixture::kUnsupportedScenes),
+    [](const ::testing::TestParamInfo<
+        testing::contract_fixture::UnsupportedScene>& info) {
+      return info.param.name;
+    });
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       V1PhysicalArgsAlphaAndPhaseOrderingReachCompiledReader) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2);
+  for (int op : {12, 17}) {
+    SCOPED_TRACE(op);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(
+        Style(kPropertyIDBackgroundColor, "blue",
+              Behind("(globalThis.recordingSize=[width,height]," + V1() + ")",
+                     {}, op)));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    ASSERT_TRUE(content->IsAttached());
+    auto list = Draw(content);
+    EXPECT_THAT(Fills(list),
+                op == 12 ? ::testing::ElementsAre(0x40123456u, 0xff0000ffu)
+                         : ::testing::ElementsAre(0xff0000ffu, 0x40123456u));
+    const auto size = Eval("globalThis.recordingSize");
+    ASSERT_EQ(size.GetLength(), 2);
+    EXPECT_DOUBLE_EQ(size.GetProperty(0u).Number(), 200);
+    EXPECT_DOUBLE_EQ(size.GetProperty(1u).Number(), 120);
+    int boxes = 0;
+    for (const auto& item : CollectDisplayListItems(list)) {
+      if (item.type != DisplayListOpType::kRecordBox ||
+          item.payload.record_box.x != 5)
+        continue;
+      ++boxes;
+      EXPECT_FLOAT_EQ(item.payload.record_box.y, 10);
+      EXPECT_FLOAT_EQ(item.payload.record_box.w, 95);
+      EXPECT_FLOAT_EQ(item.payload.record_box.h, 50);
+    }
+    EXPECT_EQ(boxes, 1);
+  }
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       V1UniformHoleAndShadowPreserveAuthoredOrderWithoutErasingContent) {
+  const auto wire = V1(
+      "[[1,2,0],[9,0,0,-2,3,4,1,0,1]]",
+      "[[2,0,0,40,20,4,4,4,4,4,4,4,4],[2,2,2,36,16,2,2,2,2,2,2,2,2],[3,0,1]]",
+      "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+      "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb','"
+      "path.border-clip','path.roundrect']");
+  Install(Style(kPropertyIDBackgroundColor, "blue", Behind(wire)));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  base::Vector<DisplayListOpType> draws;
+  base::Vector<DisplayListItem> boxes;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+    if (item.type == DisplayListOpType::kBorder) {
+      draws.push_back(item.type);
+      EXPECT_EQ(item.payload.border.out_index, 0);
+      EXPECT_EQ(item.payload.border.inner_index, 1);
+      for (unsigned i = 0; i < 4; ++i)
+        EXPECT_EQ(item.payload.border.colors[i], 0x40123456u);
+    } else if (item.type == DisplayListOpType::kBoxShadow) {
+      draws.push_back(item.type);
+      EXPECT_EQ(item.payload.box_shadow.color, 0x40123456u);
+      EXPECT_FLOAT_EQ(item.payload.box_shadow.blur_radius, 4);
+      EXPECT_EQ(item.payload.box_shadow.clip_mode, 0);
+      ASSERT_LT(static_cast<size_t>(item.payload.box_shadow.shadow_box_index),
+                boxes.size());
+      const auto& shadow =
+          boxes[item.payload.box_shadow.shadow_box_index].payload.record_box;
+      EXPECT_FLOAT_EQ(shadow.x, -3);
+      EXPECT_FLOAT_EQ(shadow.y, 2);
+      EXPECT_FLOAT_EQ(shadow.w, 42);
+      EXPECT_FLOAT_EQ(shadow.h, 22);
+    } else if (item.type == DisplayListOpType::kFill) {
+      draws.push_back(item.type);
+      EXPECT_EQ(item.payload.fill.color, 0xff0000ffu);
+    }
+  }
+  EXPECT_THAT(draws, ::testing::ElementsAre(DisplayListOpType::kBorder,
+                                            DisplayListOpType::kBoxShadow,
+                                            DisplayListOpType::kFill));
+  EXPECT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       WholeEnvelopeIsDecodedBeforeOp18AndLocalClipNeverBecomesModifierClip) {
+  const auto clip = V1("[[5,0,0,true]]", "[[1,0,0,0,0]]", "[]",
+                       "['drawing.clip','path.rect']");
+  const auto local = V1("[[2],[5,0,0,true],[1,0,0],[3]]", "[[1,0,0,40,20]]",
+                        "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+                        "['drawing.clip','drawing.state','paint.blend.SrcOver',"
+                        "'paint.solid','paint.srgb','path.rect']");
+  for (const auto& scenario : base::Vector<std::pair<int, std::string>>{
+           {18, clip},
+           {12, clip},
+           {17, clip},
+           {18, V1()},
+           {12, local},
+           {17, local},
+           {18, "(function(){const a=" + clip +
+                    ";a[8]=[['duplicate',0],['duplicate',1]];return a;})()"},
+           {18, "(function(){const a=" + clip +
+                    ";a[6]=[['unknown.resource',1,[]]];return a;})()"},
+           {18, V1("[[5,0,1,true]]", "[[1,0,0,10,10]]", "[]",
+                   "['drawing.clip','path.rect']")}}) {
+    SCOPED_TRACE(scenario.first);
+    SCOPED_TRACE(scenario.second);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind(scenario.second, {}, scenario.first));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    // Inspect this callback phase itself. The op17 carrier's ordinary DrawClip
+    // can independently add a content-bounds CSS clip during a full OnDraw.
+    DisplayListBuilder builder;
+    if (scenario.first == 17)
+      content->fragment_impl()->DrawForeground(builder);
+    else
+      content->fragment_impl()->DrawBehind(builder);
+    int clips = 0;
+    for (const auto& item : CollectDisplayListItems(builder.Build())) {
+      if (item.type == DisplayListOpType::kClipRect) {
+        ++clips;
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.w, 0);
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.h, 0);
+      }
+      EXPECT_NE(item.type, DisplayListOpType::kFill);
+    }
+    EXPECT_EQ(clips, scenario.first == 18 && scenario.second == clip ? 1 : 0);
+  }
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       UnversionedMalformedUnsupportedAndOverflowKeepActualPrefixAndFlags) {
+  const auto paths = "[[1,0,0,40,20]]";
+  const auto paint = "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]";
+  for (const auto& expression : base::Vector<std::string>{
+           "[[1,0,0,0,10]]", "[[1,0,0,10,10,0xffffffff],[99]]",
+           "[[1,0,0,10,10,0xffffffff],[],[],[],[],[],[],[],[]]",
+           V1("[[1,0,0],[99]]", paths, paint),
+           V1("[[1,0,0],[1,0,999]]", paths, paint),
+           V1("[[1,0,0],[4,1,0,0,1,1,0]]", paths, paint,
+              "['drawing.state','paint.blend.SrcOver','paint.solid','paint."
+              "srgb','path.rect']"),
+           V1("[[1,0,0],[9,0,0,3e38,0,2,3e38,0,1]]", paths, paint,
+              "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint."
+              "srgb','path.rect']"),
+           "['lynx.draw.recording',2,0,[],[],[],[],[],[]]",
+           "['unknown.envelope',1,0,[],[],[],[],[],[]]"}) {
+    SCOPED_TRACE(expression);
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind(expression));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    auto* fragment = content->fragment_impl();
+    for (bool shadow_flag : {false, true}) {
+      fragment->custom_outset_shadow_drawn_ = shadow_flag;
+      DisplayListBuilder builder;
+      RoundedRectangle box;
+      box.SetX(7);
+      box.SetY(11);
+      box.SetWidth(13);
+      box.SetHeight(17);
+      int32_t index;
+      builder.RecordBoxModel(box, index);
+      builder.LinearGradient(180, {0xff010203, 0xff040506}, {0, 1}, index,
+                             index, 1, 1);
+      builder.MarkRootNeedClipBounds();
+      const auto& prefix = builder.CurrentDisplayList();
+      const base::ByteArray bytes(
+          prefix.GetContentItemsData(),
+          prefix.GetContentItemsData() + prefix.GetContentItemsByteSize());
+      const base::ByteArray data(
+          prefix.GetContentData(),
+          prefix.GetContentData() + prefix.GetContentDataSize());
+      fragment->DrawBehind(
+          builder);  // real closure, attached Fragment, coordinator and decoder
+      const auto& after = builder.CurrentDisplayList();
+      EXPECT_EQ(base::ByteArray(after.GetContentItemsData(),
+                                after.GetContentItemsData() +
+                                    after.GetContentItemsByteSize()),
+                bytes);
+      EXPECT_EQ(
+          base::ByteArray(after.GetContentData(),
+                          after.GetContentData() + after.GetContentDataSize()),
+          data);
+      EXPECT_EQ(builder.BoxModelCount(), 1u);
+      EXPECT_TRUE(after.RootNeedClipBounds());
+      EXPECT_EQ(fragment->custom_outset_shadow_drawn_, shadow_flag);
+      int32_t next;
+      builder.RecordBoxModel(box, next);
+      EXPECT_EQ(next, 1);
+    }
+  }
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       RemovalExceptionAndCloneDoNotLeakShadowOrRuntimeBinding) {
+  const auto shadow = V1("[[9,0,0,0,0,4,0,0,1]]", "[[1,0,0,40,20]]",
+                         "[[[1,0x80123456],[0.5,0,true,null],[1],[]]]",
+                         "['drawing.shadow','paint.blend.SrcOver','paint.solid'"
+                         ",'paint.srgb','path.rect']");
+  Install(Behind(shadow));
+  auto content = handle_->content_element();
+  Size(content.get(), 100, 60);
+  Draw(content.get());
+  ASSERT_TRUE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
+          .success);
+  page_->FlushActionsAsRoot();
+  content->fragment_impl()->InvalidateForRedraw();
+  EXPECT_TRUE(Fills(Draw(content.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
+  EXPECT_FALSE(content->HasCustomDrawHandler());
+  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  Rebind(Behind("(function(){throw new Error('recording failure');})()"));
+  EXPECT_TRUE(Fills(Draw(content.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
+  EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
+  Rebind(Behind(V1()));
+  content->fragment_impl()->InvalidateForRedraw();
+  EXPECT_THAT(Fills(Draw(content.get())), ::testing::ElementsAre(0x40123456u));
+  auto clone = content->CloneElement(false);
+  EXPECT_FALSE(clone->HasCustomDrawHandler());
+  clone->AttachToElementManager(manager.get(), nullptr, false);
+  page_->InsertNode(clone);
+  page_->FlushActionsAsRoot();
+  Size(clone.get(), 100, 60);
+  EXPECT_TRUE(Fills(Draw(clone.get())).empty());
+  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 3);
+}
+
+TEST_F(ComposeDrawBehindTest,
+       PaintProjectionMatchesAuthoredEndpointsAtSamplePoints) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  Install(Behind(V1(
+      "[[1,2,0]]",
+      "[[2,10,12,160,120,8,8,16,16,24,24,32,32],"
+      "[2,14,16,152,112,4,4,12,12,20,20,28,28],[3,0,1]]",
+      "[[[2,16,8,144,72,[0x80ff0000,0x800000ff],[0,1],0,[1,0,0,1,0,0]],"
+      "[1,0,true,null],[1],[]]]",
+      "['paint.blend.SrcOver','paint.linear','paint.srgb','paint.tile.Clamp',"
+      "'path.border-clip','path.roundrect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 80);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  base::Vector<DisplayListItem> boxes;
+  int gradients = 0;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+    if (item.type != DisplayListOpType::kLinearGradient) continue;
+    ++gradients;
+    const auto& gradient = item.payload.linear_gradient;
+    ASSERT_EQ(gradient.inner_clip_index_plus_one, 3);
+    ASSERT_EQ(boxes.size(), 3u);
+    const auto& inner = boxes[2].payload.record_box;
+    EXPECT_FLOAT_EQ(inner.x, 7);
+    EXPECT_FLOAT_EQ(inner.y, 8);
+    EXPECT_FLOAT_EQ(inner.w, 76);
+    EXPECT_FLOAT_EQ(inner.h, 56);
+    EXPECT_FLOAT_EQ(inner.radii[0], 2);
+    EXPECT_FLOAT_EQ(inner.radii[6], 14);
+    const auto& tile = boxes[gradient.tiling_index].payload.record_box;
+    const auto* stops = reader.Stops(item);
+    ASSERT_NE(stops, nullptr);
+    ASSERT_EQ(gradient.stop_count, 4u);
+    const double angle = gradient.angle * std::acos(-1.0) / 180;
+    const double dx = std::sin(angle), dy = -std::cos(angle);
+    const double span = std::abs(tile.w * dx) + std::abs(tile.h * dy);
+    for (const auto& point :
+         {std::pair<double, double>{5, 6}, {85, 66}, {40, 25}}) {
+      const double projected = ((point.first - tile.x - tile.w / 2) * dx +
+                                (point.second - tile.y - tile.h / 2) * dy) /
+                                   span +
+                               .5;
+      const double actual = (projected - stops[1]) / (stops[2] - stops[1]);
+      // Original endpoints in layout units: (8,4) -> (72,36).
+      const double expected =
+          ((point.first - 8) * 64 + (point.second - 4) * 32) /
+          (64 * 64 + 32 * 32);
+      EXPECT_NEAR(actual, expected, 0.00001);
+    }
+    EXPECT_EQ(reader.Colors(item)[0], 0x80ff0000);
+    EXPECT_EQ(reader.Colors(item)[3], 0x800000ff);
+  }
+  EXPECT_EQ(gradients, 1);
+}
+
+TEST_F(ComposeDrawBehindTest,
+       PhysicalHairlineInsetSurvivesScaleThreeConversion) {
+  manager->lynx_env_config_.UpdateDevicePixelRatio(3.f);
+  Install(Behind(V1("[[1,2,0]]",
+                    "[[2,0,0,288,192,36,36,24,24,12,12,6,6],"
+                    "[2,1,1,286,190,35,35,23,23,11,11,5,5],[3,0,1]]",
+                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                    "['paint.blend.SrcOver','paint.solid','paint.srgb',"
+                    "'path.border-clip','path.roundrect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 96, 64);
+  int borders = 0;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kBorder) {
+      ++borders;
+      EXPECT_EQ(item.payload.border.out_index, 0);
+      EXPECT_EQ(item.payload.border.inner_index, 1);
+    }
+  }
+  EXPECT_EQ(borders, 1);
+}
+
+TEST_F(ComposeDrawBehindTest, InnerCornersAcceptNormalizedStartAndEndPairs) {
+  Install(Behind(V1("[[1,2,0]]",
+                    "[[2,0,0,100,60,60,60,0,0,20,20,0,0],"
+                    "[2,10,10,80,40,40,40,0,0,10,10,0,0],[3,0,1]]",
+                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                    "['paint.blend.SrcOver','paint.solid','paint.srgb',"
+                    "'path.border-clip','path.roundrect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  int borders = 0;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kBorder) ++borders;
+  }
+  EXPECT_EQ(borders, 1);
+}
+
+TEST_F(ComposeDrawBehindTest, MixedPaintAndShadowBatchPreservesOrder) {
+  Install(Behind(
+      V1("[[1,0,0],[1,0,1],[1,0,2],[1,2,3],[9,0,4,0,0,0,0,0,1]]",
+         "[[1,0,0,10,10],[1,2,2,6,6],[3,0,1]]",
+         "[[[1,0xffff0000],[1,0,true,null],[1],[]],"
+         "[[1,0xff00ff00],[1,0,true,null],[1],[]],"
+         "[[2,0,0,0,10,[0xffff0000,0xff0000ff],[0,1],0,[1,0,0,1,0,0]],"
+         "[1,0,true,null],[1],[]],"
+         "[[1,0x800000ff],[1,0,true,null],[1],[]],"
+         "[[1,0xff000000],[1,0,true,null],[1],[]]]",
+         "['drawing.shadow','paint.blend.SrcOver','paint.linear','paint.solid',"
+         "'paint.srgb','paint.tile.Clamp','path.border-clip','path.rect']")));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  auto list = Draw(content);
+  DisplayListReader reader(list);
+  base::Vector<DisplayListOpType> draws;
+  while (reader.HasNext()) {
+    const auto& item = reader.Next();
+    if (item.type == DisplayListOpType::kBorder) {
+      for (unsigned i = 0; i < 4; ++i)
+        EXPECT_EQ(item.payload.border.colors[i], 0x800000ff);
+    } else if (item.type != DisplayListOpType::kFill &&
+               item.type != DisplayListOpType::kLinearGradient &&
+               item.type != DisplayListOpType::kBoxShadow) {
+      continue;
+    }
+    draws.push_back(item.type);
+  }
+  EXPECT_THAT(draws, ::testing::ElementsAre(DisplayListOpType::kFill,
+                                            DisplayListOpType::kFill,
+                                            DisplayListOpType::kLinearGradient,
+                                            DisplayListOpType::kBorder,
+                                            DisplayListOpType::kBoxShadow));
+}
+
+TEST_F(ComposeDrawBehindTest, InvalidPaintTailRejectsWholeBatchInBothPhases) {
+  const auto batch = [](const std::string& paths, const std::string& paint,
+                        const std::string& commands = "[[1,0,0],[1,1,1]]",
+                        bool repeated = false) {
+    return V1(
+        commands, paths,
+        "[[[1,0xffffffff],[1,0,true,null],[1],[]]," + paint + "]",
+        "['paint.blend.SrcOver','paint.linear','paint.solid','paint.srgb',"
+        "'paint.tile.Clamp'," +
+            std::string(repeated ? "'paint.tile.Repeated'," : "") +
+            "'path.border-clip','path.rect','path.roundrect']");
+  };
+  const std::string solid = "[[1,0xff000000],[1,0,true,null],[1],[]]";
+  const std::string rects = "[[1,0,0,10,10],[1,0,0,10,10]]";
+  for (int op : {12, 17}) {
+    for (const auto& wire :
+         {batch(rects, "[[1,0.5],[1,0,true,null],[1],[]]"),
+          batch("[[1,0,0,10,10],[1,0,0,1e40,10]]", solid),
+          batch("[[1,0,0,10,10],[2,0,0,10,10,0,0,-1,-1,0,0,0,0]]", solid),
+          batch("[[1,0,0,10,10],null]", solid),
+          batch("[[1,0,0,10,10],[1,1,2,8,6],[3,0,1]]", solid,
+                "[[1,0,0],[1,2,1]]"),
+          batch("[[2,0,0,10,10,4,4,4,4,4,4,4,4],"
+                "[2,1,1,8,8,0,0,0,0,0,0,0,0],[3,0,1]]",
+                solid, "[[1,0,0],[1,2,1]]"),
+          batch("[[1,0,0,10,10],[1,5,5,0,0],[3,0,1]]", solid,
+                "[[1,0,0],[1,2,1]]"),
+          batch(rects,
+                "[[2,0,0,0,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects,
+                "[[2,1e20,0,1e20+1,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects,
+                "[[2,0,0,10,0,[0,1],[0,1],1,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]",
+                "[[1,0,0],[1,1,1]]", true),
+          batch(rects,
+                "[[2,0,0,10,0,[0,1],[1,0],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects,
+                "[[2,0,0,Infinity,0,[0,1],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]"),
+          batch(rects, solid, "[[1,0,0],[99]]")}) {
+      SCOPED_TRACE(wire);
+      handle_ = nullptr;
+      page_ = nullptr;
+      Install(Behind(wire, {}, op));
+      auto* content = handle_->content_element().get();
+      Size(content, 100, 60);
+      for (const auto& item : CollectDisplayListItems(Draw(content))) {
+        EXPECT_NE(item.type, DisplayListOpType::kRecordBox);
+        EXPECT_NE(item.type, DisplayListOpType::kFill);
+        EXPECT_NE(item.type, DisplayListOpType::kLinearGradient);
+      }
+    }
+  }
+}
+
+TEST_F(ComposeDrawBehindTest, ForegroundFollowsContentAndClearsOnReplacement) {
+  Install(Style(kPropertyIDBackgroundColor, "blue",
+                Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                          "[[[1,0x80ff0000],[1,0,true,null],[1],[]]]"),
+                       {}, 17)));
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  base::Vector<uint32_t> colors;
+  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+    if (item.type == DisplayListOpType::kFill)
+      colors.push_back(item.payload.fill.color);
+  }
+  EXPECT_THAT(colors, ::testing::ElementsAre(0xff0000ff, 0x80ff0000));
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(
+          handle_.get(), Behind(V1("[]", "[]", "[]", "[]")), runtime_.get())
+          .success);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  EXPECT_FALSE(
+      content->fragment_impl()->custom_draw_handler_->HasDrawForeground());
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
+          .success);
+  page_->FlushActionsAsRoot();
+  EXPECT_FALSE(content->HasCustomDrawHandler());
+}
+
+TEST_F(ComposeDrawBehindTest, ScopedClipKeepsShadowOrderWithFlattenedContent) {
+  const auto shadow =
+      V1("[[9,0,0,0,4,8,0,0,1]]", "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
+         "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+         "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
+         "'path.roundrect']");
+  const auto clip =
+      V1("[[5,0,0,true]]", "[[2,0,0,width,height,4,4,8,8,12,12,16,16]]", "[]",
+         "['drawing.clip','path.roundrect']");
+  for (auto kind : {ComposeElementKind::kView, ComposeElementKind::kText,
+                    ComposeElementKind::kImage}) {
+    for (bool clip_first : {false, true}) {
+      SCOPED_TRACE(::testing::Message()
+                   << static_cast<int>(kind) << clip_first);
+      handle_ = nullptr;
+      page_ = nullptr;
+      Install(Style(kPropertyIDOverflow, "visible", Behind(shadow)), kind);
+      auto* content = handle_->content_element().get();
+      ASSERT_FALSE(
+          handle_->mount_root()->fragment_impl()->has_platform_renderer_);
+      ASSERT_FALSE(content->fragment_impl()->has_platform_renderer_);
+      base::Vector<fml::RefPtr<Element>> native_children;
+      if (kind == ComposeElementKind::kView) {
+        native_children.push_back(
+            manager->CreateFiberText(base::String("text")));
+        native_children.push_back(
+            manager->CreateFiberImage(base::String("image")));
+        for (const auto& child : native_children) {
+          child->SetAttribute(base::String("flatten"), lepus::Value(false));
+          content->InsertNode(child);
+        }
+      }
+      page_->FlushActionsAsRoot();
+      Size(page_.get(), 100, 60);
+      Size(handle_->mount_root().get(), 100, 60);
+      Size(content, 100, 60);
+      for (const auto& child : native_children) Size(child.get(), 130, 90);
+      page_->fragment_impl()->Draw();
+      auto* ref = static_cast<NativeMockPaintingContext*>(
+                      manager->painting_context()->impl())
+                      ->GetNativePlatformRef();
+      EXPECT_EQ(ref->renderers_.at(page_->impl_id())->Children().size(),
+                native_children.size());
+      ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                      handle_.get(),
+                      clip_first ? Behind(shadow, Behind(clip, {}, 18))
+                                 : Behind(clip, Behind(shadow), 18),
+                      runtime_.get())
+                      .success);
+      auto* first = handle_->mount_root()->GetChildAt(0);
+      auto* clip_target = clip_first ? first : content;
+      auto* shadow_target = clip_first ? content : first;
+      shadow_target->SetStyle(kPropertyIDOverflow, lepus::Value("visible"));
+      page_->FlushActionsAsRoot();
+      EXPECT_FALSE(
+          handle_->mount_root()->fragment_impl()->has_platform_renderer_);
+      ASSERT_TRUE(clip_target->fragment_impl()->has_platform_renderer_);
+      EXPECT_FALSE(clip_target->fragment_impl()->HasCustomLayerProperties());
+      EXPECT_FALSE(shadow_target->fragment_impl()->has_platform_renderer_);
+      EXPECT_FALSE(content->is_direct_child_of_compatible_component());
+      Size(page_.get(), 100, 60);
+      Size(handle_->mount_root().get(), 100, 60);
+      Size(first, 100, 60);
+      Size(content, 100, 60);
+      for (const auto& child : native_children) Size(child.get(), 130, 90);
+      page_->fragment_impl()->Draw();
+      const auto* clip_list =
+          ref->GetDisplayListForRenderer(clip_target->impl_id());
+      const auto* parent_list =
+          ref->GetDisplayListForRenderer(page_->impl_id());
+      ASSERT_NE(clip_list, nullptr);
+      ASSERT_NE(parent_list, nullptr);
+      const auto items = CollectDisplayListItems(*clip_list);
+      ASSERT_GE(items.size(), 3u);
+      EXPECT_EQ(items.front().type, DisplayListOpType::kBegin);
+      ASSERT_EQ(items[1].type, DisplayListOpType::kClipRect);
+      EXPECT_FLOAT_EQ(items[1].payload.clip_rect.radii[0], 4);
+      EXPECT_FLOAT_EQ(items[1].payload.clip_rect.radii[6], 16);
+      EXPECT_EQ(items.back().type, DisplayListOpType::kEnd);
+      int shadows = 0;
+      for (const auto& item :
+           CollectDisplayListItems(clip_first ? *clip_list : *parent_list)) {
+        if (item.type == DisplayListOpType::kBoxShadow) ++shadows;
+        if (!clip_first && item.type == DisplayListOpType::kDrawView &&
+            item.payload.draw_view.view_id == clip_target->impl_id()) {
+          EXPECT_EQ(shadows, 1);
+        }
+      }
+      EXPECT_EQ(shadows, 1);
+      EXPECT_EQ(clip_list->SubLayers().size(), native_children.size());
+      EXPECT_EQ(ref->renderers_.at(clip_target->impl_id())->Children().size(),
+                native_children.size());
+      const int clip_id = clip_target->impl_id();
+      ASSERT_TRUE(ComposeModifierApplicator::Apply(
+                      handle_.get(),
+                      Style(kPropertyIDOverflow, "visible", Behind(shadow)),
+                      runtime_.get())
+                      .success);
+      page_->FlushActionsAsRoot();
+      Size(handle_->mount_root().get(), 100, 60);
+      Size(content, 100, 60);
+      page_->fragment_impl()->Draw();
+      const auto* cleared = ref->GetDisplayListForRenderer(clip_id);
+      ASSERT_NE(cleared, nullptr);
+      EXPECT_GT(cleared->GetContentItemsSize(), 0u);
+      for (const auto& item : CollectDisplayListItems(*cleared))
+        EXPECT_NE(item.type, DisplayListOpType::kClipRect);
+      EXPECT_EQ(ref->renderers_.at(clip_id)->Children().size(),
+                native_children.size());
+    }
+  }
+}
+
+TEST_F(ComposeDrawBehindTest,
+       ScopedClipEmptyGeometryStillClipsAndInvalidBatchDoesNot) {
+  const auto empty_clip = V1("[[5,0,0,true]]", "[[1,0,0,0,0]]", "[]",
+                             "['drawing.clip','path.rect']");
+  for (const auto& expression :
+       {empty_clip, V1("[]", "[]", "[]", "[]"),
+        V1("[[5,0,0,true],[5,1,0,true]]", "[[1,0,0,10,10],[1,0,0,2,2]]", "[]",
+           "['drawing.clip','path.rect']"),
+        V1()}) {
+    handle_ = nullptr;
+    page_ = nullptr;
+    Install(Behind(expression, {}, 18));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    int clips = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(content))) {
+      if (item.type == DisplayListOpType::kClipRect) {
+        ++clips;
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.w, 0);
+        EXPECT_FLOAT_EQ(item.payload.clip_rect.h, 0);
+      }
+    }
+    EXPECT_EQ(clips, expression == empty_clip ? 1 : 0);
+  }
+}
+
 TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
   Install(Style(
       kPropertyIDBackgroundColor, "red",
-      Behind(
-          "[[3, 0, 0, width, height, 24, 24, 8, 8, 0, 6, 16, 2, 0x40000000],"
-          " [1, 0, 0, width, height, 0xffffffff],"
-          " [3, 0, 0, width, height, 24, 24, 8, 8, 0, 0, 8, 0, 0x20000000]]")));
+      Behind(V1(
+          "[[9,0,0,0,6,16,2,0,1],[1,1,1],[9,0,2,0,0,8,0,0,1]]",
+          "[[2,0,0,width,height,24,24,24,24,8,8,8,8],[1,0,0,width,height]]",
+          "[[[1,0x40000000],[1,0,true,null],[1],[]],"
+          "[[1,0xffffffff],[1,0,true,null],[1],[]],"
+          "[[1,0x20000000],[1,0,true,null],[1],[]]]",
+          "['drawing.shadow','paint.blend.SrcOver','paint.solid','paint.srgb',"
+          "'path.rect','path.roundrect']"))));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   std::vector<DisplayListItem> boxes;
@@ -2124,18 +3378,25 @@ TEST_F(ComposeDrawBehindTest, OutsetShadowsKeepCommandOrderAndShape) {
 }
 
 TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
-  const std::string fill = "[1, 0, 0, width, height, 0xffffffff], ";
-  for (const char* shadow : {
-           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, -1, 0, 0xff000000]",
-           "[3, 0, 0, width, height, 0, -1, 0, 0, 0, 0, 4, 0, 0xff000000]",
-           "[3, 0, 0, width, height, 0, 0, 0, 0, NaN, 0, 4, 0, 0xff000000]",
-           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0, 0.5]",
-           "[3, 0, 0, width, height, 0, 0, 0, 0, 0, 0, 4, 0]",
-       }) {
-    SCOPED_TRACE(shadow);
+  const auto batch = [](const std::string& shadow,
+                        const std::string& path = "[1,0,0,width,height]",
+                        const std::string& color = "0xff000000") {
+    return V1("[[1,0,0]," + shadow + "]", "[[1,0,0,width,height]," + path + "]",
+              "[[[1,0xffffffff],[1,0,true,null],[1],[]],[[1," + color +
+                  "],[1,0,true,null],[1],[]]]",
+              "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+              "'paint.srgb','path.rect','path.roundrect']");
+  };
+  for (const auto& wire :
+       {batch("[9,1,1,0,0,-1,0,0,1]"),
+        batch("[9,1,1,0,0,4,0,0,1]", "[2,0,0,width,height,0,0,-1,-1,0,0,0,0]"),
+        batch("[9,1,1,NaN,0,4,0,0,1]"),
+        batch("[9,1,1,0,0,4,0,0,1]", "[1,0,0,width,height]", "0.5"),
+        batch("[9,1,1,0,0,4,0,0]")}) {
+    SCOPED_TRACE(wire);
     handle_ = nullptr;
     page_ = nullptr;
-    Install(Behind("[" + fill + shadow + "]"));
+    Install(Behind(wire));
     auto* content = handle_->content_element().get();
     Size(content, 100, 60);
     EXPECT_FALSE(RecordsShadowOrFill(Draw(content)));
@@ -2145,10 +3406,18 @@ TEST_F(ComposeDrawBehindTest, InvalidOutsetShadowRecordsNothing) {
 TEST_F(ComposeDrawBehindTest,
        OutsetShadowKeepsPlatformLayerUnclippedUnderOverflowHidden) {
   Eval("globalThis.castShadow = true;");
-  Install(Style(kPropertyIDOverflow, "hidden",
-                Behind("globalThis.castShadow ? [[3, 0, 0, width, height, 8, "
-                       "8, 8, 8, 0, 4, 8, 0, 0xff000000]] : []")));
+  Install(
+      Style(kPropertyIDOverflow, "hidden",
+            Behind("globalThis.castShadow ? " +
+                   V1("[[9,0,0,0,4,8,0,0,1]]",
+                      "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
+                      "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                      "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                      "'paint.srgb','path.roundrect']") +
+                   " : " + V1("[]", "[]", "[]", "[]"))));
   auto* content = handle_->content_element().get();
+  content->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
+  page_->FlushActionsAsRoot();
   ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
   Size(content, 100, 60);
   auto* fragment = content->fragment_impl();
@@ -2178,26 +3447,28 @@ TEST_F(ComposeDrawBehindTest,
 }
 
 TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsInsideItsTransform) {
-  Install(
-      Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
-             "0xff000000]]",
-             Layer()));
+  Install(Behind(V1("[[9,0,0,0,4,8,0,0,1]]", "[[1,0,0,width,height]]",
+                    "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                    "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                    "'paint.srgb','path.rect']"),
+                 Layer()));
   auto* layer = handle_->mount_root()->GetChildAt(0);
   auto* content = layer->GetChildAt(0);
   ASSERT_EQ(content, handle_->content_element().get());
   ASSERT_TRUE(
-      layer->fragment_impl()->custom_draw_functions_->draw_layer_properties);
-  EXPECT_FALSE(layer->fragment_impl()->custom_draw_functions_->draw_behind);
-  ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
+      layer->fragment_impl()->custom_draw_handler_->HasDrawLayerProperties());
+  EXPECT_FALSE(layer->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  ASSERT_TRUE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   Size(layer, 100, 60);
   Size(content, 100, 60);
-  // Drawing the layer may draw its content too. Inspect the content first.
+  ASSERT_FALSE(content->fragment_impl()->has_platform_renderer_);
+  auto list = Draw(layer);
   bool shadowed = false;
-  for (const auto& item : CollectDisplayListItems(Draw(content))) {
+  for (const auto& item : CollectDisplayListItems(list)) {
     shadowed |= item.type == DisplayListOpType::kBoxShadow;
   }
   EXPECT_TRUE(shadowed);
-  ExpectTranslation(Draw(layer), 60, 60);
+  ExpectTranslation(list, 60, 60);
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
   EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
 }
@@ -2207,8 +3478,10 @@ TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsOnImageAndTextContent) {
     SCOPED_TRACE(static_cast<int>(kind));
     handle_ = nullptr;
     page_ = nullptr;
-    Install(Behind("[[3, 0, 0, width, height, 0, 0, 0, 0, 0, 4, 8, 0, "
-                   "0xff000000]]",
+    Install(Behind(V1("[[9,0,0,0,4,8,0,0,1]]", "[[1,0,0,width,height]]",
+                      "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                      "['drawing.shadow','paint.blend.SrcOver','paint.solid',"
+                      "'paint.srgb','path.rect']"),
                    Layer()),
             kind);
     auto* content = handle_->content_element().get();
@@ -2226,11 +3499,16 @@ TEST_F(ComposeDrawBehindTest, ClippedShadowStaysOutsideTheContentClip) {
   // Modifier.shadow(clip = true): layer, shadow, then the ordinary clip.
   Install(Style(kPropertyIDOverflow, "hidden",
                 Style(kPropertyIDBorderRadius, "8px",
-                      Behind("[[3, 0, 0, width, height, 8, 8, 8, 8, 0, 4, 8, "
-                             "0, 0xff000000]]",
+                      Behind(V1("[[9,0,0,0,4,8,0,0,1]]",
+                                "[[2,0,0,width,height,8,8,8,8,8,8,8,8]]",
+                                "[[[1,0xff000000],[1,0,true,null],[1],[]]]",
+                                "['drawing.shadow','paint.blend.SrcOver',"
+                                "'paint.solid','paint.srgb','path.roundrect']"),
                              Layer()))),
           ComposeElementKind::kText);
   auto* content = handle_->content_element().get();
+  content->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
+  page_->FlushActionsAsRoot();
   ASSERT_TRUE(content->computed_css_style()->IsOverflowHidden());
   Size(content, 100, 60);
   int shadows = 0;
@@ -2258,59 +3536,43 @@ TEST_F(ComposeDrawBehindTest, ClippedShadowStaysOutsideTheContentClip) {
   EXPECT_FALSE(list->RootNeedClipBounds());
 }
 
-TEST_F(ComposeDrawBehindTest, DrawsBeforeContentAndOnlyOnFullRedraw) {
-  auto background = lepus::Dictionary::Create();
-  background->SetValue("op", lepus::Value(3));
-  background->SetValue("propertyId", lepus::Value(kPropertyIDBackgroundColor));
-  background->SetValue("value", lepus::Value("blue"));
-  background->SetValue("previous",
-                       Behind("[[1, 0, 0, width, height, 0xffff0000]]"));
-  Install(lepus::Value(background));
-  auto* content = handle_->content_element().get();
-  Size(content, 100, 60);
-  std::vector<uint32_t> fills;
-  for (const auto& item : CollectDisplayListItems(Draw(content))) {
-    if (item.type == DisplayListOpType::kFill)
-      fills.push_back(item.payload.fill.color);
-  }
-  EXPECT_THAT(fills, ::testing::ElementsAre(0xffff0000, 0xff0000ff));
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
-  content->fragment_impl()->InvalidateForSubtreeProperty();
-  EXPECT_EQ(Draw(content).GetContentItemsSize(), 0u);
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
-  Invalidate(lepus::Value(handle_));
-  Draw(content);
-  EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
-}
-
 TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
-  Install(Behind("[[1, 0, 0, width, height, 0xff0000ff]]",
-                 Layer(Behind("[[1, 0, 0, width, height, 0xffff0000]]"))));
+  Install(
+      Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                "[[[1,0xff0000ff],[1,0,true,null],[1],[]]]"),
+             Layer(Behind(V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                             "[[[1,0xffff0000],[1,0,true,null],[1],[]]]")))));
   auto* first = handle_->mount_root()->GetChildAt(0);
   auto* layer = first->GetChildAt(0);
   auto* last = layer->GetChildAt(0);
   EXPECT_EQ(last, handle_->content_element().get());
-  ASSERT_TRUE(first->fragment_impl()->custom_draw_functions_->draw_behind);
+  ASSERT_TRUE(first->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   ASSERT_TRUE(
-      layer->fragment_impl()->custom_draw_functions_->draw_layer_properties);
-  ASSERT_TRUE(last->fragment_impl()->custom_draw_functions_->draw_behind);
+      layer->fragment_impl()->custom_draw_handler_->HasDrawLayerProperties());
+  ASSERT_TRUE(last->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   Size(first, 100, 60);
   Size(layer, 100, 60);
   Size(last, 80, 40);
-  // Drawing a parent may draw its descendants too. Inspect the layer's first
-  // property pass before the outer content pass consumes its dirty flags.
-  EXPECT_TRUE(layer->fragment_impl()->NeedUpdateSubtreeProperty());
+  EXPECT_FALSE(first->fragment_impl()->has_platform_renderer_);
+  EXPECT_FALSE(last->fragment_impl()->has_platform_renderer_);
   EXPECT_TRUE(layer->fragment_impl()->has_platform_renderer_);
-  ExpectTranslation(Draw(layer), 60, 60);
+  auto outer = Draw(first);
+  auto* ref = static_cast<NativeMockPaintingContext*>(
+                  manager->painting_context()->impl())
+                  ->GetNativePlatformRef();
+  const auto* inner = ref->GetDisplayListForRenderer(layer->impl_id());
+  ASSERT_NE(inner, nullptr);
+  ExpectTranslation(*inner, 60, 60);
+  EXPECT_TRUE(RecordsShadowOrFill(outer));
+  EXPECT_TRUE(RecordsShadowOrFill(*inner));
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
-  Draw(first);
-  Draw(last);
   EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 2);
 }
 
 TEST_F(ComposeDrawBehindTest, ConvertsPhysicalRectCoordinatesOnce) {
   manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
-  Install(Behind("[[1, 10, 20, width - 10, height - 20, 0x80ffffff]]"));
+  Install(Behind(V1("[[1,0,0]]", "[[1,10,20,width-10,height-20]]",
+                    "[[[1,0x80ffffff],[1,0,true,null],[1],[]]]")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   bool found = false;
@@ -2339,7 +3601,8 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
     for (const auto* side : {"start", "top", "end", "bottom"}) {
       padding->SetValue(side, lepus::Value(8.0));
     }
-    const std::string commands = "[[1, 0, 0, width, height, 0xffffffff]]";
+    const auto commands = V1("[[1,0,0]]", "[[1,0,0,width,height]]",
+                             "[[[1,0xffffffff],[1,0,true,null],[1],[]]]");
     padding->SetValue("previous", padding_before
                                       ? lepus::Value(size)
                                       : Behind(commands, lepus::Value(size)));
@@ -2347,7 +3610,7 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
                            : lepus::Value(padding));
     page_->Layout(std::make_shared<PipelineOptions>());
     auto* target = handle_->mount_root().get();
-    while (!target->HasCustomDrawFunctions()) target = target->GetChildAt(0);
+    while (!target->HasCustomDrawHandler()) target = target->GetChildAt(0);
     EXPECT_FLOAT_EQ(target->width(), padding_before ? 84 : 100);
     EXPECT_FLOAT_EQ(target->height(), padding_before ? 44 : 60);
     auto list = Draw(target);
@@ -2363,7 +3626,11 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
 
 TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
   Install(
-      Behind("[[2, 5, -10, 40, 50, 0, 16, [0x80ffffff, 0x80000000], [0, 1]]]"));
+      Behind(V1("[[1,0,0]]", "[[1,5,-10,40,50]]",
+                "[[[2,0,0,0,16,[0x80ffffff,0x80000000],[0,1],0,[1,0,0,1,0,0]],"
+                "[1,0,true,null],[1],[]]]",
+                "['paint.blend.SrcOver','paint.linear','paint.srgb',"
+                "'paint.tile.Clamp','path.rect']")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   auto list = Draw(content);
@@ -2387,8 +3654,9 @@ TEST_F(ComposeDrawBehindTest, GradientKeepsEndpointsAndClampsOutsideTile) {
 }
 
 TEST_F(ComposeDrawBehindTest, MalformedTailDoesNotRecordPartialBackground) {
-  Install(Behind(
-      "[[1, 0, 0, 10, 10, 0xffff0000], [1, 0, 0, NaN, 10, 0xff000000]]"));
+  Install(Behind(V1("[[1,0,0],[1,1,1]]", "[[1,0,0,10,10],[1,0,0,NaN,10]]",
+                    "[[[1,0xffff0000],[1,0,true,null],[1],[]],"
+                    "[[1,0xff000000],[1,0,true,null],[1],[]]]")));
   auto* content = handle_->content_element().get();
   Size(content, 100, 60);
   for (const auto& item : CollectDisplayListItems(Draw(content))) {
@@ -2404,7 +3672,7 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   auto* fragment = layer->fragment_impl();
   ASSERT_TRUE(fragment->HasCustomDraw());
   ASSERT_TRUE(fragment->HasCustomLayerProperties());
-  EXPECT_FALSE(fragment->custom_draw_functions_->draw_foreground);
+  EXPECT_FALSE(fragment->custom_draw_handler_->HasDrawForeground());
   EXPECT_TRUE(fragment->has_platform_renderer_);
   EXPECT_EQ(layer, handle_->content_element().get());
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
@@ -2478,8 +3746,8 @@ TEST_F(ComposeGraphicsLayerDrawTest, FollowingContentKeepsItsOwnDrawing) {
   auto* carrier = handle_->mount_root().get();
   auto* content = handle_->content_element().get();
   ASSERT_EQ(carrier->GetChildAt(0), content);
-  EXPECT_FALSE(carrier->HasCustomDrawFunctions());
-  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(carrier->HasCustomDrawHandler());
+  ASSERT_TRUE(content->HasCustomDrawHandler());
   Size(carrier, 100, 60);
   Size(content, 100, 60);
   auto list = Draw(content);
@@ -2497,8 +3765,8 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   auto* outer = handle_->mount_root()->GetChildAt(0);
   auto* inner = outer->GetChildAt(0);
   ASSERT_EQ(inner, handle_->content_element().get());
-  ASSERT_TRUE(outer->HasCustomDrawFunctions());
-  ASSERT_TRUE(inner->HasCustomDrawFunctions());
+  ASSERT_TRUE(outer->HasCustomDrawHandler());
+  ASSERT_TRUE(inner->HasCustomDrawHandler());
   Size(outer, 100, 60);
   Size(inner, 100, 60);
   ExpectTranslation(Draw(outer), 60, 60);
@@ -2524,7 +3792,7 @@ TEST_F(ComposeGraphicsLayerDrawTest, ImageContentOwnsItsLayerCallback) {
   auto* content = handle_->content_element().get();
   ASSERT_EQ(handle_->mount_root()->GetChildAt(0), content);
   ASSERT_TRUE(content->is_image());
-  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  ASSERT_TRUE(content->HasCustomDrawHandler());
   Size(content, 100, 60);
   ExpectTranslation(Draw(content), 60, 60);
 }
@@ -2534,7 +3802,7 @@ TEST_F(ComposeGraphicsLayerDrawTest, TextContentOwnsItsLayerCallback) {
   auto* content = handle_->content_element().get();
   ASSERT_EQ(handle_->mount_root()->GetChildAt(0), content);
   ASSERT_TRUE(content->is_text());
-  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  ASSERT_TRUE(content->HasCustomDrawHandler());
   Size(content, 100, 60);
   ExpectTranslation(Draw(content), 60, 60);
 }
@@ -2567,7 +3835,7 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   };
   replace(lepus::Value(padding));
   page_->FlushActionsAsRoot();
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->HasCustomDrawHandler());
   EXPECT_FALSE(content->fragment_impl()->HasCustomLayerProperties());
   draw(0, 0);
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
@@ -2998,7 +4266,7 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   Draw(content.get());
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
   page_->FlushActionsAsRoot();
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->HasCustomDrawHandler());
   EXPECT_FALSE(content->fragment_impl()->HasCustomDraw());
 
   // Verify the renderer itself loses translation, scale and rotation, including
@@ -3021,7 +4289,7 @@ TEST_F(ComposeGraphicsLayerDrawTest, CloneDoesNotShareRuntimeBinding) {
   Size(source, 200, 80);
   ExpectTranslation(Draw(source), 110, 80);
   auto clone = source->CloneElement(false);
-  EXPECT_FALSE(clone->HasCustomDrawFunctions());
+  EXPECT_FALSE(clone->HasCustomDrawHandler());
   clone->AttachToElementManager(manager.get(), nullptr, false);
   EXPECT_FALSE(clone->fragment_impl()->HasCustomDraw());
   page_->InsertNode(clone);
@@ -7284,17 +8552,17 @@ TEST_F(FragmentDrawTest, NonVisibleFragmentsHideVisibleChildren) {
   child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
   int parent_draws = 0;
   int child_draws = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [&parent_draws](Fragment&, DisplayListBuilder&) {
     ++parent_draws;
   };
   functions.draw_foreground = functions.draw_behind;
-  element->SetCustomDrawFunctions(functions);
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(functions));
   functions.draw_behind = [&child_draws](Fragment&, DisplayListBuilder&) {
     ++child_draws;
   };
   functions.draw_foreground = functions.draw_behind;
-  child->SetCustomDrawFunctions(functions);
+  child->SetCustomDrawHandler(MakeCustomDrawHandler(functions));
   page->FlushActionsAsRoot();
   page->Layout(std::make_shared<PipelineOptions>());
 
@@ -7344,11 +8612,11 @@ TEST_F(FragmentDrawTest,
     child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
     child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
     int draws = 0;
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
       ++draws;
     };
-    child->SetCustomDrawFunctions(std::move(functions));
+    child->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
     element->InsertNode(child);
     page->InsertNode(element);
     page->FlushActionsAsRoot();
@@ -7511,11 +8779,11 @@ TEST_F(FragmentDrawTest, ReparentedFragmentsFollowOwnVisibility) {
       child->SetStyle(kPropertyIDZIndex, lepus::Value(mode == 1 ? 1 : -1));
     }
     int draws = 0;
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
       ++draws;
     };
-    child->SetCustomDrawFunctions(std::move(functions));
+    child->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
     parent->InsertNode(child);
     page->InsertNode(parent);
     page->FlushActionsAsRoot();
