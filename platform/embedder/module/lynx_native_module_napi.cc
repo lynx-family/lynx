@@ -238,11 +238,29 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
   if (napi_open_handle_scope(env_, &scope) != napi_ok || scope == nullptr) {
     return base::unexpected("NativeModule: Failed to open napi handle scope.");
   }
-  auto close_scope_with_error = [this, scope](const std::string& error)
+  napi_value args_root = nullptr;
+  napi_ref args_ref = nullptr;
+  auto close_scope_with_error = [this, scope,
+                                 &args_ref](const std::string& error)
       -> base::expected<std::unique_ptr<pub::Value>, std::string> {
+    if (args_ref) {
+      napi_delete_reference(env_, args_ref);
+    }
     napi_close_handle_scope(env_, scope);
     return base::unexpected(error);
   };
+#if OS_OSX
+  // JSC handle scopes are no-ops, so values held only in a C++ vector are not
+  // GC roots. Retain each argument before converting the next one, through both
+  // the call and return-value conversion.
+  if (count > 0 &&
+      (napi_create_array(env_, &args_root) != napi_ok || !args_root ||
+       napi_create_reference(env_, args_root, 1, &args_ref) != napi_ok ||
+       !args_ref)) {
+    return close_scope_with_error(
+        "NativeModule: Failed to retain napi arguments.");
+  }
+#endif
   napi_value func = nullptr;
   napi_value receiver = nullptr;
 #if OS_OSX
@@ -298,6 +316,11 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
       return close_scope_with_error(
           "NativeModule: Failed to convert argument to napi value.");
     }
+    if (args_root && napi_set_element(env_, args_root, static_cast<uint32_t>(i),
+                                      capi_arg) != napi_ok) {
+      return close_scope_with_error(
+          "NativeModule: Failed to retain napi argument.");
+    }
     capi_args.push_back(capi_arg);
   }
   napi_value ret = nullptr;
@@ -314,6 +337,9 @@ LynxNativeModuleNAPI::InvokeMethod(const std::string& method_name,
   if (ret) {
     result = pub::ValueUtilsOpaqueNapiPrimJS::CreateValueWithOpaqueNapiArgs(
         static_cast<void*>(env_), static_cast<void*>(ret));
+  }
+  if (args_ref) {
+    napi_delete_reference(env_, args_ref);
   }
   napi_close_handle_scope(env_, scope);
   return result;
