@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "base/include/platform_types.h"
 #include "clay/flow/animation/scroll_offset_animation.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/gesture/scrollable_direction.h"
@@ -29,6 +30,11 @@ class RenderScroll : public RenderBox {
   void SetOverscrollEnabled(bool value) { overscroll_enabled_ = value; }
   bool OverscrollEnabled() const { return overscroll_enabled_; }
 
+  void SetFadingEdgeLength(float length);
+  bool HasFadingEdge() const {
+    return lynx::IsIOS() && fading_edge_length_ > 0.f;
+  }
+
   FloatRect VisibleOverflowRect() const;
   void SetVisibleOverflowRect(const FloatRect& rect);
 
@@ -42,7 +48,16 @@ class RenderScroll : public RenderBox {
   bool IsScrollable() const override { return true; }
 
   void SetScrollDirection(ScrollDirection direction) {
-    scroll_direction_ = direction;
+    if constexpr (lynx::IsIOS()) {
+      if (scroll_direction_ != direction) {
+        scroll_direction_ = direction;
+        if (HasFadingEdge()) {
+          MarkNeedsPaint();
+        }
+      }
+    } else {
+      scroll_direction_ = direction;
+    }
   }
   ScrollDirection GetScrollDirection() const { return scroll_direction_; }
 
@@ -53,6 +68,9 @@ class RenderScroll : public RenderBox {
   void SetClipChildrenToBounds(bool value) { clip_children_to_bounds_ = value; }
 
  private:
+  void PaintContents(PaintingContext& context, const FloatPoint& offset);
+  void PaintFadingEdge(PaintingContext& context, const FloatPoint& offset);
+
   // If overscroll is enabled, we can keep scrolling regardless of whether
   // exceeding the overflow rect.
   bool overscroll_enabled_ = false;
@@ -69,6 +87,7 @@ class RenderScroll : public RenderBox {
   ScrollDirection scroll_direction_;
   bool in_scroll_animation_ = false;
   bool clip_children_to_bounds_ = false;
+  float fading_edge_length_ = 0.f;
 };
 
 }  // namespace clay
