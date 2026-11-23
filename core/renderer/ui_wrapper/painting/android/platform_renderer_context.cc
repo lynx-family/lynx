@@ -285,10 +285,21 @@ bool PlatformRendererContext::UpdateImage(int32_t image_key, int32_t id,
   auto j_src =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, src.c_str());
   auto j_paint_info = CreateImagePaintInfoMapBuffer(paint_info);
-  return Java_PlatformRendererContext_updateImage(
+  const bool updated = Java_PlatformRendererContext_updateImage(
       env, local_ref.Get(), image_key, id, j_src.Get(), j_paint_info.Get(),
       static_cast<int32_t>(changes), static_cast<int>(width),
       static_cast<int>(height), event_mask);
+  if (!updated) {
+    // The registry may have been cleared while the PaintImage is still alive.
+    // Restore the manager with all properties and the key used by display
+    // lists. Fragment images use the default resize policy, unlike background
+    // images.
+    Java_PlatformRendererContext_createImage(
+        env, local_ref.Get(), id, j_src.Get(), j_paint_info.Get(),
+        static_cast<int>(width), static_cast<int>(height), event_mask,
+        image_key, false);
+  }
+  return true;
 }
 
 void PlatformRendererContext::DestroyImage(int32_t id) {

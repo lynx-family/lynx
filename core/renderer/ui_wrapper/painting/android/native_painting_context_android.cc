@@ -736,9 +736,24 @@ bool NativePaintingCtxAndroid::UpdateImage(int32_t image_key, int id,
                                            const ImagePaintInfo &paint_info,
                                            uint32_t changes, float width,
                                            float height, int32_t event_mask) {
-  return view_manager_ &&
-         view_manager_->UpdateImage(image_key, id, src, paint_info, changes,
-                                    width, height, event_mask);
+  if (!view_manager_ || !platform_ref_) {
+    return false;
+  }
+  // Updating a reused manager can release the bitmap currently being drawn.
+  // Serialize the entire update with drawing and the subsequent display list
+  // submission. Keep the platform ref alive because it owns view_manager_.
+  Enqueue([ref = platform_ref_, view_manager = view_manager_, image_key, id,
+           src = std::move(src), paint_info, changes, width, height,
+           event_mask]() {
+    if (view_manager->IsDestroyed()) {
+      return;
+    }
+    view_manager->UpdateImage(image_key, id, src, paint_info, changes, width,
+                              height, event_mask);
+  });
+  // The queued update restores a missing manager with the same image key.
+  // Report acceptance so the caller does not create a replacement PaintImage.
+  return true;
 }
 
 void NativePaintingCtxAndroid::UpdateTextBundle(int id, intptr_t bundle) {
