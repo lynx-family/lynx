@@ -70,8 +70,12 @@
 @property(nonatomic, readwrite, assign) BOOL enableAsyncDisplay;
 
 // Layout, must call invalidateIntrinsicContentSize after change layout props
-// If you use view.frame to set view frame, the layout mode will all be
-// specified
+// The layout modes and preferred sizes are derived from the frame only when the
+// frame is given at creation time (initWithFrame: or LynxViewBuilder.frame), or
+// on every layout pass when enableAutoLayout is YES. Setting view.frame later
+// does not update the viewport; set the layout mode and preferred size
+// properties below, or call updateViewportWithPreferredLayoutWidth:
+// preferredLayoutHeight:, instead.
 @property(nonatomic, assign) LynxViewSizeMode layoutWidthMode;
 @property(nonatomic, assign) LynxViewSizeMode layoutHeightMode;
 @property(nonatomic, assign) CGFloat preferredMaxLayoutWidth;
