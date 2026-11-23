@@ -963,7 +963,6 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Tick all element need to animated.
   void TickAllElement(fml::TimePoint &time);
-  void SuppressNextAnimationIterationEvents();
 
   // Permanently stop animation VSync when page destruction begins.
   void StopAnimationVsync();

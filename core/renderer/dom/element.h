@@ -1313,7 +1313,6 @@ class Element : public lepus::RefCounted,
 
   virtual void TickElement(fml::TimePoint& time) {}
 
-  void SuppressNextAnimationIterationEvents();
   bool TickAllAnimation(fml::TimePoint& time,
                         std::shared_ptr<PipelineOptions>& options);
 

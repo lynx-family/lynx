@@ -37,8 +37,7 @@ struct AnimationTimingInput {
 struct AnimationEventTiming {
   fml::TimeDelta start_elapsed_time;
   fml::TimeDelta end_elapsed_time;
-  int first_iteration{0};
-  fml::TimeDelta iteration_duration;
+  fml::TimeDelta iteration_elapsed_time;
 };
 
 struct AnimationTimingStateUpdate {
@@ -81,8 +80,9 @@ GFX_EXPORT bool IsInEffect(const AnimationTimingInput& input,
 GFX_EXPORT TrimmedAnimationTime TrimTimeToCurrentIteration(
     const AnimationTimingInput& input, fml::TimePoint monotonic_time,
     int current_iteration_count = 0, bool events_only = false);
-GFX_EXPORT int CountIterationEventsDue(int old_iteration_count,
-                                       int current_iteration_count);
+GFX_EXPORT bool ShouldSendIterationEvent(
+    const AnimationTimingStateUpdate& update, int previous_iteration,
+    int current_iteration);
 
 }  // namespace gfx
 }  // namespace lynx
