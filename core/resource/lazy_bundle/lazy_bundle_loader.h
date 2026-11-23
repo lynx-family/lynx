@@ -54,36 +54,36 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
     }
 
     CallBackInfo(std::string url, std::vector<uint8_t> data,
-                 const std::optional<LynxTemplateBundle>& component_bundle,
+                 std::optional<LynxTemplateBundle> component_bundle,
                  std::optional<StatusInfo> status,
                  RadonLazyComponent* component, int instance_id)
         : component_url(std::move(url)),
           data(std::move(data)),
           component(component),
           instance_id_(instance_id),
-          bundle(component_bundle) {
+          bundle(std::move(component_bundle)) {
       HandleStatus(std::move(status));
     }
 
     // for preload
     CallBackInfo(std::string url, std::vector<uint8_t> data,
-                 const std::optional<LynxTemplateBundle>& component_bundle,
+                 std::optional<LynxTemplateBundle> component_bundle,
                  std::optional<StatusInfo> status)
         : component_url(std::move(url)),
           data(std::move(data)),
-          bundle(component_bundle) {
+          bundle(std::move(component_bundle)) {
       HandleStatus(std::move(status));
     }
 
     // for js
     CallBackInfo(std::string url, std::vector<uint8_t> data,
-                 const std::optional<LynxTemplateBundle>& component_bundle,
+                 std::optional<LynxTemplateBundle> component_bundle,
                  std::optional<StatusInfo> status, bool sync,
                  int32_t callback_id, std::vector<std::string> component_ids)
         : component_url(std::move(url)),
           data(std::move(data)),
           sync(sync),
-          bundle(component_bundle),
+          bundle(std::move(component_bundle)),
           callback_id(callback_id),
           component_ids(std::move(component_ids)) {
       HandleStatus(std::move(status));
