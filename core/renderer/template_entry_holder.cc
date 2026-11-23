@@ -89,7 +89,7 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
   // so we need to insert pre registered bundle into bundle manager.
   // refactoring it later!
   if (component_loader_) {
-    component_loader_->InsertTemplateBundle(url, std::move(bundle));
+    component_loader_->InsertTemplateBundle(url, bundle);
   }
 }
 

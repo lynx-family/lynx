@@ -217,7 +217,8 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
    * Manage template_bundles in LazyBundleLoader fetched with `fetchBundle` api.
    * It's meant to be thread-safe.
    */
-  void InsertTemplateBundle(const std::string& url, LynxTemplateBundle bundle);
+  void InsertTemplateBundle(const std::string& url,
+                            const LynxTemplateBundle& bundle);
 
   std::optional<LynxTemplateBundle> GetTemplateBundle(const std::string& url);
 
