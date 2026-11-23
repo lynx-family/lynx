@@ -4750,6 +4750,142 @@ TEST_F(FragmentDrawTest, EqualZIndexDynamicUpdatesUseElementOrder) {
       ::testing::ElementsAre(first_fragment, third_fragment, second_fragment));
 }
 
+TEST_F(FragmentDrawTest, DeferredDrawingOffsetRefreshCoalescesAcrossSiblings) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto outer = manager->CreateFiberView();
+  auto inner = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  second->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(outer);
+  outer->MarkAsDirectChildOfCompatibleComponent(true);
+  outer->InsertNode(inner);
+  inner->InsertNode(first);
+  inner->InsertNode(second);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* outer_fragment = outer->fragment_impl();
+  auto* inner_fragment = inner->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* second_fragment = second->fragment_impl();
+  ASSERT_TRUE(outer_fragment->has_platform_renderer_);
+
+  auto set_layout = [](Element* element, Fragment* fragment, float left,
+                       float top) {
+    element->left_ = left;
+    element->top_ = top;
+    starlight::LayoutResultForRendering layout;
+    layout.offset_ = starlight::FloatPoint(left, top);
+    layout.size_ = FloatSize(100.f, 40.f);
+    fragment->UpdateLayout(layout);
+  };
+  set_layout(page.get(), page_fragment, 0.f, 0.f);
+  set_layout(outer.get(), outer_fragment, 32.f, 7.f);
+  set_layout(inner.get(), inner_fragment, 31.f, 11.f);
+  set_layout(first.get(), first_fragment, 3.f, 5.f);
+  set_layout(second.get(), second_fragment, 9.f, 13.f);
+  page_fragment->UpdateLayout(0.f, 0.f);
+
+  EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[0], 66.f);
+  EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[1], 23.f);
+  EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[0], 72.f);
+  EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[1], 31.f);
+
+  // Returning both siblings to normal flow under inner_fragment queues a
+  // single deferred offset refresh without needing a z-sort on inner_fragment.
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
+  second->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(inner_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_FALSE(inner_fragment->NeedSortZChild());
+  EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[0], 66.f);
+  EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[0], 72.f);
+
+  // Also verify NoPatch triggers the flush before Repaint().
+  auto no_patch_options = std::make_shared<PipelineOptions>();
+  no_patch_options->trigger_layout_ = false;
+  manager->OnPatchFinish(no_patch_options);
+
+  EXPECT_FALSE(inner_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[0], 3.f);
+  EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[1], 5.f);
+  EXPECT_FLOAT_EQ(first_fragment->render_offset_[0], 31.f);
+  EXPECT_FLOAT_EQ(first_fragment->render_offset_[1], 11.f);
+  EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[0], 9.f);
+  EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[1], 13.f);
+  EXPECT_FLOAT_EQ(second_fragment->render_offset_[0], 31.f);
+  EXPECT_FLOAT_EQ(second_fragment->render_offset_[1], 11.f);
+}
+
+TEST_F(FragmentDrawTest,
+       RemovingStackingContextRefreshesHoistedDescendantOffsets) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto grand = manager->CreateFiberView();
+  auto outer = manager->CreateFiberView();
+  auto inner = manager->CreateFiberView();
+  auto layer = manager->CreateFiberView();
+  outer->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  layer->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(grand);
+  grand->InsertNode(outer);
+  outer->InsertNode(inner);
+  inner->InsertNode(layer);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* grand_fragment = grand->fragment_impl();
+  auto* outer_fragment = outer->fragment_impl();
+  auto* inner_fragment = inner->fragment_impl();
+  auto* layer_fragment = layer->fragment_impl();
+
+  auto set_layout = [](Element* element, Fragment* fragment, float left,
+                       float top) {
+    element->left_ = left;
+    element->top_ = top;
+    starlight::LayoutResultForRendering layout;
+    layout.offset_ = starlight::FloatPoint(left, top);
+    layout.size_ = FloatSize(100.f, 40.f);
+    fragment->UpdateLayout(layout);
+  };
+  set_layout(page.get(), page_fragment, 0.f, 0.f);
+  set_layout(grand.get(), grand_fragment, 10.f, 20.f);
+  set_layout(outer.get(), outer_fragment, 32.f, 7.f);
+  set_layout(inner.get(), inner_fragment, 31.f, 11.f);
+  set_layout(layer.get(), layer_fragment, 3.f, 5.f);
+  page_fragment->UpdateLayout(0.f, 0.f);
+
+  ASSERT_EQ(outer_fragment->fragment_parent(), page_fragment);
+  ASSERT_EQ(layer_fragment->fragment_parent(), outer_fragment);
+  EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[0], 34.f);
+  EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[1], 16.f);
+
+  // Removing z-index on outer returns outer to grand_fragment while moving
+  // layer up to page_fragment. Both parents get deferred offset refreshes.
+  outer->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value());
+  page->FlushActionsAsRoot();
+
+  ASSERT_FALSE(outer->IsStackingContextNode());
+  EXPECT_EQ(outer_fragment->fragment_parent(), grand_fragment);
+  EXPECT_EQ(layer_fragment->fragment_parent(), page_fragment);
+  EXPECT_TRUE(grand_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_TRUE(page_fragment->NeedRefreshDrawingOffsets());
+
+  auto update_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(update_options);
+
+  EXPECT_FALSE(grand_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_FALSE(page_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[0], 76.f);
+  EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[1], 43.f);
+}
+
 TEST_F(FragmentTest, CreateLayerIfNeededKeepsCompatibleComponentInitConfig) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);

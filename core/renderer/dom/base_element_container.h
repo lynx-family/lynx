@@ -28,7 +28,8 @@ class BaseElementContainer {
     kNeedSortZChild = 1 << 0,
     kNeedSortFixedChild = 1 << 1,
     kNeedRedraw = 1 << 2,
-    kNeedUpdateSubtreeProperty = 1 << 3
+    kNeedUpdateSubtreeProperty = 1 << 3,
+    kNeedRefreshDrawingOffsets = 1 << 4
   };
 
   explicit BaseElementContainer(Element* element);
@@ -171,6 +172,9 @@ class BaseElementContainer {
   bool NeedRedraw() const { return dirty_state_ & DirtyState::kNeedRedraw; }
   bool NeedUpdateSubtreeProperty() const {
     return dirty_state_ & DirtyState::kNeedUpdateSubtreeProperty;
+  }
+  bool NeedRefreshDrawingOffsets() const {
+    return dirty_state_ & DirtyState::kNeedRefreshDrawingOffsets;
   }
 
   void ClearPaintDirtyState() {

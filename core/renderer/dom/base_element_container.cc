@@ -218,6 +218,11 @@ void BaseElementContainer::MarkDirtyState(DirtyState state) {
     dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
     element_manager()->SetNeedsRepaint();
   }
+
+  if (state == kNeedRefreshDrawingOffsets) {
+    dirty_state_ = static_cast<DirtyState>(dirty_state_ | state);
+    element_manager()->InsertDirtyContext(this);
+  }
 }
 
 void BaseElementContainer::InvalidateForRedraw() {

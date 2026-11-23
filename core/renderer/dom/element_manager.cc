@@ -2026,6 +2026,10 @@ void ElementManager::OnPatchFinishForFiber(
     catalyzer_->painting_context()->FinishTasmOperation(options);
   }
 
+  // Flush dirty stacking contexts before branching so NoPatch repaints also
+  // see up-to-date sort orders and drawing offsets.
+  UpdateDirtyStackingContexts();
+
   // if flush_option do not need layout or options do not need layout, skip
   // layout.
   if ((!need_layout_ || !options->trigger_layout_) &&
@@ -2075,7 +2079,6 @@ void ElementManager::OnPatchFinishForFiber(
     patch_finish_callback(false);
   } else {
     LOGI("ElementManager::OnPatchFinishForFiber WithPatch!");
-    UpdateDirtyStackingContexts();
     if (need_layout_ && !(options->has_layout)) {
       options->has_layout = need_layout_;
     }
@@ -2116,6 +2119,7 @@ void ElementManager::ResolveSubtreeForLayout(Element *root,
 }
 
 void ElementManager::Repaint() {
+  UpdateDirtyStackingContexts();
   need_repaint_.store(false, std::memory_order_relaxed);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REPAINT);
   auto *native_context = painting_context()->impl()->CastToNativeCtx();
