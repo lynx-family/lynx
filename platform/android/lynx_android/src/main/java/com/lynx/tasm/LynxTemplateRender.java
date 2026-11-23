@@ -1148,7 +1148,11 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       LLog.e(TAG, "notifyExtensionModulesTemplateLoad failed, isEnableJSRuntime is false");
       return;
     }
-    Map<String, LynxExtensionModule> modules = mLynxContext.getExtensionModules();
+    LynxContext context = mLynxContext;
+    if (context == null) {
+      return;
+    }
+    Map<String, LynxExtensionModule> modules = context.getExtensionModules();
     for (String key : modules.keySet()) {
       LynxExtensionModule module = modules.get(key);
       module.onTemplateLoad(url);
