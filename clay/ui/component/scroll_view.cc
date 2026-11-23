@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/viscous_fluid_interpolator.h"
 #include "clay/gfx/geometry/float_rect.h"
@@ -120,7 +121,10 @@ ScrollView::~ScrollView() {}
 
 void ScrollView::AddChild(BaseView* child, int index) {
   if (child->Is<BounceView>()) {
-    bounce_view_ = static_cast<BounceView*>(child);
+    if constexpr (!lynx::IsIOS()) {
+      bounce_views_.clear();
+    }
+    bounce_views_.push_back(static_cast<BounceView*>(child));
     MarkNeedsLayout();
   }
   BaseView::AddChild(child, index);
@@ -140,7 +144,13 @@ void ScrollView::AddChild(BaseView* child, int index) {
 
 void ScrollView::RemoveChild(BaseView* child) {
   if (child->Is<BounceView>()) {
-    bounce_view_ = nullptr;
+    if constexpr (lynx::IsIOS()) {
+      bounce_views_.erase(
+          std::remove(bounce_views_.begin(), bounce_views_.end(), child),
+          bounce_views_.end());
+    } else {
+      bounce_views_.clear();
+    }
     MarkNeedsLayout();
   }
   BaseView::RemoveChild(child);
@@ -174,24 +184,22 @@ void ScrollView::OnLayout(LayoutContext* context) {
     SetScrollToIndex(pending_scroll_index_);
     pending_scroll_index_ = -1;
   }
-  if (!bounce_view_) {
-    return;
-  }
-  auto bounce_direction = bounce_view_->GetDirection();
-  if (bounce_direction == Direction::kTop) {
-    bounce_view_->SetY(Top() - bounce_view_->Height() -
-                       bounce_view_->MarginBottom());
-  } else if (bounce_direction == Direction::kLeft) {
-    bounce_view_->SetX(Left() - bounce_view_->Width() -
-                       bounce_view_->MarginRight());
-  } else if (bounce_direction == Direction::kBottom) {
-    auto render_box = static_cast<RenderBox*>(render_object());
-    auto height = render_box->OverflowRect().MaxY();
-    bounce_view_->SetY(height + bounce_view_->MarginTop());
-  } else if (bounce_direction == Direction::kRight) {
-    auto render_box = static_cast<RenderBox*>(render_object());
-    auto width = render_box->OverflowRect().MaxX();
-    bounce_view_->SetX(width + bounce_view_->MarginLeft());
+  const auto overflow = GetRenderScroll()->OverflowRect();
+  for (auto* bounce : bounce_views_) {
+    switch (bounce->GetDirection()) {
+      case Direction::kTop:
+        bounce->SetY(Top() - bounce->Height() - bounce->MarginBottom());
+        break;
+      case Direction::kLeft:
+        bounce->SetX(Left() - bounce->Width() - bounce->MarginRight());
+        break;
+      case Direction::kBottom:
+        bounce->SetY(overflow.MaxY() + bounce->MarginTop());
+        break;
+      case Direction::kRight:
+        bounce->SetX(overflow.MaxX() + bounce->MarginLeft());
+        break;
+    }
   }
 }
 
@@ -346,6 +354,13 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
   } else if (kw == KeywordID::kEnableScroll) {
     bool enabled = attribute_utils::GetBool(value, true);
     SetScrollEnabled(enabled);
+  } else if (lynx::IsIOS() && kw == KeywordID::kEnableScrollMonitor) {
+    enable_scroll_monitor_ = attribute_utils::GetBool(value);
+  } else if (lynx::IsIOS() && kw == KeywordID::kFadingEdgeLength) {
+    attribute_utils::Length length;
+    attribute_utils::TryGetLength(value, length);
+    GetRenderScroll()->SetFadingEdgeLength(
+        attribute_utils::ToPxWithDisplayMetrics(length, page_view()));
   } else if (kw == KeywordID::kScrollMonitorTag) {
     std::string tag;
     if (attribute_utils::TryGetString(value, tag)) {
@@ -649,30 +664,40 @@ void ScrollView::ScrollTo(bool smooth, float offset, int index) {
 }
 
 void ScrollView::OnBounceStart(float start_offset) {
-  bool trigger_event = false;
-  if (start_offset < 0) {
-    trigger_event =
-        bounce_view_ && (bounce_view_->GetDirection() == Direction::kLeft ||
-                         bounce_view_->GetDirection() == Direction::kTop);
-  } else if (start_offset > 0) {
-    trigger_event =
-        bounce_view_ && (bounce_view_->GetDirection() == Direction::kRight ||
-                         bounce_view_->GetDirection() == Direction::kBottom);
+  if (start_offset == 0 || !HasEvent(event_attr::kEventScrollToBounce)) {
+    return;
   }
-  if (trigger_event) {
-    auto bounce_threshold = scroll_direction_ == ScrollDirection::kVertical
-                                ? bounce_view_->ContentHeight()
-                                : bounce_view_->ContentWidth();
-    if (HasEvent(event_attr::kEventScrollToBounce) &&
-        std::abs(start_offset) > bounce_threshold * 0.8 && trigger_event) {
-      page_view()->SendEvent(callback_id_, event_attr::kEventScrollToBounce,
-                             {});
-    }
+  const bool vertical = scroll_direction_ == ScrollDirection::kVertical;
+  const bool at_start = start_offset < 0;
+  const auto bounce = std::find_if(
+      bounce_views_.rbegin(), bounce_views_.rend(),
+      [at_start, vertical](const auto* view) {
+        const auto direction = view->GetDirection();
+        const bool leading =
+            direction == Direction::kLeft || direction == Direction::kTop;
+        const bool vertical_bounce =
+            direction == Direction::kTop || direction == Direction::kBottom;
+        return leading == at_start &&
+               (!lynx::IsIOS() || vertical == vertical_bounce);
+      });
+  if (bounce == bounce_views_.rend()) {
+    return;
+  }
+  const float threshold =
+      vertical ? (*bounce)->ContentHeight() : (*bounce)->ContentWidth();
+  if (std::abs(start_offset) > threshold * 0.8) {
+    page_view()->SendEvent(callback_id_, event_attr::kEventScrollToBounce, {});
   }
 }
 
 void ScrollView::DidScroll() {
   NestedScrollable::DidScroll();
+
+  if (lynx::IsIOS() && enable_scroll_monitor_) {
+    page_view()->NotifyScrollMonitor(PageView::ScrollMonitorEvent::kScroll,
+                                     GetScrollMonitorComponentTag(),
+                                     ScrollMonitorTag());
+  }
 
   // Trigger ScrollWrapper and descendants to be updated in a11y system.
 #ifdef ENABLE_ACCESSIBILITY
@@ -787,6 +812,16 @@ void ScrollView::OnScrollAnimationStart(float start, float delta,
 
 void ScrollView::OnScrollAnimationEnd() {
   SetScrollStatus(Scrollable::ScrollStatus::kIdle);
+  if (lynx::IsIOS() && enable_scroll_monitor_) {
+    page_view()->NotifyScrollMonitor(
+        PageView::ScrollMonitorEvent::kAnimationEnd,
+        GetScrollMonitorComponentTag(), ScrollMonitorTag());
+  }
+}
+
+const std::string& ScrollView::GetScrollMonitorComponentTag() const {
+  const auto* parent = Parent();
+  return parent && parent->id() == callback_id_ ? parent->GetName() : GetName();
 }
 
 // TODO(liuguoliang): Check if ScrollStatus::kAnimating is needed.

@@ -4,6 +4,7 @@
 
 #include "clay/ui/component/view_registry.h"
 
+#include "base/include/platform_types.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/ui/component/builtin_views.h"
 #include "clay/ui/component/extend_views.h"
@@ -80,6 +81,12 @@ ViewRegistry::ViewRegistry() {
   for (auto p = __start_clayview; p != __stop_clayview; ++p) {
     this->RegisterView(std::string(p->name), p->view_creator,
                        p->shadow_node_creator);
+  }
+  if constexpr (lynx::IsIOS()) {
+    if (const auto bounce = registry_.find("x-bounce-view");
+        bounce != registry_.end()) {
+      registry_.emplace("bounce-view", bounce->second);
+    }
   }
 #endif
 }
