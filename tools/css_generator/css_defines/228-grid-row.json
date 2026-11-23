@@ -93,7 +93,7 @@
   "note": [
     {
       "literal": "Lynx's `<grid-line>` supports `auto`, `<number>`, and `span <number>`. Named grid lines (`<custom-ident>`) are not supported.",
-      "level": "tip"
+      "level": ["tip"]
     }
   ]
 }
