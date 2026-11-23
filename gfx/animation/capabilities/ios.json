@@ -2,7 +2,7 @@
   "backend": "ios",
   "events": {
     "keyframe": ["start", "end", "cancel"],
-    "transition": ["start", "end"]
+    "transition": []
   },
   "capabilities": [
     {

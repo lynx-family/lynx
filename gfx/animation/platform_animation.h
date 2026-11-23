@@ -5,6 +5,8 @@
 #ifndef GFX_ANIMATION_PLATFORM_ANIMATION_H_
 #define GFX_ANIMATION_PLATFORM_ANIMATION_H_
 
+#include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -39,7 +41,8 @@ enum class PlatformAnimationCommandType : uint8_t {
   kUpdate,
   kCancel,
   // Remove the platform executor while the logical animation continues in
-  // C++ New Animator, without canceling the animation.
+  // C++ New Animator, without canceling the animation. For a transition,
+  // capture and hold the presentation value until Core commits its first frame.
   kDetach,
 };
 
@@ -280,6 +283,37 @@ struct PlatformAnimationProperty {
   using TriviallyRelocatable = bool;
 };
 
+// An iOS transition detach has one UI-thread writer and a Core reader.
+class PlatformTransitionSnapshot final
+    : public fml::RefCountedThreadSafe<PlatformTransitionSnapshot> {
+ public:
+  // Opacity in the first component, or a CSS matrix3d in layout units.
+  using Value = std::array<float, 16>;
+
+  void Publish() { status_.store(State::kMissing, std::memory_order_release); }
+
+  void Publish(const Value& value) {
+    value_ = value;
+    status_.store(State::kReady, std::memory_order_release);
+  }
+
+  void PublishOpacity(float value) {
+    value_[0] = value;
+    status_.store(State::kReady, std::memory_order_release);
+  }
+
+  bool Read(const Value*& value) const {
+    const auto state = status_.load(std::memory_order_acquire);
+    value = state == State::kReady ? &value_ : nullptr;
+    return state != State::kPending;
+  }
+
+ private:
+  enum class State : uint8_t { kPending, kMissing, kReady };
+  Value value_{};
+  std::atomic<State> status_{State::kPending};
+};
+
 struct PlatformAnimationCommand {
   PlatformAnimationCommand() = default;
   PlatformAnimationCommand(PlatformAnimationCommand&&) = default;
@@ -307,6 +341,7 @@ struct PlatformAnimationCommand {
   // New Animator and the platform. Unlike generation, this token does not
   // change for updates that keep the same execution backend.
   uint64_t executor{0};
+  fml::RefPtr<PlatformTransitionSnapshot> transition_snapshot;
 
   // All owning members refer to heap storage, never to this command's address.
   using TriviallyRelocatable = bool;

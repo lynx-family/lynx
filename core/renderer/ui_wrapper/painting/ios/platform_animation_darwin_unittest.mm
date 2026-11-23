@@ -55,10 +55,34 @@ gfx::PlatformAnimationCommand TransformCommand(const gfx::TransformOperations& f
   return command;
 }
 
+gfx::PlatformAnimationCommand TransformTransition(const gfx::TransformOperations& from,
+                                                  const gfx::TransformOperations& to,
+                                                  uint32_t generation = 1) {
+  auto command = TransformCommand(from, to);
+  command.kind = gfx::AnimationKind::kTransition;
+  command.type = generation == 1 ? gfx::PlatformAnimationCommandType::kHandoff
+                                 : gfx::PlatformAnimationCommandType::kUpdate;
+  command.generation = generation;
+  return command;
+}
+
 void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
   auto commands = lynx::fml::MakeRefCounted<gfx::PlatformAnimationCommandBatch>();
   commands->push_back(std::move(command));
   tasm::ApplyPlatformAnimationCommands(ui, commands);
+}
+
+lynx::fml::RefPtr<gfx::PlatformTransitionSnapshot> DetachTransition(LynxUI* ui,
+                                                                    uint32_t generation) {
+  auto snapshot = lynx::fml::MakeRefCounted<gfx::PlatformTransitionSnapshot>();
+  gfx::PlatformAnimationCommand command;
+  command.kind = gfx::AnimationKind::kTransition;
+  command.type = gfx::PlatformAnimationCommandType::kDetach;
+  command.animation_id = 1;
+  command.generation = generation;
+  command.transition_snapshot = snapshot;
+  Apply(ui, std::move(command));
+  return snapshot;
 }
 
 id HasElapsedTime(NSTimeInterval elapsedTime) {
@@ -378,12 +402,7 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
     gfx::TransformOperations start, end;
     start.AppendTranslate({from, gfx::LengthUnit::kNumber}, {}, {});
     end.AppendTranslate({to, gfx::LengthUnit::kNumber}, {}, {});
-    auto command = TransformCommand(start, end);
-    command.kind = gfx::AnimationKind::kTransition;
-    command.type = generation == 1 ? gfx::PlatformAnimationCommandType::kHandoff
-                                   : gfx::PlatformAnimationCommandType::kUpdate;
-    command.generation = generation;
-    return command;
+    return TransformTransition(start, end, generation);
   };
   auto* layer = (ManuallyDrivenAnimationLayer*)self.ui.view.layer;
   Apply(self.ui, commandForTarget(20, 100, 1));
@@ -419,6 +438,46 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
   XCTAssertNil([layer animationForKey:key]);
 }
 
+- (void)testTransformTransitionKeepsTurnsWhenRetargeted {
+  gfx::TransformOperations from, to, next;
+  from.AppendRotate(gfx::TransformOperation::kRotateZ, 0);
+  to.AppendRotate(gfx::TransformOperation::kRotateZ, 720);
+  next.AppendRotate(gfx::TransformOperation::kRotateZ, 540);
+  Apply(self.ui, TransformTransition(from, to));
+
+  auto* layer = (ManuallyDrivenAnimationLayer*)self.ui.view.layer;
+  NSString* const key = @"transition-transform";
+  CAAnimation* previous = [layer animationForKey:key];
+  layer.speed = 0;
+  layer.timeOffset = previous.beginTime + previous.duration * (450.0 / 720.0);
+  layer.displayedLayer = [ManuallyDrivenAnimationLayer layer];
+  layer.displayedLayer.transform = CATransform3DMakeRotation(M_PI_2, 0, 0, 1);
+  Apply(self.ui, TransformTransition(to, next, 2));
+
+  CAAnimationGroup* current = (CAAnimationGroup*)[layer animationForKey:key];
+  // The remaining 90 degrees fit in the matrix interpolation.
+  XCTAssertEqual(current.animations.count, 1u);
+}
+
+- (void)testPercentageTransitionKeepsTimingWhenResized {
+  gfx::TransformOperations to;
+  to.AppendTranslate({100.f, gfx::LengthUnit::kPercent}, {}, {});
+  Apply(self.ui, TransformTransition({}, to));
+  auto* layer = (ManuallyDrivenAnimationLayer*)self.ui.view.layer;
+  NSString* const key = @"transition-transform";
+  CAAnimationGroup* previous = (CAAnimationGroup*)[layer animationForKey:key];
+
+  self.ui.updatedFrame = CGRectMake(0, 0, 200, 100);
+  [self.ui onNodeReadyForUIOwner];
+  CAAnimationGroup* resized = (CAAnimationGroup*)[layer animationForKey:key];
+  CABasicAnimation* transform = (CABasicAnimation*)resized.animations.firstObject;
+  XCTAssertEqualWithAccuracy([transform.toValue CATransform3DValue].m41, 200, 1e-5);
+  XCTAssertEqual(resized.beginTime, previous.beginTime);
+  XCTAssertEqual(resized.duration, previous.duration);
+  [previous.delegate animationDidStop:previous finished:NO];
+  XCTAssertNotNil([layer animationForKey:key]);
+}
+
 - (void)testOpacityTransitionRetargetsBeforeFirstFrameAndCancels {
   auto command = OpacityCommand();
   command.kind = gfx::AnimationKind::kTransition;
@@ -434,6 +493,13 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
   XCTAssertEqualWithAccuracy([animation.fromValue doubleValue], 0.2, 1e-5);
   XCTAssertEqualWithAccuracy([animation.toValue doubleValue], 0.4, 1e-5);
 
+  auto snapshot = DetachTransition(self.ui, 2);
+  const gfx::PlatformTransitionSnapshot::Value* captured = nullptr;
+  XCTAssertTrue(snapshot->Read(captured));
+  XCTAssertEqualWithAccuracy(captured ? (*captured)[0] : -1, 0.2, 1e-5);
+  CABasicAnimation* hold = (CABasicAnimation*)[layer animationForKey:key];
+  XCTAssertEqualObjects(hold.keyPath, @"opacity");
+  XCTAssertEqualWithAccuracy([hold.fromValue doubleValue], 0.2, 1e-5);
   layer.opacity = 0.4;
   gfx::PlatformAnimationCommand cancel;
   cancel.type = gfx::PlatformAnimationCommandType::kCancel;

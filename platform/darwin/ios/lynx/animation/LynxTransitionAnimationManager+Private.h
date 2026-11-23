@@ -9,8 +9,9 @@ NS_ASSUME_NONNULL_BEGIN
 /** @cond */
 @interface LynxTransitionAnimationManager ()
 - (void)removeLegacyTransformTransition;
-- (void)cancelPlatformTransition:(uint64_t)animationID
-                      generation:(uint32_t)generation __attribute__((objc_direct));
+- (nullable NSValue*)stopPlatformTransition:(uint64_t)animationID
+                                 generation:(uint32_t)generation
+                           holdPresentation:(BOOL)holdPresentation __attribute__((objc_direct));
 // Endpoints are numbers for opacity and arrays of LynxTransformRaw for transform.
 - (void)applyPlatformTransition:(LynxAnimationInfo*)info
                            from:(id)from

@@ -237,14 +237,39 @@ LynxPlatformAnimationPlayback* MakePlatformPlayback(
   return platformPlayback;
 }
 
-void ApplyTransitionCommand(LynxUI* ui, const gfx::PlatformAnimationCommand& command) {
-  if (command.type == gfx::PlatformAnimationCommandType::kCancel) {
-    auto* manager = [ui transitionManagerCreatingIfNeeded:NO];
-    [manager cancelPlatformTransition:command.animation_id generation:command.generation];
+void PublishTransitionSnapshot(NSValue* value, gfx::PlatformTransitionSnapshot& snapshot) {
+  if (!value) {
+    snapshot.Publish();
     return;
   }
-  if (command.type == gfx::PlatformAnimationCommandType::kDetach ||
-      command.properties.size() != 1) {
+  if ([value isKindOfClass:[NSNumber class]]) {
+    snapshot.PublishOpacity([(NSNumber*)value floatValue]);
+    return;
+  }
+  const CATransform3D t = value.CATransform3DValue;
+  snapshot.Publish({static_cast<float>(t.m11), static_cast<float>(t.m12), static_cast<float>(t.m13),
+                    static_cast<float>(t.m14), static_cast<float>(t.m21), static_cast<float>(t.m22),
+                    static_cast<float>(t.m23), static_cast<float>(t.m24), static_cast<float>(t.m31),
+                    static_cast<float>(t.m32), static_cast<float>(t.m33), static_cast<float>(t.m34),
+                    static_cast<float>(t.m41), static_cast<float>(t.m42), static_cast<float>(t.m43),
+                    static_cast<float>(t.m44)});
+}
+
+void ApplyTransitionCommand(LynxUI* ui, const gfx::PlatformAnimationCommand& command) {
+  const bool detach = command.type == gfx::PlatformAnimationCommandType::kDetach;
+  if (command.type == gfx::PlatformAnimationCommandType::kCancel || detach) {
+    if (!detach || command.transition_snapshot) {
+      auto* manager = [ui transitionManagerCreatingIfNeeded:NO];
+      NSValue* value = [manager stopPlatformTransition:command.animation_id
+                                            generation:command.generation
+                                      holdPresentation:detach];
+      if (detach) {
+        PublishTransitionSnapshot(value, *command.transition_snapshot);
+      }
+    }
+    return;
+  }
+  if (!ui || command.properties.size() != 1) {
     return;
   }
   const auto& property = command.properties.front();
@@ -273,7 +298,7 @@ void ApplyTransitionCommand(LynxUI* ui, const gfx::PlatformAnimationCommand& com
 
 void ApplyPlatformAnimationCommands(
     LynxUI* ui, const fml::RefPtr<gfx::PlatformAnimationCommandBatch>& commands) {
-  if (ui == nil || commands == nullptr || commands->empty()) {
+  if (commands == nullptr || commands->empty()) {
     return;
   }
 
@@ -282,7 +307,7 @@ void ApplyPlatformAnimationCommands(
       ApplyTransitionCommand(ui, command);
       continue;
     }
-    if (command.kind != gfx::AnimationKind::kKeyframe) {
+    if (!ui || command.kind != gfx::AnimationKind::kKeyframe) {
       continue;
     }
     const bool cancel = command.type == gfx::PlatformAnimationCommandType::kCancel;

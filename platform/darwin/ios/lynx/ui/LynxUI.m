@@ -1885,11 +1885,8 @@ LYNX_PROP_DEFINE("transform-origin", setTransformOrigin, NSArray*) {
 }
 
 LYNX_PROP_DEFINE("perspective", setPerspective, NSArray*) {
-  if (requestReset) {
-    _perspective = nil;
-    return;
-  }
-  _perspective = value;
+  _didTransformChanged = YES;
+  _perspective = requestReset ? nil : value;
 }
 
 LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {

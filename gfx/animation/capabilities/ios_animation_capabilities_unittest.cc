@@ -27,11 +27,12 @@ TEST(IOSAnimationCapabilitiesTest, DeclaresKeyframeAndTransitionProperties) {
 
   EXPECT_EQ(capabilities.backend, AnimationBackendType::kIOS);
   EXPECT_EQ(capabilities.properties.size(), 4u);
-  EXPECT_EQ(capabilities.event_capabilities.size(), 2u);
+  EXPECT_EQ(capabilities.event_capabilities.size(), 1u);
   for (const auto kind :
        {AnimationKind::kKeyframe, AnimationKind::kTransition}) {
-    EXPECT_TRUE(capabilities.SupportsEvents(
-        kind, kAnimationEventStart | kAnimationEventEnd));
+    EXPECT_EQ(capabilities.SupportsEvents(
+                  kind, kAnimationEventStart | kAnimationEventEnd),
+              kind == AnimationKind::kKeyframe);
     EXPECT_FALSE(capabilities.SupportsEvents(kind, kAnimationEventIteration));
     EXPECT_NE(capabilities.FindProperty(kind, AnimationPropertyType::kOpacity,
                                         KeyframeValueType::kFloat),

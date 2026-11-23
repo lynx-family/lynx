@@ -145,10 +145,9 @@ TEST(AnimationBackendEvaluatorTest, ChecksOnlyRequiredEventsForEachKind) {
   EXPECT_TRUE(EvaluateAnimationBackend(request, capabilities).CanRun());
 
   request.kind = gfx::AnimationKind::kTransition;
-  request.required_events = gfx::kAnimationEventStart | gfx::kAnimationEventEnd;
-  EXPECT_TRUE(EvaluateAnimationBackend(request, capabilities).CanRun());
   for (const auto event :
-       {gfx::kAnimationEventCancel, gfx::kAnimationEventIteration}) {
+       {gfx::kAnimationEventStart, gfx::kAnimationEventEnd,
+        gfx::kAnimationEventCancel, gfx::kAnimationEventIteration}) {
     request.required_events = event;
     EXPECT_EQ(EvaluateAnimationBackend(request, capabilities).fallback_reason,
               AnimationFallbackReason::kUnsupportedEvent)

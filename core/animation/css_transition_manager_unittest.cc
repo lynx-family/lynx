@@ -21,6 +21,7 @@
 #include "core/inspector/observer/inspector_animation_observer.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/measure_context.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -32,6 +33,7 @@
 #include "core/style/filter_data.h"
 #include "core/style/transform_raw_data.h"
 #include "core/style/transition_data.h"
+#include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -85,6 +87,14 @@ uint32_t GetBoxShadowColor(const tasm::CSSValue& value) {
   return static_cast<uint32_t>(shadow->GetValue("color").Number());
 }
 
+class RoutingMockPaintingContext : public MockPaintingContext {
+ public:
+  const gfx::AnimationBackendCapabilities& GetPlatformAnimationCapabilities()
+      override {
+    return gfx::GetIOSAnimationBackendCapabilities();
+  }
+};
+
 }  // namespace
 
 class CSSTransitionManagerTest : public ::testing::Test {
@@ -100,7 +110,7 @@ class CSSTransitionManagerTest : public ::testing::Test {
     tasm_mediator = std::make_shared<
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
     manager = std::make_unique<lynx::tasm::ElementManager>(
-        std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
+        std::make_unique<RoutingMockPaintingContext>(), tasm_mediator.get(),
         lynx_env_config);
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
@@ -758,6 +768,279 @@ TEST_F(CSSTransitionManagerTest,
                                   1.f, tasm::kPropertyIDOpacity);
   ASSERT_NE(nullptr, opacity_end);
   EXPECT_EQ(*opacity_end, tasm::CSSValue(0.8, CSSValuePattern::NUMBER));
+}
+
+TEST_F(CSSTransitionManagerTest,
+       RoutedOpacityTransitionHandsOffAndRetargetsWithPlatformUpdate) {
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
+  auto make_style = [this](float opacity, bool transition = true) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    if (transition) {
+      SetTransitionProperties(style,
+                              {starlight::AnimationPropertyType::kOpacity});
+    }
+    style.SetValue(tasm::kPropertyIDOpacity,
+                   tasm::CSSValue(opacity, CSSValuePattern::NUMBER));
+    return style;
+  };
+  for (bool raster : {false, true}) {
+    SCOPED_TRACE(raster);
+    manager->GetConfig()->SetEnableRasterAnimation(raster);
+    auto test_element = InitElement();
+    test_element->has_painting_node_ = true;
+    auto test_manager =
+        std::make_unique<animation::CSSTransitionManager>(test_element.get());
+    tasm::StyleMap empty;
+    auto sync = [&](const auto& before, const auto& displayed,
+                    const auto& after) {
+      test_manager->UpdateTransitionsForNewPipeline(before, displayed, after,
+                                                    empty, empty);
+    };
+    const auto initial = make_style(0.2f, false);
+    const auto first_target = make_style(0.8f);
+    const auto second_target = make_style(0.4f);
+    sync(initial, initial, first_target);
+    EXPECT_TRUE(test_manager->animations_map_.empty());
+    ASSERT_TRUE(test_element->HasPendingPlatformAnimationCommands());
+    auto& commands = *test_element->platform_animation_commands_;
+    ASSERT_EQ(commands.size(), 1u);
+    const auto& command = commands.front();
+    EXPECT_EQ(command.type, gfx::PlatformAnimationCommandType::kHandoff);
+    EXPECT_EQ(command.kind, gfx::AnimationKind::kTransition);
+    ASSERT_EQ(command.properties.size(), 1u);
+    EXPECT_EQ(command.properties.front().property,
+              gfx::AnimationPropertyType::kOpacity);
+    ASSERT_EQ(command.properties.front().keyframes.size(), 2u);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        command.properties.front().keyframes.front().get())
+                        ->Value(),
+                    0.2f);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        command.properties.front().keyframes.back().get())
+                        ->Value(),
+                    0.8f);
+    const auto animation_id = command.animation_id;
+    sync(first_target, first_target, second_target);
+    ASSERT_EQ(commands.size(), 2u);
+    const auto& update = commands.back();
+    EXPECT_EQ(update.type, gfx::PlatformAnimationCommandType::kUpdate);
+    EXPECT_EQ(update.animation_id, animation_id);
+    EXPECT_EQ(update.generation, 2u);
+    ASSERT_EQ(update.properties.size(), 1u);
+    ASSERT_EQ(update.properties.front().keyframes.size(), 2u);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        update.properties.front().keyframes.front().get())
+                        ->Value(),
+                    0.8f);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        update.properties.front().keyframes.back().get())
+                        ->Value(),
+                    0.4f);
+    sync(second_target, second_target, initial);
+    ASSERT_EQ(commands.size(), 3u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kCancel);
+    EXPECT_TRUE(commands.back().properties.empty());
+    // Removing a transition must clear the old target cache before re-adding
+    // it.
+    sync(initial, initial, second_target);
+    ASSERT_EQ(commands.size(), 4u);
+    EXPECT_EQ(commands.back().type,
+              gfx::PlatformAnimationCommandType::kHandoff);
+    EXPECT_NE(commands.back().animation_id, animation_id);
+    auto make_fallback_style = [&](float opacity) {
+      auto style = make_style(opacity);
+      auto& timing = style.transition_data().timing_funcs.front();
+      timing.timing_func = starlight::TimingFunctionType::kSteps;
+      timing.x1 = 4;
+      timing.steps_type = starlight::StepsType::kStart;
+      style.transition_data().delays.front() = 100;
+      return style;
+    };
+    const auto fallback_target = make_fallback_style(0.9f);
+    sync(second_target, second_target, fallback_target);
+    ASSERT_EQ(commands.size(), 5u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kDetach);
+    auto snapshot = commands.back().transition_snapshot;
+    ASSERT_NE(snapshot, nullptr);
+    EXPECT_TRUE(test_manager->NeedsFutureTickForNewPipeline());
+    auto frame_time = animation::Animation::GetAnimationDummyStartTime();
+    EXPECT_TRUE(test_manager->CollectTransitionUpdatesForNewPipeline(frame_time)
+                    .property_overrides.empty());
+    EXPECT_EQ(commands.size(), 5u);
+
+    // A newer target can reuse the pending snapshot. Its timing wins.
+    const auto newest_target = make_fallback_style(0.6f);
+    sync(fallback_target, fallback_target, newest_target);
+    ASSERT_EQ(commands.size(), 5u);
+    snapshot->Publish(gfx::PlatformTransitionSnapshot::Value{0.3f});
+    frame_time = fml::TimePoint::FromTicks(1000000000);
+    EXPECT_TRUE(test_manager->CollectTransitionUpdatesForNewPipeline(frame_time)
+                    .property_overrides.empty());
+    frame_time = frame_time + fml::TimeDelta::FromMilliseconds(99);
+    EXPECT_TRUE(test_manager->CollectTransitionUpdatesForNewPipeline(frame_time)
+                    .property_overrides.empty());
+    ASSERT_EQ(commands.size(), 5u);
+    frame_time = frame_time + fml::TimeDelta::FromMilliseconds(1);
+    auto sample =
+        test_manager->CollectTransitionUpdatesForNewPipeline(frame_time);
+    const auto opacity =
+        sample.property_overrides.find(tasm::kPropertyIDOpacity);
+    ASSERT_NE(opacity, sample.property_overrides.end());
+    EXPECT_FLOAT_EQ(opacity->second.GetNumber(), 0.375f);
+    ASSERT_EQ(commands.size(), 6u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kCancel);
+    EXPECT_EQ(test_manager->previous_end_values_.at(tasm::kPropertyIDOpacity),
+              tasm::CSSValue(0.6f, CSSValuePattern::NUMBER));
+  }
+}
+
+TEST_F(CSSTransitionManagerTest, TransformFallbackStartsAtPlatformSnapshot) {
+  using CommandType = gfx::PlatformAnimationCommandType;
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
+  auto element = InitElement();
+  element->has_painting_node_ = true;
+  animation::CSSTransitionManager transition(element.get());
+  auto style_for = [&](const char* transform) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    SetTransitionProperties(style,
+                            {starlight::AnimationPropertyType::kTransform});
+    StyleMap values;
+    EXPECT_TRUE(UnitHandler::Process(kPropertyIDTransform,
+                                     lepus::Value(transform), values,
+                                     CSSParserConfigs{}));
+    style.SetValue(kPropertyIDTransform, values.at(kPropertyIDTransform));
+    return style;
+  };
+  const auto start = style_for("translateX(0px)");
+  const auto platform_target = style_for("translateX(100px)");
+  auto core_target = style_for("translateX(200px)");
+  auto& timing = core_target.transition_data().timing_funcs.front();
+  timing.timing_func = starlight::TimingFunctionType::kSteps;
+  timing.x1 = 2;
+  timing.steps_type = starlight::StepsType::kEnd;
+  const StyleMap empty;
+  transition.UpdateTransitionsForNewPipeline(start, start, platform_target,
+                                             empty, empty);
+  ASSERT_TRUE(element->HasPendingPlatformAnimationCommands());
+  auto& commands = *element->platform_animation_commands_;
+  ASSERT_EQ(commands.back().type, CommandType::kHandoff);
+  transition.UpdateTransitionsForNewPipeline(platform_target, platform_target,
+                                             core_target, empty, empty);
+  ASSERT_EQ(commands.back().type, CommandType::kDetach);
+  auto snapshot = commands.back().transition_snapshot;
+  ASSERT_NE(snapshot, nullptr);
+  snapshot->Publish({1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 32, 0, 0, 1});
+
+  auto frame_time = fml::TimePoint::FromTicks(1000000000);
+  auto sample = transition.CollectTransitionUpdatesForNewPipeline(frame_time);
+  ASSERT_TRUE(sample.property_overrides.contains(kPropertyIDTransform));
+  auto matrix = sample.property_overrides.at(kPropertyIDTransform)
+                    .GetArray()
+                    ->get(0)
+                    .Array();
+  ASSERT_NE(matrix, nullptr);
+  EXPECT_FLOAT_EQ(matrix->get(13).Number(), 32.f);
+  EXPECT_EQ(commands.back().type, CommandType::kCancel);
+}
+
+TEST_F(CSSTransitionManagerTest, LegacyStylingKeepsTransformTransitionOnCore) {
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
+  manager->GetConfig()->SetEnableRasterAnimation(true);
+  auto test_element = InitElement();
+  test_element->has_painting_node_ = true;
+  auto test_manager = InitTestTransitionManager(test_element.get());
+  test_manager->setTransitionData(
+      InitTransitionData(starlight::AnimationPropertyType::kTransform, 1000, 0,
+                         starlight::TimingFunctionData()));
+
+  tasm::CSSParserConfigs configs;
+  tasm::StyleMap from_styles;
+  tasm::StyleMap to_styles;
+  ASSERT_TRUE(tasm::UnitHandler::Process(tasm::kPropertyIDTransform,
+                                         lepus::Value("translateX(0px)"),
+                                         from_styles, configs));
+  ASSERT_TRUE(tasm::UnitHandler::Process(tasm::kPropertyIDTransform,
+                                         lepus::Value("translateX(100px)"),
+                                         to_styles, configs));
+  test_element->RecordElementPreviousStyle(
+      tasm::kPropertyIDTransform, from_styles.at(tasm::kPropertyIDTransform));
+
+  EXPECT_TRUE(test_manager->ConsumeCSSProperty(
+      tasm::kPropertyIDTransform, to_styles.at(tasm::kPropertyIDTransform)));
+
+  EXPECT_EQ(test_manager->animations_map().count(base::String("transform")),
+            1u);
+  EXPECT_FALSE(test_element->HasPendingPlatformAnimationCommands());
+}
+
+TEST_F(CSSTransitionManagerTest, TransformContextStopsPlatformRouting) {
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
+  auto make_style = [this](const char* transform, float opacity = 0.2f) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    SetTransitionProperties(style,
+                            {starlight::AnimationPropertyType::kTransform,
+                             starlight::AnimationPropertyType::kOpacity});
+    StyleMap parsed;
+    EXPECT_TRUE(UnitHandler::Process(kPropertyIDTransform,
+                                     lepus::Value(transform), parsed,
+                                     CSSParserConfigs{}));
+    style.SetValue(kPropertyIDTransform, parsed.at(kPropertyIDTransform));
+    style.SetValue(kPropertyIDOpacity,
+                   CSSValue(opacity, CSSValuePattern::NUMBER));
+    return style;
+  };
+  for (auto property : {kPropertyIDPerspective, kPropertyIDTransformOrigin}) {
+    auto test_element = InitElement();
+    test_element->has_painting_node_ = true;
+    auto test_manager = InitTestTransitionManager(test_element.get());
+    const auto initial = make_style("translateX(0%)");
+    const auto target = make_style("translateX(100%)");
+    const auto both = make_style("translateX(100%)", 0.8f);
+    auto with_context = make_style("translateX(100%)", 0.8f);
+    auto next = make_style("translateX(200%)", 0.4f);
+    // Eligibility is based on the resolved declaration, before iOS composes it.
+    auto css = property == kPropertyIDPerspective ? "500px" : "left top";
+    StyleMap parsed;
+    ASSERT_TRUE(UnitHandler::Process(property, lepus::Value(css), parsed,
+                                     CSSParserConfigs{}));
+    for (auto* style : {&with_context, &next}) {
+      style->SetValue(property, parsed.at(property));
+    }
+    const StyleMap empty;
+    auto sync = [&](const auto& before, const auto& after) {
+      test_manager->UpdateTransitionsForNewPipeline(before, before, after,
+                                                    empty, empty);
+    };
+    sync(initial, target);
+    ASSERT_TRUE(test_element->HasPendingPlatformAnimationCommands());
+    auto& commands = *test_element->platform_animation_commands_;
+    ASSERT_EQ(commands.size(), 1u);
+    EXPECT_EQ(commands.back().type,
+              gfx::PlatformAnimationCommandType::kHandoff);
+    const auto transform_id = commands.back().animation_id;
+
+    sync(target, both);
+    ASSERT_EQ(commands.size(), 2u);
+    EXPECT_EQ(commands.back().type,
+              gfx::PlatformAnimationCommandType::kHandoff);
+    const auto opacity_id = commands.back().animation_id;
+
+    sync(both, with_context);
+    ASSERT_EQ(commands.size(), 3u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kCancel);
+    EXPECT_EQ(commands.back().animation_id, transform_id);
+
+    sync(with_context, next);
+    ASSERT_EQ(commands.size(), 4u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kUpdate);
+    EXPECT_EQ(commands.back().animation_id, opacity_id);
+    EXPECT_TRUE(
+        test_manager->animations_map().contains(base::String("transform")));
+  }
 }
 
 TEST_F(CSSTransitionManagerTest,
