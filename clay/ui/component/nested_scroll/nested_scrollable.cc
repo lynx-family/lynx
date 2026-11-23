@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/gfx/animation/cubic_bezier_interpolator.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/ui/component/base_view.h"
@@ -114,12 +115,20 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollable::HandleNestedScroll(
     return result;
   }
   bool is_forward = (CanDragScrollOnX() ? delta.x() : delta.y()) >= 0;
+  auto mode = is_forward ? scroll_forward_mode_ : scroll_backward_mode_;
   // We only enter the overscroll state when dragging. Otherwise, the scroll
   // is triggered by fling animation. In that case, we should not do
   // overscroll here, and it will be handled by a bounce animator instead.
   bool current_can_overscroll = is_dragging && IsScrollEnabled() &&
                                 ShouldConsumeGesture() &&
                                 IsOverscrollEnabled(is_forward);
+  if constexpr (lynx::IsIOS()) {
+    // UIKit leaves bouncing to the outer scroll view for same-axis nesting.
+    if (current_can_overscroll && mode != NestedScrollMode::kSelfOnly &&
+        nested_scroll_manager()->FindOuterScrollable(this)) {
+      current_can_overscroll = false;
+    }
+  }
   auto handle_parent = [&] {
     if (auto parent_scrollable =
             nested_scroll_manager()->FindOuterScrollable(this)) {
@@ -131,7 +140,6 @@ std::tuple<FloatPoint, NestedScrollable*> NestedScrollable::HandleNestedScroll(
   };
 
   auto& unconsumed = std::get<0>(result);
-  auto mode = is_forward ? scroll_forward_mode_ : scroll_backward_mode_;
   if (mode == NestedScrollMode::kParentFirst) {
     handle_parent();
     if (unconsumed.IsOrigin()) {
@@ -200,8 +208,9 @@ void NestedScrollable::ResetGestureRecognizers() {
                                   ? v.height()
                                   : v.width();
   });
-  drag_recognizer->SetDragCancelCallback(
-      [this]() { nested_scroll_manager()->DragEnd(this, {}); });
+  drag_recognizer->SetDragCancelCallback([this]() {
+    nested_scroll_manager()->DragEnd(this, {}, /*canceled=*/true);
+  });
   drag_recognizer->SetDelegate(this);
   AddGestureRecognizer(std::move(drag_recognizer));
 }
@@ -543,9 +552,21 @@ void NestedScrollable::DispatchMouseWheelEvent(const PointerEvent& event) {
 
 bool NestedScrollable::IsPointerAllowed(
     const GestureRecognizer& gesture_recognizer, const PointerEvent& event) {
-  return (event.type != PointerEvent::EventType::kDownEvent ||
-          touch_scroll_enabled_) &&
-         page_view()->IsPointerAllowedForDragScroll(event);
+  if (event.type == PointerEvent::EventType::kDownEvent) {
+    if (!touch_scroll_enabled_) {
+      return false;
+    }
+    if constexpr (lynx::IsIOS()) {
+      for (auto* ancestor = Parent(); ancestor; ancestor = ancestor->Parent()) {
+        if (ancestor->Is<NestedScrollable>() &&
+            !static_cast<NestedScrollable*>(ancestor)->AllowsDescendantDrag(
+                scroll_direction_)) {
+          return false;
+        }
+      }
+    }
+  }
+  return page_view()->IsPointerAllowedForDragScroll(event);
 }
 
 }  // namespace clay

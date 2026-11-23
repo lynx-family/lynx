@@ -40,3 +40,16 @@ provide synchronization for concurrent destruction.
 Changes to `Listener` layout require rebuilding every derived listener and its
 consumers together. Existing compiled listeners cannot be mixed with a rebuilt
 scrollable that uses a different listener layout.
+
+## iOS host callbacks
+
+The Clay view provider registers a page callback on the Clay UI task runner. A
+`scroll-view` with `enable-scroll-monitor` reports offset changes and the
+completion of a programmatic scroll animation. The provider delivers these
+events in order on the main queue while it owns the engine.
+
+The renderer holds the host listener and container weakly. It delivers a queued
+event only while the registered listener is current. `LynxScrollInfo` carries
+the host container, component tag, and optional scroll monitor tag. Its
+`scrollView` is nil for a Clay scroll view. Recycling the page clears the
+callback before destroying its children.

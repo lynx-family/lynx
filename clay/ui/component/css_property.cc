@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/style/length.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -15,6 +16,7 @@
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/page_view.h"
+#include "clay/ui/component/scrollbar/scrollbar_wrapper.h"
 
 namespace clay {
 namespace utils = attribute_utils;
@@ -30,6 +32,18 @@ static std::vector<Length> GetBorderRadius(const clay::Value::Array& array) {
     values.emplace_back(ParseLengthValue(array[i * 2], array[i * 2 + 1]));
   }
   return values;
+}
+
+static void SetBorderRadius(BaseView* view, size_t index,
+                            const clay::Value& value) {
+  const auto radii = GetBorderRadius(utils::GetArray(value));
+  view->SetBorderRadius(index, radii);
+  if constexpr (lynx::IsIOS()) {
+    if (view->Is<ScrollbarWrapper>()) {
+      auto* scrollbar = static_cast<ScrollbarWrapper*>(view);
+      scrollbar->SetScrollbarBorderRadius(index, radii);
+    }
+  }
 }
 
 static void AppendMaskPositions(std::vector<MaskPosition>& positions,
@@ -274,19 +288,19 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
       view->SetBorderWidth({Side::kLeft}, {width});
     } break;
     case KeywordID::kBorderRadius: {
-      view->SetBorderRadius(4, GetBorderRadius(utils::GetArray(value)));
+      SetBorderRadius(view, 4, value);
     } break;
     case KeywordID::kBorderTopLeftRadius: {
-      view->SetBorderRadius(0, GetBorderRadius(utils::GetArray(value)));
+      SetBorderRadius(view, 0, value);
     } break;
     case KeywordID::kBorderTopRightRadius: {
-      view->SetBorderRadius(1, GetBorderRadius(utils::GetArray(value)));
+      SetBorderRadius(view, 1, value);
     } break;
     case KeywordID::kBorderBottomRightRadius: {
-      view->SetBorderRadius(2, GetBorderRadius(utils::GetArray(value)));
+      SetBorderRadius(view, 2, value);
     } break;
     case KeywordID::kBorderBottomLeftRadius: {
-      view->SetBorderRadius(3, GetBorderRadius(utils::GetArray(value)));
+      SetBorderRadius(view, 3, value);
     } break;
 
     case KeywordID::kTransform: {
