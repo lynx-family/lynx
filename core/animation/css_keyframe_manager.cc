@@ -352,13 +352,8 @@ AnimationBackendResult CSSKeyframeManager::EvaluatePlatformSupport(
   return effect_result;
 }
 
-void CSSKeyframeManager::SuppressNextIterationEvents() {
-  for (const auto& entry : animations_map_) {
-    if (entry.second) {
-      entry.second->SuppressNextIterationEvents();
-    }
-  }
-}
+// Backend selection happens during style updates. Frame sampling uses the
+// resulting animation execution state.
 
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, KEYFRAME_MANAGER_TICK_ALL_ANIMATION);

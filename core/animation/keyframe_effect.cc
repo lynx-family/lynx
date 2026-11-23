@@ -171,11 +171,13 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
           custom_property_current_iteration_count_, events_only);
       custom_property_current_iteration_count_ =
           trimmed.current_iteration_count;
-      tick_result.iteration_events_due = gfx::CountIterationEventsDue(
-          old_iteration_count, custom_property_current_iteration_count_);
-      if (tick_result.iteration_events_due > 0) {
-        tick_result.event_timing.first_iteration = old_iteration_count + 1;
-        tick_result.event_timing.iteration_duration = timing_input.duration;
+      if (gfx::ShouldSendIterationEvent(
+              update, old_iteration_count,
+              custom_property_current_iteration_count_)) {
+        tick_result.iteration_events_due = 1;
+        tick_result.event_timing.iteration_elapsed_time =
+            timing_input.duration *
+            static_cast<int64_t>(custom_property_current_iteration_count_);
       }
     }
   }
@@ -249,9 +251,10 @@ void KeyframeEffect::ApplyTickResult(
       animation_ != nullptr && animation_->GetTransitionFlag();
   style_map.reserve(keyframe_models_.size());
 
-  if (animation_ != nullptr && !suppress_animation_events) {
-    animation_->SendIterationEvents(tick_result.iteration_events_due,
-                                    tick_result.event_timing);
+  if (animation_ != nullptr && !suppress_animation_events &&
+      tick_result.iteration_events_due > 0) {
+    animation_->SendIterationEvent(
+        tick_result.event_timing.iteration_elapsed_time);
   }
 
   for (const auto& sample : tick_result.samples) {

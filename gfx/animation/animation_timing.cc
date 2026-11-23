@@ -263,12 +263,12 @@ TrimmedAnimationTime TrimTimeToCurrentIteration(
   return result;
 }
 
-int CountIterationEventsDue(int old_iteration_count,
-                            int current_iteration_count) {
-  if (current_iteration_count <= old_iteration_count) {
-    return 0;
-  }
-  return current_iteration_count - old_iteration_count;
+bool ShouldSendIterationEvent(const AnimationTimingStateUpdate& update,
+                              int previous_iteration, int current_iteration) {
+  // Entering or leaving the active phase uses start or end events. Between
+  // active samples, report only the latest newly reached iteration boundary.
+  return update.run_state == TimingRunState::RUNNING &&
+         !update.start_event_due && current_iteration > previous_iteration;
 }
 
 }  // namespace gfx

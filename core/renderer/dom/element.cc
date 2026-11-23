@@ -2420,12 +2420,6 @@ void Element::ClearTransitionPreviousEndValue(
   }
 }
 
-void Element::SuppressNextAnimationIterationEvents() {
-  if (css_keyframe_manager_) {
-    css_keyframe_manager_->SuppressNextIterationEvents();
-  }
-}
-
 bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);
@@ -2525,8 +2519,10 @@ void Element::DispatchAnimationEventsForNewPipeline(
     if (event_record.send_start_event) {
       animation->SendStartEvent(event_record.event_timing.start_elapsed_time);
     }
-    animation->SendIterationEvents(event_record.iteration_events_due,
-                                   event_record.event_timing);
+    if (event_record.iteration_events_due > 0) {
+      animation->SendIterationEvent(
+          event_record.event_timing.iteration_elapsed_time);
+    }
     if (event_record.send_end_event) {
       animation->SendEndEvent(event_record.event_timing.end_elapsed_time);
     }

@@ -460,10 +460,17 @@ TEST(KeyframeModelTest, TrimTimeToCurrentIteration) {
   EXPECT_EQ(iteration_count, 2);
 }
 
-TEST(KeyframeModelTest, CountIterationEventsDueOnlyForForwardProgress) {
-  EXPECT_EQ(gfx::CountIterationEventsDue(1, 3), 2);
-  EXPECT_EQ(gfx::CountIterationEventsDue(2, 2), 0);
-  EXPECT_EQ(gfx::CountIterationEventsDue(3, 1), 0);
+TEST(KeyframeModelTest, IterationEventRequiresForwardProgressWhileActive) {
+  gfx::AnimationTimingStateUpdate update;
+  update.run_state = gfx::TimingRunState::RUNNING;
+  EXPECT_TRUE(gfx::ShouldSendIterationEvent(update, 1, 3));
+  EXPECT_FALSE(gfx::ShouldSendIterationEvent(update, 2, 2));
+  EXPECT_FALSE(gfx::ShouldSendIterationEvent(update, 3, 1));
+  update.start_event_due = true;
+  EXPECT_FALSE(gfx::ShouldSendIterationEvent(update, 1, 3));
+  update.start_event_due = false;
+  update.run_state = gfx::TimingRunState::FINISHED;
+  EXPECT_FALSE(gfx::ShouldSendIterationEvent(update, 1, 3));
 }
 
 TEST(KeyframeModelTest, InEffect) {
