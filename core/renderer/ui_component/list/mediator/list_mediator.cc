@@ -284,10 +284,30 @@ void ListMediator::ComponentAtIndexes(
 }
 
 void ListMediator::EnqueueComponent(int32_t list_item_id) {
-  ListNode* list_node = list_element_->GetListNode();
-  if (list_node) {
-    list_node->EnqueueComponent(list_item_id);
+  auto list = fml::Ref(list_element_);
+  ListNode* list_node = list->GetListNode();
+  if (!list_node) {
+    return;
   }
+  list_node->EnqueueComponent(list_item_id);
+  if (!list->EnableFragmentLayerRender()) {
+    return;
+  }
+
+  auto* item = list->element_manager()->node_manager()->Get(list_item_id);
+  auto* item_fragment = item ? item->fragment_impl() : nullptr;
+  auto* list_fragment = list->fragment_impl();
+  if (!item_fragment || item->parent() ||
+      item_fragment->fragment_parent() != list_fragment) {
+    return;
+  }
+
+  // The recycle callback detached this item. It may be reinserted before
+  // the pending Element removal is resolved. Remove its old render mount
+  // now so the display-list diff can leave still-bound siblings mounted.
+  list_fragment->RemoveElementContainerAccordingToElement(item, false);
+  list->painting_context()->RemovePaintingNode(list->impl_id(), list_item_id, 0,
+                                               /*is_move=*/false);
 }
 
 void ListMediator::RemoveListItemPaintingNode(int32_t list_item_id) {
