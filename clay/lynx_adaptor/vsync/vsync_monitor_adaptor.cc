@@ -13,8 +13,15 @@ VsyncRequestCallback MakeVsyncRequestCallback(
   if (!monitor) {
     return {};
   }
-  return [monitor](VsyncSignalCallback callback) {
-    monitor->RequestVSync(std::move(callback));
+  return {
+      [monitor](VsyncSignalCallback callback) {
+        monitor->RequestVSync(std::move(callback));
+      },
+      [weak = std::weak_ptr<lynx::base::VSyncMonitorPlatformImpl>(monitor)](
+          int64_t start) -> std::shared_ptr<lynx::base::VSyncFrameTickWork> {
+        auto monitor = weak.lock();
+        return monitor ? monitor->AcquireFrameTickWork(start) : nullptr;
+      },
   };
 }
 
