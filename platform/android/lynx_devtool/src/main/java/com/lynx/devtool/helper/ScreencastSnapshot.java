@@ -26,6 +26,7 @@ import java.util.ArrayList;
 
 /** UI-thread snapshot preparation; PixelCopy never waits on the UI thread. */
 final class ScreencastSnapshot {
+  static final String ISOLATED_VIEW = "isolated-view";
   /** Session-owned scratch space; release after the outstanding capture completes. */
   static final class Buffers {
     private Bitmap mLayer;
@@ -59,13 +60,15 @@ final class ScreencastSnapshot {
   private final Bitmap mBitmap;
   private final Canvas mCanvas;
   private final Buffers mBuffers;
+  private final boolean mIsolated;
+  private final Rect mCrop;
 
   static void capture(View view, String mode, int maxWidth, int maxHeight, Bitmap reusable,
-      Buffers buffers, Callback callback) {
+      Buffers buffers, Rect crop, Callback callback) {
     ScreencastSnapshot snapshot;
     try {
-      snapshot =
-          new ScreencastSnapshot(view, mode, maxWidth, maxHeight, reusable, buffers, callback);
+      snapshot = new ScreencastSnapshot(
+          view, mode, maxWidth, maxHeight, reusable, buffers, crop, callback);
     } catch (RuntimeException error) {
       LLog.w("Screencast", "Cannot prepare snapshot: " + error);
       if (reusable != null) {
@@ -78,28 +81,35 @@ final class ScreencastSnapshot {
   }
 
   private ScreencastSnapshot(View view, String mode, int maxWidth, int maxHeight, Bitmap reusable,
-      Buffers buffers, Callback callback) {
+      Buffers buffers, Rect crop, Callback callback) {
     if (view == null || !view.isAttachedToWindow() || view.getWidth() <= 0
         || view.getHeight() <= 0) {
       throw new IllegalArgumentException("View is not ready");
     }
     mCallback = callback;
     mBuffers = buffers;
-    if (ScreenshotMode.SCREEN_SHOT_MODE_LYNX_VIEW.equals(mode)) {
+    mIsolated = ISOLATED_VIEW.equals(mode);
+    mCrop = crop;
+    if (mIsolated || ScreenshotMode.SCREEN_SHOT_MODE_LYNX_VIEW.equals(mode)) {
       mSourceWidth = view.getWidth();
       mSourceHeight = view.getHeight();
       mViews.add(view);
       mBounds.add(new Rect(0, 0, mSourceWidth, mSourceHeight));
     } else {
-      DisplayMetrics metrics = new DisplayMetrics();
-      WindowManager manager =
-          (WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE);
-      if (manager == null) {
-        throw new IllegalStateException("No display");
+      if (crop != null) {
+        mSourceWidth = crop.width();
+        mSourceHeight = crop.height();
+      } else {
+        DisplayMetrics metrics = new DisplayMetrics();
+        WindowManager manager =
+            (WindowManager) view.getContext().getSystemService(Context.WINDOW_SERVICE);
+        if (manager == null) {
+          throw new IllegalStateException("No display");
+        }
+        manager.getDefaultDisplay().getRealMetrics(metrics);
+        mSourceWidth = metrics.widthPixels;
+        mSourceHeight = metrics.heightPixels;
       }
-      manager.getDefaultDisplay().getRealMetrics(metrics);
-      mSourceWidth = metrics.widthPixels;
-      mSourceHeight = metrics.heightPixels;
       addView(view.getRootView());
       ArrayList<Dialog> overlays = DevToolOverlayDelegate.getInstance().getGlobalOverlayView();
       if (overlays != null) {
@@ -136,8 +146,16 @@ final class ScreencastSnapshot {
     int[] location = new int[2];
     view.getLocationOnScreen(location);
     mViews.add(view);
-    mBounds.add(new Rect(
-        location[0], location[1], location[0] + view.getWidth(), location[1] + view.getHeight()));
+    Rect bounds = new Rect(
+        location[0], location[1], location[0] + view.getWidth(), location[1] + view.getHeight());
+    if (mCrop != null) {
+      bounds.offset(-mCrop.left, -mCrop.top);
+      if (!bounds.intersects(0, 0, mSourceWidth, mSourceHeight)) {
+        return;
+      }
+    }
+    mViews.add(view);
+    mBounds.add(bounds);
   }
 
   private void copyNext(int index) {
@@ -156,7 +174,9 @@ final class ScreencastSnapshot {
         MAIN.post(() -> copyNext(index + 1));
         return;
       }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && LynxEnv.inst().isPixelCopyEnabled()) {
+      // Window readback includes siblings and overlays. Isolated previews draw only this view.
+      if (!mIsolated && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+          && LynxEnv.inst().isPixelCopyEnabled()) {
         View root = view.getRootView();
         Object viewRoot = root.getParent();
         Class<?> rootClass = viewRoot.getClass();
@@ -183,15 +203,26 @@ final class ScreencastSnapshot {
         }
         Rect source = new Rect(
             location[0], location[1], location[0] + bounds.width(), location[1] + bounds.height());
+        if (mCrop != null
+            && !source.intersect(location[0] - bounds.left, location[1] - bounds.top,
+                location[0] - bounds.left + mSourceWidth,
+                location[1] - bounds.top + mSourceHeight)) {
+          MAIN.post(() -> copyNext(index + 1));
+          return;
+        }
         if (!source.intersect(rootLocation[0], rootLocation[1], rootLocation[0] + root.getWidth(),
                 rootLocation[1] + root.getHeight())) {
           MAIN.post(() -> copyNext(index + 1));
           return;
         }
-        Rect clipped = new Rect(destination.left + Math.round((source.left - location[0]) * scaleX),
-            destination.top + Math.round((source.top - location[1]) * scaleY),
-            destination.left + Math.round((source.right - location[0]) * scaleX),
-            destination.top + Math.round((source.bottom - location[1]) * scaleY));
+        int destinationX = mCrop == null ? destination.left : 0;
+        int destinationY = mCrop == null ? destination.top : 0;
+        int sourceX = mCrop == null ? location[0] : location[0] - bounds.left;
+        int sourceY = mCrop == null ? location[1] : location[1] - bounds.top;
+        Rect clipped = new Rect(destinationX + Math.round((source.left - sourceX) * scaleX),
+            destinationY + Math.round((source.top - sourceY) * scaleY),
+            destinationX + Math.round((source.right - sourceX) * scaleX),
+            destinationY + Math.round((source.bottom - sourceY) * scaleY));
         if (clipped.isEmpty()) {
           MAIN.post(() -> copyNext(index + 1));
           return;

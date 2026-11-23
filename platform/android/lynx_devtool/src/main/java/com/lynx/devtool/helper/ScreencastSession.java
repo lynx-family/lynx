@@ -4,6 +4,7 @@
 package com.lynx.devtool.helper;
 
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -23,6 +24,7 @@ final class ScreencastSession {
   private static final int INTERVAL_MS = 125;
   interface Host {
     View getView();
+    Rect getCaptureRegion();
     long getRevision();
     void sendFrame(String data, float width, float height, double timestamp, int[] frame);
   }
@@ -76,7 +78,11 @@ final class ScreencastSession {
   }
 
   ScreencastSession(Host host, int maxWidth, int maxHeight, int quality) {
-    this(null, null, "fullscreen", maxWidth, maxHeight, quality, false);
+    this(host, "fullscreen", maxWidth, maxHeight, quality);
+  }
+
+  ScreencastSession(Host host, String mode, int maxWidth, int maxHeight, int quality) {
+    this(null, null, mode, maxWidth, maxHeight, quality, false);
     mHost = host;
   }
 
@@ -122,7 +128,8 @@ final class ScreencastSession {
     float density = view.getResources().getDisplayMetrics().density;
     Bitmap reusable = mBitmap;
     mBitmap = null;
-    ScreencastSnapshot.capture(view, mMode, mMaxWidth, mMaxHeight, reusable, mCaptureBuffers,
+    Rect crop = mHost == null ? null : mHost.getCaptureRegion();
+    ScreencastSnapshot.capture(view, mMode, mMaxWidth, mMaxHeight, reusable, mCaptureBuffers, crop,
         (bitmap, sourceWidth, sourceHeight) -> {
           if (bitmap == null || mStopped || mPaused || generation != mGeneration) {
             finishDiscarded(bitmap);

@@ -15,6 +15,8 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.util.DisplayMetrics;
 import android.view.View;
 import android.view.WindowManager;
@@ -80,6 +82,42 @@ public class ScreencastSnapshotTest {
   }
 
   @Test
+  public void capturesWindowRegionAtItsOwnResolution() throws InterruptedException {
+    capture(
+        ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN, 48, 48, null, new Rect(40, 45, 80, 75), () -> {
+          View root = new View(mInstrumentation.getTargetContext()) {
+            @Override
+            public boolean isAttachedToWindow() {
+              return true;
+            }
+
+            @Override
+            public void getLocationOnScreen(int[] location) {
+              location[0] = 10;
+              location[1] = 20;
+            }
+
+            @Override
+            public void draw(Canvas canvas) {
+              canvas.drawColor(Color.RED);
+              Paint paint = new Paint();
+              paint.setColor(Color.GREEN);
+              canvas.drawRect(30, 25, 55, 55, paint);
+            }
+          };
+          root.layout(0, 0, 108, 240);
+          return root;
+        });
+    assertEquals(40, mSourceWidth);
+    assertEquals(30, mSourceHeight);
+    assertEquals(40, mOutput.getWidth());
+    assertEquals(30, mOutput.getHeight());
+    assertEquals(Color.GREEN, mOutput.getPixel(0, 0));
+    assertEquals(Color.GREEN, mOutput.getPixel(24, 29));
+    assertEquals(Color.RED, mOutput.getPixel(25, 29));
+  }
+
+  @Test
   public void rejectsUnattachedViewAndRecyclesOutputBuffer() throws InterruptedException {
     Bitmap reusable = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888);
     capture(ScreenshotMode.SCREEN_SHOT_MODE_LYNX_VIEW, 8, 8, reusable,
@@ -130,11 +168,16 @@ public class ScreencastSnapshotTest {
 
   private void capture(String mode, int maxWidth, int maxHeight, Bitmap reusable,
       ViewFactory viewFactory) throws InterruptedException {
+    capture(mode, maxWidth, maxHeight, reusable, null, viewFactory);
+  }
+
+  private void capture(String mode, int maxWidth, int maxHeight, Bitmap reusable, Rect crop,
+      ViewFactory viewFactory) throws InterruptedException {
     CountDownLatch completion = new CountDownLatch(1);
     mInstrumentation.runOnMainSync(
         ()
             -> ScreencastSnapshot.capture(viewFactory.create(), mode, maxWidth, maxHeight, reusable,
-                mBuffers, (bitmap, sourceWidth, sourceHeight) -> {
+                mBuffers, crop, (bitmap, sourceWidth, sourceHeight) -> {
                   mOutput = bitmap;
                   mSourceWidth = sourceWidth;
                   mSourceHeight = sourceHeight;
