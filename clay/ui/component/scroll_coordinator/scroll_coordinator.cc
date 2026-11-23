@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component_constants.h"
@@ -143,8 +144,9 @@ float ScrollCoordinator::ScrollY() {
 void ScrollCoordinator::SetAttribute(const char* attr_c,
                                      const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
-  if (std::find(kProxyAttributes.begin(), kProxyAttributes.end(), kw) !=
-      kProxyAttributes.end()) {
+  if ((lynx::IsIOS() && kw == KeywordID::kEnableScroll) ||
+      std::find(kProxyAttributes.begin(), kProxyAttributes.end(), kw) !=
+          kProxyAttributes.end()) {
     scroll_view_->SetAttribute(attr_c, value);
   } else {
     BaseView::SetAttribute(attr_c, value);
