@@ -123,7 +123,6 @@ class CSSKeyframeManager : public AnimationDelegate {
   bool NeedsFutureTickForNewPipeline() const;
 
   virtual void TickAllAnimation(fml::TimePoint& time);
-  void SuppressNextIterationEvents();
 
   void RequestNextFrame(std::weak_ptr<Animation> ptr) override;
 

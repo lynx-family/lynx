@@ -262,7 +262,6 @@ void Animation::Pause(bool pause_handles_initial_frame) {
 
 void Animation::Stop() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_STOP);
-  suppress_next_iteration_events_ = false;
   if (playback_) {
     playback_->SetPaused(true);
   }
@@ -274,7 +273,6 @@ void Animation::Stop() {
 
 void Animation::Destroy(bool need_clear_effect) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_DESTORY);
-  suppress_next_iteration_events_ = false;
   if (playback_) {
     playback_->SetPaused(true);
   }
@@ -558,9 +556,6 @@ KeyframeEffect::KeyframeSampleResult Animation::SampleAt(
   // timestamp and, while history is kept, for future paused dummy-time
   // resolves.
   result = keyframe_effect_->SampleKeyframeModel(sample_time, events_only);
-  if (suppress_next_iteration_events_) {
-    result.iteration_events_due = 0;
-  }
   if (suppress_next_sample_events_) {
     SuppressSampleEvents(result);
     suppress_next_sample_events_ = false;
@@ -688,10 +683,6 @@ void Animation::RebaseEffectTiming(fml::TimePoint frame_time) {
 }
 
 void Animation::RecordSampleTime(fml::TimePoint frame_time) {
-  // Keep suppression through dummy style samples until the first real frame.
-  if (frame_time != GetAnimationDummyStartTime()) {
-    suppress_next_iteration_events_ = false;
-  }
   // Paused samples must preserve the time frozen by Pause() or SeekTo().
   // Dummy frames only prime styles and cannot anchor the playback clock.
   if (state_ == State::kPause || frame_time == GetAnimationDummyStartTime()) {
@@ -804,16 +795,10 @@ void Animation::SendCancelEvent(fml::TimeDelta elapsed_time) {
                      elapsed_time.ToSecondsF());
 }
 
-void Animation::SendIterationEvents(int count,
-                                    const gfx::AnimationEventTiming& timing) {
-  // Unobserved animations can cross many iterations while backgrounded.
-  if (suppress_next_iteration_events_ || count <= 0 || !HasIterationEvent()) {
-    return;
-  }
-  const auto iteration_seconds = timing.iteration_duration.ToSecondsF();
-  for (int i = 0; i < count; ++i) {
+void Animation::SendIterationEvent(fml::TimeDelta elapsed_time) {
+  if (HasIterationEvent()) {
     CreateEventAndSend(BASE_STATIC_STRING(kKeyframeIterationEventName),
-                       (timing.first_iteration + i) * iteration_seconds);
+                       elapsed_time.ToSecondsF());
   }
 }
 

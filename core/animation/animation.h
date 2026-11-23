@@ -71,19 +71,13 @@ class Animation : public std::enable_shared_from_this<Animation> {
   void DoFrame(fml::TimePoint& frame_time);
   KeyframeEffect::KeyframeSampleResult SampleAt(fml::TimePoint& frame_time,
                                                 bool events_only = false);
-  // Resume skips elapsed iterations without consuming start/end events.
-  void SuppressNextIterationEvents() {
-    if (state_ == State::kPlay) {
-      suppress_next_iteration_events_ = true;
-    }
-  }
   void SendStartEvent(fml::TimeDelta elapsed_time);
 
   void SendEndEvent(fml::TimeDelta elapsed_time);
 
   void SendCancelEvent(fml::TimeDelta elapsed_time);
 
-  void SendIterationEvents(int count, const gfx::AnimationEventTiming& timing);
+  void SendIterationEvent(fml::TimeDelta elapsed_time);
 
   const base::String& name() { return name_; }
 
@@ -254,7 +248,6 @@ class Animation : public std::enable_shared_from_this<Animation> {
   // it must update styles and timing state without synthesizing page-visible
   // animationstart/animationiteration/animationend events for skipped time.
   bool suppress_next_sample_events_{false};
-  bool suppress_next_iteration_events_{false};
   bool inspector_started_notified_{false};
   // Null until SetPlatformExecution(), ReplaceEffectFrom(), or
   // UpdatePlaybackState() calls EnsurePlaybackState(). Shares time and event

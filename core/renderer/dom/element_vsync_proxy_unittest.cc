@@ -315,7 +315,7 @@ TEST_F(ElementVsyncProxyTest, BackgroundDefersFiniteAnimationEvents) {
                    .should_send_end_event);
 }
 
-TEST_F(ElementVsyncProxyTest, ResumeSkipsBackgroundIterations) {
+TEST_F(ElementVsyncProxyTest, ResumeSendsOneIterationEvent) {
   for (auto origin : {animation::Animation::Origin::kCSSAnimation,
                       animation::Animation::Origin::kWebAnimation}) {
     for (int iterations :
@@ -335,7 +335,7 @@ TEST_F(ElementVsyncProxyTest, ResumeSkipsBackgroundIterations) {
 
       auto before_resume = fml::TimePoint::Now();
       manager->SetElementVsyncPaused(false);
-      // Resume marks the next sample without advancing the animation clock.
+      // The animation clock continues across the VSync pause.
       EXPECT_EQ(animation->start_time(), start);
       auto stale_frame = before_resume - fml::TimeDelta::FromMilliseconds(100);
       vsync_monitor_->TriggerVsyncAt(
@@ -343,7 +343,10 @@ TEST_F(ElementVsyncProxyTest, ResumeSkipsBackgroundIterations) {
       EXPECT_GE(element->last_element_tick_time, before_resume);
       auto result = animation->SampleAt(element->last_element_tick_time);
       EXPECT_FALSE(result.should_send_start_event);
-      EXPECT_EQ(result.iteration_events_due, 0);
+      EXPECT_EQ(result.iteration_events_due, 1);
+      EXPECT_EQ(animation->SampleAt(element->last_element_tick_time)
+                    .iteration_events_due,
+                0);
       auto next_iteration = element->last_element_tick_time +
                             fml::TimeDelta::FromMilliseconds(10);
       EXPECT_EQ(animation->SampleAt(next_iteration).iteration_events_due, 1);
