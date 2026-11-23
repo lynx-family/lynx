@@ -1549,6 +1549,18 @@ public interface com::lynx::tasm::core::resource::LynxHostScriptResourceHooks::D
   public void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.Delegate.dispatch(long viewId, @NonNull String url, boolean reqInCurThread, @NonNull Callback callback);
 }
 
+public interface com::lynx::tasm::LynxHostScriptViewHooks::Delegate {
+  public boolean com.lynx.tasm.LynxHostScriptViewHooks.Delegate.isEnabled();
+  public void com.lynx.tasm.LynxHostScriptViewHooks.Delegate.registerView(@NonNull LynxView view, long viewId);
+  public void com.lynx.tasm.LynxHostScriptViewHooks.Delegate.unregisterView(long viewId);
+  public void com.lynx.tasm.LynxHostScriptViewHooks.Delegate.clearViewUrl(long viewId);
+  public LynxViewBuilder com.lynx.tasm.LynxHostScriptViewHooks.Delegate.beforeCreate(@Nullable Context context, @Nullable LynxViewBuilder builder);
+  public LynxLoadMeta com.lynx.tasm.LynxHostScriptViewHooks.Delegate.beforeLoadTemplate(long viewId, @NonNull LynxLoadMeta meta);
+  public LynxUpdateMeta com.lynx.tasm.LynxHostScriptViewHooks.Delegate.beforeUpdateMetaData(long viewId, @NonNull LynxUpdateMeta meta);
+  public TemplateData com.lynx.tasm.LynxHostScriptViewHooks.Delegate.beforeUpdateGlobalProps(long viewId, @Nullable TemplateData props);
+  public long com.lynx.tasm.LynxHostScriptViewHooks.Delegate.beforeUpdateViewport(long viewId, int widthMeasureSpec, int heightMeasureSpec);
+}
+
 public class com::lynx::tasm::utils::DeviceUtils :  {
   public final int com.lynx.tasm.utils.DeviceUtils.DEFAULT_DEVICE_REFRESH_RATE DEFAULT_DEVICE_REFRESH_RATE;
   public static synchronized boolean com.lynx.tasm.utils.DeviceUtils.isMiui();
@@ -6070,6 +6082,11 @@ public class com::lynx::tasm::LynxHostEnvironment :  {
 public class com::lynx::tasm::core::resource::LynxHostScriptResourceHooks :  {
   public static void com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.setDelegate(@Nullable Delegate delegate);
   public static Delegate com.lynx.tasm.core.resource.LynxHostScriptResourceHooks.getDelegate();
+}
+
+public class com::lynx::tasm::LynxHostScriptViewHooks :  {
+  public static void com.lynx.tasm.LynxHostScriptViewHooks.setDelegate(@Nullable Delegate delegate);
+  public static Delegate com.lynx.tasm.LynxHostScriptViewHooks.getDelegate();
 }
 
 public class abstract com::lynx::tasm::service::LynxHttpRequestCallback :  {
