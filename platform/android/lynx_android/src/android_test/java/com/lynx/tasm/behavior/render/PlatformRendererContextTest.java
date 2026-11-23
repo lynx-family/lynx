@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ReadOnlyBufferException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.After;
 import org.junit.Before;
@@ -163,6 +164,20 @@ public class PlatformRendererContextTest {
     verify(performanceController).setNeedMarkPaintEndTiming("pipeline-id");
   }
 
+  private boolean updateImageOnMain(ReadableMapBuffer paintInfo, int changes) {
+    AtomicBoolean reused = new AtomicBoolean();
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      reused.set(rendererContext.updateImage(11, 7, "image.png", paintInfo, changes, 100, 60, 0));
+    });
+    return reused.get();
+  }
+
+  @Test
+  public void testUpdateImageOffMainFallsBackBeforeLookingUpManager() {
+    assertFalse(rendererContext.updateImage(11, 7, "image.png", null, 0, 100, 60, 0));
+    verify(mockBodyView, never()).peekImageAccordingToNodeIndex(anyInt());
+  }
+
   @Test
   public void testUpdateImageReusesManagerForDrawingChanges() {
     LynxImageManager manager = mock(LynxImageManager.class);
@@ -170,7 +185,7 @@ public class PlatformRendererContextTest {
     ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
     when(paintInfo.getInt(1)).thenReturn(IMAGE_MODE_ASPECT_FILL);
 
-    assertTrue(rendererContext.updateImage(11, 7, "image.png", paintInfo, 1 << 0, 100, 60, 0));
+    assertTrue(updateImageOnMain(paintInfo, 1 << 0));
 
     verify(manager).setMode(IMAGE_MODE_ASPECT_FILL);
     verify(manager).setSrc("image.png");
@@ -188,7 +203,7 @@ public class PlatformRendererContextTest {
     ReadableMapBuffer paintInfo = mock(ReadableMapBuffer.class);
     when(paintInfo.getInt(10, 0)).thenReturn(3);
 
-    assertTrue(rendererContext.updateImage(11, 7, "image.png", paintInfo, 1 << 13, 100, 60, 0));
+    assertTrue(updateImageOnMain(paintInfo, 1 << 13));
 
     verify(manager).setLoopCount(3);
     verify(manager).markSrcDirty();
@@ -198,7 +213,7 @@ public class PlatformRendererContextTest {
 
   @Test
   public void testUpdateMissingImageFallsBackToCreation() {
-    assertFalse(rendererContext.updateImage(11, 7, "image.png", null, 0, 100, 60, 0));
+    assertFalse(updateImageOnMain(null, 0));
   }
 
   @Test
