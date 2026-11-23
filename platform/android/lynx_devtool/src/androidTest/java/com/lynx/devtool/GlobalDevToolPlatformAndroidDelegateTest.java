@@ -8,12 +8,14 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Application;
+import android.content.Context;
 import android.os.Looper;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.lynx.devtoolwrapper.DevToolLifecycle;
 import com.lynx.tasm.LynxEnv;
-import java.lang.reflect.Field;
+import com.lynx.tasm.service.ILynxHostScriptTransportService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,6 +66,44 @@ public class GlobalDevToolPlatformAndroidDelegateTest {
     assertTrue(error, error != null && error.contains(message));
   }
 
+  @Test
+  public void discoversTransportAndPreservesExplicitBinding() {
+    LynxServiceCenter center = LynxServiceCenter.inst();
+    ILynxHostScriptTransportService original =
+        center.getService(ILynxHostScriptTransportService.class);
+    try {
+      GlobalDevToolPlatformAndroidDelegate.setHostScriptTransport(0);
+      center.unregisterService(ILynxHostScriptTransportService.class);
+      assertEquals(0, GlobalDevToolPlatformAndroidDelegate.getHostScriptTransport());
+
+      center.registerService(new ILynxHostScriptTransportService() {
+        @Override
+        public Class<ILynxHostScriptTransportService> getServiceClass() {
+          return ILynxHostScriptTransportService.class;
+        }
+
+        @Override
+        public void onInitialize(Context context) {}
+
+        @Override
+        public long getHostScriptTransport() {
+          return 123;
+        }
+      });
+      assertEquals(123, GlobalDevToolPlatformAndroidDelegate.getHostScriptTransport());
+      GlobalDevToolPlatformAndroidDelegate.setHostScriptTransport(456);
+      assertEquals(456, GlobalDevToolPlatformAndroidDelegate.getHostScriptTransport());
+      GlobalDevToolPlatformAndroidDelegate.setHostScriptTransport(0);
+      assertEquals(123, GlobalDevToolPlatformAndroidDelegate.getHostScriptTransport());
+    } finally {
+      GlobalDevToolPlatformAndroidDelegate.setHostScriptTransport(0);
+      center.unregisterService(ILynxHostScriptTransportService.class);
+      if (original != null) {
+        center.registerService(original);
+      }
+    }
+  }
+
   private String load(JSONObject params) throws Exception {
     CountDownLatch done = new CountDownLatch(1);
     AtomicReference<String> result = new AtomicReference<>();
@@ -79,13 +119,6 @@ public class GlobalDevToolPlatformAndroidDelegateTest {
   }
 
   private static boolean isHostScriptAvailable() {
-    try {
-      Field transport =
-          GlobalDevToolPlatformAndroidDelegate.class.getDeclaredField("sHostScriptTransport");
-      transport.setAccessible(true);
-      return transport.getLong(null) != 0;
-    } catch (ReflectiveOperationException error) {
-      throw new AssertionError(error);
-    }
+    return GlobalDevToolPlatformAndroidDelegate.getHostScriptTransport() != 0;
   }
 }

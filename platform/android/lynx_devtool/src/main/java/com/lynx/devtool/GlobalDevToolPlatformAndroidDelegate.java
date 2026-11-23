@@ -15,6 +15,8 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceController;
+import com.lynx.tasm.service.ILynxHostScriptTransportService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -27,8 +29,14 @@ public class GlobalDevToolPlatformAndroidDelegate {
   private static volatile long sHostScriptTransport;
 
   @CalledByNative
-  private static long getHostScriptTransport() {
-    return sHostScriptTransport;
+  static long getHostScriptTransport() {
+    long transport = sHostScriptTransport;
+    if (transport != 0) {
+      return transport;
+    }
+    ILynxHostScriptTransportService service =
+        LynxServiceCenter.inst().getService(ILynxHostScriptTransportService.class);
+    return service == null ? 0 : service.getHostScriptTransport();
   }
 
   /** Binds the transport supplied by the host's optional Host Script runtime. */
