@@ -45,8 +45,8 @@ inline bool NearlyEqual(float left, float right) {
 
 ScrollbarWrapper::ScrollbarWrapper(int id, ScrollDirection direction,
                                    std::string tag, PageView* page_view)
-    : BaseView(id, std::move(tag), std::make_unique<RenderContainer>(),
-               page_view),
+    : ScrollbarWrapperBase(id, std::move(tag),
+                           std::make_unique<RenderContainer>(), page_view),
       scrollbar_width_(FromLogical(kDefaultScrollbarWidth)) {
   SetOverflow(CSSProperty::OVERFLOW_HIDDEN);
   SetRepaintBoundary(true);
@@ -188,6 +188,11 @@ void ScrollbarWrapper::SetBorderRadius(const FloatSize& left_top,
                                        const FloatSize& right_bottom,
                                        const FloatSize& left_bottom) {
   view_->SetBorderRadius(left_top, right_top, right_bottom, left_bottom);
+}
+
+void ScrollbarWrapper::SetScrollbarBorderRadius(
+    size_t index, const std::vector<Length>& array) {
+  view_->SetBorderRadius(index, array);
 }
 
 void ScrollbarWrapper::SetBackground(const BackgroundData& background) {

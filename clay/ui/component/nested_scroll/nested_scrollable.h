@@ -68,6 +68,9 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
   // scrollable to consume the scroll offset first, regardless of the descendant
   // scrollables.
   virtual bool CaptureScroll(FloatPoint delta) { return false; }
+  virtual bool AllowsDescendantDrag(ScrollDirection direction) const {
+    return true;
+  }
 
   /*
    * Scrolling should be handled by current view.
@@ -147,6 +150,9 @@ class NestedScrollable : public WithTypeInfo<NestedScrollable, Scrollable>,
   // check can scroll in direction
   virtual bool CanDragScrollOnX() const;
   virtual bool CanDragScrollOnY() const;
+
+  // Returns true when the scrollable handles release with its own animation.
+  virtual bool HandleDragEnd(float velocity) { return false; }
 
   void ResetGestureRecognizers() override;
 

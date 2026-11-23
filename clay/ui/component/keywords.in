@@ -388,3 +388,5 @@ video-model
 video-tag
 volume
 ComponentID
+enable-scroll-monitor
+fading-edge-length

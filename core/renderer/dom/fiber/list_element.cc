@@ -13,10 +13,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "core/list/decoupled_list_types.h"
 #include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/list_element_template_instance.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
