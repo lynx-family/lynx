@@ -5,6 +5,8 @@
 #define private public
 #define protected public
 
+#import <Lynx/LynxService.h>
+#import <OCMock/OCMock.h>
 #import <objc/runtime.h>
 
 #include <memory>
@@ -22,6 +24,7 @@
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime/bts/bts_runtime_mediator.h"
 #include "core/shell/runtime/bts/bts_runtime_standalone_helper.h"
+#include "core/template_bundle/template_codec/magic_number.h"
 
 @interface Mock2GenericResourceFetcher : NSObject <LynxGenericResourceFetcher>
 
@@ -132,6 +135,85 @@
 @end
 
 @implementation LynxResourceLoaderDarwinUnitTest
+
+- (void)testFrameLynxMLSkipsOnlyBinaryVerification {
+  const uint32_t header[] = {sizeof(uint32_t) * 2, lynx::template_codec::kQuickBinaryMagic};
+  NSData* binary = [NSData dataWithBytes:header length:sizeof(header)];
+  NSData* source = [@"<!doctype lynx><lynx><script thread=\"main\">globalThis.frameLoaded = "
+                    @"true;</script></lynx>" dataUsingEncoding:NSUTF8StringEncoding];
+  id services = OCMClassMock([LynxServices class]);
+  __block id currentSecurity;
+  OCMStub(ClassMethod([services getInstanceWithProtocol:@protocol(LynxServiceSecurityProtocol)]))
+      .andDo(^(NSInvocation* invocation) {
+        __unsafe_unretained id result = currentSecurity;
+        [invocation setReturnValue:&result];
+      });
+  @try {
+    for (NSData* data in @[ source, binary ]) {
+      for (auto type :
+           {lynx::pub::LynxResourceType::kFrame, lynx::pub::LynxResourceType::kLazyBundle}) {
+        id security = OCMProtocolMock(@protocol(LynxServiceSecurityProtocol));
+        currentSecurity = security;
+        XCTAssertEqual(LynxService(LynxServiceSecurityProtocol), security);
+        const auto tasmType = type == lynx::pub::LynxResourceType::kFrame
+                                  ? LynxTASMTypeTemplate
+                                  : LynxTASMTypeDynamicComponent;
+        __block int verificationCalls = 0;
+        LynxVerificationResult* rejected = [[LynxVerificationResult alloc] init];
+        rejected.verified = NO;
+        OCMStub([security verifyTASM:[OCMArg any] target:nil url:[OCMArg any] type:tasmType])
+            .andDo(^(NSInvocation* invocation) {
+              ++verificationCalls;
+              __unsafe_unretained id result = rejected;
+              [invocation setReturnValue:&result];
+            });
+        id fetcher = OCMProtocolMock(@protocol(LynxTemplateResourceFetcher));
+        OCMStub([fetcher fetchTemplate:[OCMArg any] onComplete:[OCMArg any]])
+            .andDo(^(NSInvocation* invocation) {
+              __unsafe_unretained LynxTemplateResourceCompletionBlock callback;
+              [invocation getArgument:&callback atIndex:3];
+              callback([[LynxTemplateResource alloc] initWithNSData:data], nil);
+            });
+        id legacyFetcher = OCMProtocolMock(@protocol(LynxDynamicComponentFetcher));
+        OCMStub([legacyFetcher loadDynamicComponent:[OCMArg any] withLoadedBlock:[OCMArg any]])
+            .andDo(^(NSInvocation* invocation) {
+              __unsafe_unretained onComponentLoaded callback;
+              [invocation getArgument:&callback atIndex:3];
+              callback(data, nil);
+            });
+        id provider = OCMProtocolMock(@protocol(LynxResourceProvider));
+        OCMStub([provider request:[OCMArg any] onComplete:[OCMArg any]])
+            .andDo(^(NSInvocation* invocation) {
+              __unsafe_unretained LynxResourceLoadBlock callback;
+              [invocation getArgument:&callback atIndex:3];
+              callback([[LynxResourceResponse alloc] initWithData:data]);
+            });
+        LynxProviderRegistry* registry = [[LynxProviderRegistry alloc] init];
+        [registry addLynxResourceProvider:LYNX_PROVIDER_TYPE_DYNAMIC_COMPONENT provider:provider];
+        using Loader = lynx::shell::LynxResourceLoaderDarwin;
+        for (const auto& loader : {std::make_shared<Loader>(nil, nil, fetcher, nil),
+                                   std::make_shared<Loader>(nil, legacyFetcher, nil, nil),
+                                   std::make_shared<Loader>(registry, nil, nil, nil)}) {
+          verificationCalls = 0;
+          const bool isXMLFrame = data == source && type == lynx::pub::LynxResourceType::kFrame;
+          bool called = false;
+          loader->LoadResource({"https://example.com/resource", type, true},
+                               [&](lynx::pub::LynxResourceResponse& response) {
+                                 called = true;
+                                 XCTAssertEqual(response.Success(), isXMLFrame);
+                                 if (isXMLFrame) {
+                                   XCTAssertEqual(response.data.size(), source.length);
+                                 }
+                               });
+          XCTAssertTrue(called);
+          XCTAssertEqual(verificationCalls, isXMLFrame ? 0 : 1);
+        }
+      }
+    }
+  } @finally {
+    [services stopMocking];
+  }
+}
 
 - (void)testLoadBytecode {
   Mock2GenericResourceFetcher* genericFetcher = [[Mock2GenericResourceFetcher alloc] init];

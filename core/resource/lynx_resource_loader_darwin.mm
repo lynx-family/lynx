@@ -18,6 +18,7 @@
 #include "core/resource/lynx_resource_setting.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/shell/ios/data_utils.h"
+#include "core/template_bundle/template_codec/magic_number.h"
 
 namespace {
 static NSString* const kFileScheme = @"file://";
@@ -51,6 +52,11 @@ void VerifyLynxTemplateResource(const std::string& url, lynx::pub::LynxResourceR
   // verify only when data valid;
   if (response.Success()) {
     if (response.bundle != nullptr) {
+      return;
+    }
+    // Frame sources that are not binary are parsed as LynxML by the loader.
+    if (resource_type == lynx::pub::LynxResourceType::kFrame &&
+        !lynx::template_codec::IsValidBinary(response.data)) {
       return;
     }
     if (!response.data.empty()) {
@@ -349,6 +355,14 @@ void LynxResourceLoaderDarwin::LoadResourceInternalSync(const pub::LynxResourceR
     // 1. try to use LynxTemplateResourceFetcher
     if (FetchTemplateByGenericFetcher(request.url, LynxResourceTypeTemplate,
                                       copyable_wrapper_callback)) {
+      return;
+    }
+    // 2. try to use LynxExternalResourceFetcherWrapper
+    if (FetchTemplateByFetcherWrapper(request.url, copyable_wrapper_callback)) {
+      return;
+    }
+    // 3. try to use LynxResourceProvider
+    if (FetchTemplateByProvider(request.url, copyable_wrapper_callback)) {
       return;
     }
     // invoke callback directly if no provider or fetcher set;

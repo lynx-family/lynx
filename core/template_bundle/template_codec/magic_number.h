@@ -5,6 +5,7 @@
 #ifndef CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_MAGIC_NUMBER_H_
 #define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_MAGIC_NUMBER_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -25,19 +26,23 @@ bool IsBinaryMagic(uint32_t magic);
 
 // Validates only the total-length field and format marker, without allocation
 // or decoding. The decoder still checks the body and runtime compatibility.
-inline bool IsValidBinary(const std::vector<uint8_t>& data) {
+inline bool IsValidBinary(const uint8_t* data, size_t size) {
   uint32_t total_size;
   uint32_t magic;
-  if (data.size() < sizeof(total_size) + sizeof(magic)) {
+  if (data == nullptr || size < sizeof(total_size) + sizeof(magic)) {
     return false;
   }
   // Use the same field order and byte order as the binary reader.
-  std::memcpy(&total_size, data.data(), sizeof(total_size));
-  if (total_size != data.size()) {
+  std::memcpy(&total_size, data, sizeof(total_size));
+  if (total_size != size) {
     return false;
   }
-  std::memcpy(&magic, data.data() + sizeof(total_size), sizeof(magic));
+  std::memcpy(&magic, data + sizeof(total_size), sizeof(magic));
   return IsBinaryMagic(magic);
+}
+
+inline bool IsValidBinary(const std::vector<uint8_t>& data) {
+  return IsValidBinary(data.data(), data.size());
 }
 
 }  // namespace template_codec

@@ -42,14 +42,17 @@ class TemplateResourceCallback extends GuardedResourceCallback {
     }
 
     // Report only when loading async component data success
-    final boolean dataValid = data != null && data.length > 0;
+    final boolean dataValid =
+        (data != null && data.length > 0) || (buffer != null && buffer.capacity() > 0);
     final boolean bundleValid = bundle != null && bundle.isValid();
     if (success && (dataValid || bundleValid) && mReportHelper != null) {
       mReportHelper.reportLynxCrashContext(LynxInfoReportHelper.KEY_ASYNC_COMPONENT_URL, mUrl);
     }
 
-    // verify only when data valid.
-    if (success && !bundleValid && dataValid) {
+    // Non-binary frame sources are parsed as LynxML by the native loader.
+    if (success && !bundleValid && dataValid
+        && (mResourceType != LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate
+            || LynxResourceLoader.nativeIsValidBinary(data, buffer))) {
       ILynxSecurityService securityService =
           LynxServiceCenter.inst().getService(ILynxSecurityService.class);
       if (securityService != null) {
