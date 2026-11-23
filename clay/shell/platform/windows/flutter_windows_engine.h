@@ -125,6 +125,9 @@ class FlutterWindowsEngine : public PlatformViewEmbedderDelegate,
 
   TaskRunner* task_runner() { return task_runner_.get(); }
 
+  // Surfaces can be created before Run(), so read the project configuration.
+  bool enable_display_p3() const;
+
   // The EGL manager object. If this is nullptr, then we are
   // rendering using software instead of OpenGL.
   egl::Manager* egl_manager() const { return egl_manager_.get(); }

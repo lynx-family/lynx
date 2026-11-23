@@ -134,9 +134,7 @@ bool Rasterize(RasterCacheItem::CacheState cache_state, Layer* layer,
       .canvas                        = canvas,
       .gr_context                    = paint_context.gr_context,
       .sample_count                  = paint_context.sample_count,
-#ifndef ENABLE_SKITY
       .dst_color_space               = paint_context.dst_color_space,
-#endif  // ENABLE_SKITY
       .compositor_state              = paint_context.compositor_state,
       .raster_time                   = paint_context.raster_time,
       .ui_time                       = paint_context.ui_time,
@@ -191,9 +189,7 @@ bool LayerRasterCacheItem::TryToPrepareRasterCache(const PaintContext& context,
           // clang-format off
           .gr_context         = context.gr_context,
           .sample_count       = context.sample_count,
-#ifndef ENABLE_SKITY
           .dst_color_space    = context.dst_color_space,
-#endif  // ENABLE_SKITY
           .matrix             = matrix_,
           .logical_rect       = *paint_bounds,
           .flow_type          = flow_type,

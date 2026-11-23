@@ -4,6 +4,8 @@
 
 #include "clay/shell/platform/windows/egl/direct_composition_surface.h"
 
+#include <dxgi1_5.h>
+
 #include "clay/gfx/geometry/rect.h"
 #include "clay/shell/platform/windows/egl/egl.h"
 
@@ -41,8 +43,10 @@ namespace egl {
 DirectCompositionSurface::DirectCompositionSurface(
     EGLDisplay display, EGLContext context, EGLConfig config,
     EGLNativeWindowType window,
-    Microsoft::WRL::ComPtr<IDCompositionDevice2> device, int width, int height)
+    Microsoft::WRL::ComPtr<IDCompositionDevice2> device, int width, int height,
+    bool enable_display_p3)
     : WindowSurface(display, context, config, window, width, height),
+      enable_display_p3_(enable_display_p3),
       dcomp_device_(device) {
   // DirectComposition renders into DXGI swap-chain backbuffers wrapped as
   // temporary EGL pbuffers. EGL_BUFFER_AGE_EXT on those pbuffers does not
@@ -59,7 +63,7 @@ bool DirectCompositionSurface::Initialize() {
     return false;
   }
 
-  child_window_ = std::make_unique<ChildWindowWin>(window_);
+  child_window_ = std::make_unique<ChildWindowWin>(window_, enable_display_p3_);
 
   if (!child_window_->window()) {
     FML_LOG(ERROR) << "Trying to Initial child window failed.";
@@ -72,6 +76,11 @@ bool DirectCompositionSurface::Initialize() {
   }
   if (!d3d11_device_) {
     FML_LOG(ERROR) << "D3D11 device queried from ANGLE is null.";
+    return false;
+  }
+
+  if (enable_display_p3_ && !p3_presenter_.Initialize(d3d11_device_.Get())) {
+    FML_LOG(WARNING) << "Display P3 presenter initialization failed.";
     return false;
   }
 
@@ -118,6 +127,21 @@ bool DirectCompositionSurface::Initialize() {
     return false;
   }
 
+  // Validate the real swap chain, working texture and ANGLE import before
+  // exposing a P3 surface. A failure here lets Manager create an sRGB surface.
+  if (enable_display_p3_ && width() > 0 && height() > 0) {
+    if (!SetDrawRectangle(clay::Rect(size_))) {
+      return false;
+    }
+    // Initialization runs before the render context is bound on the raster
+    // thread; do not make that context current here.
+    if (eglDestroySurface(display_, real_surface_) != EGL_TRUE) {
+      WINDOWS_LOG_EGL_ERROR;
+      return false;
+    }
+    real_surface_ = nullptr;
+    draw_texture_.Reset();
+  }
   is_valid_ = true;
   return true;
 }
@@ -150,6 +174,8 @@ bool DirectCompositionSurface::Destroy() {
     dcomp_root_visual_.Reset();
   }
   draw_texture_.Reset();
+  p3_texture_.Reset();
+  p3_contents_valid_ = false;
   swap_chain_.Reset();
   // Releasing DirectComposition resources leaves pending changes on the device.
   // Commit the cleanup to avoid a black window after a DWM restart.
@@ -176,6 +202,7 @@ bool DirectCompositionSurface::MakeCurrent() {
 }
 
 void DirectCompositionSurface::InvalidateBufferAge() {
+  p3_contents_valid_ = false;
   for (auto& buffer : buffers_) {
     buffer.age = 0;
   }
@@ -185,6 +212,7 @@ bool DirectCompositionSurface::SwapBuffers() {
   const bool has_draw_texture = draw_texture_ != nullptr;
   bool swap_result = ReleaseDrawTexture(false);
   if (swap_result && has_draw_texture) {
+    p3_contents_valid_ = enable_display_p3_;
     AddDamageRegionWithManualBufferRotation(*pending_present_damage_region_);
   } else if (!swap_result) {
     InvalidateBufferAge();
@@ -209,10 +237,13 @@ bool DirectCompositionSurface::Resize(int width, int height) {
   child_window_->Resize(width, height);
   first_swap_ = true;
 
+  p3_texture_.Reset();
+  p3_contents_valid_ = false;
   // ResizeBuffers can't change alpha blending mode.
   if (swap_chain_) {
     UINT count = buffer_count();
-    DXGI_FORMAT format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    DXGI_FORMAT format = enable_display_p3_ ? DXGI_FORMAT_R16G16B16A16_FLOAT
+                                            : DXGI_FORMAT_B8G8R8A8_UNORM;
     UINT flags =
         IsSwapChainTearingSupported() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
     HRESULT hr =
@@ -237,6 +268,10 @@ const EGLSurface& DirectCompositionSurface::GetHandle() const {
 }
 
 std::optional<clay::Rect> DirectCompositionSurface::GetDamageRegion() const {
+  // P3 draws into one persistent working texture, not rotating backbuffers.
+  if (enable_display_p3_) {
+    return p3_contents_valid_ ? std::make_optional(clay::Rect{}) : std::nullopt;
+  }
   uint32_t age = buffers_[current_buffer_index_].age;
   if (age == 0) {
     return std::nullopt;
@@ -255,7 +290,9 @@ std::optional<clay::Rect> DirectCompositionSurface::GetDamageRegion() const {
 void DirectCompositionSurface::SetDamageRegion(const clay::Rect& region) {
   clay::Rect full_rect(size_);
   clay::Rect logical_damage_rect =
-      NormalizeDamageRect(region, full_rect, first_swap_ || !swap_chain_);
+      NormalizeDamageRect(region, full_rect,
+                          first_swap_ || !swap_chain_ ||
+                              (enable_display_p3_ && !p3_contents_valid_));
   if (logical_damage_rect.IsEmpty()) {
     logical_damage_rect = full_rect;
   }
@@ -277,6 +314,10 @@ void DirectCompositionSurface::SetPresentDamageRegion(
 }
 
 bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
+  // Submit ANGLE's writes before the D3D pass samples the working texture.
+  if (enable_display_p3_ && real_surface_ && !will_discard) {
+    glFlush();
+  }
   EGLSurface egl_surface = real_surface_;
   real_surface_ = nullptr;
 
@@ -303,6 +344,16 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
                           "swap chain.";
         return false;
       }
+      if (enable_display_p3_) {
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> back_buffer;
+        if (!result ||
+            FAILED(swap_chain_->GetBuffer(0, IID_PPV_ARGS(&back_buffer))) ||
+            !p3_presenter_.Present(p3_texture_.Get(), back_buffer.Get(),
+                                   child_window_->sdr_white_scale())) {
+          FML_LOG(ERROR) << "Display P3 conversion failed.";
+          return false;
+        }
+      }
       const clay::Rect full_rect(size_);
       pending_present_damage_region_ = NormalizeDamageRect(
           pending_present_damage_region_, full_rect, first_swap_);
@@ -314,7 +365,9 @@ bool DirectCompositionSurface::ReleaseDrawTexture(bool will_discard) {
 
       DXGI_PRESENT_PARAMETERS params = {};
       clay::Rect present_rect =
-          FlipYAxis(pending_swap_rect_.value_or(full_rect), size_.height());
+          FlipYAxis(enable_display_p3_ ? full_rect
+                                       : pending_swap_rect_.value_or(full_rect),
+                    size_.height());
       RECT dirty_rect = ToRECT(present_rect);
       if (!present_rect.IsEmpty()) {
         params.DirtyRectsCount = 1;
@@ -384,7 +437,8 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
     return false;
   }
 
-  DXGI_FORMAT dxgi_format = DXGI_FORMAT_B8G8R8A8_UNORM;
+  DXGI_FORMAT dxgi_format = enable_display_p3_ ? DXGI_FORMAT_R16G16B16A16_FLOAT
+                                               : DXGI_FORMAT_B8G8R8A8_UNORM;
 
   if (!swap_chain_) {
     if (!d3d11_device_) {
@@ -437,13 +491,36 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
                      << ", swap_chain_=" << swap_chain_.Get();
       return false;
     }
+    if (enable_display_p3_ &&
+        !P3Presenter::ConfigureSwapChain(swap_chain_.Get())) {
+      FML_LOG(ERROR) << "FP16 scRGB swap chain is not supported.";
+      swap_chain_.Reset();
+      return false;
+    }
     hr = dcomp_root_visual_->SetContent(swap_chain_.Get());
     if (FAILED(hr)) {
       FML_LOG(ERROR) << "SetContent failed with error 0x" << std::hex << hr;
+      if (enable_display_p3_) swap_chain_.Reset();
       return false;
     }
   }
-  HRESULT hr = swap_chain_->GetBuffer(0, IID_PPV_ARGS(&draw_texture_));
+  HRESULT hr = S_OK;
+  if (enable_display_p3_) {
+    if (!p3_texture_) {
+      D3D11_TEXTURE2D_DESC desc = {};
+      desc.Width = width();
+      desc.Height = height();
+      desc.MipLevels = desc.ArraySize = 1;
+      desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+      desc.SampleDesc.Count = 1;
+      desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+      hr = d3d11_device_->CreateTexture2D(&desc, nullptr, &p3_texture_);
+      p3_contents_valid_ = false;
+    }
+    draw_texture_ = p3_texture_;
+  } else {
+    hr = swap_chain_->GetBuffer(0, IID_PPV_ARGS(&draw_texture_));
+  }
   if (FAILED(hr) || !draw_texture_) {
     FML_LOG(ERROR) << "GetBuffer failed with error 0x" << std::hex << hr;
     return false;
@@ -460,6 +537,10 @@ bool DirectCompositionSurface::SetDrawRectangle(const clay::Rect& rectangle) {
 
   if (!real_surface_) {
     WINDOWS_LOG_EGL_ERROR;
+    if (enable_display_p3_) {
+      draw_texture_.Reset();
+      p3_contents_valid_ = false;
+    }
     return false;
   }
 

@@ -21,7 +21,8 @@ class API_AVAILABLE(macos(10.6), ios(11.0), tvos(11.0)) IOSurfaceImageBacking
     : public SharedImageBacking {
  public:
   IOSurfaceImageBacking(PixelFormat pixel_format, skity::Vec2 size,
-                        std::optional<GraphicsMemoryHandle> gfx_handle = {});
+                        std::optional<GraphicsMemoryHandle> gfx_handle = {},
+                        ClayColorSpace color_space = kClayColorSpaceSRGB);
 
   BackingType GetType() const override;
 

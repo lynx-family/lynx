@@ -177,7 +177,16 @@ class SharedImageSinkManaged final : public SharedImageSink {
 
   void ClearBackFences() override;
 
+  // Changes the factory for future acquisitions without replacing this sink.
+  // Returns false while a producer owns a back buffer. Existing front frames
+  // retain their backing and encoding until consumed normally.
+  bool UpdateSharedImageFactory(const SharedImageFactory& factory);
+
  private:
+  struct SharedImageSlot;
+  bool ReplaceBacking(SharedImageSlot& slot, skity::Vec2 size,
+                      std::optional<GraphicsMemoryHandle> gfx_handle,
+                      std::unique_lock<std::mutex>& lock);
   void InternalReleaseCurrentFront(
       std::unique_ptr<FenceSync> produced_fence_sync);
 
@@ -185,11 +194,13 @@ class SharedImageSinkManaged final : public SharedImageSink {
     std::optional<uint64_t> swap_id;
     fml::RefPtr<SharedImageBacking> shared_image;
     bool is_current = false;  // is current front or current back
+    uint64_t generation = 0;
   };
 
   uint32_t used_ = 0;
   uint32_t capacity_;
   SharedImageFactory shared_image_factory_;
+  uint64_t generation_ = 0;
 
   fml::closure frame_available_callback_;
 

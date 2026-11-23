@@ -17,6 +17,7 @@
 #include "clay/fml/base32.h"
 #include "clay/fml/logging.h"
 #include "clay/fml/size.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 #include "clay/shell/common/context_options.h"
 #include "clay/shell/gpu/gpu_surface_gl_delegate.h"
@@ -155,7 +156,8 @@ static SkColorType FirstSupportedColorType(GrDirectContext* context,
 
 static sk_sp<SkSurface> WrapOnscreenSurface(GrDirectContext* context,
                                             const skity::Vec2& size,
-                                            intptr_t fbo, size_t sample_count) {
+                                            intptr_t fbo, size_t sample_count,
+                                            ClayColorSpace color_space) {
   GrGLenum format = kUnknown_SkColorType;
   const SkColorType color_type = FirstSupportedColorType(context, &format);
 
@@ -171,7 +173,7 @@ static sk_sp<SkSurface> WrapOnscreenSurface(GrDirectContext* context,
       framebuffer_info                                // framebuffer info
   );                                                  // NOLINT
 
-  sk_sp<SkColorSpace> colorspace = SkColorSpace::MakeSRGB();
+  sk_sp<SkColorSpace> colorspace = ToSkColorSpace(color_space);
   uint32_t flags = Settings::ShouldUseSDFTForText()
                        ? SkSurfaceProps::kUseDeviceIndependentFonts_Flag
                        : 0;
@@ -222,11 +224,11 @@ bool GPUSurfaceGLSkia::CreateOrUpdateSurfaces(const skity::Vec2& size) {
     return false;
   }
   onscreen_surface =
-      WrapOnscreenSurface(context_.get(),              // GL context
-                          size,                        // root surface size
-                          fbo_info.fbo_id,             // window FBO ID
-                          delegate_->GetSampleCount()  // sample count
-      );                                               // NOLINT
+      WrapOnscreenSurface(context_.get(),               // GL context
+                          size,                         // root surface size
+                          fbo_info.fbo_id,              // window FBO ID
+                          delegate_->GetSampleCount(),  // sample count
+                          fbo_info.color_space);        // NOLINT
 
   if (onscreen_surface == nullptr) {
     // If the onscreen surface could not be wrapped. There is absolutely no
@@ -237,6 +239,7 @@ bool GPUSurfaceGLSkia::CreateOrUpdateSurfaces(const skity::Vec2& size) {
 
   onscreen_surface_ = std::move(onscreen_surface);
   fbo_id_ = fbo_info.fbo_id;
+  color_space_ = fbo_info.color_space;
   existing_damage_ = fbo_info.existing_damage;
   surface_generation_ = current_surface_generation;
   has_surface_generation_ = true;
@@ -278,6 +281,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkia::AcquireFrame(
   }
 
   const auto root_surface_transformation = GetRootTransformation();
+  const auto previous_color_space = color_space_;
 
   sk_sp<SkSurface> surface =
       AcquireRenderSurface(size, root_surface_transformation);
@@ -308,7 +312,12 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkia::AcquireFrame(
       [](const SurfaceFrame::SubmitInfo& surface_frame) { return true; };
 
   framebuffer_info = delegate_->GLContextFramebufferInfo();
-  if (!framebuffer_info.existing_damage.has_value()) {
+  framebuffer_info.color_space = color_space_.value();
+  framebuffer_info.color_space_changed =
+      previous_color_space.has_value() && previous_color_space != color_space_;
+  if (framebuffer_info.color_space_changed) {
+    framebuffer_info.existing_damage.reset();
+  } else if (!framebuffer_info.existing_damage.has_value()) {
     framebuffer_info.existing_damage = existing_damage_;
   }
   auto frame = std::make_unique<SurfaceFrame>(surface, framebuffer_info,

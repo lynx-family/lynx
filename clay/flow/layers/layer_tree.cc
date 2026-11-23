@@ -19,6 +19,7 @@
 #include "clay/gfx/animation/keyframe_set.h"
 #include "clay/gfx/animation/keyframes_manager.h"
 #include "clay/gfx/animation/transition_manager.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 
 namespace clay {
@@ -74,8 +75,13 @@ void LayerTree::MarkFrameTimingsForPipelineIfNeeded() {
 }
 
 #ifndef ENABLE_SKITY
-inline SkColorSpace* GetColorSpace(SkCanvas* canvas) {
+inline SkColorSpace* GetColorSpace(CompositorContext::ScopedFrame& frame) {
+  auto* canvas = frame.canvas();
   return canvas ? canvas->imageInfo().colorSpace() : nullptr;
+}
+#else
+inline auto GetColorSpace(CompositorContext::ScopedFrame& frame) {
+  return ToSkityColorSpace(frame.output_color_space());
 }
 #endif  // ENABLE_SKITY
 
@@ -103,9 +109,7 @@ bool LayerTree::Preroll(CompositorContext::ScopedFrame& frame,
       .gr_context                    = frame.gr_context(),
       .compositor_state              = frame.compositor_state(),
       .state_stack                   = state_stack,
-#ifndef ENABLE_SKITY
-      .dst_color_space               = GetColorSpace(frame.canvas()),
-#endif // ENABLE_SKITY
+      .dst_color_space               = GetColorSpace(frame),
       .surface_needs_readback        = false,
       .raster_time                   = frame.context().raster_time(),
       .ui_time                       = frame.context().ui_time(),
@@ -209,9 +213,7 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
       .canvas                        = frame.canvas(),
       .gr_context                    = frame.gr_context(),
       .sample_count                  = frame.sample_count(),
-#ifndef ENABLE_SKITY
-      .dst_color_space               = GetColorSpace(frame.canvas()),
-#endif // ENABLE_SKITY
+      .dst_color_space               = GetColorSpace(frame),
       .compositor_state              = frame.compositor_state(),
       .raster_time                   = frame.context().raster_time(),
       .ui_time                       = frame.context().ui_time(),

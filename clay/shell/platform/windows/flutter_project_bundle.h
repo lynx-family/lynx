@@ -22,6 +22,7 @@ typedef struct {
   const wchar_t* icu_data_path;
 
   bool enable_software_rendering;
+  bool enable_display_p3 = false;
 } FlutterDesktopEngineProperties;
 
 // The data associated with a Flutter project needed to run it in an engine.
@@ -57,6 +58,7 @@ class FlutterProjectBundle {
   std::vector<std::string> engine_switches_;
 
   bool enable_software_rendering_ = false;
+  bool enable_display_p3_ = false;
 };
 
 }  // namespace clay

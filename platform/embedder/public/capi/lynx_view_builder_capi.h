@@ -9,6 +9,7 @@
 #include "lynx_export.h"
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_group_capi.h"
+#include "lynx_types.h"
 #include "lynx_vsync_monitor_capi.h"
 #include "lynx_windowless_renderer_capi.h"
 #if !ENABLE_EMBEDDER_LITE
@@ -23,6 +24,13 @@ typedef void* NativeWindow;
 
 typedef struct lynx_view_builder_t lynx_view_builder_t;
 LYNX_CAPI_EXPORT lynx_view_builder_t* lynx_view_builder_create();
+
+// Requests a desktop window output space (default sRGB). Unsupported window
+// presenters fall back to sRGB. Windowless output is configured on its
+// renderer. Returns false for NULL or an invalid space. Call before creating
+// the view.
+LYNX_CAPI_EXPORT bool lynx_view_builder_set_color_space(
+    lynx_view_builder_t* builder, lynx_color_space_e color_space);
 
 // Sets a custom VSync source before lynx_view_create. Drives script and core
 // animation VSync without a system-clock fallback. With a Clay windowless

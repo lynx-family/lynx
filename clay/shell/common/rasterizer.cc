@@ -398,6 +398,9 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   if (frame == nullptr) {
     return RasterStatus::kFailed;
   }
+  if (frame->framebuffer_info().color_space_changed) {
+    compositor_context_->raster_cache().Clear();
+  }
   auto compositor_state =
       std::make_unique<CompositorState>(layer_tree.frame_size());
 
@@ -423,6 +426,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       GetRasterCacheSampleCount(platform_const_service_->GetSettings()));
 
   if (compositor_frame) {
+    compositor_frame->set_output_color_space(
+        frame->framebuffer_info().color_space);
     compositor_context_->raster_cache().BeginFrame();
     if (frame_timings_recorder) {
       frame_timings_recorder->RecordRasterStart(fml::TimePoint::Now());

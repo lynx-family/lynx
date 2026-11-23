@@ -20,7 +20,8 @@ namespace clay {
 FlutterProjectBundle::FlutterProjectBundle(
     const FlutterDesktopEngineProperties& properties)
     : icu_path_(properties.icu_data_path),
-      enable_software_rendering_(properties.enable_software_rendering) {
+      enable_software_rendering_(properties.enable_software_rendering),
+      enable_display_p3_(properties.enable_display_p3) {
   // Resolve any relative paths.
   if (icu_path_.is_relative()) {
     std::filesystem::path executable_location = GetExecutableDirectory();
@@ -45,6 +46,10 @@ void FlutterProjectBundle::SetSwitches(
 
 const std::vector<std::string> FlutterProjectBundle::GetSwitches() {
   std::vector<std::string> switches = GetSwitchesFromEnvironment();
+  if (enable_display_p3_) {
+    switches.push_back(std::string("--") +
+                       std::string(FlagForSwitch(Switch::EnableDisplayP3)));
+  }
   if (enable_software_rendering_) {
     std::ostringstream switch_value_as_flag;
     switch_value_as_flag << "--"

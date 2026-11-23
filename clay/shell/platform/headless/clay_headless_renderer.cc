@@ -30,6 +30,7 @@ class ClayHeadlessRendererSoftware final
       ClayHeadlessEngine* engine, const ClaySoftwareRendererConfig& config)
       : ClayHeadlessRenderer(engine) {
     const auto* config_ptr = &config;
+    color_space_ = SAFE_ACCESS(config_ptr, color_space, kClayColorSpaceSRGB);
     present_callback_ = SAFE_ACCESS(config_ptr, present_callback, nullptr);
     present_callback_v2_ =
         SAFE_ACCESS(config_ptr, present_callback_v2, nullptr);
@@ -57,9 +58,11 @@ class ClayHeadlessRendererSoftware final
                              height);
   }
 
+  ClayColorSpace GetOutputColorSpace() const override { return color_space_; }
   void CleanupGPUResources() override {}
 
  private:
+  ClayColorSpace color_space_ = kClayColorSpaceSRGB;
   ClaySoftwarePresentCallback present_callback_;
   ClaySoftwarePresentCallbackV2 present_callback_v2_;
 };

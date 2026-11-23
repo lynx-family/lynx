@@ -70,9 +70,11 @@ void StaticImage::Upload(fml::RefPtr<GPUUnrefQueue> unref_queue, Size size) {
             desc.mipmapped = mipmapped;
             auto texture = context->CreateTextureWithDesc(&desc);
             if (texture) {
+              auto* deferred =
+                  static_cast<skity::DeferredTextureImage*>(image.get());
+              deferred->SetColorSpace(pixmap->GetColorSpace());
               texture->DeferredUploadImage(std::move(pixmap));
-              static_cast<skity::DeferredTextureImage*>(image.get())
-                  ->SetTexture(texture);
+              deferred->SetTexture(texture);
             }
           }
         });

@@ -6,6 +6,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "clay/shell/gpu/gpu_surface_metal_skia.h"
+#include "clay/gfx/color_space.h"
 
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
@@ -53,6 +54,8 @@ class ScopedMTLTextureInfo {
   const GPUMTLTextureInfo& texture_info() const { return texture_; }
 
   int64_t texture_id() const { return texture_.texture_id; }
+
+  ClayColorSpace color_space() const { return texture_.color_space; }
 
   id<MTLTexture> texture() const { return (__bridge id<MTLTexture>)(texture_.texture); }
 
@@ -244,7 +247,8 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
   auto* surface_texture_lifetime = new std::shared_ptr<ScopedMTLTextureInfo>(texture_lifetime);
   sk_sp<SkSurface> surface = CreateSurfaceFromMetalTexture(
       context_.get(), mtl_texture, kTopLeft_GrSurfaceOrigin, msaa_samples_, kBGRA_8888_SkColorType,
-      nullptr, nullptr, ReleaseTextureLifetime, surface_texture_lifetime);
+      ToSkColorSpace(texture_lifetime->color_space()), nullptr, ReleaseTextureLifetime,
+      surface_texture_lifetime);
 
   if (!surface) {
     ReleaseTextureLifetime(surface_texture_lifetime);
@@ -291,9 +295,17 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceMetalSkia::AcquireFrameFromMTLTexture(
   SurfaceFrame::FramebufferInfo framebuffer_info;
   framebuffer_info.supports_readback = true;
 
-  if (size_ != frame_info) {
+  const auto color_space = texture_lifetime->color_space();
+  framebuffer_info.color_space_changed =
+      texture_color_space_.has_value() && texture_color_space_ != color_space;
+  if (size_ != frame_info || texture_color_space_ != color_space) {
     damage_.clear();
     size_ = frame_info;
+    texture_color_space_ = color_space;
+  }
+
+  if (texture_lifetime->texture_info().reset_damage) {
+    damage_.erase(texture_id);
   }
 
   if (delegate_->EnablePartialRepaint()) {

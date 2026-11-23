@@ -22,6 +22,7 @@ class LynxWindowlessRenderer
  public:
   lynx_windowless_renderer_type_e type = kRendererTypeSoftware;
   void* user_data = nullptr;
+  lynx_color_space_e color_space = kLynxColorSpaceSRGB;
   void (*finalizer)(lynx_windowless_renderer_t*, void*) = nullptr;
 
   on_gl_make_current on_gl_make_current = nullptr;
@@ -40,7 +41,7 @@ class LynxWindowlessRenderer
   // State used by windowless synchronous composition.
   bool enable_sync_compositor = false;
   // Configuration is frozen once a LynxView starts creating its engine.
-  bool sync_compositor_config_locked = false;
+  bool config_locked = false;
   on_invalidate on_invalidate_callback = nullptr;
   std::shared_future<bool> frame_draw_future;
 

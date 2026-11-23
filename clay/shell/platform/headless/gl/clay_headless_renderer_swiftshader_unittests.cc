@@ -14,6 +14,13 @@
 #include <vector>
 
 #include "clay/shell/gpu/gpu_surface_gl_skity.h"
+#if defined(OS_MACOSX)
+#include <CoreGraphics/CoreGraphics.h>
+#include <IOSurface/IOSurface.h>
+
+#include "clay/common/graphics/shared_image_external_texture.h"
+#include "clay/gfx/shared_image/shared_image_sink.h"
+#endif
 #include "clay/shell/platform/headless/gl/clay_headless_renderer_swiftshader.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -69,12 +76,14 @@ class DefaultDisplay {
 
 class SwiftShaderSoftwareTest : public testing::TestWithParam<Callback> {
  protected:
-  std::unique_ptr<ClayHeadlessRenderer> CreateRenderer() {
+  std::unique_ptr<ClayHeadlessRenderer> CreateRenderer(
+      ClayColorSpace space = kClayColorSpaceSRGB) {
     ClaySoftwareRendererConfig config{};
     config.struct_size =
         GetParam() == Callback::kOldSize
             ? offsetof(ClaySoftwareRendererConfig, present_callback_v2)
             : sizeof(config);
+    config.color_space = space;
     config.present_callback = [](void* data, const void* pixels,
                                  size_t row_bytes, size_t height) {
       return static_cast<SwiftShaderSoftwareTest*>(data)->Capture(
@@ -131,7 +140,7 @@ class SwiftShaderSoftwareTest : public testing::TestWithParam<Callback> {
     const auto i = y * row_bytes_ + x * 4;
     return {pixels_[i], pixels_[i + 1], pixels_[i + 2], pixels_[i + 3]};
   }
-  void Draw(GPUSurfaceGLSkity* surface, int width = 8) {
+  void Draw(GPUSurfaceGLSkity* surface, int width = 8, bool p3 = false) {
     auto frame = surface->AcquireFrame({width, 12});
     ASSERT_TRUE(frame);
     auto* canvas = frame->GetCanvas();
@@ -143,7 +152,15 @@ class SwiftShaderSoftwareTest : public testing::TestWithParam<Callback> {
     EXPECT_EQ(frame->Submit(), accept_);
     ASSERT_EQ(row_bytes_, static_cast<size_t>(width) * 4);
     ASSERT_EQ(height_, 12u);
-    EXPECT_EQ(Pixel(3, 2), (std::array<uint8_t, 4>{128, 0, 0, 128}));
+    if (p3) {
+      auto color = Pixel(3, 2);
+      EXPECT_NEAR(color[0], 117, 2);
+      EXPECT_NEAR(color[1], 26, 2);
+      EXPECT_NEAR(color[2], 18, 2);
+      EXPECT_EQ(color[3], 128);
+    } else {
+      EXPECT_EQ(Pixel(3, 2), (std::array<uint8_t, 4>{128, 0, 0, 128}));
+    }
     EXPECT_EQ(Pixel(3, 10), (std::array<uint8_t, 4>{0, 0, 0, 0}));
   }
   std::unique_ptr<ClayHeadlessRenderer> renderer_;
@@ -179,6 +196,82 @@ TEST_P(SwiftShaderSoftwareTest, RendererAndDisplayLifetimes) {
   surface.reset();
   other->CleanupGPUResources();
 }
+
+TEST_P(SwiftShaderSoftwareTest, DisplayP3AndOldStructCompatibility) {
+  DestroyRenderer();
+  renderer_ = CreateRenderer(kClayColorSpaceDisplayP3);
+  ASSERT_TRUE(renderer_);
+  surface_ = CreateSurface(renderer_.get());
+  ASSERT_TRUE(surface_);
+  Draw(surface_.get(), 16, GetParam() != Callback::kOldSize);
+}
+
+#if defined(OS_MACOSX)
+TEST_P(SwiftShaderSoftwareTest, DisplayP3NativeViewTexture) {
+  DestroyRenderer();
+  renderer_ = CreateRenderer(kClayColorSpaceDisplayP3);
+  ASSERT_TRUE(renderer_);
+  surface_ = CreateSurface(renderer_.get());
+  ASSERT_TRUE(surface_);
+  auto source = ClayCreateSharedImageSinkWithColorSpace(
+      kClaySharedImageSinkBufferModeDoubleBuffer,
+      kClaySharedImageBackingTypeIOSurface,
+      kClaySharedImageBackingPixelFormatNative8888, kClayColorSpaceDisplayP3);
+  ASSERT_NE(source, nullptr);
+  auto external = std::make_unique<SharedImageExternalTexture>(
+      fml::Ref(reinterpret_cast<SharedImageSink*>(source)));
+  external->SetFrameAvailableCallback(
+      [&] { external->MarkNewFrameAvailable(); });
+  ClaySize size = {16, 16};
+  ClaySharedImageRef image = nullptr;
+  ASSERT_TRUE(ClaySharedImageSinkAcquireBack(source, &size, &image, nullptr));
+  ClaySharedImageNativeHandle handle = nullptr;
+  ClaySharedImageGetBacking(image, nullptr, nullptr, &handle);
+  auto io_surface = static_cast<IOSurfaceRef>(handle);
+  ASSERT_EQ(IOSurfaceLock(io_surface, 0, nullptr), kIOReturnSuccess);
+  for (int y = 0; y < 16; ++y) {
+    auto* row = static_cast<uint8_t*>(IOSurfaceGetBaseAddress(io_surface)) +
+                y * IOSurfaceGetBytesPerRow(io_surface);
+    for (int x = 0; x < 16; ++x) {
+      row[x * 4] = 32;
+      row[x * 4 + 1] = 64;
+      row[x * 4 + 2] = 128;
+      row[x * 4 + 3] = 255;
+    }
+  }
+  ASSERT_EQ(IOSurfaceUnlock(io_surface, 0, nullptr), kIOReturnSuccess);
+  ASSERT_TRUE(ClaySharedImageSinkSwapBack(source, nullptr));
+  auto frame = surface_->AcquireFrame({16, 16});
+  ASSERT_TRUE(frame);
+  frame->Prepare(std::nullopt);
+  DrawableImage::PaintContext context{
+      .canvas = frame->GetCanvas(),
+      .gr_context = static_cast<Surface*>(surface_.get())->GetContext()};
+  external->Paint(context, skity::Rect::MakeWH(16, 16), false,
+                  GrSamplingOptions(), DrawableImage::FitMode::kScaleToFill);
+  ASSERT_TRUE(frame->Submit());
+  auto pixel = Pixel(8, 8);
+  auto p3 = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+  auto dst = CGColorSpaceCreateWithName(GetParam() == Callback::kOldSize
+                                            ? kCGColorSpaceSRGB
+                                            : kCGColorSpaceDisplayP3);
+  CGFloat components[] = {128.0 / 255, 64.0 / 255, 32.0 / 255, 1};
+  auto color = CGColorCreate(p3, components);
+  auto converted = CGColorCreateCopyByMatchingToColorSpace(
+      dst, kCGRenderingIntentRelativeColorimetric, color, nullptr);
+  ASSERT_NE(converted, nullptr);
+  auto* expected = CGColorGetComponents(converted);
+  for (int c = 0; c < 3; ++c) EXPECT_NEAR(pixel[c], expected[c] * 255, 2);
+  EXPECT_EQ(pixel[3], 255);
+  CGColorRelease(converted);
+  CGColorRelease(color);
+  CGColorSpaceRelease(dst);
+  CGColorSpaceRelease(p3);
+  external->OnGrContextDestroyed();
+  external.reset();
+  ClayReleaseSharedImageSink(source);
+}
+#endif
 
 INSTANTIATE_TEST_SUITE_P(Callbacks, SwiftShaderSoftwareTest,
                          testing::Values(Callback::kLegacy, Callback::kOldSize,

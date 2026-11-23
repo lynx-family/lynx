@@ -41,7 +41,8 @@ GLFBOInfo ClayHeadlessRendererGL::GLContextFBO(GLFrameInfo frame_info) const {
   clay_frame_info.height = frame_info.height;
   return {
       .fbo_id = const_cast<ClayHeadlessRendererGL*>(this)->FBO(clay_frame_info),
-      .existing_damage = std::nullopt};
+      .existing_damage = std::nullopt,
+      .color_space = output_color_space_};
 }
 
 bool ClayHeadlessRendererGL::GLContextFBOResetAfterPresent() const {
@@ -105,10 +106,11 @@ int64_t ClayHeadlessRendererSharedImageGL::FBO(
   size_.height = frame_info.height;
 
   ClaySharedImageWriteResult result;
+  ClaySharedImageRef shared_image = nullptr;
   uint32_t buffer_age = 0;
 
   if (!surface_accessor_ ||
-      !ClaySharedImageSinkBeginWrite(surface_accessor_, &size_, nullptr,
+      !ClaySharedImageSinkBeginWrite(surface_accessor_, &size_, &shared_image,
                                      &result, &buffer_age)) {
     FML_LOG(ERROR) << "failed to get fbo";
     return -1;
@@ -121,6 +123,7 @@ int64_t ClayHeadlessRendererSharedImageGL::FBO(
   fbo_storage_ = FBOSlot{
       .framebuffer = result.opengl_framebuffer,
       .buffer_age = buffer_age,
+      .color_space = ClaySharedImageGetColorSpace(shared_image),
   };
 
   return fbo_name;
@@ -167,7 +170,9 @@ GLFBOInfo ClayHeadlessRendererSharedImageGL::GLContextFBO(
   return {
       .fbo_id = fbo_id,
       .existing_damage = const_cast<ClayHeadlessRendererSharedImageGL*>(this)
-                             ->PopulateExistingDamage(fbo_id)};
+                             ->PopulateExistingDamage(fbo_id),
+      .color_space =
+          fbo_storage_ ? fbo_storage_->color_space : kClayColorSpaceSRGB};
 }
 
 // |GPUSurfaceGLDelegate|

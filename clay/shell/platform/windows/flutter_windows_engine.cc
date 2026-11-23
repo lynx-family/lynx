@@ -114,6 +114,13 @@ void FlutterWindowsEngine::SetSwitches(
 
 bool FlutterWindowsEngine::Run() { return Run(""); }
 
+bool FlutterWindowsEngine::enable_display_p3() const {
+  const auto switches = project_->GetSwitches();
+  const auto command_line = fml::CommandLineFromIteratorsWithArgv0(
+      "", switches.begin(), switches.end());
+  return command_line.HasOption(FlagForSwitch(Switch::EnableDisplayP3));
+}
+
 bool FlutterWindowsEngine::Run(std::string_view entrypoint) {
   if (!project_->HasValidPaths()) {
     FML_LOG(ERROR) << "Missing or unresolvable paths to assets.";
@@ -729,7 +736,8 @@ GLFBOInfo FlutterWindowsEngine::GLContextFBO(GLFrameInfo frame_info) const {
   return {
       .fbo_id = view_->GetFrameBufferId(frame_info.width, frame_info.height),
       .existing_damage = damage_rect,
-      .has_depth_stencil_attachment = true};
+      .has_depth_stencil_attachment = true,
+      .color_space = view_->GetColorSpace()};
 }
 
 bool FlutterWindowsEngine::GLContextFBOResetAfterPresent() const {

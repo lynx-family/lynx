@@ -56,6 +56,10 @@ source_set("shared_image") {
 
   if (enable_skity) {
     deps += [ "../skity" ]
+    sources += [
+      "skity_raster_image_representation.cc",
+      "skity_raster_image_representation.h",
+    ]
     if (is_android || is_win) {
       sources += [
         "skity_gl_image_representation.cc",

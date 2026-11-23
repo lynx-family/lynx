@@ -293,8 +293,8 @@ bool OpenD3DSharedHandle(ID3D11Device* device, HANDLE shared_handle,
 
 D3DTextureImageBacking::D3DTextureImageBacking(
     PixelFormat pixel_format, skity::Vec2 size,
-    std::optional<GraphicsMemoryHandle> gfx_handle)
-    : SharedImageBacking(pixel_format, size) {
+    std::optional<GraphicsMemoryHandle> gfx_handle, ClayColorSpace color_space)
+    : SharedImageBacking(pixel_format, size, color_space) {
   D3DTextureFactory::ScopedDevice scoped_device =
       D3DTextureFactory::Instance().GetDeviceScoped();
   ID3D11Device* d3d11_device = scoped_device.GetDevice();
@@ -342,7 +342,9 @@ D3DTextureImageBacking::~D3DTextureImageBacking() {
   staging_texture_.Reset();
   keyed_mutex_.Reset();
   Microsoft::WRL::ComPtr<ID3D11DeviceContext> device_context;
-  scoped_device.GetDevice()->GetImmediateContext(&device_context);
+  if (auto* device = scoped_device.GetDevice()) {
+    device->GetImmediateContext(&device_context);
+  }
   if (device_context) {
     device_context->Flush();
   }

@@ -4,6 +4,8 @@
 
 #include "clay/shell/gpu/gpu_surface_gl_skity.h"
 
+#include "clay/gfx/color_space.h"
+
 #if !defined(OS_OSX) || \
     (defined(ENABLE_HEADLESS) && defined(ENABLE_SOFTWARE_RENDERING))
 #include <EGL/egl.h>
@@ -167,6 +169,7 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
   SurfaceFrame::FramebufferInfo framebuffer_info;
 
   const auto root_surface_transformation = GetRootTransformation();
+  const auto previous_space = color_space_;
   std::shared_ptr<skity::GPUSurface> gpu_surface = AcquireRenderSurface(size);
   if (!gpu_surface) {
     return nullptr;
@@ -190,7 +193,11 @@ std::unique_ptr<SurfaceFrame> GPUSurfaceGLSkity::AcquireFrame(
       [](const SurfaceFrame::SubmitInfo& surface_frame) { return true; };
 
   framebuffer_info = delegate_->GLContextFramebufferInfo();
-  if (!framebuffer_info.existing_damage.has_value()) {
+  framebuffer_info.color_space = color_space_;
+  framebuffer_info.color_space_changed = previous_space != color_space_;
+  if (framebuffer_info.color_space_changed) {
+    framebuffer_info.existing_damage.reset();
+  } else if (!framebuffer_info.existing_damage.has_value()) {
     framebuffer_info.existing_damage = existing_damage_;
   }
 
@@ -257,6 +264,10 @@ std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
     return nullptr;
   }
 
+  if (color_space_ != fbo_info.color_space) {
+    gpu_surface_map_.clear();
+    color_space_ = fbo_info.color_space;
+  }
   fbo_id_ = fbo_info.fbo_id;
   existing_damage_ = fbo_info.existing_damage;
 
@@ -272,6 +283,7 @@ std::shared_ptr<skity::GPUSurface> GPUSurfaceGLSkity::AcquireRenderSurface(
   desc.height = size.y;
   desc.sample_count = delegate_->GetSampleCount();
   desc.content_scale = 1;
+  desc.render_options.color_space = ToSkityColorSpace(fbo_info.color_space);
   desc.gl_id = fbo_info.fbo_id;
   desc.has_stencil_attachment = fbo_info.has_depth_stencil_attachment;
   desc.surface_type = skity::GLSurfaceType::kFramebuffer;

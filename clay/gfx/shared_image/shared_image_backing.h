@@ -101,7 +101,8 @@ class SharedImageBacking
     kRGBA8888,
   };
 
-  SharedImageBacking(PixelFormat pixel_format, skity::Vec2 size);
+  SharedImageBacking(PixelFormat pixel_format, skity::Vec2 size,
+                     ClayColorSpace color_space = kClayColorSpaceSRGB);
   virtual ~SharedImageBacking();
 
   virtual BackingType GetType() const = 0;
@@ -119,6 +120,8 @@ class SharedImageBacking
   virtual fml::RefPtr<SkityImageRepresentation> CreateSkityRepresentation(
       GrContext* skity_context) = 0;
 #endif  // ENABLE_SKITY
+
+  ClayColorSpace GetColorSpace() const { return color_space_; }
 
   virtual PixelFormat GetPixelFormat() const { return pixel_format_; }
   virtual const skity::Vec2 GetSize() const { return size_; }
@@ -141,7 +144,8 @@ class SharedImageBacking
 
   static fml::RefPtr<SharedImageBacking> Create(
       BackingType backing_type, PixelFormat pixel_format, skity::Vec2 size,
-      std::optional<GraphicsMemoryHandle> gfx_handle);
+      std::optional<GraphicsMemoryHandle> gfx_handle,
+      ClayColorSpace color_space = kClayColorSpaceSRGB);
 
   BASE_DISALLOW_COPY_AND_ASSIGN(SharedImageBacking);
 
@@ -150,6 +154,7 @@ class SharedImageBacking
 #endif
 
  protected:
+  const ClayColorSpace color_space_;
   PixelFormat pixel_format_;
   skity::Vec2 size_;
   skity::Matrix transformation_;

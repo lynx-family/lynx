@@ -29,17 +29,20 @@
 @interface LynxUIRendererMac : NSObject
 
 @property(nonatomic) ClayViewProvider* clayViewProvider;
-
-- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering;
+- (instancetype)initWithColorSpace:(lynx_color_space_e)colorSpace
+                 softwareRendering:(BOOL)softwareRendering;
 
 @end
 
 @implementation LynxUIRendererMac : NSObject
 
-- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering {
+- (instancetype)initWithColorSpace:(lynx_color_space_e)colorSpace
+                 softwareRendering:(BOOL)softwareRendering {
   self = [super init];
   if (self) {
-    _clayViewProvider = [[ClayViewProvider alloc] initWithSoftwareRendering:softwareRendering];
+    _clayViewProvider =
+        [[ClayViewProvider alloc] initWithSoftwareRendering:softwareRendering
+                                            enableDisplayP3:colorSpace == kLynxColorSpaceDisplayP3];
   }
   return self;
 }
@@ -211,7 +214,8 @@ LynxUIRendererImpl::LynxUIRendererImpl(lynx_view_builder_t* builder)
   }
 
   auto lynx_ui_renderer =
-      [[LynxUIRendererMac alloc] initWithSoftwareRendering:builder->enable_software_rendering];
+      [[LynxUIRendererMac alloc] initWithColorSpace:builder->color_space
+                                  softwareRendering:builder->enable_software_rendering];
   auto* view_context =
       reinterpret_cast<clay::ViewContext*>(lynx_ui_renderer.clayViewProvider.clayViewContext);
   if (builder->default_background_color) {

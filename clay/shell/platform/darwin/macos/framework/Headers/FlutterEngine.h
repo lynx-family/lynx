@@ -39,6 +39,10 @@ extern NSString* _Nonnull const kDragDropLastModifiedKey;
 FLUTTER_DARWIN_EXPORT
 @interface FlutterEngine : NSObject <FlutterPluginRegistry>
 
+/// Requests Display P3 output. Defaults to NO (sRGB). Set before running the
+/// engine. Core Animation converts the output to the destination display space.
+@property(nonatomic, assign) BOOL enableDisplayP3;
+
 /**
  * Initializes an engine with the given project.
  *

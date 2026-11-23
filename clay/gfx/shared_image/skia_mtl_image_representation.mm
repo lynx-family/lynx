@@ -5,6 +5,7 @@
 #include "clay/gfx/shared_image/skia_mtl_image_representation.h"
 
 #include "clay/fml/logging.h"
+#include "clay/gfx/color_space.h"
 #include "clay/gfx/shared_image/cv_pixelbuffer_image_backing.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/iosurface_image_backing.h"
@@ -48,10 +49,10 @@ sk_sp<SkImage> SkiaMTLImageRepresentation::GetSkImage() {
   GrBackendTexture skia_backend_texture(size.x, size.y, GrMipMapped ::kNo, skia_texture_info);
 
   // We always use OpenGL texture coordinate as the standard
-  return SkImages::BorrowTextureFrom(gr_context_, skia_backend_texture, kBottomLeft_GrSurfaceOrigin,
-                                     kBGRA_8888_SkColorType, kPremul_SkAlphaType, nullptr,
-                                     result.metal_texture.destruction_callback,
-                                     result.metal_texture.user_data);
+  return SkImages::BorrowTextureFrom(
+      gr_context_, skia_backend_texture, kBottomLeft_GrSurfaceOrigin, kBGRA_8888_SkColorType,
+      kPremul_SkAlphaType, ToSkColorSpace(GetBacking()->GetColorSpace()),
+      result.metal_texture.destruction_callback, result.metal_texture.user_data);
 }
 
 bool SkiaMTLImageRepresentation::EndRead() { return mtl_image_representation_->EndRead(); }

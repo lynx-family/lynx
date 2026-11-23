@@ -285,16 +285,26 @@ static void CommonInit(ClayViewProvider* controller, BOOL softwareRendering) {
 }
 
 - (instancetype)init {
-  return [self initWithSoftwareRendering:NO];
+  return [self initWithSoftwareRendering:NO enableDisplayP3:NO];
 }
 
 - (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering {
+  return [self initWithSoftwareRendering:softwareRendering enableDisplayP3:NO];
+}
+
+- (instancetype)initWithDisplayP3:(BOOL)enableDisplayP3 {
+  return [self initWithSoftwareRendering:NO enableDisplayP3:enableDisplayP3];
+}
+
+- (instancetype)initWithSoftwareRendering:(BOOL)softwareRendering
+                          enableDisplayP3:(BOOL)enableDisplayP3 {
   self = [super init];
   NSAssert(self, @"Super init cannot be nil");
   _ime_callback = nullptr;
   _viewDidLoad = NO;
   _serviceManager = [[ClayServiceManager alloc] init];
   CommonInit(self, softwareRendering);
+  _engine.enableDisplayP3 = enableDisplayP3;
   _isLaunchEngineSuccess = [self launchEngine];
   return self;
 }

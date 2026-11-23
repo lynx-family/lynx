@@ -13,6 +13,7 @@
 #include "base/include/fml/macros.h"
 #include "clay/gfx/geometry/rect.h"
 #include "clay/gfx/geometry/size.h"
+#include "clay/public/clay.h"
 #include "clay/shell/platform/windows/egl/surface.h"
 
 namespace clay {
@@ -29,6 +30,7 @@ class WindowSurface : public Surface {
                 EGLNativeWindowType window, int width, int height);
 
   virtual bool Initialize();
+  virtual ClayColorSpace GetColorSpace() const { return kClayColorSpaceSRGB; }
   // If enabled, makes the surface's buffer swaps block until the v-blank.
   //
   // If disabled, allows one thread to swap multiple buffers per v-blank

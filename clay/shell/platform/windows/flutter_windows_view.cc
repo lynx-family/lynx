@@ -734,6 +734,10 @@ bool FlutterWindowsView::PresentSoftwareBitmap(const void* allocation,
                                                   height);
 }
 
+ClayColorSpace FlutterWindowsView::GetColorSpace() const {
+  return surface_ ? surface_->GetColorSpace() : kClayColorSpaceSRGB;
+}
+
 void FlutterWindowsView::CreateRenderSurface() {
   FML_DCHECK(surface_ == nullptr);
 
@@ -746,8 +750,12 @@ void FlutterWindowsView::CreateRenderSurface() {
     const HWND surface_window = is_implicit_view
                                     ? GetWindowHandle()
                                     : std::get<HWND>(*GetRenderTarget());
-    surface_ = engine_->egl_manager()->CreateWindowSurface(
-        surface_type, surface_window, bounds.width, bounds.height);
+    surface_ =
+        engine_->enable_display_p3()
+            ? engine_->egl_manager()->CreateP3WindowSurface(
+                  surface_window, bounds.width, bounds.height)
+            : engine_->egl_manager()->CreateWindowSurface(
+                  surface_type, surface_window, bounds.width, bounds.height);
     UpdateVsync(engine_, surface_.get(), enable_vsync);
     resize_target_width_ = bounds.width;
     resize_target_height_ = bounds.height;

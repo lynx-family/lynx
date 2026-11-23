@@ -539,3 +539,18 @@ Snapshot preconditions:
   races.
 - specialization-specific rules belong in specialization specs such as
   `map_view_spec.md`, not in this generic file.
+
+## Desktop external-texture color space
+
+Desktop NativePlatformView producers declare `color_space()` before the sink is
+created (sRGB by default, optionally Display P3). This declaration describes the
+actual pixel encoding, independently of the window's output color space. Imported
+handles are not converted or relabeled. Every buffer keeps immutable metadata
+through resizing, buffering, representation creation, and NativeView composition.
+Consumers convert from this source space to the render target space before
+blending. An sRGB window clips colors outside its gamut; a P3 window preserves P3
+colors. On macOS and Windows, producers can change the declaration between
+frames through `UpdateSurfaceColorSpace`. Changes fail while a back buffer is
+acquired but not yet swapped. Successful changes apply to subsequent acquisitions
+and imports without replacing the sink; queued frames retain their original encoding.
+New buffers require a full redraw, and old buffers are retired behind GPU fences.

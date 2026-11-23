@@ -38,6 +38,7 @@ struct lynx_view_builder_t {
 
   bool enable_js_runtime = true;
   bool enable_software_rendering = false;
+  lynx_color_space_e color_space = kLynxColorSpaceSRGB;
   std::string icu_data_path;
   std::string webview2_fixed_runtime_path;
   lynx_group_t* group = nullptr;

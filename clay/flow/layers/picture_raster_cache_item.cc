@@ -219,9 +219,7 @@ bool PictureRasterCacheItem::TryToPrepareRasterCache(
       // clang-format off
       .gr_context         = context.gr_context,
       .sample_count       = context.sample_count,
-#ifndef ENABLE_SKITY
       .dst_color_space    = context.dst_color_space,
-#endif // ENABLE_SKITY
       .matrix             = transformation_matrix_,
       .logical_rect       = bounds,
       .flow_type          = flow_type,

@@ -33,9 +33,12 @@ std::shared_ptr<skity::Pixmap> CopyPixmap(
   if (!data) {
     return nullptr;
   }
-  return std::make_shared<skity::Pixmap>(
+  auto copy = std::make_shared<skity::Pixmap>(
       std::move(data), source->RowBytes(), source->Width(), source->Height(),
       source->GetAlphaType(), source->GetColorType());
+  copy->SetColorInfo(source->GetAlphaType(), source->GetColorType(),
+                     source->GetColorSpace());
+  return copy;
 }
 
 fml::RefPtr<GraphicsImage> MakeGraphicsImage(
@@ -125,7 +128,8 @@ std::shared_ptr<ImageCodecGenerator> SkityImageCodecGenerator::Create(
   }
   const int frame_count = is_animated ? decoded_frame_count : 1;
   if (!current_pixmap->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
-                                    current_pixmap->GetColorType())) {
+                                    current_pixmap->GetColorType(),
+                                    current_pixmap->GetColorSpace())) {
     return nullptr;
   }
   std::shared_ptr<skity::MultiFrameDecoder> animation_decoder;
@@ -191,7 +195,8 @@ FrameInfo SkityImageCodecGenerator::DecodeFrame(
   // Multi-frame decoders composite in unpremultiplied RGBA.
   if (previous_frame &&
       !previous_frame->SetColorInfo(skity::AlphaType::kUnpremul_AlphaType,
-                                    previous_frame->GetColorType())) {
+                                    previous_frame->GetColorType(),
+                                    previous_frame->GetColorSpace())) {
     return {};
   }
   auto frame =
@@ -200,7 +205,7 @@ FrameInfo SkityImageCodecGenerator::DecodeFrame(
   // scaling or uploading the frame to a deferred texture image.
   if (!IsValidPixmap(frame) ||
       !frame->SetColorInfo(skity::AlphaType::kPremul_AlphaType,
-                           frame->GetColorType())) {
+                           frame->GetColorType(), frame->GetColorSpace())) {
     return {};
   }
   return MakeFrameInfo(std::move(frame), frame_info->GetDuration());

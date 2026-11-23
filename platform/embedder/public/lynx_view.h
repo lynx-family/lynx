@@ -83,6 +83,13 @@ class LynxView {
       return *this;
     }
 
+    // Selects the desktop window output color space (sRGB by default).
+    // Unsupported window presenters fall back to sRGB.
+    Builder& SetColorSpace(lynx_color_space_e color_space) {
+      lynx_view_builder_set_color_space(builder_, color_space);
+      return *this;
+    }
+
     Builder& SetEnableSoftwareRendering(bool enable) {
       lynx_view_builder_set_enable_software_rendering(builder_, enable);
       return *this;

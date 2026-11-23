@@ -59,6 +59,7 @@ GpuTarget CreateGpuTarget(const RasterCache::Context& context, int width,
   desc.width = width;
   desc.height = height;
   desc.sample_count = sample_count;
+  desc.render_options.color_space = context.dst_color_space;
 
   auto render_target = context.gr_context->CreateRenderTarget(desc);
   if (!render_target) {

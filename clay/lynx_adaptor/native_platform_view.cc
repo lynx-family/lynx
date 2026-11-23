@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "build/build_config.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
@@ -87,10 +88,42 @@ ClaySharedImageSinkRef NativePlatformView::GetSharedImageSink() {
     return nullptr;
   }
   if (!sink_ref_) {
-    sink_ref_ = ClayCreateSharedImageSink(buffer_mode(), backing_type(),
-                                          pixel_format());
+    sink_ref_ = ClayCreateSharedImageSinkWithColorSpace(
+        buffer_mode(), backing_type(), pixel_format(), GetSurfaceColorSpace());
   }
   return sink_ref_;
+}
+
+bool NativePlatformView::UpdateSurfaceColorSpace(ClayColorSpace color_space) {
+  if (color_space != kClayColorSpaceSRGB &&
+      color_space != kClayColorSpaceDisplayP3) {
+    return false;
+  }
+  if (!sink_ref_) return true;
+#if defined(OS_MAC) || defined(_WIN32)
+  if (backing_type() != kClaySharedImageBackingTypeIOSurface &&
+      backing_type() != kClaySharedImageBackingTypeD3DTexture) {
+    return false;
+  }
+  auto* sink = static_cast<SharedImageSinkManaged*>(
+      reinterpret_cast<SharedImageSink*>(sink_ref_));
+  return sink->UpdateSharedImageFactory(
+      [type = backing_type(), format = pixel_format(), color_space](
+          skity::Vec2 size, auto handle) -> fml::RefPtr<SharedImageBacking> {
+        ClaySize image_size{static_cast<uint32_t>(size.x),
+                            static_cast<uint32_t>(size.y)};
+        auto* backing = reinterpret_cast<SharedImageBacking*>(
+            ClayCreateSharedImageFromHandleWithColorSpace(
+                type, format, &image_size, handle.value_or(nullptr),
+                color_space));
+        if (!backing) return nullptr;
+        fml::RefPtr<SharedImageBacking> result(backing);
+        backing->Release();
+        return result;
+      });
+#else
+  return false;
+#endif
 }
 
 bool NativePlatformView::PresentSurface(

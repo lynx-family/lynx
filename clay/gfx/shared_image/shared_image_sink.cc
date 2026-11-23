@@ -25,6 +25,46 @@ SharedImageSinkManaged::SharedImageSinkManaged(
 
 SharedImageSinkManaged::~SharedImageSinkManaged() = default;
 
+bool SharedImageSinkManaged::UpdateSharedImageFactory(
+    const SharedImageFactory& factory) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!factory) return false;
+  for (const auto& slot : back_backings_) {
+    if (slot.is_current) return false;
+  }
+  shared_image_factory_ = factory;
+  ++generation_;
+  return true;
+}
+
+bool SharedImageSinkManaged::ReplaceBacking(
+    SharedImageSlot& slot, skity::Vec2 size,
+    std::optional<GraphicsMemoryHandle> gfx_handle,
+    std::unique_lock<std::mutex>& lock) {
+  auto replacement = shared_image_factory_(size, gfx_handle);
+  if (!replacement) return false;
+  if (slot.shared_image && slot.generation != generation_) {
+    auto fence = slot.shared_image->GetFenceSync();
+    if (fence) {
+      // Reserve the slot while waiting outside the queue lock. A single-buffer
+      // reader and configuration updates must not steal it during retirement.
+      bool was_current = slot.is_current;
+      slot.is_current = true;
+      lock.unlock();
+      bool ready = fence->ClientWait();
+      lock.lock();
+      slot.is_current = was_current;
+      if (!ready) {
+        slot.shared_image->SetFenceSync(std::move(fence));
+        return false;
+      }
+    }
+  }
+  slot = SharedImageSlot{.shared_image = std::move(replacement),
+                         .generation = generation_};
+  return true;
+}
+
 void SharedImageSinkManaged::UpdateBufferMode(BufferMode mode) {
   capacity_ = mode;
 }
@@ -111,8 +151,10 @@ SharedImageSinkManaged::AcquireBack(
 
   if (capacity_ == BufferMode::kNoBuffer) {
     // When capacity equals to ZERO, always create a new back backing.
-    SharedImageSlot slot = {.shared_image =
-                                shared_image_factory_(size, gfx_handle)};
+    SharedImageSlot slot = {
+        .shared_image = shared_image_factory_(size, gfx_handle),
+        .generation = generation_};
+    if (!slot.shared_image) return std::make_tuple(nullptr, 0);
     if (back_backings_.empty()) {
       back_backings_.emplace_back(slot);
     } else {
@@ -120,24 +162,30 @@ SharedImageSinkManaged::AcquireBack(
     }
   } else if (capacity_ == BufferMode::kMultiBuffer) {
     if (back_backings_.empty()) {
-      SharedImageSlot slot = {.shared_image =
-                                  shared_image_factory_(size, gfx_handle)};
+      SharedImageSlot slot = {
+          .shared_image = shared_image_factory_(size, gfx_handle),
+          .generation = generation_};
+      if (!slot.shared_image) return std::make_tuple(nullptr, 0);
       back_backings_.emplace_back(slot);
     } else {
       if (!frame_available_callback_) {
         return std::make_tuple(nullptr, 0);
       }
-      if (back_backings_.front().shared_image->GetSize() != size ||
+      if (back_backings_.front().generation != generation_ ||
+          back_backings_.front().shared_image->GetSize() != size ||
           (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
-        back_backings_.front() = SharedImageSlot{
-            .shared_image = shared_image_factory_(size, gfx_handle)};
+        if (!ReplaceBacking(back_backings_.front(), size, gfx_handle, l)) {
+          return std::make_tuple(nullptr, 0);
+        }
       }
     }
   } else {
     if (back_backings_.empty() && used_ < capacity_) {
-      SharedImageSlot slot = {.shared_image =
-                                  shared_image_factory_(size, gfx_handle)};
+      SharedImageSlot slot = {
+          .shared_image = shared_image_factory_(size, gfx_handle),
+          .generation = generation_};
+      if (!slot.shared_image) return std::make_tuple(nullptr, 0);
       back_backings_.emplace_back(slot);
       used_++;
     } else {
@@ -153,11 +201,13 @@ SharedImageSinkManaged::AcquireBack(
         return std::make_tuple(nullptr, 0);
       }
 
-      if (back_backings_.front().shared_image->GetSize() != size ||
+      if (back_backings_.front().generation != generation_ ||
+          back_backings_.front().shared_image->GetSize() != size ||
           (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
-        back_backings_.front() = SharedImageSlot{
-            .shared_image = shared_image_factory_(size, gfx_handle)};
+        if (!ReplaceBacking(back_backings_.front(), size, gfx_handle, l)) {
+          return std::make_tuple(nullptr, 0);
+        }
       }
     }
   }
@@ -181,8 +231,11 @@ SharedImageSinkManaged::TryAcquireBack(
 
   if (capacity_ == BufferMode::kNoBuffer) {
     // When capacity equals to ZERO, always create a new back backing.
-    SharedImageSlot slot = {.shared_image =
-                                shared_image_factory_(size, gfx_handle)};
+    SharedImageSlot slot = {
+        .shared_image = shared_image_factory_(size, gfx_handle),
+        .generation = generation_};
+    if (!slot.shared_image)
+      return std::make_tuple(nullptr, 0, AcquireBackStatus::kUnkown);
     if (back_backings_.empty()) {
       back_backings_.emplace_back(slot);
     } else {
@@ -191,8 +244,11 @@ SharedImageSinkManaged::TryAcquireBack(
   } else {
     if (back_backings_.empty()) {
       if (used_ < capacity_) {
-        SharedImageSlot slot = {.shared_image =
-                                    shared_image_factory_(size, gfx_handle)};
+        SharedImageSlot slot = {
+            .shared_image = shared_image_factory_(size, gfx_handle),
+            .generation = generation_};
+        if (!slot.shared_image)
+          return std::make_tuple(nullptr, 0, AcquireBackStatus::kUnkown);
         back_backings_.emplace_back(slot);
         used_++;
       } else {
@@ -202,11 +258,13 @@ SharedImageSinkManaged::TryAcquireBack(
         return std::make_tuple(nullptr, 0, status);
       }
     } else {
-      if (back_backings_.front().shared_image->GetSize() != size ||
+      if (back_backings_.front().generation != generation_ ||
+          back_backings_.front().shared_image->GetSize() != size ||
           (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
-        back_backings_.front() = SharedImageSlot{
-            .shared_image = shared_image_factory_(size, gfx_handle)};
+        if (!ReplaceBacking(back_backings_.front(), size, gfx_handle, l)) {
+          return std::make_tuple(nullptr, 0, AcquireBackStatus::kUnkown);
+        }
       }
     }
   }
@@ -234,8 +292,10 @@ SharedImageSinkManaged::AcquireBackForced(
 
   if (capacity_ == BufferMode::kNoBuffer) {
     // When capacity equals to ZERO, always create a new back backing.
-    SharedImageSlot slot = {.shared_image =
-                                shared_image_factory_(size, gfx_handle)};
+    SharedImageSlot slot = {
+        .shared_image = shared_image_factory_(size, gfx_handle),
+        .generation = generation_};
+    if (!slot.shared_image) return std::make_tuple(nullptr, 0);
     if (back_backings_.empty()) {
       back_backings_.emplace_back(slot);
     } else {
@@ -243,8 +303,10 @@ SharedImageSinkManaged::AcquireBackForced(
     }
   } else {
     if (back_backings_.empty() && used_ < capacity_) {
-      SharedImageSlot slot = {.shared_image =
-                                  shared_image_factory_(size, gfx_handle)};
+      SharedImageSlot slot = {
+          .shared_image = shared_image_factory_(size, gfx_handle),
+          .generation = generation_};
+      if (!slot.shared_image) return std::make_tuple(nullptr, 0);
       back_backings_.emplace_back(slot);
       used_++;
     } else {
@@ -273,11 +335,13 @@ SharedImageSinkManaged::AcquireBackForced(
       }
 
       if (!back_backings_.front().shared_image ||
+          back_backings_.front().generation != generation_ ||
           back_backings_.front().shared_image->GetSize() != size ||
           (gfx_handle.has_value() && gfx_handle.value())) {
         // maybe resized, discard it
-        back_backings_.front() = SharedImageSlot{
-            .shared_image = shared_image_factory_(size, gfx_handle)};
+        if (!ReplaceBacking(back_backings_.front(), size, gfx_handle, l)) {
+          return std::make_tuple(nullptr, 0);
+        }
       }
     }
   }

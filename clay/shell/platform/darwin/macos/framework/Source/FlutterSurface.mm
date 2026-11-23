@@ -20,6 +20,7 @@ std::atomic<int64_t> next_texture_id{1};
   IOSurfaceRef _ioSurface;
   id<MTLTexture> _texture;
   int64_t _textureId;
+  ClayColorSpace _colorSpace;
 }
 @end
 
@@ -37,10 +38,24 @@ std::atomic<int64_t> next_texture_id{1};
   return _textureId;
 }
 
+- (ClayColorSpace)colorSpace {
+  return _colorSpace;
+}
+
 - (instancetype)initWithSize:(CGSize)size device:(id<MTLDevice>)device {
+  return [self initWithSize:size device:device colorSpace:kClayColorSpaceSRGB];
+}
+
+- (instancetype)initWithSize:(CGSize)size
+                      device:(id<MTLDevice>)device
+                  colorSpace:(ClayColorSpace)colorSpace {
   if (self = [super init]) {
     self->_size = size;
+    self->_colorSpace = colorSpace;
     self->_ioSurface = [FlutterSurface createIOSurfaceWithSize:size];
+    IOSurfaceSetValue(
+        _ioSurface, CFSTR("IOSurfaceColorSpace"),
+        colorSpace == kClayColorSpaceDisplayP3 ? kCGColorSpaceDisplayP3 : kCGColorSpaceSRGB);
     self->_texture = [FlutterSurface createTextureForIOSurface:_ioSurface size:size device:device];
     // Damage history outlives cached surfaces. Object addresses can be reused
     // after eviction, so each new surface needs a distinct lifetime identity.
@@ -60,6 +75,7 @@ static void ReleaseSurface(void* surface) {
   memset(&res, 0, sizeof(clay::GPUMTLTextureInfo));
   res.texture = (__bridge void*)_texture;
   res.texture_id = self.textureId;
+  res.color_space = _colorSpace;
   res.destruction_callback = ReleaseSurface;
   res.destruction_context = (void*)CFBridgingRetain(self);
   return res;

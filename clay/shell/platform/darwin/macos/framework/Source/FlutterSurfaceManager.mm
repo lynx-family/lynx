@@ -73,9 +73,13 @@
 }
 
 - (FlutterSurface*)surfaceForSize:(CGSize)size {
+  return [self surfaceForSize:size colorSpace:kClayColorSpaceSRGB];
+}
+
+- (FlutterSurface*)surfaceForSize:(CGSize)size colorSpace:(ClayColorSpace)colorSpace {
   FlutterSurface* surface = [_backBufferCache removeSurfaceForSize:size];
-  if (surface == nil) {
-    surface = [[FlutterSurface alloc] initWithSize:size device:_device];
+  if (surface == nil || surface.colorSpace != colorSpace) {
+    surface = [[FlutterSurface alloc] initWithSize:size device:_device colorSpace:colorSpace];
   }
   return surface;
 }

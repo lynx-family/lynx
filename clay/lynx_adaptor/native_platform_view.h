@@ -77,6 +77,9 @@ class CLAY_EXPORT NativePlatformView {
     return kClaySharedImageBackingPixelFormatNative8888;
   }
 
+  // Encoding of buffers produced by this view.
+  ClayColorSpace GetSurfaceColorSpace() const { return color_space(); }
+
   bool PresentSurface(int width, int height,
                       const ClayTransformation* transform,
                       ClaySharedImageNativeHandle gfx_handle);
@@ -91,10 +94,15 @@ class CLAY_EXPORT NativePlatformView {
   void RequestFocus();
   void MarkDirty();
 
+ protected:
+  // Serialize encoding changes with producer acquire, present and swap.
+  bool UpdateSurfaceColorSpace(ClayColorSpace color_space);
+
  private:
   ClaySharedImageNativeHandle AcquireSurfaceInternal(
       int width, int height, const ClayTransformation* transform, bool force);
   virtual void Release() = 0;
+  virtual ClayColorSpace color_space() const { return kClayColorSpaceSRGB; }
 
   friend class NativeViewServiceEmbedder;
   friend class NativeViewPluginEmbedder;

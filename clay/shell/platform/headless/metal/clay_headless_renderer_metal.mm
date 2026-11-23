@@ -59,6 +59,8 @@ GPUMTLTextureInfo ClayHeadlessRendererMetal::GetMTLTexture(const skity::Vec2& fr
   ClaySharedImageSetTransformation(shared_image, &transformation);
   FML_DCHECK(result.type == kClaySharedImageRepresentationTypeMetal);
 
+  res.color_space = ClaySharedImageGetColorSpace(shared_image);
+  res.reset_damage = buffer_age == 0;
   res.texture = result.metal_texture.texture;
   res.texture_id = reinterpret_cast<int64_t>(result.metal_texture.texture);
   res.destruction_callback = result.metal_texture.destruction_callback;

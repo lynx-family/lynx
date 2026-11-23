@@ -60,6 +60,8 @@ struct PrerollContext {
   LayerStateStack& state_stack;
 #ifndef ENABLE_SKITY
   SkColorSpace* dst_color_space;
+#else
+  std::shared_ptr<const skity::ColorSpace> dst_color_space = nullptr;
 #endif  // ENABLE_SKITY
   bool surface_needs_readback;
 
@@ -138,6 +140,8 @@ struct PaintContext {
   uint32_t sample_count = 1;
 #ifndef ENABLE_SKITY
   SkColorSpace* dst_color_space;
+#else
+  std::shared_ptr<const skity::ColorSpace> dst_color_space = nullptr;
 #endif  // ENABLE_SKITY
   CompositorState* compositor_state;
   const Stopwatch& raster_time;

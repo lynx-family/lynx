@@ -627,6 +627,14 @@ typedef bool (*ClaySoftwarePresentCallbackV2)(
     void* /* user data */, const void* /* allocation */, size_t /* row bytes */,
     size_t /* height */, ClaySharedImageBackingPixelFormat /* pixel format */);
 
+/// RGB primaries and transfer function of pixel values. Both spaces use the
+/// sRGB transfer function and a D65 white point. Pixel format alone does not
+/// specify a color space. Zero-initialized configurations use sRGB.
+typedef enum {
+  kClayColorSpaceSRGB = 0,
+  kClayColorSpaceDisplayP3 = 1,
+} ClayColorSpace;
+
 typedef struct ClayOpenGLRendererConfig {
   /// The size of this struct. Must be sizeof(ClayOpenGLRendererConfig).
   size_t struct_size;
@@ -656,6 +664,8 @@ typedef struct ClayOpenGLRendererConfig {
   bool enable_shared_image_sink;
   ClaySharedImageSinkBufferMode
       shared_image_sink_buffer_mode;  // double buffer by default
+  /// Encoding written to the host FBO. The host must present it in this space.
+  ClayColorSpace color_space;
 } ClayOpenGLRendererConfig;
 
 typedef struct ClayHardwareRendererConfig {
@@ -677,6 +687,8 @@ typedef struct ClaySoftwareRendererConfig {
   /// present_callback, including when it returns false. The buffer lifetime
   /// and top-down row order are the same as for present_callback.
   ClaySoftwarePresentCallbackV2 present_callback_v2;
+  /// Encoding of presented pixels. The host owns display color management.
+  ClayColorSpace color_space;
 } ClaySoftwareRendererConfig;
 
 typedef enum {
@@ -744,6 +756,23 @@ CLAY_EXPORT ClaySharedImageRef ClayCreateSharedImageFromHandle(
     ClaySharedImageBackingType type,
     ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size,
     ClaySharedImageNativeHandle handle);
+/// Creates an image with immutable color-space metadata. This does not convert
+/// pixel values. Producers must write pixels in the declared color space.
+/// Returns NULL for an invalid color space or unsupported backing.
+CLAY_EXPORT ClaySharedImageRef ClayCreateSharedImageWithColorSpace(
+    ClaySharedImageBackingType type,
+    ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size,
+    ClayColorSpace color_space);
+/// Imports pixels in the declared space without modifying the native handle's
+/// metadata. The declaration must agree with the producer's pixel values.
+CLAY_EXPORT ClaySharedImageRef ClayCreateSharedImageFromHandleWithColorSpace(
+    ClaySharedImageBackingType type,
+    ClaySharedImageBackingPixelFormat pixel_format, const ClaySize* size,
+    ClaySharedImageNativeHandle handle, ClayColorSpace color_space);
+/// Returns sRGB for NULL. Native handle export does not carry this metadata;
+/// consumers must also query the color space when exporting a handle.
+CLAY_EXPORT ClayColorSpace
+ClaySharedImageGetColorSpace(ClaySharedImageRef shared_image_ref);
 CLAY_EXPORT ClaySharedImageRef
 ClayRetainSharedImage(ClaySharedImageRef shared_image_ref);
 CLAY_EXPORT void ClayReleaseSharedImage(ClaySharedImageRef shared_image_ref);
@@ -928,6 +957,13 @@ ClaySharedImageGetFenceSync(ClaySharedImageRef shared_image_ref);
 CLAY_EXPORT ClaySharedImageSinkRef ClayCreateSharedImageSink(
     ClaySharedImageSinkBufferMode buffer_mode, ClaySharedImageBackingType type,
     ClaySharedImageBackingPixelFormat pixel_format);
+
+/// All buffers allocated by this sink have the specified immutable color space,
+/// including buffers allocated after resizing. Defaults are unchanged in the
+/// original ClayCreateSharedImageSink API.
+CLAY_EXPORT ClaySharedImageSinkRef ClayCreateSharedImageSinkWithColorSpace(
+    ClaySharedImageSinkBufferMode buffer_mode, ClaySharedImageBackingType type,
+    ClaySharedImageBackingPixelFormat pixel_format, ClayColorSpace color_space);
 
 CLAY_EXPORT ClaySharedImageSinkRef
 ClayRetainSharedImageSink(ClaySharedImageSinkRef sink_ref);

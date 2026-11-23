@@ -29,9 +29,13 @@
 @interface FlutterSurface (Private)
 
 - (nonnull instancetype)initWithSize:(CGSize)size device:(nonnull id<MTLDevice>)device;
+- (nonnull instancetype)initWithSize:(CGSize)size
+                              device:(nonnull id<MTLDevice>)device
+                          colorSpace:(ClayColorSpace)colorSpace;
 
 @property(readonly, nonatomic, nonnull) IOSurfaceRef ioSurface;
 @property(readonly, nonatomic) CGSize size;
+@property(readonly, nonatomic) ClayColorSpace colorSpace;
 @property(readonly, nonatomic) int64_t textureId;
 
 @end

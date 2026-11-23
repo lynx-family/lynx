@@ -6,6 +6,7 @@
 
 #include "base/include/value/lynx_value_api.h"
 #include "lynx_export.h"
+#include "lynx_types.h"
 
 LYNX_EXTERN_C_BEGIN
 
@@ -187,6 +188,22 @@ LYNX_CAPI_EXPORT void lynx_native_view_trigger_event(lynx_native_view_t*,
                                                      lynx_value params);
 LYNX_CAPI_EXPORT void lynx_native_view_request_focus(lynx_native_view_t*);
 LYNX_CAPI_EXPORT void lynx_native_view_mark_dirty(lynx_native_view_t*);
+
+// Declares the source pixel encoding, independently of the containing window.
+// Producers must supply pixels in this space; this does not convert pixels.
+// Display P3 is supported only on macOS and Windows. Other platforms reject it
+// without changing the current space.
+// On macOS and Windows, changing the space applies to the next
+// acquired/imported buffer. Different-space requests fail while a back buffer
+// is acquired but not swapped; submit that frame before retrying. Previously
+// submitted frames keep their original encoding. Serialize this call with
+// acquire/present/swap on the producer thread and fully redraw each newly
+// acquired buffer after a change. On other platforms, set before sink creation.
+// Returns false for NULL, invalid spaces, or unsupported changes.
+LYNX_CAPI_EXPORT bool lynx_native_view_set_surface_color_space(
+    lynx_native_view_t* view, lynx_color_space_e color_space);
+LYNX_CAPI_EXPORT lynx_color_space_e
+lynx_native_view_get_surface_color_space(lynx_native_view_t* view);
 
 LYNX_EXTERN_C_END
 

@@ -95,6 +95,10 @@ source_set("skity_lib") {
     "//third_party/libwebp",
     "//third_party/zlib",
   ]
+  if (is_mac) {
+    # The WGSL parser assigns a token type that it does not read.
+    cflags = [ "-Wno-error=unused-but-set-variable" ]
+  }
   if (is_linux) {
     defines = [ "JSON_USE_EXCEPTION=0" ]
     deps += [ "../../../third_party/jsoncpp:jsoncpp" ]

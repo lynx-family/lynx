@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
+#include "clay/gfx/color_space.h"
 #ifndef ENABLE_SKITY
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/core/SkImageInfo.h"
@@ -26,9 +27,13 @@ namespace {
 
 class SoftwareSurface final : public skity::GPUSurface {
  public:
-  SoftwareSurface(uint32_t width, uint32_t height)
+  SoftwareSurface(uint32_t width, uint32_t height, ClayColorSpace space)
       : bitmap_(width, height, skity::AlphaType::kPremul_AlphaType),
-        canvas_(skity::Canvas::MakeSoftwareCanvas(&bitmap_)) {}
+        canvas_(skity::Canvas::MakeSoftwareCanvas(&bitmap_)) {
+    bitmap_.GetPixmap()->SetColorInfo(bitmap_.GetAlphaType(),
+                                      bitmap_.GetColorType(),
+                                      ToSkityColorSpace(space));
+  }
 
   bool IsValid() const { return bitmap_.GetPixelAddr() && canvas_; }
   uint32_t GetWidth() const override { return bitmap_.Width(); }
@@ -114,8 +119,9 @@ clay::GrSurfacePtr EmbedderSurfaceSoftware::AcquireBackingStore(
     return sk_surface_;
   }
 
-  SkImageInfo info = SkImageInfo::MakeN32(
-      size.fWidth, size.fHeight, kPremul_SkAlphaType, SkColorSpace::MakeSRGB());
+  SkImageInfo info =
+      SkImageInfo::MakeN32(size.fWidth, size.fHeight, kPremul_SkAlphaType,
+                           ToSkColorSpace(delegate_->GetOutputColorSpace()));
   sk_surface_ = SkSurface::MakeRaster(info, nullptr);
 
   if (sk_surface_ == nullptr) {
@@ -128,7 +134,8 @@ clay::GrSurfacePtr EmbedderSurfaceSoftware::AcquireBackingStore(
       sk_surface_->GetHeight() == skity_size.y) {
     return sk_surface_;
   }
-  auto surface = std::make_shared<SoftwareSurface>(skity_size.x, skity_size.y);
+  auto surface = std::make_shared<SoftwareSurface>(
+      skity_size.x, skity_size.y, delegate_->GetOutputColorSpace());
   if (!surface->IsValid()) {
     return nullptr;
   }
