@@ -1663,30 +1663,30 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       return;
     }
 
-    LynxHostScriptViewHooks.beforeLoadTemplate(this, metaData);
+    LynxLoadMeta resolvedMeta = LynxHostScriptViewHooks.beforeLoadTemplate(this, metaData);
     // Static-page direct data has no standard-data fallback, so a failed preparation must stop
     // this load.
-    boolean isLoadPreparationSuccessful = prepareStaticPageLoad(metaData);
+    boolean isLoadPreparationSuccessful = prepareStaticPageLoad(resolvedMeta);
     if (!isLoadPreparationSuccessful) {
       onTraceEventEnd(eventName);
       return;
     }
 
-    if (metaData.getLoadMode() == LynxLoadMode.PRE_PAINTING) {
+    if (resolvedMeta.getLoadMode() == LynxLoadMode.PRE_PAINTING) {
       if (mBodyView != null) {
         mBodyView.setShouldInterceptRequestLayout(true);
       }
       mLynxContext.setInPreLoad(true);
     }
 
-    if (metaData.getLoadMode() == LynxLoadMode.RENDER_SSR) {
-      renderSSRWithMetaData(metaData);
+    if (resolvedMeta.getLoadMode() == LynxLoadMode.RENDER_SSR) {
+      renderSSRWithMetaData(resolvedMeta);
       onTraceEventEnd(eventName);
       return;
     }
 
     if (mSSRHelper != null && mSSRHelper.isHydratePending()
-        && metaData.getLoadMode() == LynxLoadMode.HYDRATE_SSR) {
+        && resolvedMeta.getLoadMode() == LynxLoadMode.HYDRATE_SSR) {
       mSSRHelper.onHydrateStart();
     }
 
@@ -1695,11 +1695,11 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     if (mPerformanceController.isEmbeddedMode()) {
       mPerformanceController.markTiming(TimingConstants.LOAD_BUNDLE_START, null);
     }
-    setUrl(metaData.getUrl());
-    renderWithLoadMeta(metaData, timingOption);
+    setUrl(resolvedMeta.getUrl());
+    renderWithLoadMeta(resolvedMeta, timingOption);
     LLog.i(TAG, formatLynxMessage("renderTemplate"));
-    if (mStaticPageHost == null && metaData.initialData != null) {
-      postRenderOrUpdateData(metaData.initialData);
+    if (mStaticPageHost == null && resolvedMeta.initialData != null) {
+      postRenderOrUpdateData(resolvedMeta.initialData);
     }
     onTraceEventEnd(eventName);
   }
