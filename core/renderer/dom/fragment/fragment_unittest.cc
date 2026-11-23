@@ -4634,6 +4634,122 @@ TEST_F(FragmentDrawTest, ReinsertZIndexDescendantUsesAncestorStackingContext) {
   EXPECT_NE(layer_fragment->fragment_parent(), layer_fragment);
 }
 
+TEST_F(FragmentDrawTest, SameParentReturnToNormalFlowRestoresSiblingOrder) {
+  manager->GetConfig()->SetEnableFixedNew(true);
+  manager->SetConfig(manager->GetConfig());
+  auto page = manager->CreateFiberPage("0", 0);
+  auto container = manager->CreateFiberView();
+  container->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  auto first = manager->CreateFiberView();
+  auto middle = manager->CreateFiberView();
+  auto last = manager->CreateFiberView();
+  auto tail = manager->CreateFiberView();
+  middle->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  tail->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(container);
+  container->InsertNode(first);
+  container->InsertNode(middle);
+  container->InsertNode(last);
+  container->InsertNode(tail);
+
+  auto fixed_node = manager->CreateFiberView();
+  auto page_last = manager->CreateFiberView();
+  auto page_top = manager->CreateFiberView();
+  fixed_node->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                       lepus::Value("fixed"));
+  page_top->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->InsertNode(fixed_node);
+  page->InsertNode(page_last);
+  page->InsertNode(page_top);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+  };
+  flush();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* container_fragment = container->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* middle_fragment = middle->fragment_impl();
+  auto* last_fragment = last->fragment_impl();
+  auto* tail_fragment = tail->fragment_impl();
+  auto* fixed_fragment = fixed_node->fragment_impl();
+  auto* page_last_fragment = page_last->fragment_impl();
+  auto* page_top_fragment = page_top->fragment_impl();
+
+  ASSERT_THAT(container_fragment->children_,
+              ::testing::ElementsAre(first_fragment, last_fragment,
+                                     middle_fragment, tail_fragment));
+  ASSERT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(container_fragment, page_last_fragment,
+                                     fixed_fragment, page_top_fragment));
+
+  middle->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
+  fixed_node->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                       lepus::Value("relative"));
+  flush();
+  EXPECT_THAT(container_fragment->children_,
+              ::testing::ElementsAre(first_fragment, middle_fragment,
+                                     last_fragment, tail_fragment));
+  EXPECT_THAT(page_fragment->children_,
+              ::testing::ElementsAre(container_fragment, fixed_fragment,
+                                     page_last_fragment, page_top_fragment));
+
+  middle->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  flush();
+  EXPECT_THAT(container_fragment->children_,
+              ::testing::ElementsAre(middle_fragment, first_fragment,
+                                     last_fragment, tail_fragment));
+
+  middle->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
+  flush();
+  EXPECT_THAT(container_fragment->children_,
+              ::testing::ElementsAre(first_fragment, middle_fragment,
+                                     last_fragment, tail_fragment));
+}
+
+TEST_F(FragmentDrawTest, EqualZIndexDynamicUpdatesUseElementOrder) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto first = manager->CreateFiberView();
+  auto second = manager->CreateFiberView();
+  auto third = manager->CreateFiberView();
+  page->InsertNode(first);
+  page->InsertNode(second);
+  page->InsertNode(third);
+
+  auto flush = [&]() {
+    page->FlushActionsAsRoot();
+    auto options = std::make_shared<PipelineOptions>();
+    manager->OnPatchFinish(options);
+  };
+  flush();
+
+  auto* page_fragment = page->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* second_fragment = second->fragment_impl();
+  auto* third_fragment = third->fragment_impl();
+
+  // Mutate the later sibling before the earlier sibling across separate patches
+  // so vector insertion order differs from DOM order.
+  third->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  flush();
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  flush();
+  EXPECT_THAT(
+      page_fragment->children_,
+      ::testing::ElementsAre(second_fragment, first_fragment, third_fragment));
+
+  third->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  flush();
+  first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(-1));
+  flush();
+  EXPECT_THAT(
+      page_fragment->children_,
+      ::testing::ElementsAre(first_fragment, third_fragment, second_fragment));
+}
+
 TEST_F(FragmentTest, CreateLayerIfNeededKeepsCompatibleComponentInitConfig) {
   auto element = manager->CreateFiberText("text");
   element->MarkAsDirectChildOfCompatibleComponent(true);

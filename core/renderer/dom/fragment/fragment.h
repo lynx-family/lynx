@@ -174,9 +174,35 @@ class Fragment : public BaseElementContainer {
   void ApplyPlacementZIndex() override;
 
  private:
+  enum class StackingPlacement : uint8_t {
+    kNormalFlow,    // !fixed && z_index == 0
+    kZHoisted,      // !fixed && z_index != 0
+    kFixedHoisted,  // fixed
+  };
+
+  struct StackingState {
+    StackingPlacement placement;
+    int32_t z_index;
+    bool fixed;
+    bool is_stacking_context;
+  };
+
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
-  Fragment* EnclosingStackingContextFromElementParent();
-  void ZIndexChanged();
+  static StackingPlacement ComputeStackingPlacement(bool fixed,
+                                                    int32_t z_index);
+  StackingState CaptureCommittedStackingState() const;
+  StackingState CaptureDesiredStackingState(bool handle_fixed) const;
+  Fragment* ResolveTargetParent(StackingPlacement placement) const;
+  Fragment* FindNormalFlowAnchor(Fragment* target_parent) const;
+  void SyncLogicalParentHoistSets(const StackingState& next);
+  bool ReconcileSelfPlacement(const StackingState& prev,
+                              const StackingState& next);
+  Fragment* ReconcileStackingDescendants(bool current_stacking_context);
+  void RefreshDrawingOffsetsIfNeeded(Fragment* previous_parent,
+                                     const StackingState& prev,
+                                     const StackingState& next,
+                                     Fragment* descendants_target);
+  void ReconcileStackingState(bool handle_fixed);
   void InvalidateLayerPropertiesIfSizeChanged(
       const LayoutResultForRendering& layout_result_for_rendering);
   void UpdateBorderRadiusAccordingToLayoutInfo();

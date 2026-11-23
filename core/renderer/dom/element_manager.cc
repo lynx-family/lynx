@@ -2085,14 +2085,7 @@ void ElementManager::OnPatchFinishForFiber(
     patch_finish_callback(false);
   } else {
     LOGI("ElementManager::OnPatchFinishForFiber WithPatch!");
-    {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
-      // sort z-index children
-      for (const auto &context : dirty_stacking_contexts_) {
-        context->UpdateZIndexList();
-      }
-    }
-    dirty_stacking_contexts_.clear();
+    UpdateDirtyStackingContexts();
     if (need_layout_ && !(options->has_layout)) {
       options->has_layout = need_layout_;
     }
@@ -2146,6 +2139,18 @@ void ElementManager::Repaint() {
   // Native children are attached while applying display lists. Publish ready
   // callbacks only after the complete batch has been submitted.
   painting_context()->UpdateNodeReadyPatching();
+}
+
+void ElementManager::UpdateDirtyStackingContexts() {
+  if (dirty_stacking_contexts_.empty()) {
+    return;
+  }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
+  auto contexts = std::move(dirty_stacking_contexts_);
+  dirty_stacking_contexts_.clear();
+  for (const auto &context : contexts) {
+    context->UpdateZIndexList();
+  }
 }
 
 void ElementManager::EnqueueLevelOrderTask(
