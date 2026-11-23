@@ -128,6 +128,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
  protected:
   virtual void CalculateOverFlow();
+  virtual void UpdateScrollOffsetForRTL();
 
   void ResetScroll() override { OnScrollUpdate(0); }
 
@@ -152,9 +153,10 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
   bool CanInvokeScrollImmediately() const;
 
-  void UpdateScrollOffsetForRTL();
+  const std::string& GetScrollMonitorComponentTag() const;
 
   bool enable_content_size_changed_event_ = false;
+  bool enable_scroll_monitor_ = false;
 
   // all content include invisible child
   FloatSize content_size_;
@@ -173,7 +175,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   ScrollEventCallbackManager::ScrollState last_callback_scroll_state_ =
       ScrollEventCallbackManager::ScrollState::kIdle;
 
-  BounceView* bounce_view_ = nullptr;
+  std::vector<BounceView*> bounce_views_;
   bool auto_scroll_ = false;
   int auto_scroll_rate_;
   std::optional<int> pending_scroll_offset_ = std::nullopt;

@@ -7,8 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/scroll_view.h"
@@ -17,7 +19,13 @@
 
 namespace clay {
 
-class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
+class ScrollbarWrapper;
+using ScrollbarWrapperBase =
+    std::conditional_t<lynx::IsIOS(), WithTypeInfo<ScrollbarWrapper, BaseView>,
+                       BaseView>;
+
+class ScrollbarWrapper : public ScrollbarWrapperBase,
+                         public ScrollbarView::Delegate {
  public:
   ScrollbarWrapper(int id, ScrollDirection direction, std::string tag,
                    PageView* page_view);
@@ -52,6 +60,7 @@ class ScrollbarWrapper : public BaseView, public ScrollbarView::Delegate {
   void SetBorderRadius(const FloatSize& left_top, const FloatSize& right_top,
                        const FloatSize& right_bottom,
                        const FloatSize& left_bottom) override;
+  void SetScrollbarBorderRadius(size_t index, const std::vector<Length>& array);
 
   void SetBackground(const BackgroundData& background) override;
 
