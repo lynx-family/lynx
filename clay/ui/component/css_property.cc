@@ -366,17 +366,20 @@ bool CSSProperty::SetAttribute(BaseView* view, KeywordID property_id,
     case KeywordID::kOverflow: {
       view->SetOverflowWithMask(
           OVERFLOW_XY,
-          utils::GetInt(value, static_cast<int>(ClayOverflowType::kVisible)));
+          utils::GetInt(value,
+                        static_cast<int>(view->DefaultOverflowForStyle())));
     } break;
     case KeywordID::kOverflowX: {
       view->SetOverflowWithMask(
           OVERFLOW_X,
-          utils::GetInt(value, static_cast<int>(ClayOverflowType::kVisible)));
+          utils::GetInt(value,
+                        static_cast<int>(view->DefaultOverflowForStyle())));
     } break;
     case KeywordID::kOverflowY: {
       view->SetOverflowWithMask(
           OVERFLOW_Y,
-          utils::GetInt(value, static_cast<int>(ClayOverflowType::kVisible)));
+          utils::GetInt(value,
+                        static_cast<int>(view->DefaultOverflowForStyle())));
     } break;
     case KeywordID::kVisibility: {
       view->SetVisible(
