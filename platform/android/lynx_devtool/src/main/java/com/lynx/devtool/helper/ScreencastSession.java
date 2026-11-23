@@ -21,6 +21,14 @@ import java.util.concurrent.Executors;
 final class ScreencastSession {
   private static final Handler MAIN = new Handler(Looper.getMainLooper());
   private static final int INTERVAL_MS = 125;
+  interface Host {
+    View getView();
+    long getRevision();
+    void sendFrame(String data, float width, float height, double timestamp, int[] frame);
+  }
+  private Host mHost;
+  private WeakReference<View> mLastHostView = new WeakReference<>(null);
+  private long mLastHostRevision = -1;
   private final WeakReference<View> mView;
   private final WeakReference<DevToolPlatformAndroidDelegate> mDelegate;
   private final String mMode;
@@ -67,6 +75,11 @@ final class ScreencastSession {
     MAIN.post(mTick);
   }
 
+  ScreencastSession(Host host, int maxWidth, int maxHeight, int quality) {
+    this(null, null, "fullscreen", maxWidth, maxHeight, quality, false);
+    mHost = host;
+  }
+
   private void schedule() {
     MAIN.removeCallbacks(mTick);
     if (!mStopped && !mPaused) {
@@ -86,8 +99,20 @@ final class ScreencastSession {
       MAIN.postDelayed(mTick, INTERVAL_MS);
       return;
     }
-    View view = mView.get();
-    if (view == null || mDelegate.get() == null) {
+    View view = mHost != null ? mHost.getView() : mView.get();
+    if (mHost != null) {
+      if (view == null) {
+        mLastCapture = SystemClock.uptimeMillis();
+        schedule();
+        return;
+      }
+      if (mLastHostView.get() != view || mLastHostRevision != mHost.getRevision()) {
+        mPrevious = null;
+        mLastHostView = new WeakReference<>(view);
+        mLastHostRevision = mHost.getRevision();
+      }
+    }
+    if (view == null || (mHost == null && mDelegate.get() == null)) {
       stop();
       return;
     }
@@ -163,7 +188,7 @@ final class ScreencastSession {
       mBitmap = bitmap;
       if (frameData != null) {
         DevToolPlatformAndroidDelegate delegate = mDelegate.get();
-        if (delegate == null) {
+        if (delegate == null && mHost == null) {
           stop();
           return;
         }
@@ -172,7 +197,11 @@ final class ScreencastSession {
         mPendingDeviceHeight = deviceHeight;
         int[] frame = {id, isDelta ? baseId : 0, bitmap.getWidth(), bitmap.getHeight(),
             frameRegion.x, frameRegion.y, frameRegion.width, frameRegion.height};
-        delegate.sendOptimizedScreenCast(frameData, deviceWidth, deviceHeight, timestamp, frame);
+        if (mHost != null) {
+          mHost.sendFrame(frameData, deviceWidth, deviceHeight, timestamp, frame);
+        } else {
+          delegate.sendOptimizedScreenCast(frameData, deviceWidth, deviceHeight, timestamp, frame);
+        }
       }
       schedule();
     });
@@ -251,6 +280,8 @@ final class ScreencastSession {
     mCurrent = null;
     mView.clear();
     mDelegate.clear();
+    mHost = null;
+    mLastHostView.clear();
   }
 
   private static void runOnMain(Runnable runnable) {

@@ -16,6 +16,7 @@ import android.widget.Toast;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import com.lynx.debugrouter.DebugRouter;
+import com.lynx.devtool.helper.HostScreencast;
 import com.lynx.devtool.helper.TestbenchDumpFileHelper;
 import com.lynx.devtool.tracing.FrameViewTrace;
 import com.lynx.devtool.utils.ErrorUtils;
@@ -116,6 +117,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
   @Override
   public void attach(LynxView lynxView) {
     mLynxView = new WeakReference<>(lynxView);
+    registerHostScreencastView();
     if (mDevMenu != null) {
       mDevMenu.attach(lynxView);
     }
@@ -193,14 +195,24 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
         if (mDebuggable) {
           DebugRouter.getInstance().enableSingleSession(sessionId);
         }
-        LynxView lynxView = getLynxView();
-        if (sessionId > 0 && lynxView != null) {
-          DebugRouter.getInstance().setSessionIdOfView(lynxView, sessionId);
-        }
       }
+      registerHostScreencastView();
       if (mRecordID != 0) {
         initRecord();
       }
+    }
+  }
+
+  private void registerHostScreencastView() {
+    if (mLynxDevToolNG == null || mLynxView == null) {
+      return;
+    }
+    int sessionId = mLynxDevToolNG.getSessionId();
+    LynxView view = getLynxView();
+    // A preloaded session can exist before its view is bound, or be rebound to a new view.
+    if (sessionId > 0 && view != null) {
+      DebugRouter.getInstance().setSessionIdOfView(view, sessionId);
+      HostScreencast.attach(sessionId, view);
     }
   }
 
@@ -250,6 +262,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG, LynxBaseIns
     try {
       stopCasting();
       if (mLynxDevToolNG != null) {
+        HostScreencast.detach(mLynxDevToolNG.getSessionId());
         mLynxDevToolNG.detachToDebug();
         mLynxDevToolNG.destroy();
         mLynxDevToolNG = null;
