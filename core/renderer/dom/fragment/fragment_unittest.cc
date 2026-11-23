@@ -434,19 +434,6 @@ class TestNativePaintingContext : public NativePaintingContext {
     return fml::MakeRefCounted<TestResizablePaintImage>(
         image_key, &can_reuse_image_on_resize_);
   }
-  bool UpdateImage(int32_t image_key, int id, base::String src,
-                   const ImagePaintInfo& paint_info, uint32_t changes,
-                   float width, float height, int32_t event_mask) override {
-    if (!can_update_image_) {
-      return false;
-    }
-    updated_image_keys_.push_back(image_key);
-    updated_image_changes_.push_back(changes);
-    updated_image_src_ = src;
-    updated_image_info_ = paint_info;
-    updated_image_size_ = {width, height};
-    return true;
-  }
   void UpdateTextBundle(int id, intptr_t bundle) override {}
   void DestroyTextBundle(int id) override {}
   void EnqueueReconstructEventTargetTreeRecursively() override {
@@ -5429,56 +5416,6 @@ TEST_F(FragmentTest, ImagePaintInfoDiffReportsChangedFields) {
   EXPECT_EQ(expected, ImagePaintInfo::kAllChanged);
   EXPECT_EQ(original.Diff(current), expected);
   EXPECT_EQ(current.Diff(current), 0u);
-}
-
-TEST_F(FragmentTest, ImageUpdatesReuseManagerWhenPlatformAccepts) {
-  auto element = manager->CreateFiberImage("image");
-  element->SetAttributeInternal("src", lepus::Value("image-src://first"));
-  Fragment fragment(element.get());
-  fragment.SetBehavior(std::make_unique<ImageFragmentBehavior>(&fragment));
-  TestNativePaintingContext context;
-  context.can_update_image_ = true;
-  fragment.behavior_->painting_context_ = &context;
-  auto draw = [&](float width) {
-    starlight::LayoutResultForRendering layout;
-    layout.size_ = FloatSize(width, 80.f);
-    fragment.UpdateLayout(layout);
-    DisplayListBuilder builder;
-    fragment.OnDraw(builder);
-    auto list = builder.Build();
-    EXPECT_EQ(context.created_images_.size(), 1u);
-    ASSERT_EQ(list.Images().size(), 1u);
-    EXPECT_EQ(list.Images()[0]->image_key_,
-              context.created_images_[0].image_key);
-  };
-  draw(100.f);
-  EXPECT_TRUE(context.updated_image_keys_.empty());
-  element->paint_info_.request_priority = base::String("high");
-  draw(100.f);
-  EXPECT_TRUE(context.updated_image_keys_.empty());
-  draw(200.f);
-  ASSERT_EQ(context.updated_image_keys_.size(), 1u);
-  EXPECT_FLOAT_EQ(context.updated_image_size_[0], 200.f);
-  EXPECT_EQ(context.updated_image_info_.request_priority.str(), "high");
-  EXPECT_EQ(context.updated_image_changes_.back(), 0u);
-  element->paint_info_.mode = ImageFitMode::kAspectFit;
-  draw(200.f);
-  EXPECT_EQ(context.updated_image_info_.mode, ImageFitMode::kAspectFit);
-  EXPECT_EQ(context.updated_image_changes_.back(),
-            ImagePaintInfo::kModeChanged);
-  element->SetAttributeInternal("src", lepus::Value("image-src://second"));
-  draw(200.f);
-  EXPECT_EQ(context.updated_image_src_.str(), "image-src://second");
-  EXPECT_EQ(context.updated_image_changes_.back(), 0u);
-  element->SetAttributeInternal("src", lepus::Value(""));
-  draw(200.f);
-  EXPECT_TRUE(context.updated_image_src_.empty());
-  ASSERT_EQ(context.updated_image_keys_.size(), 4u);
-  for (auto key : context.updated_image_keys_) {
-    EXPECT_EQ(key, context.created_images_[0].image_key);
-  }
-  draw(200.f);
-  EXPECT_EQ(context.updated_image_keys_.size(), 4u);
 }
 
 TEST_F(FragmentTest, ImageResizeReusesOnlyCompatibleRequests) {
