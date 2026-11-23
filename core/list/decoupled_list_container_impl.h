@@ -101,6 +101,9 @@ class ListContainerImpl : public ContainerDelegate {
   void StopInterceptListElementUpdated();
   float RoundValueToPixelGrid(const float value);
   void ClearValidDiff() { has_valid_diff_ = false; }
+  bool ShouldKeepScrollStartForDiff() const {
+    return has_valid_diff_ && list_delegate_->KeepScrollStartOnDataChange();
+  }
   void MarkShouldFlushFinishLayout(bool has_layout) {
     should_flush_finish_layout_ |= has_layout;
   }
