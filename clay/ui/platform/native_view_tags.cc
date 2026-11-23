@@ -9,9 +9,10 @@ namespace clay {
 namespace {
 
 constexpr std::string_view kInternalPlatformViewTags[] = {
-    "input",         "input-view",    "map-view",       "textarea",
-    "textarea-view", "x-input",       "x-input-ng",     "x-map-ng",
-    "x-textarea",    "x-textarea-ng", "x-video-engine",
+    "blur-view",      "input",         "input-view",  "map-view",
+    "textarea",       "textarea-view", "x-blur-view", "x-input",
+    "x-input-ng",     "x-map-ng",      "x-textarea",  "x-textarea-ng",
+    "x-video-engine",
 };
 constexpr NativeViewTagSet kInternalPlatformViewTagSet(
     kInternalPlatformViewTags,
@@ -27,6 +28,8 @@ constexpr NativeViewTagSet kInternalPlatformViewShadowNodeTagSet(
         sizeof(kInternalPlatformViewShadowNodeTags[0]));
 
 constexpr std::string_view kInternalPlatformViewWithoutShadowNodeTags[] = {
+    "blur-view",
+    "x-blur-view",
     "x-map-marker-ng",
     "x-map-ng",
 };

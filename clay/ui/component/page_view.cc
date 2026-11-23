@@ -19,6 +19,7 @@
 #include "base/include/auto_reset.h"
 #include "base/include/fml/macros.h"
 #include "base/include/fml/time/time_delta.h"
+#include "base/include/platform_types.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/screenshot.h"
 #include "clay/common/trail_settings.h"
@@ -2625,6 +2626,13 @@ void PageView::MakeRasterSnapshot(
   if (render_object->NeedsPaint() || render_object->NeedsEffect()) {
     // Needs to repaint first if the RenderObject has been marked dirty.
     render_delegate_->ForceBeginFrame();
+  }
+  if (lynx::IsIOS() && target->Is<MapMarkerView>() &&
+      (render_object->NeedsPaint() || render_object->NeedsEffect())) {
+    // Marker properties can request an image before node-ready finishes.
+    // An empty result lets the iOS snapshot provider retry on the next frame.
+    callback(nullptr, 0, 0);
+    return;
   }
   FML_DCHECK(!(render_object->NeedsPaint() || render_object->NeedsEffect()));
   FML_DCHECK(render_object->IsRepaintBoundary());
