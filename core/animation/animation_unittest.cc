@@ -435,10 +435,7 @@ TEST_F(AnimationTest, SendIterationEvent) {
       "bindEvent", "animationiteration", "onanimationiteration");
 
   // keyframe test
-  gfx::AnimationEventTiming timing;
-  timing.first_iteration = 3;
-  timing.iteration_duration = fml::TimeDelta::FromMilliseconds(250);
-  test_animation->SendIterationEvents(2, timing);
+  test_animation->SendIterationEvent(fml::TimeDelta::FromSeconds(1));
   EXPECT_TRUE(std::string(tasm_mediator->GetAnimationEventType()) ==
               "animationiteration");
   EXPECT_DOUBLE_EQ(1, tasm_mediator->GetAnimationEventParams()
@@ -1316,7 +1313,6 @@ TEST_F(BackgroundAnimationTest, FiniteAnimationFinishesOnForegroundFrame) {
           } else {
             a->SampleAt(start);
           }
-          a->SuppressNextIterationEvents();
           // No frames or event-only ticks occur while the page is backgrounded.
           auto end = start + fml::TimeDelta::FromSeconds(5);
           const bool persists =
@@ -1364,7 +1360,7 @@ TEST_F(BackgroundAnimationTest, FiniteAnimationFinishesOnForegroundFrame) {
   }
 }
 
-TEST_F(BackgroundAnimationTest, ResumeSkipsIterationsOnlyOnFirstFrame) {
+TEST_F(BackgroundAnimationTest, LongFrameGapSendsOneIterationEvent) {
   for (bool legacy : {false, true}) {
     for (bool custom_only : {false, true}) {
       if (legacy && custom_only) {
@@ -1384,19 +1380,23 @@ TEST_F(BackgroundAnimationTest, ResumeSkipsIterationsOnlyOnFirstFrame) {
         a->SampleAt(start);
       }
       tasm_mediator->ClearAnimationEvent();
-      a->SuppressNextIterationEvents();
-      // Ten minutes at 10 ms per iteration would otherwise dispatch 60000
-      // events.
       auto resumed = start + fml::TimeDelta::FromSeconds(600);
       if (legacy) {
         a->DoFrame(resumed);
-        EXPECT_TRUE(tasm_mediator->not_received_any_event());
+        EXPECT_TRUE(tasm_mediator->only_received_animation_iteration_event());
+        EXPECT_DOUBLE_EQ(600.0, tasm_mediator->GetAnimationEventParams()
+                                    .Table()
+                                    ->GetValue("elapsedTime")
+                                    .Number());
       } else {
         auto result = a->SampleAt(resumed);
-        EXPECT_EQ(result.iteration_events_due, 0);
+        EXPECT_EQ(result.iteration_events_due, 1);
+        EXPECT_EQ(result.event_timing.iteration_elapsed_time,
+                  fml::TimeDelta::FromSeconds(600));
         EXPECT_FALSE(result.should_send_start_event);
         EXPECT_FALSE(result.should_send_end_event);
       }
+      tasm_mediator->ClearAnimationEvent();
       auto next = resumed + fml::TimeDelta::FromMilliseconds(10);
       if (legacy) {
         a->DoFrame(next);
@@ -1415,7 +1415,6 @@ TEST_F(BackgroundAnimationTest,
     auto a =
         CreateAnimation(0, starlight::kInfiniteAnimationIterationCount, fill);
     auto time = fml::TimePoint::FromTicks(10000000000);
-    a->SuppressNextIterationEvents();
     auto result = a->SampleAt(time);
     EXPECT_TRUE(result.should_send_start_event);
     EXPECT_TRUE(result.should_send_end_event);

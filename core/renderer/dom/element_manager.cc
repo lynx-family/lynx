@@ -1499,7 +1499,6 @@ void ElementManager::SetElementVsyncPaused(bool paused) {
   element_vsync_paused_ = paused;
   if (element_vsync_proxy_ && !paused) {
     element_vsync_proxy_->SetMinFrameTime(fml::TimePoint::Now());
-    SuppressNextAnimationIterationEvents();
     if (!animation_element_set_.empty()) {
       element_vsync_proxy_->RequestNextFrame();
     }
@@ -1522,15 +1521,6 @@ void ElementManager::RequestNextFrame(Element *element) {
 void ElementManager::NotifyElementDestroy(Element *element) {
   animation_element_set_.erase(element);
   paused_animation_element_set_.erase(element);
-}
-
-void ElementManager::SuppressNextAnimationIterationEvents() {
-  // Only mark pending frames; this does not sample styles or dispatch events.
-  for (auto *element : animation_element_set_) {
-    if (!element->IsDetached()) {
-      element->SuppressNextAnimationIterationEvents();
-    }
-  }
 }
 
 void ElementManager::TickAllElement(fml::TimePoint &frame_time) {

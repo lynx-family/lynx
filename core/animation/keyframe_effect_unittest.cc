@@ -318,7 +318,7 @@ TEST_F(KeyframeEffectTest, SetPauseTime) {
   }
 }
 
-TEST_F(KeyframeEffectTest, TickCountsSkippedIterationsAndIgnoresRollback) {
+TEST_F(KeyframeEffectTest, TickSendsOneIterationEventBetweenActiveSamples) {
   auto effect = gfx::KeyframeEffect::Create();
   auto curve = animation::KeyframedOpacityAnimationCurve::Create();
   auto from_keyframe = gfx::FloatKeyframe::Create(fml::TimeDelta(), nullptr);
@@ -334,6 +334,7 @@ TEST_F(KeyframeEffectTest, TickCountsSkippedIterationsAndIgnoresRollback) {
   data.duration = 1000;
   data.delay = 0;
   data.iteration_count = 4;
+  data.fill_mode = gfx::AnimationFillModeType::kForwards;
   model->SetAnimationData(&data);
   effect->AddKeyframeModel(model.get());
 
@@ -341,26 +342,29 @@ TEST_F(KeyframeEffectTest, TickCountsSkippedIterationsAndIgnoresRollback) {
       fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(0));
   effect->SetStartTime(start_time);
 
-  fml::TimePoint first_iteration =
-      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(500));
-  auto initial_result = effect->Tick(first_iteration);
+  auto first_sample = start_time + fml::TimeDelta::FromMilliseconds(1500);
+  auto initial_result = effect->Tick(first_sample);
+  EXPECT_TRUE(initial_result.start_event_due);
   EXPECT_EQ(0, initial_result.iteration_events_due);
   EXPECT_EQ(1u, initial_result.samples.size());
 
-  fml::TimePoint third_iteration =
-      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(2500));
-  auto skipped_result = effect->Tick(third_iteration);
-  EXPECT_EQ(2, skipped_result.iteration_events_due);
-  EXPECT_EQ(1, skipped_result.event_timing.first_iteration);
-  EXPECT_EQ(fml::TimeDelta::FromSeconds(1),
-            skipped_result.event_timing.iteration_duration);
+  auto after_gap = start_time + fml::TimeDelta::FromMilliseconds(3500);
+  auto skipped_result = effect->Tick(after_gap);
+  EXPECT_EQ(1, skipped_result.iteration_events_due);
+  EXPECT_EQ(fml::TimeDelta::FromSeconds(3),
+            skipped_result.event_timing.iteration_elapsed_time);
   EXPECT_EQ(1u, skipped_result.samples.size());
 
-  fml::TimePoint second_iteration =
-      fml::TimePoint::FromEpochDelta(fml::TimeDelta::FromMilliseconds(1500));
-  auto rollback_result = effect->Tick(second_iteration);
+  auto rollback = start_time + fml::TimeDelta::FromMilliseconds(2500);
+  auto rollback_result = effect->Tick(rollback);
   EXPECT_EQ(0, rollback_result.iteration_events_due);
   EXPECT_EQ(1u, rollback_result.samples.size());
+
+  auto end = start_time + fml::TimeDelta::FromSeconds(4);
+  auto end_result = effect->Tick(end);
+  EXPECT_TRUE(end_result.end_event_due);
+  EXPECT_EQ(0, end_result.iteration_events_due);
+  EXPECT_EQ(1u, end_result.samples.size());
 }
 
 TEST_F(KeyframeEffectTest, TickSamplesBoxShadowAnimationCurve) {
