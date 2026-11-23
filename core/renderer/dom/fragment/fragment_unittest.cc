@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <string>
@@ -56,6 +57,58 @@
 
 namespace lynx {
 namespace tasm {
+
+struct TestCustomDrawCallbacks {
+  using Callback = std::function<void(Fragment&, DisplayListBuilder&)>;
+  Callback draw_behind;
+  Callback draw_foreground;
+  Callback draw_layer_properties;
+  bool requires_layer = false;
+};
+
+class LambdaCustomDrawHandler final : public CustomDrawHandler {
+ public:
+  explicit LambdaCustomDrawHandler(TestCustomDrawCallbacks callbacks)
+      : CustomDrawHandler(ComputeFlags(callbacks)),
+        callbacks_(std::move(callbacks)) {}
+
+  void Draw(Fragment& fragment, DisplayListBuilder& builder,
+            Phase phase) override {
+    switch (phase) {
+      case Phase::kBehind:
+        if (callbacks_.draw_behind) callbacks_.draw_behind(fragment, builder);
+        break;
+      case Phase::kForeground:
+        if (callbacks_.draw_foreground) {
+          callbacks_.draw_foreground(fragment, builder);
+        }
+        break;
+      case Phase::kLayerProperties:
+        if (callbacks_.draw_layer_properties) {
+          callbacks_.draw_layer_properties(fragment, builder);
+        }
+        break;
+    }
+  }
+
+ private:
+  static uint8_t ComputeFlags(const TestCustomDrawCallbacks& callbacks) {
+    uint8_t flags = kNone;
+    if (callbacks.draw_behind) flags |= kBehind;
+    if (callbacks.draw_foreground) flags |= kForeground;
+    if (callbacks.draw_layer_properties) flags |= kLayerProperties;
+    if (callbacks.requires_layer) flags |= kRequiresLayer;
+    if (flags != kNone) flags |= kMayReenter;
+    return flags;
+  }
+
+  TestCustomDrawCallbacks callbacks_;
+};
+
+fml::RefPtr<CustomDrawHandler> MakeCustomDrawHandler(
+    TestCustomDrawCallbacks callbacks) {
+  return fml::MakeRefCounted<LambdaCustomDrawHandler>(std::move(callbacks));
+}
 
 // Forward-declared from fragment.cc: computes outset-adjusted border radius
 // per W3C CSS Backgrounds and Borders Module Level 3.
@@ -1046,7 +1099,7 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
     auto override_path =
         gfx::Path::MakeRect(30, 40, gfx::GetTestPathImplFactory());
     bool emit_override = true;
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_layer_properties = [&](Fragment&,
                                           DisplayListBuilder& builder) {
       if (emit_override) {
@@ -1054,7 +1107,7 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
                                  4);
       }
     };
-    view->SetCustomDrawFunctions(std::move(functions));
+    view->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
     page->InsertNode(view);
     page->FlushActionsAsRoot();
     auto* owner = view->fragment_impl();
@@ -1083,7 +1136,7 @@ TEST_P(ClipPathPipelineTest, CustomClipOverridesRestoreCSSAndDefault) {
     owner->InvalidateForSubtreeProperty();
     owner->Draw();
     EXPECT_EQ(renderer->GetClipPath(), override_path.get());
-    view->SetCustomDrawFunctions({});
+    view->SetCustomDrawHandler(nullptr);
     page->FlushActionsAsRoot();
     owner->Draw();
     EXPECT_EQ(renderer->GetClipPath(), css_path.get());
@@ -1153,7 +1206,7 @@ TEST_P(CustomDrawFlushTest,
   page->InsertNode(element);
   int calls = 0;
   auto binding = [&calls](int value) {
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_foreground =
         [&calls, value](Fragment&, DisplayListBuilder&) { calls += value; };
     return functions;
@@ -1163,7 +1216,7 @@ TEST_P(CustomDrawFlushTest,
     element->fragment_impl()->OnDraw(builder);
     return builder.Build();
   };
-  element->SetCustomDrawFunctions(binding(1));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(binding(1)));
   EXPECT_TRUE(element->dirty() & Element::kDirtyCustomDraw);
   EXPECT_FALSE(element->fragment_impl()->HasCustomDraw());
   EXPECT_EQ(calls, 0);
@@ -1174,7 +1227,7 @@ TEST_P(CustomDrawFlushTest,
   draw();
   EXPECT_EQ(calls, 1);
   auto replacement = binding(10);
-  element->SetCustomDrawFunctions(std::move(replacement));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(replacement)));
   element->fragment_impl()->InvalidateForRedraw();
   draw();
   EXPECT_EQ(calls, 2);
@@ -1185,7 +1238,8 @@ TEST_P(CustomDrawFlushTest,
   EXPECT_FALSE(element->dirty() & Element::kDirtyCustomDraw);
   draw();
   EXPECT_EQ(calls, 12);
-  element->SetCustomDrawFunctions({});
+  element->SetCustomDrawHandler(MakeCustomDrawHandler({}));
+  EXPECT_FALSE(element->HasCustomDrawHandler());
   EXPECT_TRUE(element->fragment_impl()->HasCustomDraw());
   page->FlushActionsAsRoot();
   EXPECT_FALSE(element->fragment_impl()->HasCustomDraw());
@@ -1199,11 +1253,11 @@ TEST_F(FragmentDrawTest, CustomDrawBehindRecordsCommandsBeforeDefaultContent) {
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder builder;
   element->fragment_impl()->OnDraw(builder);
@@ -1231,7 +1285,7 @@ TEST_P(CustomDrawFlushTest,
   int layers = 0;
   bool emit_transform = true;
   bool emit_opacity = true;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [&](Fragment&, DisplayListBuilder&) { ++behind; };
   functions.draw_foreground = [&](Fragment&, DisplayListBuilder&) {
     ++foreground;
@@ -1246,7 +1300,7 @@ TEST_P(CustomDrawFlushTest,
     }
     if (emit_opacity) builder.Opacity(0.8f);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   auto* fragment = element->fragment_impl();
   ASSERT_TRUE(fragment->has_platform_renderer_);
@@ -1293,7 +1347,7 @@ TEST_P(CustomDrawFlushTest,
   fragment->InvalidateForSubtreeProperty();
   draw(40, 60, 0.8f, false);
   EXPECT_EQ(layers, 4);
-  element->SetCustomDrawFunctions({});
+  element->SetCustomDrawHandler(nullptr);
   // Re-resolving an unrelated style in the same flush must not erase the
   // explicit reset of the unchanged transform and opacity.
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
@@ -1322,7 +1376,7 @@ TEST_F(FragmentDrawTest, CustomForegroundOverflowClipIsIndependentOfChildren) {
   element->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
   element->SetStyle(kPropertyIDBorderRadius, lepus::Value("20px"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment& fragment,
                                  DisplayListBuilder& builder) {
     const auto& size = fragment.LayoutResult().layout_result.size_;
@@ -1332,7 +1386,7 @@ TEST_F(FragmentDrawTest, CustomForegroundOverflowClipIsIndependentOfChildren) {
     int32_t index = -1;
     builder.RecordBoxModel(rect, index).Fill(0xff00ff00, index);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
 
   auto draw = [&](bool expect_clip) {
     page->FlushActionsAsRoot();
@@ -1400,14 +1454,14 @@ TEST_P(CustomDrawFlushTest,
   page->fragment_impl()->Draw();
   manager->need_layout_ = false;
 
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff00ff00);
   };
   functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
-  element->SetCustomDrawFunctions(functions);
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(functions));
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
   ASSERT_FALSE(fragment->has_platform_renderer_);
@@ -1432,7 +1486,7 @@ TEST_P(CustomDrawFlushTest,
   functions.draw_layer_properties = [](Fragment&, DisplayListBuilder& builder) {
     builder.Opacity(0.75f);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
   ASSERT_TRUE(fragment->has_platform_renderer_);
@@ -1459,7 +1513,7 @@ TEST_P(CustomDrawFlushTest,
   EXPECT_FLOAT_EQ(opacity->data.opacity, 0.75f);
 
   manager->need_layout_ = false;
-  element->SetCustomDrawFunctions({});
+  element->SetCustomDrawHandler(nullptr);
   page->FlushActionsAsRoot();
   EXPECT_TRUE(manager->need_layout_);
   EXPECT_TRUE(fragment->has_platform_renderer_);
@@ -1488,7 +1542,7 @@ TEST_F(FragmentDrawTest, CustomDrawBehindIsRetainedOnPropertyOnlyUpdates) {
   page->InsertNode(element);
   int behind = 0;
   int draws = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [&behind](Fragment&, DisplayListBuilder& builder) {
     ++behind;
     RecordCustomDrawRect(builder, 0xff0000ff);
@@ -1496,7 +1550,7 @@ TEST_F(FragmentDrawTest, CustomDrawBehindIsRetainedOnPropertyOnlyUpdates) {
   functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
     ++draws;
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder first;
   element->fragment_impl()->OnDraw(first);
@@ -1571,7 +1625,7 @@ TEST_F(FragmentDrawTest, CustomDrawHooksPreserveNestedBeforeAfterOrder) {
   page->InsertNode(outer);
   std::vector<int> order;
   auto binding = [&order](int before, int after) {
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_behind = [&order, before](Fragment&, DisplayListBuilder&) {
       order.push_back(before);
     };
@@ -1581,8 +1635,8 @@ TEST_F(FragmentDrawTest, CustomDrawHooksPreserveNestedBeforeAfterOrder) {
     };
     return functions;
   };
-  outer->SetCustomDrawFunctions(binding(1, 4));
-  inner->SetCustomDrawFunctions(binding(2, 3));
+  outer->SetCustomDrawHandler(MakeCustomDrawHandler(binding(1, 4)));
+  inner->SetCustomDrawHandler(MakeCustomDrawHandler(binding(2, 3)));
   page->FlushActionsAsRoot();
   EXPECT_FALSE(outer->fragment_impl()->has_platform_renderer_);
   EXPECT_FALSE(inner->fragment_impl()->has_platform_renderer_);
@@ -1596,14 +1650,14 @@ TEST_F(FragmentDrawTest, CustomDrawHooksRecordBeforeAndAfterDefaultContent) {
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff00ff00);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder builder;
   element->fragment_impl()->OnDraw(builder);
@@ -1625,11 +1679,11 @@ TEST_F(FragmentDrawTest, CustomOnDrawPreservesDefaultContent) {
   auto element = manager->CreateFiberView();
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("red"));
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RecordCustomDrawRect(builder, 0xff0000ff);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   DisplayListBuilder builder;
   element->fragment_impl()->OnDraw(builder);
@@ -1647,11 +1701,11 @@ TEST_F(FragmentDrawTest, CustomDrawCallbacksAreBoundToOneElementInstance) {
   auto source = manager->CreateFiberView();
   page->InsertNode(source);
   int calls = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [&calls](Fragment&, DisplayListBuilder&) {
     ++calls;
   };
-  source->SetCustomDrawFunctions(std::move(functions));
+  source->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   auto clone = source->CloneElement(false);
   clone->AttachToElementManager(manager.get(), nullptr, false);
   page->InsertNode(clone);
@@ -1689,9 +1743,9 @@ TEST_P(CustomDrawFlushTest, CustomDrawDoesNotAddPaintingUpdate) {
   ASSERT_GT(style_updates, 0);
   if (std::get<0>(GetParam()) == 0) EXPECT_EQ(style_updates, 1);
   counter->updates = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder&) {};
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   element->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
   page->FlushActionsAsRoot();
   EXPECT_EQ(counter->updates, style_updates);
@@ -1707,7 +1761,7 @@ TEST_F(FragmentDrawTest, CustomForegroundPreservesRetainedContent) {
   child->SetStyle(kPropertyIDOpacity, lepus::Value(0.5));
   element->InsertNode(child);
   page->InsertNode(element);
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_foreground = [](Fragment&, DisplayListBuilder& builder) {
     RoundedRectangle rect;
     rect.SetWidth(10);
@@ -1715,7 +1769,7 @@ TEST_F(FragmentDrawTest, CustomForegroundPreservesRetainedContent) {
     int32_t index = -1;
     builder.RecordBoxModel(rect, index).Fill(0xff00ff00, index);
   };
-  element->SetCustomDrawFunctions(std::move(functions));
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
   page->FlushActionsAsRoot();
   auto* fragment = element->fragment_impl();
   ASSERT_TRUE(fragment->has_platform_renderer_);
@@ -2091,7 +2145,7 @@ TEST_F(ComposeDrawReuseIntegrationTest,
   base::Vector<Element*> boundaries;
   for (auto* target = handle_->mount_root().get(); target;
        target = target->GetChildAt(0)) {
-    if (target->HasCustomDrawFunctions()) boundaries.push_back(target);
+    if (target->HasCustomDrawHandler()) boundaries.push_back(target);
     Size(target, 100, 60);
     if (target->GetChildCount() == 0) break;
   }
@@ -2429,7 +2483,7 @@ TEST_F(ComposeDrawRecordingIntegrationTest,
   content->fragment_impl()->InvalidateForRedraw();
   EXPECT_TRUE(Fills(Draw(content.get())).empty());
   EXPECT_EQ(Eval("globalThis.drawCalls").Number(), 1);
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->HasCustomDrawHandler());
   EXPECT_FALSE(content->fragment_impl()->custom_outset_shadow_drawn_);
   Rebind(Behind("(function(){throw new Error('recording failure');})()"));
   EXPECT_TRUE(Fills(Draw(content.get())).empty());
@@ -2439,7 +2493,7 @@ TEST_F(ComposeDrawRecordingIntegrationTest,
   content->fragment_impl()->InvalidateForRedraw();
   EXPECT_THAT(Fills(Draw(content.get())), ::testing::ElementsAre(0x40123456u));
   auto clone = content->CloneElement(false);
-  EXPECT_FALSE(clone->HasCustomDrawFunctions());
+  EXPECT_FALSE(clone->HasCustomDrawHandler());
   clone->AttachToElementManager(manager.get(), nullptr, false);
   page_->InsertNode(clone);
   page_->FlushActionsAsRoot();
@@ -2657,14 +2711,14 @@ TEST_F(ComposeDrawBehindTest, ForegroundFollowsContentAndClearsOnReplacement) {
           handle_.get(), Behind(V1("[]", "[]", "[]", "[]")), runtime_.get())
           .success);
   page_->FlushActionsAsRoot();
-  ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
+  ASSERT_TRUE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   EXPECT_FALSE(
-      content->fragment_impl()->custom_draw_functions_->draw_foreground);
+      content->fragment_impl()->custom_draw_handler_->HasDrawForeground());
   ASSERT_TRUE(
       ComposeModifierApplicator::Apply(handle_.get(), {}, runtime_.get())
           .success);
   page_->FlushActionsAsRoot();
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->HasCustomDrawHandler());
 }
 
 TEST_F(ComposeDrawBehindTest, ScopedClipKeepsShadowOrderWithFlattenedContent) {
@@ -2940,9 +2994,9 @@ TEST_F(ComposeDrawBehindTest, ShadowFollowingLayerDrawsInsideItsTransform) {
   auto* content = layer->GetChildAt(0);
   ASSERT_EQ(content, handle_->content_element().get());
   ASSERT_TRUE(
-      layer->fragment_impl()->custom_draw_functions_->draw_layer_properties);
-  EXPECT_FALSE(layer->fragment_impl()->custom_draw_functions_->draw_behind);
-  ASSERT_TRUE(content->fragment_impl()->custom_draw_functions_->draw_behind);
+      layer->fragment_impl()->custom_draw_handler_->HasDrawLayerProperties());
+  EXPECT_FALSE(layer->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  ASSERT_TRUE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   Size(layer, 100, 60);
   Size(content, 100, 60);
   ASSERT_FALSE(content->fragment_impl()->has_platform_renderer_);
@@ -3030,10 +3084,10 @@ TEST_F(ComposeDrawBehindTest, MultipleHooksAndLayersKeepSeparateTargets) {
   auto* layer = first->GetChildAt(0);
   auto* last = layer->GetChildAt(0);
   EXPECT_EQ(last, handle_->content_element().get());
-  ASSERT_TRUE(first->fragment_impl()->custom_draw_functions_->draw_behind);
+  ASSERT_TRUE(first->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   ASSERT_TRUE(
-      layer->fragment_impl()->custom_draw_functions_->draw_layer_properties);
-  ASSERT_TRUE(last->fragment_impl()->custom_draw_functions_->draw_behind);
+      layer->fragment_impl()->custom_draw_handler_->HasDrawLayerProperties());
+  ASSERT_TRUE(last->fragment_impl()->custom_draw_handler_->HasDrawBehind());
   Size(first, 100, 60);
   Size(layer, 100, 60);
   Size(last, 80, 40);
@@ -3094,7 +3148,7 @@ TEST_F(ComposeDrawBehindTest, LayoutProvidesEachPaddingBoundarySize) {
                            : lepus::Value(padding));
     page_->Layout(std::make_shared<PipelineOptions>());
     auto* target = handle_->mount_root().get();
-    while (!target->HasCustomDrawFunctions()) target = target->GetChildAt(0);
+    while (!target->HasCustomDrawHandler()) target = target->GetChildAt(0);
     EXPECT_FLOAT_EQ(target->width(), padding_before ? 84 : 100);
     EXPECT_FLOAT_EQ(target->height(), padding_before ? 44 : 60);
     auto list = Draw(target);
@@ -3156,7 +3210,7 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   auto* fragment = layer->fragment_impl();
   ASSERT_TRUE(fragment->HasCustomDraw());
   ASSERT_TRUE(fragment->HasCustomLayerProperties());
-  EXPECT_FALSE(fragment->custom_draw_functions_->draw_foreground);
+  EXPECT_FALSE(fragment->custom_draw_handler_->HasDrawForeground());
   EXPECT_TRUE(fragment->has_platform_renderer_);
   EXPECT_EQ(layer, handle_->content_element().get());
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
@@ -3230,8 +3284,8 @@ TEST_F(ComposeGraphicsLayerDrawTest, FollowingContentKeepsItsOwnDrawing) {
   auto* carrier = handle_->mount_root().get();
   auto* content = handle_->content_element().get();
   ASSERT_EQ(carrier->GetChildAt(0), content);
-  EXPECT_FALSE(carrier->HasCustomDrawFunctions());
-  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(carrier->HasCustomDrawHandler());
+  ASSERT_TRUE(content->HasCustomDrawHandler());
   Size(carrier, 100, 60);
   Size(content, 100, 60);
   auto list = Draw(content);
@@ -3249,8 +3303,8 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   auto* outer = handle_->mount_root()->GetChildAt(0);
   auto* inner = outer->GetChildAt(0);
   ASSERT_EQ(inner, handle_->content_element().get());
-  ASSERT_TRUE(outer->HasCustomDrawFunctions());
-  ASSERT_TRUE(inner->HasCustomDrawFunctions());
+  ASSERT_TRUE(outer->HasCustomDrawHandler());
+  ASSERT_TRUE(inner->HasCustomDrawHandler());
   Size(outer, 100, 60);
   Size(inner, 100, 60);
   ExpectTranslation(Draw(outer), 60, 60);
@@ -3276,7 +3330,7 @@ TEST_F(ComposeGraphicsLayerDrawTest, ImageContentOwnsItsLayerCallback) {
   auto* content = handle_->content_element().get();
   ASSERT_EQ(handle_->mount_root()->GetChildAt(0), content);
   ASSERT_TRUE(content->is_image());
-  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  ASSERT_TRUE(content->HasCustomDrawHandler());
   Size(content, 100, 60);
   ExpectTranslation(Draw(content), 60, 60);
 }
@@ -3286,7 +3340,7 @@ TEST_F(ComposeGraphicsLayerDrawTest, TextContentOwnsItsLayerCallback) {
   auto* content = handle_->content_element().get();
   ASSERT_EQ(handle_->mount_root()->GetChildAt(0), content);
   ASSERT_TRUE(content->is_text());
-  ASSERT_TRUE(content->HasCustomDrawFunctions());
+  ASSERT_TRUE(content->HasCustomDrawHandler());
   Size(content, 100, 60);
   ExpectTranslation(Draw(content), 60, 60);
 }
@@ -3319,7 +3373,7 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   };
   replace(lepus::Value(padding));
   page_->FlushActionsAsRoot();
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->HasCustomDrawHandler());
   EXPECT_FALSE(content->fragment_impl()->HasCustomLayerProperties());
   draw(0, 0);
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
@@ -3750,7 +3804,7 @@ TEST_F(ComposeGraphicsLayerDrawTest,
   Draw(content.get());
   EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 1);
   page_->FlushActionsAsRoot();
-  EXPECT_FALSE(content->HasCustomDrawFunctions());
+  EXPECT_FALSE(content->HasCustomDrawHandler());
   EXPECT_FALSE(content->fragment_impl()->HasCustomDraw());
 
   // Verify the renderer itself loses translation, scale and rotation, including
@@ -3773,7 +3827,7 @@ TEST_F(ComposeGraphicsLayerDrawTest, CloneDoesNotShareRuntimeBinding) {
   Size(source, 200, 80);
   ExpectTranslation(Draw(source), 110, 80);
   auto clone = source->CloneElement(false);
-  EXPECT_FALSE(clone->HasCustomDrawFunctions());
+  EXPECT_FALSE(clone->HasCustomDrawHandler());
   clone->AttachToElementManager(manager.get(), nullptr, false);
   EXPECT_FALSE(clone->fragment_impl()->HasCustomDraw());
   page_->InsertNode(clone);
@@ -8036,17 +8090,17 @@ TEST_F(FragmentDrawTest, NonVisibleFragmentsHideVisibleChildren) {
   child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
   int parent_draws = 0;
   int child_draws = 0;
-  CustomDrawFunctions functions;
+  TestCustomDrawCallbacks functions;
   functions.draw_behind = [&parent_draws](Fragment&, DisplayListBuilder&) {
     ++parent_draws;
   };
   functions.draw_foreground = functions.draw_behind;
-  element->SetCustomDrawFunctions(functions);
+  element->SetCustomDrawHandler(MakeCustomDrawHandler(functions));
   functions.draw_behind = [&child_draws](Fragment&, DisplayListBuilder&) {
     ++child_draws;
   };
   functions.draw_foreground = functions.draw_behind;
-  child->SetCustomDrawFunctions(functions);
+  child->SetCustomDrawHandler(MakeCustomDrawHandler(functions));
   page->FlushActionsAsRoot();
   page->Layout(std::make_shared<PipelineOptions>());
 
@@ -8096,11 +8150,11 @@ TEST_F(FragmentDrawTest,
     child->SetStyle(kPropertyIDVisibility, lepus::Value("visible"));
     child->SetStyle(kPropertyIDBackgroundColor, lepus::Value("blue"));
     int draws = 0;
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
       ++draws;
     };
-    child->SetCustomDrawFunctions(std::move(functions));
+    child->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
     element->InsertNode(child);
     page->InsertNode(element);
     page->FlushActionsAsRoot();
@@ -8263,11 +8317,11 @@ TEST_F(FragmentDrawTest, ReparentedFragmentsFollowOwnVisibility) {
       child->SetStyle(kPropertyIDZIndex, lepus::Value(mode == 1 ? 1 : -1));
     }
     int draws = 0;
-    CustomDrawFunctions functions;
+    TestCustomDrawCallbacks functions;
     functions.draw_foreground = [&draws](Fragment&, DisplayListBuilder&) {
       ++draws;
     };
-    child->SetCustomDrawFunctions(std::move(functions));
+    child->SetCustomDrawHandler(MakeCustomDrawHandler(std::move(functions)));
     parent->InsertNode(child);
     page->InsertNode(parent);
     page->FlushActionsAsRoot();

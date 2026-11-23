@@ -12,7 +12,7 @@
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/fragment/box_model_recorder.h"
 #include "core/renderer/dom/fragment/clip_path_resolver.h"
-#include "core/renderer/dom/fragment/custom_draw_functions.h"
+#include "core/renderer/dom/fragment/custom_draw_handler.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment_behavior.h"
@@ -111,12 +111,11 @@ class Fragment : public BaseElementContainer {
   void SetListItemAnimationOpacity(float factor);
 
   // Install bindings after style resolution so removal can reset properties.
-  void SetCustomDrawFunctions(
-      std::shared_ptr<const CustomDrawFunctions> functions);
-  bool HasCustomDraw() const { return custom_draw_functions_ != nullptr; }
+  void SetCustomDrawHandler(fml::RefPtr<CustomDrawHandler> handler);
+  bool HasCustomDraw() const { return custom_draw_handler_ != nullptr; }
   bool HasCustomLayerProperties() const {
-    return custom_draw_functions_ &&
-           custom_draw_functions_->draw_layer_properties;
+    return custom_draw_handler_ &&
+           custom_draw_handler_->HasDrawLayerProperties();
   }
   void DrawBehind(DisplayListBuilder& builder);
   void DrawForeground(DisplayListBuilder& builder);
@@ -237,7 +236,10 @@ class Fragment : public BaseElementContainer {
                                                      float image_height);
   void ClearBackgroundImage(size_t image_index);
 
-  std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
+  void InvokeCustomDraw(DisplayListBuilder& builder,
+                        CustomDrawHandler::Phase phase);
+
+  fml::RefPtr<CustomDrawHandler> custom_draw_handler_;
   float list_item_animation_opacity_{1.f};
   bool list_item_animation_opacity_changed_{false};
   bool has_platform_renderer_{false};

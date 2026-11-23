@@ -96,20 +96,19 @@ gfx::Matrix44 LayerTransform(const lepus::Value& properties, float width,
   return matrix;
 }
 
-}  // namespace
+class GraphicsLayerDrawHandler final : public CustomDrawHandler {
+ public:
+  GraphicsLayerDrawHandler(runtime::MTSRuntime* runtime, lepus::Value callback)
+      : CustomDrawHandler(kLayerProperties | kRequiresLayer | kMayReenter),
+        runtime_(runtime),
+        callback_(std::move(callback)) {}
 
-// Fragment owns the hook and property invalidation. No layer state is retained
-// here: each property update evaluates one closure and records its result.
-CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
-                                               lepus::Value callback) {
-  CustomDrawFunctions functions;
-  functions.draw_layer_properties = [runtime, callback = std::move(callback)](
-                                        Fragment& fragment,
-                                        DisplayListBuilder& builder) {
+  void Draw(Fragment& fragment, DisplayListBuilder& builder,
+            Phase /*phase*/) override {
     auto* target = fragment.element();
     // Fragment retains its last binding until Flush installs a replacement.
     // A pending replacement or removal must not invoke this closure.
-    if (!target->IsAttached() || !target->HasCustomDrawFunctions() ||
+    if (!target->IsAttached() || !target->HasCustomDrawHandler() ||
         (target->dirty() & Element::kDirtyCustomDraw)) {
       return;
     }
@@ -123,8 +122,8 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
     // Already inside the rendering pipeline. Invoke the owning context
     // directly. Supply this layer's Element so the closure can observe
     // State and invalidate its target without rewriting the Modifier IR.
-    const auto value = runtime->GetMTSContext()
-                           ->CallClosureArgs(callback, args, 3)
+    const auto value = runtime_->GetMTSContext()
+                           ->CallClosureArgs(callback_, args, 3)
                            .ToLepusValue();
     if (value.IsEmpty()) return;
     if (!value.IsObject()) {
@@ -156,8 +155,21 @@ CustomDrawFunctions GraphicsLayerDrawFunctions(runtime::MTSRuntime* runtime,
     // the layer's opacity to that output. Removal restores the ordinary
     // value.
     builder.Opacity(alpha * target->computed_css_style()->GetOpacity());
-  };
-  return functions;
+  }
+
+ private:
+  runtime::MTSRuntime* runtime_;
+  lepus::Value callback_;
+};
+
+}  // namespace
+
+// Fragment owns the hook and property invalidation. No layer state is retained
+// here: each property update evaluates one closure and records its result.
+fml::RefPtr<CustomDrawHandler> GraphicsLayerDrawFunctions(
+    runtime::MTSRuntime* runtime, lepus::Value callback) {
+  return fml::MakeRefCounted<GraphicsLayerDrawHandler>(runtime,
+                                                       std::move(callback));
 }
 
 }  // namespace tasm

@@ -69,8 +69,7 @@ bool Fragment::CreateLayerIfNeeded(const fml::RefPtr<PropBundle>& init_data) {
   // Layer properties and scoped clips need their own platform layer.
   // Other content callbacks can draw into the ancestor's display list.
   const bool custom_draw_requires_layer =
-      HasCustomLayerProperties() ||
-      (custom_draw_functions_ && custom_draw_functions_->requires_layer);
+      custom_draw_handler_ && custom_draw_handler_->RequiresLayer();
   const bool can_flatten_without_platform_renderer =
       (!element()->is_page() &&
        !element()->is_direct_child_of_compatible_component() &&
@@ -1346,7 +1345,7 @@ void Fragment::DrawClip(DisplayListBuilder& display_list_builder) {
   // Text and custom foreground drawing need content clipping even without
   // children.
   if (children_.empty() && !element()->is_text() &&
-      !(custom_draw_functions_ && custom_draw_functions_->draw_foreground)) {
+      !(custom_draw_handler_ && custom_draw_handler_->HasDrawForeground())) {
     return;
   }
 
@@ -1499,10 +1498,9 @@ void Fragment::MarkHasExposureEventIfNeeded() const {
   }
 }
 
-void Fragment::SetCustomDrawFunctions(
-    std::shared_ptr<const CustomDrawFunctions> functions) {
+void Fragment::SetCustomDrawHandler(fml::RefPtr<CustomDrawHandler> handler) {
   const bool had_layer_hook = HasCustomLayerProperties();
-  custom_draw_functions_ = std::move(functions);
+  custom_draw_handler_ = std::move(handler);
   if (HasCustomLayerProperties()) {
     // Evaluate the new hook even when no CSS property changed. Element Flush
     // schedules content redraw separately through its usual safe path.
@@ -1524,11 +1522,22 @@ void Fragment::ResetLayerProperties() {
   InvalidateForSubtreeProperty();
 }
 
-void Fragment::DrawBehind(DisplayListBuilder& builder) {
-  const auto functions = custom_draw_functions_;
-  if (functions && functions->draw_behind) {
-    functions->draw_behind(*this, builder);
+void Fragment::InvokeCustomDraw(DisplayListBuilder& builder,
+                                CustomDrawHandler::Phase phase) {
+  auto* handler = custom_draw_handler_.get();
+  if (!handler || !handler->HasPhase(phase)) {
+    return;
   }
+  if (handler->MayReenter()) {
+    const fml::RefPtr<CustomDrawHandler> keep_alive = custom_draw_handler_;
+    keep_alive->Draw(*this, builder, phase);
+  } else {
+    handler->Draw(*this, builder, phase);
+  }
+}
+
+void Fragment::DrawBehind(DisplayListBuilder& builder) {
+  InvokeCustomDraw(builder, CustomDrawHandler::Phase::kBehind);
 }
 
 bool Fragment::PrepareCustomOutsetShadow(const RoundedRectangle& shape,
@@ -1594,10 +1603,7 @@ bool Fragment::PrepareCustomOutsetShadow(const RoundedRectangle& shape,
 }
 
 void Fragment::DrawForeground(DisplayListBuilder& builder) {
-  const auto functions = custom_draw_functions_;
-  if (functions && functions->draw_foreground) {
-    functions->draw_foreground(*this, builder);
-  }
+  InvokeCustomDraw(builder, CustomDrawHandler::Phase::kForeground);
 }
 
 void Fragment::DrawLayerProperties(DisplayListBuilder& builder) {
@@ -1609,10 +1615,7 @@ void Fragment::DrawLayerProperties(DisplayListBuilder& builder) {
   DrawOpacity(builder);
   DrawFilter(builder);
   DrawClipPathProperty(builder);
-  const auto functions = custom_draw_functions_;
-  if (functions && functions->draw_layer_properties) {
-    functions->draw_layer_properties(*this, builder);
-  }
+  InvokeCustomDraw(builder, CustomDrawHandler::Phase::kLayerProperties);
   element()->EndCustomLayerTransformUpdate();
 }
 
