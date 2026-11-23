@@ -8,6 +8,8 @@
 
 #include "gfx/animation/animation_keyframe_effect.h"
 
+#include <algorithm>
+
 #include "base/include/log/logging.h"
 #include "gfx/animation/animation_timing.h"
 
@@ -101,8 +103,12 @@ KeyframeEffect::TickResult KeyframeEffect::Tick(fml::TimePoint monotonic_time) {
     const int old_iteration_count = current_iteration_count_;
     fml::TimeDelta trimmed = model->TrimTimeToCurrentIteration(
         monotonic_time, current_iteration_count_);
-    result.iteration_events_due +=
-        CountIterationEventsDue(old_iteration_count, current_iteration_count_);
+    if (!start_event_due && model->GetRunState() == KeyframeModel::RUNNING) {
+      result.iteration_events_due =
+          std::max(result.iteration_events_due,
+                   CountIterationEventsDue(old_iteration_count,
+                                           current_iteration_count_));
+    }
     result.samples.push_back({model->curve(), trimmed});
   }
   result.has_finished_all = HasFinishedAll();

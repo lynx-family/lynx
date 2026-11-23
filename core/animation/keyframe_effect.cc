@@ -121,8 +121,11 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
           custom_property_current_iteration_count_);
       custom_property_current_iteration_count_ =
           trimmed.current_iteration_count;
-      tick_result.iteration_events_due += gfx::CountIterationEventsDue(
-          old_iteration_count, custom_property_current_iteration_count_);
+      if (!tick_result.start_event_due &&
+          custom_property_run_state_ == gfx::TimingRunState::RUNNING) {
+        tick_result.iteration_events_due = gfx::CountIterationEventsDue(
+            old_iteration_count, custom_property_current_iteration_count_);
+      }
     }
   }
   if (animation_ != nullptr && tick_result.active_time) {
