@@ -1274,8 +1274,8 @@ void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
   // stable content Element. Include that Element: the innermost drawing hook
   // can bind directly to it. Do not visit its application-owned children.
   for (auto* target = mount_root;; target = target->GetChildAt(0)) {
-    if (target->HasCustomDrawFunctions()) {
-      target->SetCustomDrawFunctions({});
+    if (target->HasCustomDrawHandler()) {
+      target->SetCustomDrawHandler(nullptr);
     }
     if (target == content_element) {
       break;
@@ -1283,8 +1283,8 @@ void ClearModifierDrawCallbacks(Element* mount_root, Element* content_element) {
   }
 }
 
-void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
-                               Element* mount_root, Element* content_element,
+void BindModifierDrawCallbacks(ModifierFramePlan& plan, Element* mount_root,
+                               Element* content_element,
                                runtime::MTSRuntime* registration_context) {
   // Match the outer-to-inner frame indices assigned by BuildModifierFramePlan.
   // The stable content Element is not a frame; OperationTarget selects it when
@@ -1295,7 +1295,7 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
     frames.emplace_back(target);
   }
 
-  for (const auto& operation : plan.operations) {
+  for (auto& operation : plan.operations) {
     if (!IsDrawOperation(operation.op)) {
       continue;
     }
@@ -1309,16 +1309,16 @@ void BindModifierDrawCallbacks(const ModifierFramePlan& plan,
       target->SetStyle(kPropertyIDOverflow, lepus::Value("hidden"));
       continue;
     }
-    target->SetCustomDrawFunctions(
+    target->SetCustomDrawHandler(
         operation.op == kModifierOpGraphicsLayer
             ? GraphicsLayerDrawFunctions(registration_context,
-                                         operation.callback)
+                                         std::move(operation.callback))
         : operation.op == kModifierOpDrawForeground
             ? ComposeDrawForegroundFunctions(registration_context,
-                                             operation.callback,
+                                             std::move(operation.callback),
                                              operation.supports_draw_reuse)
             : ComposeDrawBehindFunctions(registration_context,
-                                         operation.callback,
+                                         std::move(operation.callback),
                                          operation.op == kModifierOpScopedClip
                                              ? ComposeDrawPhase::kClip
                                              : ComposeDrawPhase::kBehind,

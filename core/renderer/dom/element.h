@@ -44,7 +44,7 @@
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/base_element_container.h"
 #include "core/renderer/dom/element_property.h"
-#include "core/renderer/dom/fragment/custom_draw_functions.h"
+#include "core/renderer/dom/fragment/custom_draw_handler.h"
 #include "core/renderer/dom/imperative_animation_metadata.h"
 #include "core/renderer/dom/imperative_animation_state.h"
 #include "core/renderer/dom/selector/selector_item.h"
@@ -1681,10 +1681,8 @@ class Element : public lepus::RefCounted,
   virtual void SetupFragmentBehavior(Fragment* fragment);
 
   // Saving/removing a binding only marks dirty; Flush installs it on Fragment.
-  void SetCustomDrawFunctions(CustomDrawFunctions functions);
-  bool HasCustomDrawFunctions() const {
-    return custom_draw_functions_ != nullptr;
-  }
+  void SetCustomDrawHandler(fml::RefPtr<CustomDrawHandler> handler);
+  bool HasCustomDrawHandler() const { return custom_draw_handler_ != nullptr; }
 
   // Custom layer callbacks publish their resolved local matrix in layout units.
   // Geometry queries keep the previous result while the callback is evaluated.
@@ -2377,7 +2375,7 @@ class Element : public lepus::RefCounted,
   std::unique_ptr<ContentData> content_data_;
 
   std::unique_ptr<BaseElementContainer> element_container_;
-  std::shared_ptr<const CustomDrawFunctions> custom_draw_functions_;
+  fml::RefPtr<CustomDrawHandler> custom_draw_handler_;
   std::unique_ptr<gfx::Matrix44> custom_layer_transform_;
 
   fml::RefPtr<AttributeHolder> data_model_;
@@ -2580,7 +2578,7 @@ class Element : public lepus::RefCounted,
   bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
   void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);
-  bool FlushCustomDrawFunctions();
+  bool FlushCustomDrawHandler();
 
   void UpdateStickyPosition(const std::array<float, 4>* sticky_positions);
 
