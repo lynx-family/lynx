@@ -130,6 +130,12 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
     anchor_info.Reset();
     return;
   }
+  if (list_container_->ShouldKeepScrollStartForDiff() &&
+      base::FloatsEqual(list_layout_manager_->content_offset(), 0.f) &&
+      !anchor_align_to_bottom_ && !list_container_->ShouldSearchRefAnchor()) {
+    SetAnchorAtStart(anchor_info);
+    return;
+  }
   // 1. Get anchor candidates from children.
   const auto& anchor_candidates =
       GetAnchorCandidates(finishing_binding_index, from_end);
@@ -163,12 +169,16 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
   // 3. No anchor found. layout from list padding top
   DLIST_LOGI("[" << list_container_ << "] Find anchor info from begin or end.");
   if (!anchor_info.valid_) {
-    anchor_info.valid_ = true;
-    anchor_info.index_ = 0;
-    anchor_info.item_holder_ = list_adapter_->GetItemHolderForIndex(0);
-    anchor_info.AssignCoordinateFromPadding(list_orientation_helper_);
-    anchor_info.start_alignment_delta_ = anchor_info.start_offset_;
+    SetAnchorAtStart(anchor_info);
   }
+}
+
+void ListAnchorManager::SetAnchorAtStart(AnchorInfo& anchor_info) {
+  anchor_info.valid_ = true;
+  anchor_info.index_ = 0;
+  anchor_info.item_holder_ = list_adapter_->GetItemHolderForIndex(0);
+  anchor_info.AssignCoordinateFromPadding(list_orientation_helper_);
+  anchor_info.start_alignment_delta_ = anchor_info.start_offset_;
 }
 
 void ListAnchorManager::FindAnchorFromRef(AnchorInfo& anchor_info) {

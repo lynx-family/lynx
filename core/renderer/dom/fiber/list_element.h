@@ -200,6 +200,10 @@ class ListElement : public Element, public tasm::ListNode {
   void FlushListContainerInfo(const base::String& key,
                               const lepus::Value& value);
 
+  bool UsesLegacyIOSListBehavior() const {
+    return use_legacy_ios_list_behavior_;
+  }
+
  protected:
   // Currently, the list element does not copy any member variables and is an
   // empty implementation.
@@ -262,6 +266,7 @@ class ListElement : public Element, public tasm::ListNode {
   std::optional<ListElementSSRHelper> ssr_helper_;
   bool batch_render_strategy_flushed_{false};
   bool enable_native_list_only_from_env_{false};
+  bool use_legacy_ios_list_behavior_{false};
   std::unique_ptr<ListMediator> list_mediator_{nullptr};
   base::auto_create_optional<StyleMap> committed_styles_from_attributes_;
   list::BatchRenderStrategy batch_render_strategy_{

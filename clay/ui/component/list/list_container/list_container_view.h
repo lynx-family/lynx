@@ -74,6 +74,8 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
  protected:
   void CalculateOverFlow() override;
+  // The core list supplies its full content extent, including unbound items.
+  void UpdateScrollOffsetForRTL() override;
   void OnOverscroll(FloatPoint prev_overscroll_offset) override;
 #ifdef ENABLE_ACCESSIBILITY
   void PrepareSemantics(
@@ -98,7 +100,9 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
   void ResolveItemSnapProp(const clay::Value& value);
   void ResetItemSnapProp();
+  bool HandleDragEnd(float velocity) override;
   void DetectSnapScroll(PointerEvent::EventType type);
+  bool SnapToItem(bool forward, bool has_velocity);
   std::tuple<int32_t, float, float> CalcSnapScroll(bool forward,
                                                    bool has_velocity) const;
   float GetListItemSnapScrollOffset(Component* list_item) const;
