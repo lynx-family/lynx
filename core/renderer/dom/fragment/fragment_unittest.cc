@@ -1945,6 +1945,19 @@ class ComposeDrawBehindTest : public ComposeGraphicsLayerDrawTest {
 
 class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
  public:
+  static std::string LogicalRecording(const std::string& path_payload) {
+    return V1("[[1,0,0]]",
+              "[[255,'lynx.logical-box',1," + path_payload + ",[]]]");
+  }
+
+  lepus::Value Box(int op, const std::string& path_payload,
+                   const std::string& density = "0", bool rtl = false) {
+    return Eval("({op:" + std::to_string(op) + ",drawDensity:" + density +
+                ",drawRtl:" + (rtl ? "true" : "false") +
+                ",drawRecording:" + LogicalRecording(path_payload) +
+                ",resolve:function(){globalThis.layerCalls++;}})");
+  }
+
   static base::Vector<uint32_t> Fills(const DisplayList& list) {
     base::Vector<uint32_t> fills;
     DisplayListReader reader(list);
@@ -1962,6 +1975,349 @@ class ComposeDrawRecordingIntegrationTest : public ComposeDrawBehindTest {
     page_->FlushActionsAsRoot();
   }
 };
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       ReplacingBackgroundWaitsForItsOwnSubtreeFlush) {
+  auto background = [this](uint32_t color) {
+    return Eval(
+        "({op:12,drawDensity:1,drawRtl:false,drawRecording:" +
+        V1("[[1,0,0]]", "[[255,'lynx.logical-box',1,[null],[]]]",
+           "[[[1," + std::to_string(color) + "],[1,0,true,null],[1],[]]]") +
+        "})");
+  };
+  constexpr uint32_t before = 0xff123456;
+  constexpr uint32_t after = 0xffabcdef;
+  Install(background(before));
+  manager->SetFiberPageElement(page_);
+  auto sibling = manager->CreateFiberView();
+  page_->InsertNode(sibling);
+  page_->FlushActionsAsRoot();
+  auto* content = handle_->content_element().get();
+  Size(content, 100, 60);
+  ASSERT_THAT(Fills(Draw(content)), ::testing::ElementsAre(before));
+  manager->need_layout_ = false;
+
+  ASSERT_TRUE(ComposeModifierApplicator::Apply(handle_.get(), background(after),
+                                               nullptr)
+                  .success);
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinishForFiber(
+      options, [](bool layout) { EXPECT_FALSE(layout); }, sibling.get());
+  handle_->mount_root()->FlushActionsAsRoot();
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(after));
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       BoundBackgroundUsesCurrentGeometryWithoutCallingRuntime) {
+  const auto gradient =
+      V1("[[1,0,0]]", "[[255,'lynx.logical-box',1,[null,1,50,4,8,0],[]]]",
+         "[[[255,'lynx.scope-linear',1,[0,0,null,0,[4294967295,4278190080],[0,"
+         "1]],[]],"
+         "[1,0,true,null],[1],[]]]");
+  auto node =
+      Eval("({op:12,drawDensity:1,drawRtl:false,drawRecording:" + gradient +
+           ",resolve:function(){globalThis.layerCalls++;}})");
+  Install(node);
+  auto* content = handle_->content_element().get();
+  for (const auto& dimensions : {std::pair{100, 60}, {100, 60}, {36, 100}}) {
+    Size(content, dimensions.first, dimensions.second);
+    auto list = Draw(content);
+    const auto items = CollectDisplayListItems(list);
+    int gradients = 0;
+    base::Vector<DisplayListItem> boxes;
+    for (const auto& item : items) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kLinearGradient) continue;
+      ++gradients;
+      const auto& paint = item.payload.linear_gradient;
+      ASSERT_LT(static_cast<size_t>(paint.clip_index), boxes.size());
+      const auto& box = boxes[paint.clip_index].payload.record_box;
+      EXPECT_FLOAT_EQ(box.w, dimensions.first);
+      EXPECT_FLOAT_EQ(box.h, dimensions.second);
+      EXPECT_FLOAT_EQ(box.radii[0],
+                      std::min(dimensions.first, dimensions.second) * .5f);
+      EXPECT_FLOAT_EQ(box.radii[2], 4);
+      EXPECT_FLOAT_EQ(paint.angle, 90);
+    }
+    EXPECT_EQ(gradients, 1);
+  }
+  manager->lynx_env_config_.UpdateDevicePixelRatio(2.f);
+  auto scaled = Draw(content);
+  bool found_scaled_box = false;
+  for (const auto& item : CollectDisplayListItems(scaled)) {
+    if (item.type == DisplayListOpType::kRecordBox &&
+        item.payload.record_box.has_radii) {
+      EXPECT_FLOAT_EQ(item.payload.record_box.radii[0], 18);
+      EXPECT_FLOAT_EQ(item.payload.record_box.radii[2], 2);
+      found_scaled_box = true;
+    }
+  }
+  EXPECT_TRUE(found_scaled_box);
+  auto solid = Box(12, "[null]", "1");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), solid, nullptr).success);
+  page_->FlushActionsAsRoot();
+  ASSERT_TRUE(content->fragment_impl()->HasCustomDraw());
+  EXPECT_TRUE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  EXPECT_FALSE(
+      content->fragment_impl()->custom_draw_handler_->HasDrawForeground());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->RequiresLayer());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->MayReenter());
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0x40123456));
+  auto invalid = Box(12, "[null,16,1,2,3,4]", "1");
+  EXPECT_FALSE(ComposeModifierApplicator::Apply(handle_.get(), invalid, nullptr)
+                   .success);
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0x40123456));
+  Rebind({});
+  EXPECT_TRUE(Fills(Draw(content)).empty());
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawRecordingIntegrationTest,
+       BoundBorderResizesInForegroundWithoutCallingRuntime) {
+  // Density 1 preserves physical corner radii; width 0 is a one-pixel hairline.
+  auto border = Box(17, "[0,1,50,4,8,0]", "1");
+  Install(Style(kPropertyIDBackgroundColor, "blue", border));
+  auto* content = handle_->content_element().get();
+  ASSERT_TRUE(content->fragment_impl()->HasCustomDraw());
+  EXPECT_TRUE(
+      content->fragment_impl()->custom_draw_handler_->HasDrawForeground());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->HasDrawBehind());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->RequiresLayer());
+  EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->MayReenter());
+  for (const auto scale : {1.f, 3.f}) {
+    manager->lynx_env_config_.UpdateDevicePixelRatio(scale);
+    for (const float width : {80.f, 80.f, 12.f}) {
+      Size(content, width, 40);
+      const auto list = Draw(content);
+      base::Vector<DisplayListItem> boxes;
+      base::Vector<DisplayListOpType> paints;
+      for (const auto& item : CollectDisplayListItems(list)) {
+        if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+        if (item.type == DisplayListOpType::kFill) paints.push_back(item.type);
+        if (item.type != DisplayListOpType::kBorder) continue;
+        paints.push_back(item.type);
+        const auto& indices = item.payload.border;
+        const auto& outer = boxes.at(indices.out_index).payload.record_box;
+        const auto& inner = boxes.at(indices.inner_index).payload.record_box;
+        EXPECT_FLOAT_EQ(outer.w, width);
+        EXPECT_FLOAT_EQ(outer.radii[0], std::min(width, 40.f) / 2);
+        EXPECT_FLOAT_EQ(inner.x, 1.f / scale);
+        EXPECT_FLOAT_EQ(inner.y, 1.f / scale);
+        EXPECT_FLOAT_EQ(inner.w, width - 2.f / scale);
+        EXPECT_FLOAT_EQ(inner.radii[0], outer.radii[0] - 1.f / scale);
+      }
+      EXPECT_THAT(paints, ::testing::ElementsAre(DisplayListOpType::kFill,
+                                                 DisplayListOpType::kBorder));
+    }
+  }
+  auto thick = Box(17, "[100,1,50,4,8,0]", "1");
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(handle_.get(), thick, nullptr).success);
+  page_->FlushActionsAsRoot();
+  Size(content, 12, 40);
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0u, 0x40123456u));
+  auto invalid = Box(17, "[-1,1,50,4,8,0]", "1");
+  EXPECT_FALSE(ComposeModifierApplicator::Apply(handle_.get(), invalid, nullptr)
+                   .success);
+  EXPECT_THAT(Fills(Draw(content)), ::testing::ElementsAre(0u, 0x40123456u));
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+class ComposeDrawLogicalBoxTest : public ComposeDrawRecordingIntegrationTest {
+ public:
+  void ExpectRoundedFill(Element* target, float width, float height,
+                         std::array<float, 4> radii) {
+    base::Vector<DisplayListItem> boxes;
+    int fills = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(target))) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kFill ||
+          item.payload.fill.color != 0x40123456)
+        continue;
+      ++fills;
+      const auto& box =
+          boxes.at(item.payload.fill.clip_index).payload.record_box;
+      EXPECT_FLOAT_EQ(box.w, width);
+      EXPECT_FLOAT_EQ(box.h, height);
+      for (size_t i = 0; i < radii.size(); ++i) {
+        EXPECT_FLOAT_EQ(box.radii[2 * i], radii[i]);
+        EXPECT_FLOAT_EQ(box.radii[2 * i + 1], radii[i]);
+      }
+    }
+    EXPECT_EQ(fills, 1);
+  }
+};
+
+TEST_F(ComposeDrawLogicalBoxTest, UsesCurrentSizeDensityAndBoundDirection) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 2.f, 1.0);
+  Install(Box(12, "[null,2,2,25,3,4]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 100, 60);
+  ExpectRoundedFill(target, 100, 60, {4, 15, 6, 8});
+  manager->lynx_env_config_.UpdateDevicePixelRatio(3.f);
+  ExpectRoundedFill(target, 100, 60, {6, 15, 9, 12});
+  Size(target, 32, 60);
+  ExpectRoundedFill(target, 32, 60, {6, 8, 9, 12});
+
+  ASSERT_TRUE(
+      ComposeModifierApplicator::Apply(
+          handle_.get(), Box(12, "[null,2,2,25,3,4]", "1.5", true), nullptr)
+          .success);
+  page_->FlushActionsAsRoot();
+  ExpectRoundedFill(target, 32, 60, {8, 3, 6, 4.5});
+  // Point-based layout converts resolved physical radii back to layout units.
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 1.f, 3.0);
+  ExpectRoundedFill(target, 32, 60, {8, 1, 2, 1.5});
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest,
+       BothPhasesUseIndependentPerNodeContextsAtTheirCarriers) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 2.f, 1.0);
+  auto chain = [this](const std::string& background_density,
+                      bool background_rtl, const std::string& border_density,
+                      bool border_rtl) {
+    auto background =
+        Box(12, "[null,2,2,25,3,4]", background_density, background_rtl);
+    auto border = Box(17, "[1.1,0,1,2,3,4]", border_density, border_rtl);
+    border.SetProperty("previous", background);
+    return border;
+  };
+  Install(chain("0", false, "2.5", true));
+  auto* border = handle_->content_element().get();
+  auto* background = border->parent();
+  ASSERT_NE(background, nullptr);
+  EXPECT_FALSE(background->fragment_impl()->has_platform_renderer_);
+  EXPECT_FALSE(border->fragment_impl()->has_platform_renderer_);
+  Size(background, 100, 60);
+  Size(border, 40, 20);
+  auto expect_border = [this, border](float inset, std::array<float, 4> radii) {
+    base::Vector<DisplayListItem> boxes;
+    int borders = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(border))) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kBorder) continue;
+      ++borders;
+      const auto& outer =
+          boxes.at(item.payload.border.out_index).payload.record_box;
+      const auto& inner =
+          boxes.at(item.payload.border.inner_index).payload.record_box;
+      EXPECT_FLOAT_EQ(outer.w, 40);
+      EXPECT_FLOAT_EQ(outer.h, 20);
+      EXPECT_FLOAT_EQ(inner.x, inset);
+      EXPECT_FLOAT_EQ(inner.w, 40 - 2 * inset);
+      for (size_t i = 0; i < radii.size(); ++i) {
+        EXPECT_FLOAT_EQ(outer.radii[2 * i], radii[i]);
+        EXPECT_FLOAT_EQ(outer.radii[2 * i + 1], radii[i]);
+      }
+    }
+    EXPECT_EQ(borders, 1);
+  };
+  ExpectRoundedFill(background, 100, 60, {4, 15, 6, 8});
+  expect_border(3, {5, 2.5, 10, 7.5});
+
+  Rebind(chain("3", true, "3.5", false));
+  ASSERT_EQ(border->parent(), background);
+  ExpectRoundedFill(background, 100, 60, {15, 6, 12, 9});
+  expect_border(4, {3.5, 7, 10.5, 14});
+
+  ASSERT_FALSE(ComposeModifierApplicator::Apply(
+                   handle_.get(), chain("1", false, "NaN", true), nullptr)
+                   .success);
+  ExpectRoundedFill(background, 100, 60, {15, 6, 12, 9});
+  expect_border(4, {3.5, 7, 10.5, 14});
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest, PercentCornersUseModifierPaddingBoundary) {
+  for (bool padding_before : {false, true}) {
+    auto size = Eval("({op:8,specifiedAxes:3,width:100,height:60})");
+    auto padding = Eval("({op:7,start:8,top:8,end:8,bottom:8})");
+    auto box = Box(12, "[null,1,50,0,0,0]");
+    auto& first = padding_before ? padding : box;
+    auto& last = padding_before ? box : padding;
+    first.SetProperty("previous", size);
+    last.SetProperty("previous", first);
+    Install(last);
+    page_->Layout(std::make_shared<PipelineOptions>());
+    auto* target = handle_->mount_root().get();
+    while (target && !target->fragment_impl()->HasCustomDraw())
+      target = target->GetChildAt(0);
+    ASSERT_NE(target, nullptr);
+    const float width = padding_before ? 84 : 100;
+    const float height = padding_before ? 44 : 60;
+    ExpectRoundedFill(target, width, height, {height / 2, 0, 0, 0});
+  }
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest,
+       ForegroundResolvesDpAndHairlineInPhysicalPixels) {
+  manager->lynx_env_config_ = LynxEnvConfig(1080, 1920, 1.f, 3.0);
+  Install(Box(17, "[0]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 40, 20);
+  auto expect_border = [&](float inset) {
+    base::Vector<DisplayListItem> boxes;
+    int borders = 0;
+    for (const auto& item : CollectDisplayListItems(Draw(target))) {
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kBorder) continue;
+      ++borders;
+      const auto& inner =
+          boxes.at(item.payload.border.inner_index).payload.record_box;
+      EXPECT_FLOAT_EQ(inner.x, inset);
+      EXPECT_FLOAT_EQ(inner.w, 40 - 2 * inset);
+    }
+    EXPECT_EQ(borders, 1);
+  };
+  expect_border(1.f / 3);
+  Rebind(Box(17, "[1.1]"));
+  expect_border(4.f / 3);
+  Rebind(Box(17, "[1.1]", "1.5"));
+  expect_border(2.f / 3);
+  Rebind(Box(17, "[0.400000000001]", "2.5"));
+  expect_border(2.f / 3);
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest, RejectsMalformedBindingAtomically) {
+  Install(Box(12, "[null]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 32, 60);
+  const auto invalid = {Box(12, "null"),
+                        Box(12, "[null,0]"),
+                        Box(12, "[0]", "1", true),
+                        Box(17, "[null]", "1", true),
+                        Box(17, "[-1]", "1"),
+                        Box(17, "[Infinity]"),
+                        Box(17, "[3.5e38]"),
+                        Box(12, "[null,16,0,0,0,0]"),
+                        Box(12, "[null,1,101,0,0,0]"),
+                        Box(12, "[null,0,0,-1,0,0]", "0", true),
+                        Box(12, "[null,0,0,NaN,0,0]"),
+                        Box(12, "[null,0,0,3.5e38,0,0]")};
+  for (const auto& node : invalid) {
+    EXPECT_FALSE(
+        ComposeModifierApplicator::Apply(handle_.get(), node, nullptr).success);
+    EXPECT_THAT(Fills(Draw(target)), ::testing::ElementsAre(0x40123456));
+  }
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
+
+TEST_F(ComposeDrawLogicalBoxTest, RejectsRemovedChainContextAtomically) {
+  Install(Box(12, "[null,2,2,25,3,4]"));
+  auto* target = handle_->content_element().get();
+  Size(target, 100, 60);
+  auto context = Eval("({op:20,drawDensity:3,drawRtl:true})");
+  // The child is valid on its own, so only the removed op20 can reject it.
+  context.SetProperty("previous", Box(12, "[null,0,1,1,1,1]"));
+  EXPECT_FALSE(ComposeModifierApplicator::Apply(handle_.get(), context, nullptr)
+                   .success);
+  ExpectRoundedFill(target, 100, 60, {2, 15, 3, 4});
+  EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+}
 
 class ComposeDrawReuseIntegrationTest
     : public ComposeDrawRecordingIntegrationTest {
@@ -2001,6 +2357,112 @@ class ComposeDrawReuseIntegrationTest
     return builder.Build();
   }
 };
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       StaticRecordingSkipsBothResolversUntilStaticIsAbsent) {
+  for (int op : {12, 17}) {
+    SCOPED_TRACE(op);
+    Eval("globalThis.legacyCalls=0;globalThis.resolveCalls=0;");
+    auto callbacks =
+        Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", {}, op);
+    auto node = Box(op, op == 12 ? "[null]" : "[100]");
+    node.SetProperty("resolve", callbacks.GetProperty("resolve"));
+    node.SetProperty("resolveRecording",
+                     callbacks.GetProperty("resolveRecording"));
+    Install(node);
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0x40123456));
+
+    // The inclusive upper density bound also binds without a runtime.
+    node.SetProperty(
+        "drawDensity",
+        lepus::Value(static_cast<double>(std::numeric_limits<float>::max())));
+    ASSERT_TRUE(
+        ComposeModifierApplicator::Apply(handle_.get(), node, nullptr).success);
+    page_->FlushActionsAsRoot();
+    ASSERT_TRUE(content->fragment_impl()->HasCustomDraw());
+    EXPECT_FALSE(content->fragment_impl()->has_platform_renderer_);
+    EXPECT_FALSE(
+        content->fragment_impl()->custom_draw_handler_->RequiresLayer());
+    EXPECT_FALSE(content->fragment_impl()->custom_draw_handler_->MayReenter());
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0x40123456));
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 0);
+
+    Rebind(callbacks);
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0xff00ff00));
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 1);
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+    for (const auto* empty : {"null", "undefined"}) {
+      callbacks.SetProperty("drawRecording", Eval(empty));
+      Rebind(callbacks);
+      EXPECT_THAT(Fills(Resolve(content, op)),
+                  ::testing::ElementsAre(0xff00ff00));
+    }
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
+    Rebind(Behind("(globalThis.legacyCalls++," + Wire() + ")", {}, op));
+    EXPECT_THAT(Fills(Resolve(content, op)),
+                ::testing::ElementsAre(0x40123456));
+    EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 1);
+    EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 3);
+  }
+}
+
+TEST_F(ComposeDrawReuseIntegrationTest,
+       MalformedStaticWireAndContextRejectWithoutCallingFallback) {
+  for (int op : {12, 17}) {
+    SCOPED_TRACE(op);
+    const std::string payload = op == 12 ? "[null]" : "[100]";
+    const auto wire = LogicalRecording(payload);
+    const auto callbacks =
+        Cached("return [true," + Wire("0,0,20,10", 0xff00ff00) + "];", {}, op);
+    Install(Box(op, payload));
+    auto* content = handle_->content_element().get();
+    Size(content, 100, 60);
+    auto expect_rejected = [&](const std::string& recording,
+                               const std::string& context) {
+      SCOPED_TRACE(recording);
+      SCOPED_TRACE(context);
+      auto node = Eval("({op:" + std::to_string(op) +
+                       ",drawRecording:" + recording + "," + context + "})");
+      node.SetProperty("resolve", callbacks.GetProperty("resolve"));
+      node.SetProperty("resolveRecording",
+                       callbacks.GetProperty("resolveRecording"));
+      EXPECT_FALSE(
+          ComposeModifierApplicator::Apply(handle_.get(), node, runtime_.get())
+              .success);
+      EXPECT_THAT(Fills(Resolve(content, op)),
+                  ::testing::ElementsAre(0x40123456));
+      EXPECT_EQ(Eval("globalThis.legacyCalls").Number(), 0);
+      EXPECT_EQ(Eval("globalThis.resolveCalls").Number(), 0);
+    };
+    for (const auto* context :
+         {"drawRtl:false", "drawDensity:0", "drawDensity:null,drawRtl:false",
+          "drawDensity:undefined,drawRtl:false", "drawDensity:-1,drawRtl:false",
+          "drawDensity:NaN,drawRtl:false", "drawDensity:Infinity,drawRtl:false",
+          "drawDensity:-Infinity,drawRtl:false",
+          "drawDensity:3.5e38,drawRtl:false", "drawDensity:'1',drawRtl:false",
+          "drawDensity:true,drawRtl:false", "drawDensity:0,drawRtl:null",
+          "drawDensity:0,drawRtl:undefined", "drawDensity:0,drawRtl:0",
+          "drawDensity:0,drawRtl:'false'"}) {
+      expect_rejected(wire, context);
+    }
+    for (const auto& recording : base::Vector<std::string>{
+             "[]", "['lynx.draw.recording',2,0,[],[],[],[],[],[]]",
+             Wire("0,0,20,10"),
+             V1("[[1,0,0]]", "[[255,'lynx.scope-box',1,[],[]]]"),
+             "(function(){const a=" + wire + ";a[5][0][1][1]=1;return a;})()",
+             "(function(){const a=" + wire +
+                 ";a[8]=[['duplicate',0],['duplicate',1]];return a;})()"}) {
+      expect_rejected(recording, "drawDensity:0,drawRtl:false");
+    }
+    EXPECT_EQ(Eval("globalThis.layerCalls").Number(), 0);
+  }
+}
 
 TEST_F(ComposeDrawReuseIntegrationTest,
        ProducerReusesRecordingAndRebuildsAfterSizeChangesInFullSubmission) {

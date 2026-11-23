@@ -12,12 +12,17 @@
 #include <cstring>
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <utility>
 
 #include "base/include/linked_hash_map.h"
+#include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
+#include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/compose_draw_behind.h"
+#include "core/renderer/dom/fragment/custom_draw_handler.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/starlight/style/borders_data.h"
@@ -60,6 +65,15 @@ struct PaintInfo {
   base::Vector<double> stops;
   bool stroke{false};
   PaintCapability capability{PaintCapability::kSupported};
+};
+
+struct BoxRecording {
+  DrawRecordingContext context;
+  double border_width_dp{0};
+  uint32_t percent_corners{0};
+  uint32_t scope_endpoints{0};
+  PathInfo path;
+  PaintInfo paint;
 };
 
 bool FitsFloat(double value) {
@@ -192,8 +206,9 @@ class V1Reader {
   };
 
  public:
-  V1Reader(double pixels, ComposeDrawPhase phase)
-      : pixels_(pixels), phase_(phase) {}
+  V1Reader(double pixels, ComposeDrawPhase phase,
+           BoxRecording* box_recording = nullptr)
+      : pixels_(pixels), phase_(phase), box_recording_(box_recording) {}
   std::optional<DrawRecordingError> Read(const lepus::Value& wire,
                                          DisplayList* out, bool* shadow) {
     if (!ChargeNodes(1, kMaxValueNodes, &snapshot_nodes_)) return error_;
@@ -219,6 +234,10 @@ class V1Reader {
         !Table(resources))
       return error_;
     resource_count_ = static_cast<size_t>(resources.GetLength());
+    if (box_recording_ &&
+        (commands.GetLength() != 1 || paths.GetLength() != 1 ||
+         paints.GetLength() != 1 || resource_count_ != 0))
+      return DrawRecordingError{Code::kMalformed};
     paths_.reserve(paths.GetLength());
     paints_.reserve(paints.GetLength());
     clip_phase_error_ = phase_ == ComposeDrawPhase::kClip &&
@@ -277,12 +296,69 @@ class V1Reader {
     }
     if (clip_phase_error_) return DrawRecordingError{Code::kUnsupported};
     if (lower_error_) return lower_error_;
-    *out = scratch_.Build();
-    *shadow = has_shadow_;
+    if (box_recording_) {
+      box_recording_->path = paths_[0];
+      box_recording_->paint = std::move(paints_[0]);
+    } else {
+      *out = scratch_.Build();
+      *shadow = has_shadow_;
+    }
     return std::nullopt;
   }
 
+  bool CompileBox(const BoxRecording& box_recording, double width,
+                  double height, double density, DisplayList* output) {
+    PathInfo path = box_recording.path;
+    path.bounds = {0, 0, width, height};
+    const float side = static_cast<float>(std::min(width, height));
+    for (size_t i = 0; i < 4; ++i) {
+      const size_t logical = box_recording.context.rtl ? (i ^ 1u) : i;
+      const double authored = box_recording.path.radii[logical];
+      const bool percent =
+          (box_recording.percent_corners & (1u << logical)) != 0;
+      path.radii[i] = percent ? side * (static_cast<float>(authored) / 100.f)
+                              : authored * density;
+      if (!FitsFloat(path.radii[i])) return false;
+    }
+    NormalizeBoxRadii(path, side);
+    RoundedRectangle clip, inner;
+    if (!Geometry(path, &clip)) return false;
+    const double dp = box_recording.border_width_dp;
+    const double border_width_px =
+        phase_ == ComposeDrawPhase::kForeground
+            ? (dp == 0 ? 1.f : std::ceil(dp * density))
+            : 0;
+    const float inset =
+        static_cast<float>(std::min(border_width_px, std::ceil(side / 2.0)));
+    const float inner_width = static_cast<float>(width) - 2.f * inset;
+    const float inner_height = static_cast<float>(height) - 2.f * inset;
+    const bool has_inner = inset > 0 && inner_width > 0 && inner_height > 0;
+    if (has_inner) {
+      path.bounds = {inset, inset, inner_width, inner_height};
+      for (double& radius : path.radii)
+        radius = std::max(0.f, static_cast<float>(radius) - inset);
+      NormalizeBoxRadii(path, std::min(inner_width, inner_height));
+      if (!Geometry(path, &inner)) return false;
+    }
+    if (!DrawBox(clip, inner, has_inner, box_recording.paint,
+                 box_recording.scope_endpoints, width, height))
+      return false;
+    *output = scratch_.Build();
+    return true;
+  }
+
  private:
+  static void NormalizeBoxRadii(PathInfo& path, float side) {
+    for (size_t i = 0; i < 2; ++i) {
+      const double sum = path.radii[i] + path.radii[3 - i];
+      if (sum > side) {
+        path.radii[i] = static_cast<float>(path.radii[i] * (side / sum));
+        path.radii[3 - i] =
+            static_cast<float>(path.radii[3 - i] * (side / sum));
+      }
+    }
+  }
+
   bool Fail(Code code = Code::kMalformed) {
     if (!input_failed_) error_.code = code;
     failed_ = true;
@@ -464,9 +540,46 @@ class V1Reader {
     Unknown(std::move(name));
     return true;
   }
+  bool BoxCorners(const Value& row, uint32_t offset, PathInfo* path) {
+    uint32_t mask;
+    if (!UInt(row.GetProperty(offset), &mask) || mask > 15) return Fail();
+    path->tag = 2;
+    for (uint32_t i = 0; i < 4; ++i) {
+      double& radius = path->radii[i];
+      const bool percent = (mask & (1u << i)) != 0;
+      if (!Nonnegative(row.GetProperty(offset + 1 + i), &radius) ||
+          !FitsFloat(radius) || (percent && radius > 100))
+        return Fail();
+      if (percent) box_recording_->percent_corners |= 1u << i;
+    }
+    return true;
+  }
+  bool LogicalBoxPath(const Value& row, PathInfo* path) {
+    if (!ScopeExtension(row, "lynx.logical-box")) return false;
+    const auto payload = row.GetProperty(3u);
+    if (!Table(payload) ||
+        (payload.GetLength() != 1 && payload.GetLength() != 6))
+      return Fail();
+    const auto width = payload.GetProperty(0u);
+    if (phase_ == ComposeDrawPhase::kForeground) {
+      if (!Nonnegative(width, &box_recording_->border_width_dp) ||
+          !FitsFloat(box_recording_->border_width_dp))
+        return Fail();
+    } else if (!width.IsNil()) {
+      return Fail();
+    }
+    path->tag = 1;
+    return payload.GetLength() == 1 || BoxCorners(payload, 1, path);
+  }
   bool Path(const Value& row) {
     PathInfo path;
     if (!Tag(row, &path.tag)) return false;
+    if (box_recording_) {
+      if (!LogicalBoxPath(row, &path)) return false;
+      path.supported = true;
+      paths_.push_back(path);
+      return true;
+    }
     switch (path.tag) {
       case 1:
         if (!Row(row, 5) || !Bounds(row, 1, &path.bounds)) return false;
@@ -578,6 +691,15 @@ class V1Reader {
     }
     return true;
   }
+  bool ScopeExtension(const Value& row, const char* expected) {
+    uint32_t version, tag;
+    if (!Row(row, 5) || !Tag(row, &tag) || tag != 255) return Fail();
+    const auto name = row.GetProperty(1u);
+    if (!name.IsString() || name.StringView() != expected ||
+        !UInt(row.GetProperty(2u), &version) || version != 1)
+      return Fail(Code::kUnsupported);
+    return Row(row.GetProperty(4u), 0);
+  }
   bool Source(const Value& row, PaintInfo* paint) {
     if (!Tag(row, &paint->source)) return false;
     switch (paint->source) {
@@ -625,6 +747,22 @@ class V1Reader {
         return true;
       }
       case 255:
+        if (box_recording_) {
+          if (!ScopeExtension(row, "lynx.scope-linear")) return false;
+          const auto payload = row.GetProperty(3u);
+          if (!Row(payload, 6)) return false;
+          for (uint32_t i = 0; i < 4; ++i) {
+            const auto coord = payload.GetProperty(i);
+            if (coord.IsNil()) {
+              box_recording_->scope_endpoints |= 1u << i;
+            } else if (!Number(coord,
+                               i < 2 ? &paint->start[i] : &paint->end[i - 2])) {
+              return false;
+            }
+          }
+          paint->source = 2;
+          return Stops(payload.GetProperty(4u), payload.GetProperty(5u), paint);
+        }
         paint->capability = PaintCapability::kUnsupported;
         return Extension(row, resource_count_, true);
       default:
@@ -743,11 +881,12 @@ class V1Reader {
     uint32_t tag;
     if (!Tag(row, &tag)) return false;
     if (phase_ == ComposeDrawPhase::kClip && tag != 5) clip_phase_error_ = true;
+    if (box_recording_ && tag != 1) return Fail(Code::kUnsupported);
     switch (tag) {
       case 1: {
         int64_t path = 0, paint = 0;
         if (!Row(row, 3) || !DrawRefs(row, &path, &paint)) return false;
-        if (CanLower()) Draw(path, paint);
+        if (!box_recording_ && CanLower()) Draw(path, paint);
         return true;
       }
       case 2:
@@ -899,14 +1038,20 @@ class V1Reader {
 
   bool Draw(int64_t path_ref, int64_t paint_ref) {
     const auto* path = &paths_[path_ref];
-    RoundedRectangle clip, inner, tile;
+    RoundedRectangle clip, inner;
     const bool has_inner = path->tag == 3 && path->inner_ref != -1;
     if (path->tag == 3) {
       if (has_inner && !Geometry(paths_[path->inner_ref], &inner)) return false;
       path = &paths_[path->outer_ref];
     }
     if (!Geometry(*path, &clip)) return false;
-    const auto& paint = paints_[paint_ref];
+    return DrawBox(clip, inner, has_inner, paints_[paint_ref]);
+  }
+  bool DrawBox(const RoundedRectangle& clip, const RoundedRectangle& inner,
+               bool has_inner, const PaintInfo& paint,
+               uint32_t scope_endpoints = 0, double width = 0,
+               double height = 0) {
+    RoundedRectangle tile;
     const bool empty = clip.GetWidth() == 0 || clip.GetHeight() == 0;
     base::Vector<uint32_t> colors;
     base::Vector<float> stops;
@@ -932,11 +1077,11 @@ class V1Reader {
     }
     const size_t n = paint.colors.size();
     float endpoints[4];
-    if (!Float(paint.start[0], &endpoints[0]) ||
-        !Float(paint.start[1], &endpoints[1]) ||
-        !Float(paint.end[0], &endpoints[2]) ||
-        !Float(paint.end[1], &endpoints[3]))
-      return false;
+    for (size_t i = 0; i < 4; ++i) {
+      double coord = i < 2 ? paint.start[i] : paint.end[i - 2];
+      if (scope_endpoints & (1u << i)) coord = i % 2 == 0 ? width : height;
+      if (!Float(coord, &endpoints[i])) return false;
+    }
     if (endpoints[0] == endpoints[2] && endpoints[1] == endpoints[3])
       return LowerFail(Code::kOverflow);
     if (!empty) {
@@ -980,6 +1125,7 @@ class V1Reader {
   }
   double pixels_;
   ComposeDrawPhase phase_;
+  BoxRecording* box_recording_;
   size_t bytes_{0};
   DisplayListBuilder scratch_;
   base::Vector<PathInfo> paths_;
@@ -997,6 +1143,76 @@ class V1Reader {
       has_shadow_{false};
 };
 }  // namespace
+
+namespace {
+class BoxRecordingDrawHandler final : public CustomDrawHandler {
+ public:
+  BoxRecordingDrawHandler(BoxRecording box_recording, ComposeDrawPhase phase)
+      : CustomDrawHandler(phase == ComposeDrawPhase::kForeground ? kForeground
+                                                                 : kBehind),
+        box_recording_(std::move(box_recording)),
+        phase_(phase) {}
+
+  void Draw(Fragment& fragment, DisplayListBuilder& builder,
+            Phase /*phase*/) override {
+    auto* element = fragment.element();
+    const auto& env = element->element_manager()->GetLynxEnvConfig();
+    const double pixels = env.PhysicalPixelsPerLayoutUnit();
+    const double width = element->width(), height = element->height();
+    if (!std::isfinite(pixels) || pixels <= 0 || width <= 0 || height <= 0 ||
+        !FitsFloat(width * pixels) || !FitsFloat(height * pixels))
+      return;
+    if (phase_ == ComposeDrawPhase::kBehind && box_recording_.path.tag == 1 &&
+        box_recording_.paint.source == 1) {
+      RoundedRectangle box;
+      box.SetWidth(width);
+      box.SetHeight(height);
+      int32_t index;
+      builder.RecordBoxModel(box, index);
+      builder.Fill(
+          FoldAlpha(box_recording_.paint.argb, box_recording_.paint.alpha),
+          index);
+      return;
+    }
+    const double density = box_recording_.context.density_override.value_or(
+        env.DevicePixelRatio());
+    if (!std::isfinite(density) || density <= 0) return;
+    const std::array<double, 4> key{width, height, pixels, density};
+    if (!cached_ || cached_key_ != key) {
+      DisplayList list;
+      if (!V1Reader(pixels, phase_)
+               .CompileBox(box_recording_, static_cast<float>(width * pixels),
+                           static_cast<float>(height * pixels), density, &list))
+        return;
+      cached_.emplace(std::move(list));
+      cached_key_ = key;
+    }
+    if (!builder.AppendDrawingContent(*cached_)) {
+      LOGE("box recording append rejected: capacity exceeded");
+    }
+  }
+
+ private:
+  BoxRecording box_recording_;
+  ComposeDrawPhase phase_;
+  std::optional<DisplayList> cached_;
+  std::array<double, 4> cached_key_{};
+};
+}  // namespace
+
+std::optional<DrawRecordingError> BindBoxRecording(
+    const lepus::Value& input, ComposeDrawPhase phase,
+    const DrawRecordingContext& context,
+    fml::RefPtr<CustomDrawHandler>* handler) {
+  BoxRecording box_recording;
+  box_recording.context = context;
+  if (auto error =
+          V1Reader(1, phase, &box_recording).Read(input, nullptr, nullptr))
+    return error;
+  *handler = fml::MakeRefCounted<BoxRecordingDrawHandler>(
+      std::move(box_recording), phase);
+  return std::nullopt;
+}
 
 std::optional<DrawRecordingError> DecodeDrawDisplayList(
     const lepus::Value& input, double pixels, ComposeDrawPhase phase,

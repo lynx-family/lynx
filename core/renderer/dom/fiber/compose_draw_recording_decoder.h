@@ -11,10 +11,13 @@
 #include <optional>
 #include <string>
 
+#include "base/include/fml/memory/ref_ptr.h"
+
 namespace lynx::lepus {
 class Value;
 }
 namespace lynx::tasm {
+class CustomDrawHandler;
 class DisplayList;
 enum class ComposeDrawPhase;
 
@@ -33,6 +36,15 @@ struct DrawRecordingError {
 };
 
 namespace detail {
+struct DrawRecordingContext {
+  std::optional<double> density_override;
+  bool rtl{false};
+};
+
+std::optional<DrawRecordingError> BindBoxRecording(
+    const lepus::Value& input, ComposeDrawPhase phase,
+    const DrawRecordingContext& context,
+    fml::RefPtr<CustomDrawHandler>* handler);
 // Compile into standalone storage under fixed SDK limits. Every error leaves
 // both outputs unchanged; success transfers the complete list and shadow
 // effect.
