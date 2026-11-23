@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <optional>
+#include <utility>
+
 #define private public
 #define protected public
 
@@ -109,6 +112,18 @@ TEST(LazyBundleLoaderTest, LoadFrameBundleUsesCache) {
   // Verify requiring_urls_ is empty (no pending requests yet)
   // This ensures LoadFrameBundle can proceed to check cache
   EXPECT_TRUE(loader->requiring_urls_.empty());
+}
+
+TEST(LazyBundleLoaderTest, CallBackInfoMovesOwnedBundle) {
+  std::optional<LynxTemplateBundle> bundle(std::in_place);
+  bundle->SetBinary({1, 2, 3});
+  const auto* original_data = bundle->GetBinary().data();
+
+  LazyBundleLoader::CallBackInfo callback_info("lynx", {}, std::move(bundle),
+                                               std::nullopt);
+
+  ASSERT_TRUE(callback_info.bundle.has_value());
+  EXPECT_EQ(callback_info.bundle->GetBinary().data(), original_data);
 }
 
 TEST(LazyBundleLoaderTest, CallBackInfoPreservesVerifyErrorCode) {
