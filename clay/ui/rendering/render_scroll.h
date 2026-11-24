@@ -29,6 +29,9 @@ class RenderScroll : public RenderBox {
   void SetOverscrollEnabled(bool value) { overscroll_enabled_ = value; }
   bool OverscrollEnabled() const { return overscroll_enabled_; }
 
+  void SetFadingEdgeLength(float length);
+  bool HasFadingEdge() const { return fading_edge_length_ > 0.f; }
+
   FloatRect VisibleOverflowRect() const;
   void SetVisibleOverflowRect(const FloatRect& rect);
 
@@ -42,7 +45,12 @@ class RenderScroll : public RenderBox {
   bool IsScrollable() const override { return true; }
 
   void SetScrollDirection(ScrollDirection direction) {
-    scroll_direction_ = direction;
+    if (scroll_direction_ != direction) {
+      scroll_direction_ = direction;
+      if (HasFadingEdge()) {
+        MarkNeedsPaint();
+      }
+    }
   }
   ScrollDirection GetScrollDirection() const { return scroll_direction_; }
 
@@ -53,6 +61,8 @@ class RenderScroll : public RenderBox {
   void SetClipChildrenToBounds(bool value) { clip_children_to_bounds_ = value; }
 
  private:
+  void PaintContents(PaintingContext& context, const FloatPoint& offset);
+
   // If overscroll is enabled, we can keep scrolling regardless of whether
   // exceeding the overflow rect.
   bool overscroll_enabled_ = false;
@@ -66,9 +76,10 @@ class RenderScroll : public RenderBox {
   // reach the real overflow rect. The raster scroll animation will use it to
   // calculate the offset range.
   FloatRect visible_overflow_rect_;
-  ScrollDirection scroll_direction_;
+  ScrollDirection scroll_direction_ = ScrollDirection::kVertical;
   bool in_scroll_animation_ = false;
   bool clip_children_to_bounds_ = false;
+  float fading_edge_length_ = 0.f;
 };
 
 }  // namespace clay

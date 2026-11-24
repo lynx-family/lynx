@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform/operating_system.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/viscous_fluid_interpolator.h"
 #include "clay/gfx/geometry/float_rect.h"
@@ -267,7 +268,7 @@ void ScrollView::DoScrollFromRaster(float scroll_offset, bool ignore_repaint) {
   auto delta = scroll_direction_ == ScrollDirection::kVertical
                    ? FloatPoint{0, scroll_offset - scroll_offset_.y()}
                    : FloatPoint{scroll_offset - scroll_offset_.x(), 0};
-  DoScroll(delta, false, ignore_repaint);
+  DoScroll(delta, false, ignore_repaint && !GetRenderScroll()->HasFadingEdge());
 }
 
 void ScrollView::OnScrollUpdate(float scroll_offset) {
@@ -346,6 +347,12 @@ void ScrollView::SetAttribute(const char* attr_c, const clay::Value& value) {
   } else if (kw == KeywordID::kEnableScroll) {
     bool enabled = attribute_utils::GetBool(value, true);
     SetScrollEnabled(enabled);
+  } else if (lynx::base::GetOSType() == lynx::base::OSType::kMacOS &&
+             kw == KeywordID::kFadingEdgeLength) {
+    attribute_utils::Length length;
+    attribute_utils::TryGetLength(value, length);
+    GetRenderScroll()->SetFadingEdgeLength(
+        attribute_utils::ToPxWithDisplayMetrics(length, page_view()));
   } else if (kw == KeywordID::kScrollMonitorTag) {
     std::string tag;
     if (attribute_utils::TryGetString(value, tag)) {
