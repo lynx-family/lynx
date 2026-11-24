@@ -13,10 +13,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform/operating_system.h"
 #include "core/list/decoupled_list_types.h"
 #include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/list_element_template_instance.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -1007,8 +1007,9 @@ bool ListElement::CanUseComposeScroll() const {
   return manager && manager->GetConfig() &&
          manager->GetConfig()->GetEnableRawInput() &&
          manager->IsFragmentLayerRenderModeOn() &&
-         (GetOSType() == OSType::kAndroid || GetOSType() == OSType::kIOS ||
-          GetOSType() == OSType::kHarmony);
+         (base::GetOSType() == base::OSType::kAndroid ||
+          base::GetOSType() == base::OSType::kIOS ||
+          base::GetOSType() == base::OSType::kHarmony);
 }
 
 lynx::list::ListScrollResult ListElement::ScrollByDelta(float delta) {

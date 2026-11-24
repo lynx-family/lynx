@@ -106,6 +106,8 @@ class ParagraphTTText : public Paragraph {
   void SetNeedTrimSpace(bool need_trim_space) {
     need_trim_space_ = need_trim_space;
   }
+  static bool SupportsHyphenation();
+  void SetHyphens(Hyphens mode) { hyphens_ = mode; }
   void AddPlaceholder(tttext::Style& style,
                       PlaceholderRun& span,
                       bool is_float);
@@ -128,6 +130,7 @@ class ParagraphTTText : public Paragraph {
   std::vector<LineMetrics> line_metrics_;
   std::vector<size_t> placeholder_pos_;
   TTTextIndexMapper index_mapper_;
+  Hyphens hyphens_ = Hyphens::kUnspecified;
   bool need_trim_space_ = false;
 #ifdef ENABLE_SKITY
   skity::Paint sk_paint_;

@@ -14,6 +14,7 @@
 #include "base/include/compiler_specific.h"
 #include "base/include/no_destructor.h"
 #include "base/include/path_utils.h"
+#include "base/include/platform/operating_system.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
@@ -36,7 +37,6 @@
 #include "core/renderer/dom/fiber/fiber_node_info.h"
 #include "core/renderer/dom/fiber/list_item_scheduler_adapter.h"
 #include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fiber/pseudo_element.h"
 #include "core/renderer/dom/fragment/event/platform_event_bundle.h"
 #include "core/renderer/dom/fragment/fragment.h"
@@ -1774,7 +1774,7 @@ bool Element::ShouldAvoidFlattenForView() {
 }
 
 bool Element::TendToFlatten() {
-  if constexpr (GetOSType() == OSType::kIOS) {
+  if constexpr (base::GetOSType() == base::OSType::kIOS) {
     // On iOS, the current CUI platform-rendering flatten path does not
     // preserve clip/overflow scope the same way as Android's platform
     // renderer. To avoid clipping previously replayed
@@ -1790,7 +1790,7 @@ bool Element::TendToFlatten() {
     if (!computed_css_style()->IsOverflowXY()) {
       return false;
     }
-  } else if constexpr (GetOSType() == OSType::kHarmony) {
+  } else if constexpr (base::GetOSType() == base::OSType::kHarmony) {
     // Preserve the native ancestor that clips independently composited
     // children in fragment-layer rendering.
     if (EnableFragmentLayerRender() && !computed_css_style()->IsOverflowXY()) {
