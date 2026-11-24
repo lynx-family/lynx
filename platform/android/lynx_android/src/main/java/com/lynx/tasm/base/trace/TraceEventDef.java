@@ -11,6 +11,10 @@ public class TraceEventDef {
   public static final String TRANSFER_LOAD = "LynxTransfer.Load";
   /** @trace_description: Dispatch a managed-transfer props update. */
   public static final String TRANSFER_SET_PROPS = "LynxTransfer.SetProps";
+  /** @trace_description: Dispatch a props update that keeps the frontend instance state. */
+  public static final String TRANSFER_UPDATE = "LynxTransfer.Update";
+  /** @trace_description: Dispatch a props update that asks the frontend to drop its state. */
+  public static final String TRANSFER_RELOAD = "LynxTransfer.Reload";
   /** @trace_description: Route a native transfer to its managed container or accepting listener. */
   public static final String TRANSFER_CREATE = "LynxTransfer.Create";
   /**

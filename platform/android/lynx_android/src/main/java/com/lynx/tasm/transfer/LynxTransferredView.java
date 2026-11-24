@@ -74,9 +74,42 @@ public final class LynxTransferredView extends FrameLayout {
    */
   @UiThread
   public void setProps(@NonNull ReadableMap nextProps) {
+    dispatchPropsCommand(LynxTransferManager.SET_TRANSFER_PROPS, TraceEventDef.TRANSFER_SET_PROPS,
+        "setProps", nextProps);
+  }
+
+  /**
+   * Replaces this component's props while keeping the frontend instance state. Unlike
+   * {@link #reload}, the frontend updates the existing subtree in place.
+   *
+   * <p>Returning does not mean that rendering has completed. Page data and global props are not
+   * changed. Updates after release or page destruction are logged and ignored.
+   */
+  @UiThread
+  public void updateProps(@NonNull ReadableMap nextProps) {
+    dispatchPropsCommand(LynxTransferManager.UPDATE_TRANSFER, TraceEventDef.TRANSFER_UPDATE,
+        "updateProps", nextProps);
+  }
+
+  /**
+   * Replaces this component's props and asks the frontend to discard its instance state before
+   * rendering again. The managed container, its {@code transferId}, and its attached native content
+   * are unchanged, so no create or destroy command is sent and the load callbacks are not repeated.
+   *
+   * <p>Returning does not mean that rendering has completed. Page data and global props are not
+   * changed. Updates after release or page destruction are logged and ignored.
+   */
+  @UiThread
+  public void reload(@NonNull ReadableMap nextProps) {
+    dispatchPropsCommand(
+        LynxTransferManager.RELOAD_TRANSFER, TraceEventDef.TRANSFER_RELOAD, "reload", nextProps);
+  }
+
+  private void dispatchPropsCommand(
+      String command, String traceStage, String api, @NonNull ReadableMap nextProps) {
     UIThreadUtils.assertOnUiThread();
     if (mOwner == null) {
-      LLog.w("LynxTransferredView", "Ignoring setProps for released transfer " + mTransferId);
+      LLog.w("LynxTransferredView", "Ignoring " + api + " for released transfer " + mTransferId);
       return;
     }
     if (!mCreateDispatched) {
@@ -84,11 +117,11 @@ public final class LynxTransferredView extends FrameLayout {
       mPendingProps = nextProps;
       return;
     }
-    TransferTrace.begin(TraceEventDef.TRANSFER_SET_PROPS, mInstanceId, mTransferId, -1);
+    TransferTrace.begin(traceStage, mInstanceId, mTransferId, -1);
     JavaOnlyMap data = createEventData();
     data.put("props", nextProps);
-    mOwner.dispatchTransferEvent(LynxTransferManager.SET_TRANSFER_PROPS, data);
-    TransferTrace.end(TraceEventDef.TRANSFER_SET_PROPS);
+    mOwner.dispatchTransferEvent(command, data);
+    TransferTrace.end(traceStage);
   }
 
   /** Releases the component and its content. Repeated calls have no effect. */
