@@ -94,12 +94,22 @@ LynxUIRendererWindowless::LynxUIRendererWindowless(lynx_view_builder_t* builder)
   if (windowless_renderer_->enable_sync_compositor) {
     windowless_renderer_->headless_engine = headless_engine_.get();
   }
+  windowless_renderer_->set_background_color = [this](uint32_t color) {
+    headless_engine_->SetBackgroundColor(color);
+  };
+  if (windowless_renderer_->background_color.has_value()) {
+    headless_engine_->SetBackgroundColor(
+        *windowless_renderer_->background_color);
+  }
 
   auto* view_context =
       static_cast<clay::ViewContext*>(headless_engine_->GetViewContext());
   if (builder->default_background_color) {
     view_context->GetPageView()->SetDefaultBackgroundColor(
         clay::Color(*builder->default_background_color));
+  } else if (windowless_renderer_->background_color.has_value()) {
+    view_context->GetPageView()->SetDefaultBackgroundColor(
+        clay::Color::kTransparent());
   }
   auto module_factory = std::unique_ptr<lynx::runtime::NativeModuleFactory>(
       lynx::LynxModuleFactory::CreateModuleFactory(view_context));
@@ -153,6 +163,7 @@ LynxUIRendererWindowless::~LynxUIRendererWindowless() {
   windowless_renderer_->headless_engine = nullptr;
   windowless_renderer_->frame_draw_future = {};
   headless_engine_->SetHeadlessDelegate(nullptr);
+  windowless_renderer_->set_background_color = nullptr;
   windowless_renderer_->run_task = nullptr;
   windowless_renderer_->send_pointer_event = nullptr;
   windowless_renderer_->send_key_event = nullptr;

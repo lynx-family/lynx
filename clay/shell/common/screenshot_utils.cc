@@ -56,7 +56,8 @@ static sk_sp<SkData> ScreenshotLayerTreeAsImage(
     clay::CompositorContext& compositor_context, bool compressed,
     uint32_t background_color) {
   auto sk_image = TakeScreenshotWithOpaque(tree, surface, compositor_context,
-                                           true, background_color);
+                                           Color(background_color).Opaque(),
+                                           background_color);
   if (!sk_image) {
     return nullptr;
   }

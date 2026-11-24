@@ -126,12 +126,14 @@ void Rasterizer::Teardown() {
   display_compositor_.reset();
 
   last_layer_tree_.reset();
+  background_color_dirty_ = false;
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
 }
 
 void Rasterizer::CleanForRecycle() {
   user_override_resource_cache_bytes_ = false;
   last_layer_tree_.reset();
+  background_color_dirty_ = false;
   last_ignore_raster_cache_.store(false, std::memory_order_relaxed);
   compositor_context_ = std::make_unique<clay::CompositorContext>(*this);
   if (unref_queue_) {
@@ -436,7 +438,8 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     std::unique_ptr<FrameDamage> damage;
     if (frame->framebuffer_info().supports_partial_repaint) {
       damage = std::make_unique<FrameDamage>();
-      if (frame->framebuffer_info().existing_damage) {
+      if (frame->framebuffer_info().existing_damage &&
+          !background_color_dirty_) {
         damage->SetPreviousLayerTree(last_layer_tree_.get());
         damage->AddAdditionalDamage(*frame->framebuffer_info().existing_damage);
         damage->SetClipAlignment(
@@ -474,9 +477,10 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     if (frame_timings_recorder) {
       frame_timings_recorder->RecordFrameTime(FrameTimingKey::kRasterStart);
     }
+    const uint32_t clear_color =
+        background_color_.value_or(Color::kTransparent().Value());
     RasterStatus raster_status = compositor_frame->Raster(
-        layer_tree, ignore_raster_cache, damage.get(),
-        Color::kTransparent().Value(), [&] {
+        layer_tree, ignore_raster_cache, damage.get(), clear_color, [&] {
           frame->Prepare(damage ? damage->GetBufferDamage() : std::nullopt);
         });
     if (frame_timings_recorder) {
@@ -541,6 +545,7 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
             FrameTimingKey::kSubmitFrameEnd);
       }
     }
+    background_color_dirty_ = false;
     compositor_context_->raster_cache().EndFrame();
     if (frame_timings_recorder) {
       frame_timings_recorder->RecordRasterEnd(
@@ -705,5 +710,13 @@ std::optional<size_t> Rasterizer::GetResourceCacheMaxBytes() const {
 void Rasterizer::SetRenderSettings(
     fml::RefPtr<clay::RenderSettings> render_settings) {
   render_settings_ = render_settings;
+}
+
+void Rasterizer::SetBackgroundColor(uint32_t color) {
+  if (background_color_ == color) {
+    return;
+  }
+  background_color_ = color;
+  background_color_dirty_ = true;
 }
 }  // namespace clay

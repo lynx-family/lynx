@@ -9,6 +9,7 @@
 #define CLAY_SHELL_COMMON_RASTERIZER_H_
 
 #include <atomic>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -300,6 +301,12 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
 
   void SetRenderSettings(fml::RefPtr<clay::RenderSettings> render_settings);
 
+  void SetBackgroundColor(uint32_t color);
+
+  std::optional<uint32_t> GetBackgroundColor() const {
+    return background_color_;
+  }
+
   fml::RefPtr<PaintImage> MakeRasterSnapshot(
       std::unique_ptr<LayerTree> layer_tree);
 
@@ -356,6 +363,8 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   std::vector<std::pair<uint64_t, fml::closure>> next_frame_snapshot_callbacks_;
   bool user_override_resource_cache_bytes_;
   std::optional<size_t> max_cache_bytes_;
+  std::optional<uint32_t> background_color_;
+  bool background_color_dirty_ = false;
   fml::RefPtr<GPUUnrefQueue> unref_queue_;
   fml::RefPtr<clay::RenderSettings> render_settings_;
   bool last_memory_strategy_ = false;  // true: low memory usage, false: normal

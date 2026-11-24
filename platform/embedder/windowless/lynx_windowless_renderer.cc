@@ -50,6 +50,19 @@ LYNX_EXTERN_C void* lynx_windowless_renderer_get_user_data(
       ->user_data;
 }
 
+LYNX_EXTERN_C void lynx_windowless_renderer_set_background_color(
+    lynx_windowless_renderer_t* renderer, uint32_t color) {
+  if (!renderer) {
+    return;
+  }
+  auto* impl =
+      reinterpret_cast<lynx::embedder::LynxWindowlessRenderer*>(renderer);
+  impl->background_color = color;
+  if (impl->set_background_color) {
+    impl->set_background_color(color);
+  }
+}
+
 LYNX_EXTERN_C bool lynx_windowless_renderer_set_sync_compositor(
     lynx_windowless_renderer_t* renderer, bool enabled) {
   auto* impl =

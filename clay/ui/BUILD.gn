@@ -326,6 +326,7 @@ if (enable_unittests) {
       "../flow:flow_testing",
       "../gfx",
       "../lynx_adaptor:get_text_info_unittest_support",
+      "../shell/common",
       "../testing",
       "../testing:skia",
       "//third_party/skia/modules/skparagraph:skparagraph",

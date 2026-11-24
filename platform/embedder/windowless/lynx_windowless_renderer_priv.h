@@ -4,7 +4,10 @@
 #ifndef PLATFORM_EMBEDDER_WINDOWLESS_LYNX_WINDOWLESS_RENDERER_PRIV_H_
 #define PLATFORM_EMBEDDER_WINDOWLESS_LYNX_WINDOWLESS_RENDERER_PRIV_H_
 
+#include <cstdint>
+#include <functional>
 #include <future>
+#include <optional>
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "build/build_config.h"
@@ -58,6 +61,8 @@ class LynxWindowlessRenderer
   set_marked_text_rect set_marked_text_rect = nullptr;
   set_editable_transform set_editable_transform = nullptr;
 
+  std::optional<uint32_t> background_color;
+  std::function<void(uint32_t color)> set_background_color = nullptr;
   std::function<void(lynx_task_t task)> run_task = nullptr;
   std::function<void(lynx_pointer_event_t* event)> send_pointer_event = nullptr;
   std::function<void(lynx_key_event_t* event)> send_key_event = nullptr;

@@ -140,7 +140,11 @@ lynx_core_source_set("embedder") {
     ]
   }
   if (is_headless) {
-    deps += [ "./windowless" ]
+    if (enable_unittests) {
+      deps += [ "./windowless:windowless_renderer" ]
+    } else {
+      deps += [ "./windowless" ]
+    }
   }
   if (enable_inspector && enable_logbox) {
     deps += [ "./lynx_devtool:lynx_devtool_logbox" ]
@@ -348,6 +352,10 @@ if (enable_unittests) {
 
     if (enable_napi_binding) {
       sources += [ "module/extension_module_factory_impl_unittest.cc" ]
+    }
+
+    if (is_headless) {
+      sources += [ "lynx_windowless_renderer_unittests.cc" ]
     }
 
     deps = [
