@@ -22,6 +22,15 @@ lynx_core_source_set("css_keywords") {
   deps = [ ":generate_css_keywords" ]
 }
 
+lynx_core_source_set("css_value_storage") {
+  check_includes = false
+  sources = [
+    "css_value.h",
+    "css_value_storage.cc",
+  ]
+  public_deps = [ "../../../base/src:base_values" ]
+}
+
 lynx_core_source_set("css") {
   check_includes = false
 
@@ -40,6 +49,7 @@ lynx_core_source_set("css") {
 
   public_deps = [
     ":css_keywords",
+    ":css_value_storage",
     "../../../gfx:gfx",
     "../../../third_party/rapidjson",
     "../../base",
