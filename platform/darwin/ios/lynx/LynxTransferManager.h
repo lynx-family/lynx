@@ -5,6 +5,7 @@
 #import <UIKit/UIKit.h>
 
 @protocol LynxTransferListener;
+@class LynxTransferWrapperView;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -16,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
                           view:(UIView*)view
                        dataset:(NSDictionary*)dataset;
 - (void)dispatchTransferDatasetUpdate:(UIView*)view dataset:(NSDictionary*)dataset;
+- (void)dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView*)view;
 - (void)dispatchTransferRemove:(NSString*)transferId view:(UIView*)view;
 - (void)clearTransfers;
 
