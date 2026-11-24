@@ -504,11 +504,8 @@ class ValueAnimator : public Animator,
    */
   int64_t last_frame_time_ = -1;
 
-  /**
-   * Tracks the time (in milliseconds) when the first frame arrived. Note the
-   * frame may arrive during the start delay.
-   */
-  int64_t first_frame_time_ = -1;
+  // Whether the previous sample was in the active phase.
+  bool has_active_sample_ = false;
 
   /**
    * Additional playing state to indicate whether an animator has been

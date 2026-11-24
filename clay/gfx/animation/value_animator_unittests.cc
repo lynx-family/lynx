@@ -324,26 +324,29 @@ TEST(ValueAnimatorTest, LifecycleWakeSchedulesNextBoundary) {
   EXPECT_EQ(listener.end_count(), 1);
 }
 
-TEST(ValueAnimatorTest, LifecycleFrameReportsAllCrossedRepeats) {
-  ValueAnimator animator;
-  animator.SetDuration(100);
-  animator.SetRepeatCount(3);
+TEST(ValueAnimatorTest, ReportsLatestIterationBetweenActiveSamples) {
+  for (bool update_values : {false, true}) {
+    ValueAnimator animator;
+    animator.SetDuration(100);
+    animator.SetRepeatCount(4);
 
-  RecordingAnimatorListener listener;
-  animator.AddListener(&listener);
-  animator.Start();
+    RecordingAnimatorListener listener;
+    animator.AddListener(&listener);
+    animator.Start();
 
-  animator.DoAnimationFrame(1000, false);
-  animator.DoAnimationFrame(1350, false);
-  EXPECT_THAT(
-      listener.repeat_elapsed_times,
-      ::testing::ElementsAre(::testing::DoubleEq(0.1), ::testing::DoubleEq(0.2),
-                             ::testing::DoubleEq(0.3)));
-  EXPECT_EQ(listener.end_count(), 0);
+    animator.DoAnimationFrame(1000, update_values);
+    animator.DoAnimationFrame(1350, update_values);
+    animator.DoAnimationFrame(1375, update_values);
+    EXPECT_THAT(listener.repeat_elapsed_times,
+                ::testing::ElementsAre(::testing::DoubleEq(0.3)));
+    EXPECT_EQ(listener.end_count(), 0);
 
-  animator.DoAnimationFrame(1400, false);
-  EXPECT_THAT(listener.end_elapsed_times,
-              ::testing::ElementsAre(::testing::DoubleEq(0.4)));
+    // The final sample crosses an iteration boundary and the end boundary.
+    animator.DoAnimationFrame(1500, update_values);
+    EXPECT_EQ(listener.repeat_elapsed_times.size(), 1u);
+    EXPECT_THAT(listener.end_elapsed_times,
+                ::testing::ElementsAre(::testing::DoubleEq(0.5)));
+  }
 }
 
 TEST(ValueAnimatorTest, StartElapsedTimeUsesActiveIntervalBoundaries) {
