@@ -9,6 +9,7 @@
 
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/keywords.h"
+#include "clay/ui/component/scroll_view.h"
 #include "clay/ui/rendering/render_bounce.h"
 #include "clay/ui/rendering/render_container.h"
 
@@ -17,6 +18,16 @@ namespace clay {
 BounceView::BounceView(int id, PageView* page_view)
     : WithTypeInfo(id, "BounceView", std::make_unique<RenderBounce>(),
                    page_view) {}
+
+void BounceView::SetBounceDirection(Direction direction) {
+  if (direction_ != direction) {
+    direction_ = direction;
+    auto* parent = Parent();
+    if (parent && parent->Is<ScrollView>()) {
+      static_cast<ScrollView*>(parent)->UpdateBounceViewPosition();
+    }
+  }
+}
 
 void BounceView::SetAttribute(const char* attr, const clay::Value& value) {
   auto kw = GetKeywordID(attr);

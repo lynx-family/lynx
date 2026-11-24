@@ -48,6 +48,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   void RemoveChild(BaseView* child) override;
 
   void OnLayoutUpdated() override;
+  void UpdateBounceViewPosition();
   void OnLayout(LayoutContext* context) override;
 
   FloatPoint GetScrollOffsetForPaint() const override {
