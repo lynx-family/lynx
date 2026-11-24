@@ -5,6 +5,7 @@
 #include "core/shell/host_script/runtime/host_script_lynx_views.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <iterator>
 #include <limits>
@@ -91,6 +92,20 @@ bool ReadOptions(const Napi::CallbackInfo& info, size_t index,
   }
   if (!IsRecord(info[index])) return false;
   *options = info[index].As<Napi::Object>();
+  return true;
+}
+
+// Android MeasureSpec encodes the mode in the top two bits of an int32.
+bool ReadMeasureSpec(const Napi::Value& value, int32_t* result) {
+  if (!value.IsNumber()) return false;
+  double number = value.As<Napi::Number>().DoubleValue();
+  if (!std::isfinite(number) || std::floor(number) != number ||
+      number < -2147483648.0 || number > 2147483647.0) {
+    return false;
+  }
+  int32_t spec = static_cast<int32_t>(number);
+  if ((static_cast<uint32_t>(spec) >> 30) == 3) return false;
+  *result = spec;
   return true;
 }
 }  // namespace
@@ -237,6 +252,7 @@ Napi::Object HostScriptLynxViews::CreateObject(base::LynxEntityId view) {
                    {"updateMetaData", UpdateMetaData},
                    {"reloadTemplate", ReloadTemplate},
                    {"sendGlobalEvent", SendGlobalEvent},
+                   {"updateViewport", UpdateViewport},
                    {"on", On},
                    {"off", Off}};
   for (const auto& [name, callback] : methods)
@@ -442,6 +458,35 @@ Napi::Value HostScriptLynxViews::SendGlobalEvent(
   return Napi::Boolean::New(
       env, views && views->Dispatch(view, [request](LynxViewRefProxy& proxy) {
         proxy.SendGlobalEvent(request);
+      }));
+}
+
+Napi::Value HostScriptLynxViews::UpdateViewport(
+    const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  base::LynxEntityId view;
+  auto* views = From(info, &view);
+  LynxViewRefUpdateViewportRequest request;
+  if (info.Length() != 1 || !IsRecord(info[0])) {
+    return Throw(
+        env, kInvalidArgument,
+        "updateViewport expects an object with width and height MeasureSpecs");
+  }
+  auto options = info[0].As<Napi::Object>();
+  auto need_layout = options.Get("needLayout");
+  if (!ReadMeasureSpec(options.Get("width"), &request.width) ||
+      !ReadMeasureSpec(options.Get("height"), &request.height) ||
+      (!need_layout.IsUndefined() && !need_layout.IsBoolean())) {
+    return Throw(env, kInvalidArgument,
+                 "updateViewport expects valid width and height MeasureSpecs "
+                 "and an optional boolean needLayout");
+  }
+  if (need_layout.IsBoolean()) {
+    request.need_layout = need_layout.As<Napi::Boolean>().Value();
+  }
+  return Napi::Boolean::New(
+      env, views && views->Dispatch(view, [request](LynxViewRefProxy& proxy) {
+        proxy.UpdateViewport(request);
       }));
 }
 
