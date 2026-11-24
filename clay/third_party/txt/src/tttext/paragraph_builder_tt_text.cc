@@ -14,7 +14,7 @@ namespace txt {
 ParagraphBuilderTTText::ParagraphBuilderTTText(
     const ParagraphStyle& style,
     const std::shared_ptr<FontCollection>& font_collection)
-    : font_collection_(font_collection) {
+    : font_collection_(font_collection), hyphens_(style.hyphens) {
   ToTTParaStyle(style);
   ParagraphBuilderTTText::PushStyle(style.GetTextStyle());
 }
@@ -261,6 +261,7 @@ void ParagraphBuilderTTText::CreateParagraph() {
     paragraph_ =
         std::make_unique<ParagraphTTText>(font_collection_, paragraph_style_);
 #endif
+    paragraph_->SetHyphens(hyphens_);
   }
 }
 }  // namespace txt
