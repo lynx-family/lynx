@@ -40,6 +40,35 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+namespace {
+std::unordered_map<std::string, LynxContext::PageLifecycleFactory>&
+PageLifecycleFactories() {
+  static base::NoDestructor<
+      std::unordered_map<std::string, LynxContext::PageLifecycleFactory>>
+      factories;
+  return *factories;
+}
+}  // namespace
+
+void LynxContext::RegisterPageLifecycleFactory(const std::string& key,
+                                               PageLifecycleFactory factory) {
+  PageLifecycleFactories().emplace(key, std::move(factory));
+}
+
+std::shared_ptr<LynxContext::PageLifecycleListener>
+LynxContext::GetPageLifecycleListener(const std::string& key) const {
+  auto it = page_lifecycle_listeners_.find(key);
+  return it == page_lifecycle_listeners_.end() ? nullptr : it->second;
+}
+
+void LynxContext::NotifyPageDestroyed() {
+  std::call_once(page_destroyed_, [this]() {
+    for (const auto& entry : page_lifecycle_listeners_) {
+      entry.second->OnPageDestroy();
+    }
+  });
+}
+
 void LynxContext::SetWindowInfo(int32_t window_id, int32_t window_left_px,
                                 int32_t window_top_px) {
   window_id_ = window_id;
@@ -104,6 +133,7 @@ LynxContext::GetCAPINodeInfoMap() {
 }
 
 LynxContext::~LynxContext() {
+  NotifyPageDestroyed();
   DCHECK(!host_);
   DCHECK(!ui_owner_);
   DCHECK(!node_owner_);
@@ -811,6 +841,16 @@ void LynxContext::OnLynxCreate(
   resource_loader_ = resource_loader;
   ui_task_runner_ = ui_task_runner;
   layout_task_runner_ = layout_task_runner;
+  for (const auto& entry : PageLifecycleFactories()) {
+    if (page_lifecycle_listeners_.find(entry.first) !=
+        page_lifecycle_listeners_.end()) {
+      continue;
+    }
+    auto listener = entry.second(weak_from_this(), runtime_proxy_);
+    if (listener) {
+      page_lifecycle_listeners_.emplace(entry.first, std::move(listener));
+    }
+  }
 }
 
 void LynxContext::PostTaskOnUIThread(base::closure task) const {

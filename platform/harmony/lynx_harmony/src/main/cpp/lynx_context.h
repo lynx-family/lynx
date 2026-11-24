@@ -74,8 +74,24 @@ class LynxContextHost {
       const std::string& screen_shot_mode) = 0;
 };
 
-class LynxContext {
+class LynxContext : public std::enable_shared_from_this<LynxContext> {
  public:
+  class PageLifecycleListener {
+   public:
+    virtual ~PageLifecycleListener() = default;
+    virtual void OnPageDestroy() = 0;
+  };
+  using PageLifecycleFactory =
+      std::function<std::shared_ptr<PageLifecycleListener>(
+          std::weak_ptr<LynxContext>,
+          const std::shared_ptr<shell::LynxRuntimeProxy>&)>;
+
+  // Register platform modules during initialization, before creating pages.
+  LYNX_EXPORT static void RegisterPageLifecycleFactory(
+      const std::string& key, PageLifecycleFactory factory);
+  LYNX_EXPORT std::shared_ptr<PageLifecycleListener> GetPageLifecycleListener(
+      const std::string& key) const;
+
   using ConsoleMessageCallback =
       std::function<void(const std::string&, int32_t, int64_t)>;
   using CDPResultCallback = std::function<void(const std::string&)>;
@@ -98,6 +114,7 @@ class LynxContext {
   }
 
   void ResetHost() {
+    NotifyPageDestroyed();
     std::unique_lock<std::shared_mutex> guard(host_shared_mutex_);
     host_ = nullptr;
   }
@@ -107,7 +124,10 @@ class LynxContext {
                       TakeSnapshotCompletedCallback callback,
                       const std::string& format = "jpeg");
 
-  void ResetUIOwner() { ui_owner_ = nullptr; }
+  void ResetUIOwner() {
+    NotifyPageDestroyed();
+    ui_owner_ = nullptr;
+  }
 
   UIOwner* GetUIOwner() const { return ui_owner_; }
 
@@ -420,6 +440,11 @@ class LynxContext {
   }
 
  private:
+  void NotifyPageDestroyed();
+
+  std::unordered_map<std::string, std::shared_ptr<PageLifecycleListener>>
+      page_lifecycle_listeners_;
+  std::once_flag page_destroyed_;
   ShadowNodeOwner* node_owner_;
   LynxContextHost* host_{nullptr};
   UIOwner* ui_owner_;
