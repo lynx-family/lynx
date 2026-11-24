@@ -89,7 +89,7 @@ static constexpr const char* const kPropScrollOrientation =
 static constexpr const char* const kPropVerticalOrientation =
     "vertical-orientation";
 static constexpr const char* const kPropUpdateAnimation = "update-animation";
-static constexpr const char* const kPropListType = "list-type";
+static constexpr const char kPropListType[] = "list-type";
 static constexpr const char* const kPropSpanCount = "span-count";
 static constexpr const char* const kPropColumnCount = "column-count";
 static constexpr const char* const kPropListMainAxisGap = "list-main-axis-gap";

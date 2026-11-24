@@ -590,6 +590,24 @@ TEST_F_UI(NestedScrollableTest, ManagerStatusDragWithFling) {
   EXPECT_GT(scrollable->scroll_offset_, 0);
 }
 
+TEST_F_UI(NestedScrollableTest, StopFlingOnlyAffectsItsOwner) {
+  auto* scrolling = new TestScrollable(page_.get(), 1000);
+  auto* other = new TestScrollable(page_.get(), 1000);
+  page_->AddChild(scrolling);
+  page_->AddChild(other);
+  auto* manager = page_->nested_scroll_manager();
+  manager->DragStart(scrolling);
+  manager->DragEnd(scrolling, {0, 500});
+
+  manager->StopFling(other);
+  ASSERT_EQ(scrolling->GetScrollStatus(), Scrollable::ScrollStatus::kFling);
+  manager->StopFling(scrolling);
+  EXPECT_EQ(manager->GetScrollStatus(), Scrollable::ScrollStatus::kIdle);
+  EXPECT_EQ(scrolling->GetScrollStatus(), Scrollable::ScrollStatus::kIdle);
+  DoAnimation(1000);
+  EXPECT_EQ(scrolling->scroll_offset_, 0);
+}
+
 TEST_F_UI(NestedScrollableTest, ManagerStatusDragWithBounce) {
   TestScrollable* scrollable = new TestScrollable(page_.get(), 100);
   scrollable->SetOverscrollEnabled(true);

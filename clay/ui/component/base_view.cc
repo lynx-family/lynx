@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "base/include/auto_reset.h"
+#include "base/include/platform_types.h"
 #include "clay/fml/base64.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_properties_util.h"
@@ -1380,6 +1381,11 @@ void BaseView::SetFilter(const clay::Value::Array& array) {
     int int_type = utils::GetInt(array[0]);
     ClayFilterType type = static_cast<ClayFilterType>(int_type);
     float amount = utils::GetDouble(array[1]);
+    if (!lynx::IsIOS() && type >= ClayFilterType::kBrightness &&
+        type <= ClayFilterType::kSaturate) {
+      FML_DLOG(ERROR) << "Unsupported filter type";
+      return;
+    }
     switch (type) {
       case ClayFilterType::kGrayScale: {
         // grayscale is a value between 0 and 1 (100%)
@@ -1394,6 +1400,19 @@ void BaseView::SetFilter(const clay::Value::Array& array) {
         if (amount > 0.f) {
           render_object()->SetBlurRadius(amount);
         }
+        break;
+      }
+      case ClayFilterType::kBrightness: {
+        render_object()->AppendBrightness(std::clamp(amount, 0.f, 2.f));
+        break;
+      }
+      case ClayFilterType::kContrast: {
+        render_object()->AppendContrast(std::clamp(amount, 0.f, 3.f));
+        break;
+      }
+      case ClayFilterType::kSaturate: {
+        amount = amount < 0.f ? 1.f : std::min(amount, 3.f);
+        render_object()->AppendSaturate(amount);
         break;
       }
       case ClayFilterType::kNone: {
@@ -2216,7 +2235,9 @@ void BaseView::OnAnimationNodeReady() {
     return;
   }
 
-  auto result = KeyframesMgr()->UpdateData(*animation_);
+  // The legacy iOS animator ignores keyframes with no active duration.
+  auto result = KeyframesMgr()->UpdateData(
+      *animation_, lynx::IsIOS() && !enable_new_animator_);
   if (result.data_has_changed) {
     // Animations may not play without this
     page_view()->RequestPaint();

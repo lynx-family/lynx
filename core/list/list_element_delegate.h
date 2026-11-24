@@ -87,6 +87,7 @@ class ElementDelegate {
     return nullptr;
   }
   virtual bool IsInDebugMode() const { return false; }
+  virtual bool KeepScrollStartOnDataChange() const { return false; }
 };
 
 }  // namespace list

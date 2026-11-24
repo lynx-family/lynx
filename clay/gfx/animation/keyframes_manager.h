@@ -32,7 +32,8 @@ class KeyframesManager {
   };
 
   // Return true if data has changed
-  UpdateDataResult UpdateData(const std::vector<AnimationData>& data);
+  UpdateDataResult UpdateData(const std::vector<AnimationData>& data,
+                              bool skip_inactive_keyframes = false);
   bool HasAnimationRunning() const;
   void EndAllAnimators();
   void EndAnimator(const std::string& name);

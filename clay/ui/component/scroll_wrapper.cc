@@ -21,14 +21,16 @@ namespace clay {
 namespace {
 
 // Attributes that should be forwarded to the scroll view.
-constexpr std::array<KeywordID, 22> kProxyAttributes = {
+constexpr std::array<KeywordID, 24> kProxyAttributes = {
     {KeywordID::kScrollX,
      KeywordID::kScrollY,
      KeywordID::kLowerThreshold,
      KeywordID::kUpperThreshold,
      KeywordID::kEnableScroll,
      KeywordID::kEnableNestedScroll,
+     KeywordID::kEnableScrollMonitor,
      KeywordID::kScrollMonitorTag,
+     KeywordID::kFadingEdgeLength,
      KeywordID::kScrollTop,
      KeywordID::kScrollLeft,
      KeywordID::kScrollToIndex,

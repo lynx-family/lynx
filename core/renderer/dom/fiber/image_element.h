@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <memory>
 
+#include "base/include/platform_types.h"
 #include "core/renderer/dom/element.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 namespace lynx {
