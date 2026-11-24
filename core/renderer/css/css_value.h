@@ -79,7 +79,7 @@ using CustomPropertiesMapRef =
 class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:
   CSSValue() {}  // __attr__ initialized to zero.
-  ~CSSValue() { FreeValueStorage(); }
+  ~CSSValue();
 
   CSSValue(const CSSValue& other);
   CSSValue& operator=(const CSSValue& other);
@@ -242,8 +242,18 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return !(left == right);
   }
 
-  using HandleCustomPropertyFunc =
-      std::function<void(const base::String&, const base::String&)>;
+  // The callback and its context are borrowed for the duration of substitution.
+  struct HandleCustomPropertyFunc {
+    using Callback = void (*)(const base::String&, const base::String&, void*);
+    HandleCustomPropertyFunc(Callback callback = nullptr, void* data = nullptr)
+        : callback(callback), data(data) {}
+    explicit operator bool() const { return callback != nullptr; }
+    void operator()(const base::String& name, const base::String& value) const {
+      callback(name, value, data);
+    }
+    Callback callback;
+    void* data;
+  };
   static void SubstituteAll(
       CustomPropertiesMap& custom_properties, int max_depth = 10,
       const HandleCustomPropertyFunc& handle_func = nullptr);
@@ -280,18 +290,11 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
 
   static std::string Substitution(
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
-      const CycleDetector& detector, int max_depth = 10,
-      const HandleCustomPropertyFunc& handle_func = nullptr);
-  static std::string ResolveVariable(
-      const std::string& var_name, const CustomPropertiesMap& custom_properties,
-      const CycleDetector& detector, int max_depth = 10,
+      const CycleDetector* detector, int max_depth,
       const HandleCustomPropertyFunc& handle_func = nullptr);
   static std::string ResolveFallback(
       const VarReference& ref, const CustomPropertiesMap& variable_map,
-      const CycleDetector& detector, int max_depth = 10,
-      const HandleCustomPropertyFunc& handle_func = nullptr);
-  static std::string ResolveFallbackResolved(
-      const VarReference& ref, const CustomPropertiesMap& variable_map,
+      const CycleDetector* detector, int max_depth,
       const HandleCustomPropertyFunc& handle_func = nullptr);
   void SetCustomPropertyDependencies(
       CustomPropertyDependencyField::Type dependencies);

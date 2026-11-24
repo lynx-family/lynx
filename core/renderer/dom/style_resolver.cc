@@ -1107,117 +1107,6 @@ void StyleResolver::ApplyPseudoClassChildSelectorStyle(
   }
 }
 
-/*
- * Matching Algorithm:
- *    1. Based on the key, determine if there are any CSS properties.
- *    2. Match the parent node of the node according to the CSS sheet from right
- *       to left, and check if the node's class meets the conditions. For
- *       example: .a .text_hello {"font-size":"10px"} the CSS style exists in
- *       the map as .text_hello. First, find text_hello, then check if the
- *       parent node is a. If it satisfies the condition, return the CSS style.
- *       The selectors are stored as a linked list in css_parse_token within
- *       sheets_.
- */
-void StyleResolver::GetCSSByRule(CSSSheet::SheetType type,
-                                 CSSFragment* style_sheet,
-                                 AttributeHolder* node,
-                                 const std::string& rule) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_PATCH_GET_CSS_BY_RULE,
-              [&](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("rule", rule);
-              });
-  CSSParseToken* token;
-  switch (type) {
-    case CSSSheet::ID_SELECT:
-      token = style_sheet->GetIdStyle(rule);
-      break;
-    case CSSSheet::NAME_SELECT:
-      token = style_sheet->GetTagStyle(rule);
-      break;
-    case CSSSheet::ALL_SELECT:
-      token = style_sheet->GetUniversalStyle(rule);
-      break;
-    case CSSSheet::PLACEHOLDER_SELECT:
-    case CSSSheet::FIRST_CHILD_SELECT:
-    case CSSSheet::LAST_CHILD_SELECT:
-    case CSSSheet::PSEUDO_FOCUS_SELECT:
-    case CSSSheet::SELECTION_SELECT:
-    case CSSSheet::PSEUDO_ACTIVE_SELECT:
-    case CSSSheet::PSEUDO_HOVER_SELECT:
-      token = style_sheet->GetPseudoStyle(rule);
-      break;
-    default:
-      token = style_sheet->GetCSSStyle(rule);
-  }
-
-  MergeToken(token);
-
-  if ((type == CSSSheet::CLASS_SELECT || type == CSSSheet::ID_SELECT) &&
-      style_sheet->HasCascadeStyle()) {
-    ApplyCascadeStyles(style_sheet, node, rule);
-  }
-}
-
-void StyleResolver::MergeHigherCascadeStyles(
-    const std::string& current_selector, const std::string& parent_selector,
-    AttributeHolder* node, CSSFragment* style_sheet) {
-  std::string integrated_selector =
-      MergeCSSSelector(current_selector, parent_selector);
-  CSSParseToken* token_parent =
-      style_sheet->GetCascadeStyle(integrated_selector);
-  MergeToken(token_parent);
-}
-
-void StyleResolver::ApplyCascadeStyles(CSSFragment* style_sheet,
-                                       AttributeHolder* node,
-                                       const std::string& rule) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, CSS_PATCH_APPLY_CASCADE_STYLES);
-  if (node == nullptr) {
-    return;
-  }
-  const AttributeHolder* node_parent =
-      static_cast<AttributeHolder*>(node->HolderParent());
-  while (node_parent != nullptr) {
-    for (const auto& cls : node_parent->classes()) {
-      MergeHigherCascadeStyles(rule, GetClassSelectorRule(cls), node,
-                               style_sheet);
-      // Support for nested focus pseudo class. This is a naive implementation
-      // and should be replaced in the future.
-      if (node->GetCascadePseudoEnabled() &&
-          node_parent->HasPseudoState(kPseudoStateFocus)) {
-        MergeHigherCascadeStyles(rule, GetClassSelectorRule(cls) + ":focus",
-                                 node, style_sheet);
-      }
-    }
-    // Current is component and has scope, end the loop
-    if (!node_parent->GetRemoveDescendantSelectorScope() &&
-        node_parent->IsComponent()) {
-      break;
-    }
-    node_parent = static_cast<AttributeHolder*>(node_parent->HolderParent());
-  }
-
-  node_parent = static_cast<AttributeHolder*>(node->HolderParent());
-  while (node_parent != nullptr) {
-    const base::String& id_node = node_parent->idSelector();
-    if (!id_node.empty()) {
-      const std::string rule_id_selector = GetIDSelectorRule(id_node);
-      MergeHigherCascadeStyles(rule, rule_id_selector, node, style_sheet);
-      if (node->GetCascadePseudoEnabled() &&
-          node_parent->HasPseudoState(kPseudoStateFocus)) {
-        MergeHigherCascadeStyles(rule, rule_id_selector + ":focus", node,
-                                 style_sheet);
-      }
-    }
-    // Current is component and has scope, end the loop
-    if (!node_parent->GetRemoveDescendantSelectorScope() &&
-        node_parent->IsComponent()) {
-      break;
-    }
-    node_parent = static_cast<AttributeHolder*>(node_parent->HolderParent());
-  }
-}
-
 void StyleResolver::GetPseudoClassStyle(PseudoClassType pseudo_type,
                                         CSSFragment* style_sheet,
                                         AttributeHolder* node) {
@@ -1236,27 +1125,24 @@ void StyleResolver::GetPseudoClassStyle(PseudoClassType pseudo_type,
       return;
   }
 
-  GetCSSByRule(CSSSheet::PSEUDO_FOCUS_SELECT, style_sheet, node,
-               pseudo_class_name);
+  MergeToken(style_sheet->GetPseudoStyle(pseudo_class_name));
 
-  GetCSSByRule(CSSSheet::PSEUDO_FOCUS_SELECT, style_sheet, node,
-               std::string("*") + pseudo_class_name);
+  MergeToken(style_sheet->GetPseudoStyle(std::string("*") + pseudo_class_name));
 
   const base::String& tag_node = node->tag();
   if (!tag_node.empty()) {
-    GetCSSByRule(CSSSheet::PSEUDO_FOCUS_SELECT, style_sheet, node,
-                 tag_node.str() + pseudo_class_name);
+    MergeToken(style_sheet->GetPseudoStyle(tag_node.str() + pseudo_class_name));
   }
 
   for (const auto& cls : node->classes()) {
     const auto rule_class_selector = GetClassSelectorRule(cls);
-    GetCSSByRule(CSSSheet::PSEUDO_FOCUS_SELECT, style_sheet, node,
-                 rule_class_selector + pseudo_class_name);
+    MergeToken(
+        style_sheet->GetPseudoStyle(rule_class_selector + pseudo_class_name));
   }
 
   if (!node->idSelector().empty()) {
     auto rule_name = GetIDSelectorRule(node->idSelector()) + pseudo_class_name;
-    GetCSSByRule(CSSSheet::PSEUDO_FOCUS_SELECT, style_sheet, node, rule_name);
+    MergeToken(style_sheet->GetPseudoStyle(rule_name));
   }
 }
 
@@ -1442,87 +1328,6 @@ const tasm::CSSParserConfigs& StyleResolver::GetCSSParserConfigs() {
   }
   static base::NoDestructor<tasm::CSSParserConfigs> kDefaultCSSConfigs;
   return *kDefaultCSSConfigs;
-}
-
-void StyleResolver::ParsePlaceHolderTokens(PseudoPlaceHolderStyles& result,
-                                           const StyleMap& map) {
-  for (const auto& i : map) {
-    auto id = i.first;
-    auto& value = i.second;
-    if (id == kPropertyIDColor) {
-      result.color_ = value;
-    } else if (id == kPropertyIDFontSize) {
-      result.font_size_ = value;
-    } else if (id == kPropertyIDFontWeight) {
-      result.font_weight_ = value;
-    } else if (id == kPropertyIDFontFamily) {
-      result.font_family_ = value;
-    } else {
-      UnitHandler::CSSWarning(false,
-                              GetCSSParserConfigs().enable_css_strict_mode,
-                              "placeholder only support color && font-size");
-    }
-  }
-}
-
-PseudoPlaceHolderStyles StyleResolver::ParsePlaceHolderTokens(
-    const InlineTokenVector& tokens) {
-  PseudoPlaceHolderStyles result;
-
-  for (const auto& token : tokens) {
-    auto& map = token->GetAttributes();
-    ParsePlaceHolderTokens(result, map);
-  }
-  return result;
-}
-
-StyleResolver::InlineTokenVector StyleResolver::ParsePseudoCSSTokens(
-    AttributeHolder* node, const char* selector) {
-  InlineTokenVector tokens;
-
-  CSSFragment* fragment = node->ParentStyleSheet();
-  if (!fragment) return tokens;
-
-  const base::String& tag_node = node->tag();
-  // Global  ::xxx
-  {
-    auto token = fragment->GetPseudoStyle(selector);
-    if (token) {
-      tokens.emplace_back(token);
-    }
-  }
-
-  // tag selector  tag::xxx
-  if (!tag_node.empty()) {
-    std::string rule = tag_node.str() + selector;
-    auto token = fragment->GetPseudoStyle(rule);
-    if (token) {
-      tokens.emplace_back(token);
-    }
-  }
-
-  // class selector  .class::xxx
-  auto const& class_list = node->classes();
-  for (auto const& clazz : class_list) {
-    std::string rule = kCSSSelectorClass + clazz.str() + selector;
-
-    auto token = fragment->GetPseudoStyle(rule);
-    if (token) {
-      tokens.emplace_back(token);
-    }
-  }
-
-  // id selector #id::xxx
-  auto const& id = node->idSelector();
-  if (!id.empty()) {
-    std::string rule = kCSSSelectorID + id.str() + selector;
-    auto token = fragment->GetPseudoStyle(rule);
-    if (token) {
-      tokens.emplace_back(token);
-    }
-  }
-
-  return tokens;
 }
 
 void StyleResolver::ParsePseudoCSSTokensForFiber(Element* element,
@@ -2069,12 +1874,13 @@ void StyleResolver::ResolveSpecifiedStyleMap(
   auto* holder = current_element->data_model();
   CSSVariableHandler handler(true);
 
-  const auto handle_custom_property_func =
-      [holder](const base::String& name, const base::String& resolved_value) {
-        if (holder != nullptr) {
-          holder->AddCSSVariableRelated(name, resolved_value);
+  const CSSValue::HandleCustomPropertyFunc handle_custom_property_func{
+      [](const base::String& name, const base::String& value, void* data) {
+        if (auto* holder = static_cast<AttributeHolder*>(data)) {
+          holder->AddCSSVariableRelated(name, value);
         }
-      };
+      },
+      holder};
 
   for (auto& [id, value] : source) {
     if (!value.IsVariable()) {

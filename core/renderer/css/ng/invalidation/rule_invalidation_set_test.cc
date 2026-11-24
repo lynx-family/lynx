@@ -105,11 +105,8 @@ class RuleInvalidationSetTest : public testing::Test {
     rule_invalidation_set_.CollectPseudoClass(invalidation_lists, pseudo);
   }
 
-  using BackingType = InvalidationSet::BackingType;
-
-  template <BackingType type>
   std::unordered_set<std::string> ToHashSet(
-      typename InvalidationSet::Backing<type>::Range range) {
+      InvalidationSet::Backing::Range range) {
     std::unordered_set<std::string> hash_set;
     for (auto& str : range) hash_set.insert(str);
     return hash_set;
@@ -117,17 +114,17 @@ class RuleInvalidationSetTest : public testing::Test {
 
   std::unordered_set<std::string> ClassSet(
       const InvalidationSet& invalidation_set) {
-    return ToHashSet<BackingType::kClasses>(invalidation_set.Classes());
+    return ToHashSet(invalidation_set.Classes());
   }
 
   std::unordered_set<std::string> IdSet(
       const InvalidationSet& invalidation_set) {
-    return ToHashSet<BackingType::kIds>(invalidation_set.Ids());
+    return ToHashSet(invalidation_set.Ids());
   }
 
   std::unordered_set<std::string> TagNameSet(
       const InvalidationSet& invalidation_set) {
-    return ToHashSet<BackingType::kTagNames>(invalidation_set.TagNames());
+    return ToHashSet(invalidation_set.TagNames());
   }
 
   AssertionResult HasNoInvalidation(InvalidationSetVector& invalidation_sets) {
@@ -364,6 +361,43 @@ TEST_F(RuleInvalidationSetTest, pseudoClass) {
   InvalidationLists invalidation_lists;
   CollectPseudoClass(invalidation_lists, LynxCSSSelector::kPseudoFocus);
   EXPECT_TRUE(HasSelfInvalidation(invalidation_lists.descendants));
+}
+
+TEST_F(RuleInvalidationSetTest,
+       PseudoStatesRemainIndependentAfterMergeAndClear) {
+  AddSelector(":hover .hover");
+  AddSelector(":focus .focus");
+  AddSelector(":active .active");
+  RuleInvalidationSet merged;
+  MergeInto(merged);
+  ClearInvalidations();
+
+  for (const auto& [pseudo, class_name] :
+       {std::pair{LynxCSSSelector::kPseudoHover, "hover"},
+        std::pair{LynxCSSSelector::kPseudoFocus, "focus"},
+        std::pair{LynxCSSSelector::kPseudoActive, "active"}}) {
+    InvalidationLists lists;
+    merged.CollectPseudoClass(lists, pseudo);
+    ASSERT_EQ(lists.descendants.size(), 1U);
+    EXPECT_EQ(ClassSet(*lists.descendants.front()),
+              std::unordered_set<std::string>{class_name});
+  }
+  InvalidationLists unsupported;
+  merged.CollectPseudoClass(unsupported, LynxCSSSelector::kPseudoUnknown);
+  EXPECT_TRUE(unsupported.descendants.empty());
+
+  merged.Clear();
+  for (auto pseudo :
+       {LynxCSSSelector::kPseudoHover, LynxCSSSelector::kPseudoFocus,
+        LynxCSSSelector::kPseudoActive}) {
+    InvalidationLists lists;
+    merged.CollectPseudoClass(lists, pseudo);
+    EXPECT_TRUE(lists.descendants.empty());
+  }
+  AddSelector(":active", merged);
+  InvalidationLists reused;
+  merged.CollectPseudoClass(reused, LynxCSSSelector::kPseudoActive);
+  EXPECT_TRUE(HasSelfInvalidationSet(reused.descendants));
 }
 
 TEST_F(RuleInvalidationSetTest, tagName) {

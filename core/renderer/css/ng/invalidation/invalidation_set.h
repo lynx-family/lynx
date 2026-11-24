@@ -128,7 +128,6 @@ class InvalidationSet {
     // See Backing::GetMask.
   };
 
-  template <BackingType>
   union Backing;
 
   // Each BackingType has a corresponding bit in an instance of this class. A
@@ -138,37 +137,35 @@ class InvalidationSet {
   class BackingFlags {
    private:
     uint8_t bits_ = 0;
-    template <BackingType>
     friend union Backing;
   };
 
   // WARNING: Backings must be cleared manually in ~InvalidationSet, otherwise
   //          a std::string or std::unordered_set will leak.
-  template <BackingType type>
   union Backing {
     using Flags = BackingFlags;
-    static_assert(static_cast<size_t>(type) < sizeof(BackingFlags::bits_) * 8,
+    static_assert(static_cast<size_t>(BackingType::kAttributes) <
+                      sizeof(BackingFlags::bits_) * 8,
                   "Enough bits in BackingFlags");
 
-    // Adds a std::string to the associated Backing. If the Backing is
-    // currently empty, we simply AddRef the std::string of the incoming
-    // std::string. If the Backing already has one item, we first "upgrade"
-    // to a std::unordered_set, and add the std::string.
-    void Add(Flags&, const std::string&);
+    // Stores one string directly and upgrades to a set for multiple strings.
+    void Add(Flags&, BackingType, const std::string&);
     // Clears the associated Backing. If the Backing is a std::string, it is
     // released. If the Backing is a std::unordered_set, it is deleted.
-    void Clear(Flags&);
-    bool Contains(const Flags&, const std::string&) const;
-    bool IsEmpty(const Flags&) const;
-    size_t Size(const Flags&) const;
-    bool IsHashSet(const Flags& flags) const { return flags.bits_ & GetMask(); }
-
-    std::string* GetStringImpl(const Flags& flags) const {
-      return IsHashSet(flags) ? nullptr : string_impl_;
+    void Clear(Flags&, BackingType);
+    bool Contains(const Flags&, BackingType, const std::string&) const;
+    bool IsEmpty(const Flags&, BackingType) const;
+    size_t Size(const Flags&, BackingType) const;
+    bool IsHashSet(const Flags& flags, BackingType type) const {
+      return flags.bits_ & GetMask(type);
     }
-    const std::unordered_set<std::string>* GetHashSet(
-        const Flags& flags) const {
-      return IsHashSet(flags) ? hash_set_ : nullptr;
+
+    std::string* GetStringImpl(const Flags& flags, BackingType type) const {
+      return IsHashSet(flags, type) ? nullptr : string_impl_;
+    }
+    const std::unordered_set<std::string>* GetHashSet(const Flags& flags,
+                                                      BackingType type) const {
+      return IsHashSet(flags, type) ? hash_set_ : nullptr;
     }
 
     // A simple forward iterator, which can either "iterate" over a single
@@ -220,18 +217,24 @@ class InvalidationSet {
       Iterator end_;
     };
 
-    Range Items(const Flags& flags) const {
-      Iterator begin = IsHashSet(flags) ? Iterator(hash_set_->begin())
-                                        : Iterator(string_impl_);
-      Iterator end =
-          IsHashSet(flags) ? Iterator(hash_set_->end()) : Iterator(nullptr);
+    Range Items(const Flags& flags, BackingType type) const {
+      Iterator begin = IsHashSet(flags, type) ? Iterator(hash_set_->begin())
+                                              : Iterator(string_impl_);
+      Iterator end = IsHashSet(flags, type) ? Iterator(hash_set_->end())
+                                            : Iterator(nullptr);
       return Range(begin, end);
     }
 
    private:
-    uint8_t GetMask() const { return 1u << static_cast<size_t>(type); }
-    void SetIsString(Flags& flags) { flags.bits_ &= ~GetMask(); }
-    void SetIsHashSet(Flags& flags) { flags.bits_ |= GetMask(); }
+    static uint8_t GetMask(BackingType type) {
+      return 1u << static_cast<size_t>(type);
+    }
+    void SetIsString(Flags& flags, BackingType type) {
+      flags.bits_ &= ~GetMask(type);
+    }
+    void SetIsHashSet(Flags& flags, BackingType type) {
+      flags.bits_ |= GetMask(type);
+    }
 
     std::string* string_impl_ = nullptr;
     std::unordered_set<std::string>* hash_set_;
@@ -242,41 +245,47 @@ class InvalidationSet {
 
  private:
   void ClearAllBackings() {
-    classes_.Clear(backing_flags_);
-    ids_.Clear(backing_flags_);
-    tag_names_.Clear(backing_flags_);
+    classes_.Clear(backing_flags_, BackingType::kClasses);
+    ids_.Clear(backing_flags_, BackingType::kIds);
+    tag_names_.Clear(backing_flags_, BackingType::kTagNames);
   }
   bool HasEmptyBackings() const;
 
-  bool HasClasses() const { return !classes_.IsEmpty(backing_flags_); }
-  bool HasIds() const { return !ids_.IsEmpty(backing_flags_); }
-  bool HasTagNames() const { return !tag_names_.IsEmpty(backing_flags_); }
+  bool HasClasses() const {
+    return !classes_.IsEmpty(backing_flags_, BackingType::kClasses);
+  }
+  bool HasIds() const {
+    return !ids_.IsEmpty(backing_flags_, BackingType::kIds);
+  }
+  bool HasTagNames() const {
+    return !tag_names_.IsEmpty(backing_flags_, BackingType::kTagNames);
+  }
 
   bool HasId(const std::string& string) const {
-    return ids_.Contains(backing_flags_, string);
+    return ids_.Contains(backing_flags_, BackingType::kIds, string);
   }
 
   bool HasTagName(const std::string& string) const {
-    return tag_names_.Contains(backing_flags_, string);
+    return tag_names_.Contains(backing_flags_, BackingType::kTagNames, string);
   }
 
-  Backing<BackingType::kClasses>::Range Classes() const {
-    return classes_.Items(backing_flags_);
+  Backing::Range Classes() const {
+    return classes_.Items(backing_flags_, BackingType::kClasses);
   }
 
-  Backing<BackingType::kIds>::Range Ids() const {
-    return ids_.Items(backing_flags_);
+  Backing::Range Ids() const {
+    return ids_.Items(backing_flags_, BackingType::kIds);
   }
 
-  Backing<BackingType::kTagNames>::Range TagNames() const {
-    return tag_names_.Items(backing_flags_);
+  Backing::Range TagNames() const {
+    return tag_names_.Items(backing_flags_, BackingType::kTagNames);
   }
 
   const std::string* FindAnyClass(const tasm::AttributeHolder&) const;
 
-  Backing<BackingType::kClasses> classes_;
-  Backing<BackingType::kIds> ids_;
-  Backing<BackingType::kTagNames> tag_names_;
+  Backing classes_;
+  Backing ids_;
+  Backing tag_names_;
 
   bool whole_subtree_invalid_{false};
   BackingFlags backing_flags_;
@@ -311,76 +320,6 @@ using InvalidationSetVector = base::Vector<InvalidationSet*>;
 struct InvalidationLists {
   InvalidationSetVector descendants;
 };
-
-template <typename InvalidationSet::BackingType type>
-void InvalidationSet::Backing<type>::Add(InvalidationSet::BackingFlags& flags,
-                                         const std::string& string) {
-  if (IsHashSet(flags)) {
-    hash_set_->insert(string);
-  } else if (string_impl_) {
-    if (*string_impl_ == string) {
-      return;
-    }
-    // The string_impl_ needs to be inserted into hash_set later
-    std::string string_impl(*string_impl_);
-    delete string_impl_;
-    string_impl_ = nullptr;
-    hash_set_ = new std::unordered_set<std::string>();
-    hash_set_->insert(string_impl);
-    hash_set_->insert(string);
-    SetIsHashSet(flags);
-  } else {
-    string_impl_ = new std::string(string);
-  }
-}
-
-template <typename InvalidationSet::BackingType type>
-void InvalidationSet::Backing<type>::Clear(
-    InvalidationSet::BackingFlags& flags) {
-  if (IsHashSet(flags)) {
-    if (hash_set_) {
-      delete hash_set_;
-      string_impl_ = nullptr;
-    }
-  } else {
-    if (string_impl_) {
-      delete string_impl_;
-      string_impl_ = nullptr;
-    }
-  }
-  SetIsString(flags);
-}
-
-template <typename InvalidationSet::BackingType type>
-bool InvalidationSet::Backing<type>::Contains(
-    const InvalidationSet::BackingFlags& flags,
-    const std::string& string) const {
-  if (IsHashSet(flags)) {
-    return hash_set_->find(string) != hash_set_->end();
-  }
-  if (string_impl_) {
-    return *string_impl_ == string;
-  }
-  return false;
-}
-
-template <typename InvalidationSet::BackingType type>
-bool InvalidationSet::Backing<type>::IsEmpty(
-    const InvalidationSet::BackingFlags& flags) const {
-  return !IsHashSet(flags) && !string_impl_;
-}
-
-template <typename InvalidationSet::BackingType type>
-size_t InvalidationSet::Backing<type>::Size(
-    const InvalidationSet::BackingFlags& flags) const {
-  if (const std::unordered_set<std::string>* set = GetHashSet(flags)) {
-    return set->size();
-  }
-  if (GetStringImpl(flags)) {
-    return 1;
-  }
-  return 0;
-}
 
 inline void InvalidationSet::Deleter::operator()(InvalidationSet* set) {
   // Workaround Linux build issue

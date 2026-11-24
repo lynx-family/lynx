@@ -846,6 +846,7 @@ subspec_target("amoeba") {
     "../../../../core/renderer/css",
     "../../../../core/renderer/css:css_keywords",
     "../../../../core/renderer/css:css_parser",
+    "../../../../core/renderer/css:css_value_storage",
     "../../../../core/renderer/simple_styling",
   ]
   flatten_deps =

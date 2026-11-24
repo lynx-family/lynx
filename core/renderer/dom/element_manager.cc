@@ -63,6 +63,22 @@
 constexpr const static char *kEventDomSizeKey = "dom_size";
 namespace lynx {
 namespace tasm {
+
+void ElementManager::ForEachAdoptedStyleSheet(AdoptedStyleSheetVisitor visitor,
+                                              void *data, bool reverse) const {
+  std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
+  if (reverse) {
+    for (auto it = adopted_stylesheets_.rbegin();
+         it != adopted_stylesheets_.rend(); ++it) {
+      if (!visitor(*it, data)) return;
+    }
+  } else {
+    for (const auto &wrapper : adopted_stylesheets_) {
+      if (!visitor(wrapper, data)) return;
+    }
+  }
+}
+
 namespace {
 
 // Rule sets visited while collecting layer trees. The set is small (intrinsic

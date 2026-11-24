@@ -525,20 +525,10 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
 
   // Iterates adopted stylesheets under a shared lock without copying.
   // Visitor returns true to continue, false to stop early.
-  template <typename Visitor>
-  void ForEachAdoptedStyleSheet(Visitor &&visitor, bool reverse = false) const {
-    std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);
-    if (reverse) {
-      for (auto it = adopted_stylesheets_.rbegin();
-           it != adopted_stylesheets_.rend(); ++it) {
-        if (!visitor(*it)) return;
-      }
-    } else {
-      for (const auto &wrapper : adopted_stylesheets_) {
-        if (!visitor(wrapper)) return;
-      }
-    }
-  }
+  using AdoptedStyleSheetVisitor =
+      bool (*)(const fml::RefPtr<SharedCSSFragmentWrapper> &, void *);
+  void ForEachAdoptedStyleSheet(AdoptedStyleSheetVisitor visitor, void *data,
+                                bool reverse = false) const;
 
   bool HasAdoptedStyleSheets() const {
     std::shared_lock<std::shared_mutex> lock(adopted_style_sheets_mutex_);

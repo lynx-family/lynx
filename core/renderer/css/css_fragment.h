@@ -69,9 +69,6 @@ class CSSFragment {
   virtual CSSParseToken* GetCSSStyle(const std::string& key) = 0;
   virtual CSSParseToken* GetPseudoStyle(const std::string& key) = 0;
   virtual CSSParseToken* GetCascadeStyle(const std::string& key) = 0;
-  virtual CSSParseToken* GetIdStyle(const std::string& key) = 0;
-  virtual CSSParseToken* GetTagStyle(const std::string& key) = 0;
-  virtual CSSParseToken* GetUniversalStyle(const std::string& key) = 0;
 
   virtual bool HasPseudoNotStyle() = 0;
   virtual void InitPseudoNotStyle() = 0;

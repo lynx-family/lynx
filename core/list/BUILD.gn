@@ -64,6 +64,7 @@ lynx_core_source_set("list_container_base") {
   sources = list_container_base_shared_sources
   public_deps = [
     "../build:build",
+    "../renderer/css:css_value_storage",
     "../renderer/trace:renderer_trace",
   ]
 }
@@ -145,10 +146,23 @@ unittest_exec("list_container_testset_exec") {
   deps = [ ":list_container_testset" ]
 }
 
+# Keep this link test independent of DOM and the full CSS runtime.
+unittest_set("list_css_value_link_testset") {
+  sources = [ "list_css_value_link_unittest.cc" ]
+  public_deps = [ ":list_container_base" ]
+  deps = [ "../../base/src:base_values_extended" ]
+}
+
+unittest_exec("list_css_value_link_testset_exec") {
+  sources = []
+  deps = [ ":list_css_value_link_testset" ]
+}
+
 group("list_container_testset_group") {
   testonly = true
   deps = [
     ":list_container_testset",
     ":list_container_testset_exec",
+    ":list_css_value_link_testset_exec",
   ]
 }

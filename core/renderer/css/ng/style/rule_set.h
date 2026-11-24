@@ -80,8 +80,6 @@ class RuleSet {
 
   const auto& class_rules(const std::string& key) { return class_rules_[key]; }
 
-  const auto& attr_rules(const std::string& key) { return attr_rules_[key]; }
-
   const auto& tag_rules(const std::string& key) { return tag_rules_[key]; }
 
   const auto& pseudo_rules() { return pseudo_rules_; }
@@ -157,9 +155,6 @@ class RuleSet {
     for (const auto& entry : class_rules_) {
       visit(entry.second);
     }
-    for (const auto& entry : attr_rules_) {
-      visit(entry.second);
-    }
     for (const auto& entry : tag_rules_) {
       visit(entry.second);
     }
@@ -181,7 +176,6 @@ class RuleSet {
 
   std::unordered_map<std::string, CompactRuleDataVector> id_rules_;
   std::unordered_map<std::string, CompactRuleDataVector> class_rules_;
-  std::unordered_map<std::string, CompactRuleDataVector> attr_rules_;
   std::unordered_map<std::string, CompactRuleDataVector> tag_rules_;
   CompactRuleDataVector pseudo_rules_;
   CompactRuleDataVector universal_rules_;

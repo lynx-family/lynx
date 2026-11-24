@@ -451,144 +451,80 @@ bool operator==(const CSSValue& left, const CSSValue& right) {
   return false;
 }
 
-// Optimized structure for Tarjan's SCC algorithm
-struct alignas(4) SCCNode {
-  int32_t index = -1;
-  int32_t low_link = -1;
-  bool on_stack = false;
-  uint8_t padding[3] = {0};  // Padding for cache alignment
-};
-
 class CSSValue::CycleDetector {
  public:
-  explicit CycleDetector(const CustomPropertiesMap& variables)
-      : variables_(variables) {
-    FindAllSCCs();
+  explicit CycleDetector(const CustomPropertiesMap& variables) {
+    // Populate the graph before recursion so node pointers remain stable.
+    for (const auto& [name, value] : variables) {
+      if (value.IsVariable() && value.GetVarReferences()) {
+        nodes_.emplace_unique(name, Node{&value});
+      }
+    }
+    for (auto& [name, node] : nodes_) {
+      if (node.index == -1) {
+        StrongConnect(node);
+      }
+    }
   }
 
-  bool IsInCycle(const std::string& var_name) const {
-    return cycles_.contains(var_name);
+  bool IsInCycle(const std::string& name) const {
+    auto it = nodes_.find(name);
+    return it != nodes_.end() && it->second.in_cycle;
   }
 
  private:
-  void CollectGraphNodes() {
-    // A property without a recorded outgoing reference cannot be part of a
-    // cycle in this graph. Keep these properties in the full map for var()
-    // substitution.
-    for (const auto& [var_name, value] : variables_) {
-      if (value.IsVariable() &&
-          value.optionals_.HasValue<VarReferenceField>()) {
-        nodes_.emplace_unique(var_name.str(), SCCNode{});
-      }
-    }
-  }
+  struct Node {
+    const CSSValue* value;
+    int index = -1;
+    int low_link = -1;
+    bool on_stack = false;
+    bool in_cycle = false;
+  };
 
-  void FindAllSCCs() {
-    index_ = 0;
-    // Insert all graph nodes before traversal so references stay valid
-    // across recursive calls.
-    CollectGraphNodes();
-    for (const auto& [var_name, node] : nodes_) {
-      if (node.index == -1) {
-        StrongConnect(var_name);
-      }
-    }
-  }
-
-  void StrongConnect(const std::string& var_name) {
-    SCCNode& node = nodes_[var_name];
-    node.index = index_++;
-    node.low_link = node.index;
-    stack_.push(var_name);
+  void StrongConnect(Node& node) {
+    node.index = node.low_link = index_++;
     node.on_stack = true;
-
-    // Optimized dependency traversal
-    auto var_it = variables_.find(var_name);
-    if (var_it != variables_.end() && var_it->second.IsVariable() &&
-        var_it->second.optionals_.HasValue<VarReferenceField>()) {
-      const auto& refs = var_it->second.optionals_.Get<VarReferenceField>();
-      for (const auto& var_ref : refs) {
-        const std::string dep_name(var_ref.Name(var_it->second.AsStdString()));
-
-        auto dep = nodes_.find(dep_name);
-        if (dep != nodes_.end()) {
-          auto& dep_node = dep->second;
-          if (dep_node.index == -1) {
-            StrongConnect(dep_name);
-            node.low_link = std::min(node.low_link, dep_node.low_link);
-          } else if (dep_node.on_stack) {
-            node.low_link = std::min(node.low_link, dep_node.index);
-          }
-        }
+    stack_.push_back(&node);
+    bool self_loop = false;
+    const auto& raw_value = node.value->AsStdString();
+    for (const auto& ref : *node.value->GetVarReferences()) {
+      const auto name = ref.Name(raw_value);
+      auto it = nodes_.find(base::String(name.data(), name.size()));
+      if (it == nodes_.end()) {
+        continue;
+      }
+      auto& dependency = it->second;
+      self_loop |= &dependency == &node;
+      if (dependency.index == -1) {
+        StrongConnect(dependency);
+        node.low_link = std::min(node.low_link, dependency.low_link);
+      } else if (dependency.on_stack) {
+        node.low_link = std::min(node.low_link, dependency.index);
       }
     }
-
-    // Efficient SCC extraction
-    if (node.low_link == node.index) {
-      bool has_cycle = false;
-      std::string w;
-      do {
-        w = stack_.top();
-        stack_.pop();
-        nodes_[w].on_stack = false;
-
-        if (w != var_name) {
-          has_cycle = true;
-        } else {
-          // Check self-loop
-          auto var_it = variables_.find(w);
-          if (var_it != variables_.end() && var_it->second.IsVariable() &&
-              var_it->second.optionals_.HasValue<VarReferenceField>()) {
-            for (const auto& var_ref :
-                 var_it->second.optionals_.Get<VarReferenceField>()) {
-              if (var_ref.Name(var_it->second.AsStdString()) == w) {
-                has_cycle = true;
-                break;
-              }
-            }
-          }
-        }
-
-        if (has_cycle) {
-          cycles_.insert(w);
-        }
-      } while (w != var_name);
+    if (node.low_link != node.index) {
+      return;
+    }
+    size_t start = stack_.size() - 1;
+    while (stack_[start] != &node) {
+      --start;
+    }
+    const bool in_cycle = self_loop || stack_.size() - start > 1;
+    while (stack_.size() > start) {
+      auto* member = stack_.back();
+      member->on_stack = false;
+      member->in_cycle = in_cycle;
+      stack_.pop_back();
     }
   }
 
-  const CustomPropertiesMap& variables_;
-  base::InlineLinearFlatMap<std::string, SCCNode, 32> nodes_;
-  base::InlineLinearFlatSet<std::string, 8> cycles_;
-  base::InlineStack<std::string, 24> stack_;
+  base::LinearFlatMap<base::String, Node> nodes_;
+  base::Vector<Node*> stack_;
   int index_ = 0;
 };
 
 std::string CSSValue::AsJsonString(bool map_key_ordered) const {
   return lepus::lepusValueToString(GetValue(), map_key_ordered);
-}
-
-std::string CSSValue::ResolveVariable(
-    const std::string& var_name, const CustomPropertiesMap& custom_properties,
-    const CycleDetector& detector, int max_depth,
-    const HandleCustomPropertyFunc& handle_func) {
-  if (max_depth <= 0) {
-    return "";
-  }
-
-  auto value = custom_properties.find(var_name);
-  if (value == custom_properties.end()) {
-    return "";
-  }
-
-  const CSSValue& css_value = value->second;
-  // If it's a simple string value (no variables), return it directly
-  if (!css_value.IsVariable()) {
-    return css_value.AsStdString();
-  }
-
-  return CSSValue::Substitution(css_value, custom_properties, detector,
-                                max_depth - 1, handle_func);
-  ;
 }
 
 void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
@@ -607,17 +543,21 @@ void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
     auto& value = entry->second;
     if (value.NeedsVariableResolution()) {
       CustomPropertyDependencyField::Type dependencies;
-      HandleCustomPropertyFunc collecting_handle_func =
-          [&dependencies, &handle_func](const base::String& dependency_name,
-                                        const base::String& dependency_value) {
-            dependencies.insert_or_assign(dependency_name, dependency_value);
-            if (handle_func) {
-              handle_func(dependency_name, dependency_value);
+      struct Context {
+        CustomPropertyDependencyField::Type& dependencies;
+        const HandleCustomPropertyFunc& handle_func;
+      } context{dependencies, handle_func};
+      HandleCustomPropertyFunc collecting_handle_func{
+          [](const base::String& name, const base::String& value, void* data) {
+            auto& context = *static_cast<Context*>(data);
+            context.dependencies.insert_or_assign(name, value);
+            if (context.handle_func) {
+              context.handle_func(name, value);
             }
-          };
-      std::string property =
-          CSSValue::Substitution(value, custom_properties, detector, max_depth,
-                                 collecting_handle_func);
+          },
+          &context};
+      std::string property = Substitution(value, custom_properties, &detector,
+                                          max_depth, collecting_handle_func);
       CSSValue resolved_value(std::move(property), CSSValuePattern::STRING,
                               CSSValueType::DEFAULT);
       resolved_value.SetCustomPropertyDependencies(std::move(dependencies));
@@ -629,10 +569,9 @@ void CSSValue::SubstituteAll(CustomPropertiesMap& custom_properties,
 std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     int max_depth, const HandleCustomPropertyFunc& handle_func) {
-  // Build cycle detector for all variables (optimized for performance)
   CycleDetector detector(custom_properties);
 
-  return Substitution(css_value, custom_properties, detector, max_depth,
+  return Substitution(css_value, custom_properties, &detector, max_depth,
                       handle_func);
 }
 
@@ -650,7 +589,7 @@ inline std::string StripImportantFromString(std::string value) {
 
 std::string CSSValue::Substitution(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
-    const CycleDetector& detector, int max_depth,
+    const CycleDetector* detector, int max_depth,
     const HandleCustomPropertyFunc& handle_func) {
   if (css_value.IsVariable() &&
       !css_value.optionals_.HasValue<VarReferenceField>()) {
@@ -692,23 +631,28 @@ std::string CSSValue::Substitution(
         dep_name, var_it != custom_properties.end() ? &var_it->second : nullptr,
         handle_func);
 
-    // Fast path: check if variable exists and not in cycle
-    if (var_it != custom_properties.end() && !detector.IsInCycle(dep_name)) {
-      // Variable exists and is not in a cycle - resolve it normally
-      std::string resolved_value = ResolveVariable(
-          dep_name, custom_properties, detector, max_depth, handle_func);
-
-      if (!resolved_value.empty()) {
-        result.append(std::move(resolved_value));
-      } else {
-        result.append(CSSValue::ResolveFallback(
-            var_ref, custom_properties, detector, max_depth, handle_func));
+    if (var_it != custom_properties.end()) {
+      const auto& value = var_it->second;
+      if (!detector) {
+        // Resolved properties are used as-is, including empty strings.
+        result.append(value.AsStdString());
+        last_pos = var_ref.end;
+        continue;
       }
-    } else if (!var_ref.fallback.empty()) {
-      // Variable not found or in cycle - use fallback
-      result.append(CSSValue::ResolveFallback(
-          var_ref, custom_properties, detector, max_depth, handle_func));
+      if (max_depth > 0 && !detector->IsInCycle(dep_name)) {
+        auto resolved = value.IsVariable()
+                            ? Substitution(value, custom_properties, detector,
+                                           max_depth - 1, handle_func)
+                            : value.AsStdString();
+        if (!resolved.empty()) {
+          result.append(resolved);
+          last_pos = var_ref.end;
+          continue;
+        }
+      }
     }
+    result.append(ResolveFallback(var_ref, custom_properties, detector,
+                                  max_depth, handle_func));
 
     last_pos = var_ref.end;
   }
@@ -724,71 +668,12 @@ std::string CSSValue::Substitution(
 std::string CSSValue::SubstitutionResolved(
     const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
     const HandleCustomPropertyFunc& handle_func) {
-  if (css_value.IsVariable() &&
-      !css_value.optionals_.HasValue<VarReferenceField>()) {
-    CSSValue normalized_value(css_value);
-    if (normalized_value.ToVarReference()) {
-      return SubstitutionResolved(normalized_value, custom_properties,
-                                  handle_func);
-    }
-  }
-
-  if (!css_value.IsVariable() ||
-      !css_value.optionals_.HasValue<VarReferenceField>()) {
-    return css_value.AsStdString();
-  }
-
-  const std::string& raw_value = css_value.AsStdString();
-  const auto& var_refs = css_value.optionals_.Get<VarReferenceField>();
-
-  if (var_refs.empty()) {
-    return raw_value;
-  }
-
-  std::string result;
-
-  // Smart size estimation with move semantics
-  size_t estimated_size = raw_value.size() << 2;
-  result.reserve(std::min(estimated_size, size_t{4096}));
-
-  size_t last_pos = 0;
-
-  for (const auto& var_ref : var_refs) {
-    // Append text before this variable reference
-    result.append(raw_value, last_pos, var_ref.start - last_pos);
-
-    const std::string dep_name(var_ref.Name(raw_value));
-
-    auto var_it = custom_properties.find(dep_name);
-    ReportCustomPropertyDependency(
-        dep_name, var_it != custom_properties.end() ? &var_it->second : nullptr,
-        handle_func);
-
-    if (var_it != custom_properties.end()) {
-      // Variable exists - resolve it normally
-      // Since custom_properties are already resolved in
-      // CollectCustomProperties, we can directly use the string value.
-      result.append(var_it->second.AsStdString());
-    } else if (!var_ref.fallback.empty()) {
-      // Variable not found - use fallback
-      result.append(CSSValue::ResolveFallbackResolved(
-          var_ref, custom_properties, handle_func));
-    }
-
-    last_pos = var_ref.end;
-  }
-
-  // Append remaining text after last variable reference
-  if (last_pos < raw_value.size()) {
-    result.append(raw_value, last_pos);
-  }
-
-  return StripImportantFromString(std::move(result));
+  return Substitution(css_value, custom_properties, nullptr, 0, handle_func);
 }
 
 std::string CSSValue::ResolveFallback(
     const VarReference& ref, const CustomPropertiesMap& variable_map,
-    const CycleDetector& detector, int max_depth,
+    const CycleDetector* detector, int max_depth,
     const HandleCustomPropertyFunc& handle_func) {
   if (ref.fallback.empty()) {
     return "";
@@ -799,19 +684,6 @@ std::string CSSValue::ResolveFallback(
   CSSValue css_value = parser.ParseVariable();
   return CSSValue::Substitution(css_value, variable_map, detector,
                                 max_depth - 1, handle_func);
-}
-
-std::string CSSValue::ResolveFallbackResolved(
-    const VarReference& ref, const CustomPropertiesMap& variable_map,
-    const HandleCustomPropertyFunc& handle_func) {
-  if (ref.fallback.empty()) {
-    return "";
-  }
-  CSSStringParser parser(ref.fallback.c_str(),
-                         static_cast<uint32_t>(ref.fallback.length()),
-                         ref.parser_configs);
-  CSSValue css_value = parser.ParseVariable();
-  return CSSValue::SubstitutionResolved(css_value, variable_map, handle_func);
 }
 
 std::string_view VarReference::Name(const std::string& raw_value) const {

@@ -49,9 +49,12 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
       if (css_value.NeedsVariableResolution()) {
         ResolveCSSVariables(
             id, css_value, style_map, holder->GetCustomProperties(), configs,
-            [holder](const base::String& name, const base::String& value) {
-              holder->AddCSSVariableRelated(name, value);
-            });
+            {[](const base::String& name, const base::String& value,
+                void* data) {
+               static_cast<AttributeHolder*>(data)->AddCSSVariableRelated(
+                   name, value);
+             },
+             holder});
         continue;
       }
 
