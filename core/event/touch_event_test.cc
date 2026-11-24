@@ -266,6 +266,7 @@ TEST(TouchEventTest, SingleTouchCancelClearsPreviouslyActiveContacts) {
   auto cancel = fml::MakeRefCounted<TouchEvent>(EVENT_TOUCH_CANCEL, 1.f, 2.f);
   EventDispatcher::DispatchEvent(target, cancel);
   EXPECT_EQ(target.GetTouchEventState()->current_touches.GetLength(), 0u);
+  cancel->HandleEventBaseDetail();
   EXPECT_EQ(cancel->detail().GetProperty("changedTouches").GetLength(), 1u);
 }
 
@@ -276,6 +277,7 @@ TEST(TouchEventTest, ScalarGesturesPreserveActiveContacts) {
     auto gesture = fml::MakeRefCounted<TouchEvent>(name, 1.f, 2.f);
     EventDispatcher::DispatchEvent(target, gesture);
     ExpectTouch(target.GetTouchEventState()->current_touches, 7, 10.f);
+    gesture->HandleEventBaseDetail();
     EXPECT_EQ(gesture->detail().GetProperty("changedTouches").GetLength(), 1u);
   }
 }

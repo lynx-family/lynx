@@ -15,8 +15,11 @@
 #include "build/build_config.h"
 #include "core/event/custom_event.h"
 #include "core/event/event_dispatcher.h"
+#include "core/event/keyboard_event.h"
+#include "core/event/mouse_event.h"
 #include "core/event/pointer_event.h"
 #include "core/event/touch_event.h"
+#include "core/event/wheel_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
@@ -627,7 +630,6 @@ void TouchEventHandler::ApplyEventTargetParams(lepus::DictionaryPtr params,
                                                  current_target, is_js_event));
 }
 
-// TODO(hexionghui): Use the new event logic to handle MouseEvent.
 void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
                                           const std::string &page_name,
                                           const std::string &name, int tag,
@@ -690,6 +692,32 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
     return;
   }
 #endif
+  if (tasm->EnableEventHandleRefactor()) {
+    auto *target = node_manager_->Get(tag);
+    if (!target) {
+      LOGE("HandleBubbleEvent error: the target is null.");
+      return;
+    }
+    fml::RefPtr<event::Event> bubble_event;
+    const lepus::Value event_param(params);
+    if (name == "wheel") {
+      bubble_event = fml::MakeRefCounted<event::WheelEvent>(name, event_param);
+    } else if (name == "keydown" || name == "keyup") {
+      bubble_event =
+          fml::MakeRefCounted<event::KeyboardEvent>(name, event_param);
+    } else if (name.compare(0, 5, "mouse") == 0 || name == "zoom") {
+      bubble_event = fml::MakeRefCounted<event::MouseEvent>(name, event_param);
+    } else {
+      bubble_event = fml::MakeRefCounted<event::Event>(
+          name, event::Event::EventType::kBubbleEvent,
+          event::Event::Capture::kYes, event::Event::Bubbles::kYes,
+          event::Event::Cancelable::kYes, event::Event::ComposedMode::kScoped,
+          event_param);
+    }
+    event::EventDispatcher::DispatchEvent(*target, std::move(bubble_event));
+    return;
+  }
+
   bool bubbles = true;
   // According to the W3C specification, the `mouseenter` and `mouseleave`
   // events do not bubble. Therefore, bubbling needs to be disabled. See:

@@ -15,6 +15,7 @@ namespace event {
 class KeyboardEvent : public Event {
  public:
   KeyboardEvent(const std::string& event_name, const std::string& key_code);
+  KeyboardEvent(const std::string& event_name, const lepus::Value& event_param);
   ~KeyboardEvent();
 
   const std::string& key_code() const { return key_code_; }

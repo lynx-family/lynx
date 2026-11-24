@@ -56,6 +56,7 @@
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/common/bindings/event/message_event.h"
 #include "core/runtime/js/bindings/java_script_element.h"
+#include "core/runtime/js/runtime_constant.h"
 #include "core/runtime/lepus/bindings/style/shared_css_fragment_wrapper.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
@@ -2840,6 +2841,12 @@ bool Element::IsEventPathCatch(event::EventTarget* target,
     return true;
   }
 
+  // Legacy mouse boundary events only include the target in their path.
+  if (event && event->event_type() == event::Event::EventType::kMouseEvent &&
+      !event->bubbles()) {
+    return target != this;
+  }
+
   if (event &&
       (event->from_frontend() ||
        event->event_type() == event::Event::EventType::kPointerEvent) &&
@@ -2882,8 +2889,11 @@ bool Element::IsEventPathSkip(event::EventTarget* target, event::Event* event) {
 // TODO(hexionghui): move this to EventDispatcher
 void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
   // handle the trigger-global-event attribute
-  auto path = event->event_path();
+  const auto& path = event->event_path();
   auto delegate = element_manager_->element_manager_delegate();
+  const bool native_custom_target_only =
+      event->event_type() == event::Event::EventType::kCustomEvent &&
+      !event->from_frontend() && !event->bubbles();
   event->set_event_phase(event::Event::PhaseType::kGlobal);
   for (const auto& item : path) {
     auto current_target = static_cast<Element*>(item.get());
@@ -2893,15 +2903,52 @@ void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
           "is null.");
       continue;
     }
+    if (native_custom_target_only && current_target != this) {
+      continue;
+    }
     if (current_target->EnableTriggerGlobalEvent()) {
       event->set_current_target(current_target->GetWeakTarget());
       event->HandleEventBaseDetail();
-      delegate->SendGlobalEvent(event->type(), event->detail());
+      auto args = lepus::CArray::Create();
+      args->emplace_back(event->type());
+      args->emplace_back(lepus_value::ShallowCopy(event->detail()));
+      auto js_event = fml::MakeRefCounted<runtime::MessageEvent>(
+          runtime::kMessageEventTypeSendGlobalEvent,
+          runtime::ContextProxy::Type::kCoreContext,
+          runtime::ContextProxy::Type::kJSContext,
+          std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+      delegate->DispatchMessageEvent(std::move(js_event));
+
+      auto* native_context_proxy =
+          delegate->GetContextProxy(runtime::ContextProxy::Type::kNative);
+      if (native_context_proxy != nullptr &&
+          native_context_proxy->HasEventListener(
+              runtime::kMessageEventTypeGlobalEvent)) {
+        auto native_context_args = lepus::CArray::Create();
+        native_context_args->emplace_back(event->type());
+        auto native_context_params = lepus::CArray::Create();
+        native_context_params->emplace_back(
+            lepus_value::ShallowCopy(event->detail()));
+        native_context_args->emplace_back(std::move(native_context_params));
+        auto native_context_event = fml::MakeRefCounted<runtime::MessageEvent>(
+            runtime::kMessageEventTypeGlobalEvent,
+            runtime::ContextProxy::Type::kNative,
+            runtime::ContextProxy::Type::kCoreContext,
+            std::make_unique<pub::ValueImplLepus>(
+                lepus::Value(std::move(native_context_args))));
+        native_context_proxy->DispatchEvent(std::move(native_context_event));
+      }
 #if ENABLE_TESTBENCH_REPLAY
       const char* replay_event_type = nullptr;
       switch (event->event_type()) {
         case event::Event::EventType::kTouchEvent:
           replay_event_type = "GlobalTouchEvent";
+          break;
+        case event::Event::EventType::kMouseEvent:
+        case event::Event::EventType::kKeyboardEvent:
+        case event::Event::EventType::kWheelEvent:
+        case event::Event::EventType::kBubbleEvent:
+          replay_event_type = "GlobalBubbleEvent";
           break;
         case event::Event::EventType::kCustomEvent:
           if (!event->from_frontend() &&
@@ -2936,6 +2983,9 @@ void Element::HandleGlobalEvent(fml::RefPtr<event::Event> event) {
         LOGE(
             "Element::HandleGlobalEvent global bind error: the current_target "
             "is null.");
+        continue;
+      }
+      if (current_target->IsDetached()) {
         continue;
       }
       event->set_current_target(current_target->GetWeakTarget());

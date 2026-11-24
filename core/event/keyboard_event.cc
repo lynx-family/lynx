@@ -15,6 +15,17 @@ KeyboardEvent::KeyboardEvent(const std::string& event_name,
   key_code_ = key_code;
 }
 
+KeyboardEvent::KeyboardEvent(const std::string& event_name,
+                             const lepus::Value& event_param)
+    : Event(event_name, EventType::kKeyboardEvent, Capture::kYes, Bubbles::kYes,
+            Cancelable::kYes, ComposedMode::kScoped, event_param) {
+  BASE_STATIC_STRING_DECL(kKey, "key");
+  const auto& key = detail_.GetProperty(kKey);
+  if (key.IsString()) {
+    key_code_ = key.StdString();
+  }
+}
+
 KeyboardEvent::~KeyboardEvent() = default;
 
 }  // namespace event
