@@ -329,6 +329,7 @@ void ValueAnimator::PrepareAnimation() {
 void ValueAnimator::ApplyBackwardsFill(bool update_values) {
   PrepareAnimation();
   overall_fraction_ = 0.f;
+  has_active_sample_ = false;
   if (update_values) {
     AnimateValue(GetCurrentIterationFraction(0.f, reversing_));
   }
@@ -372,7 +373,7 @@ void ValueAnimator::Start(bool play_backwards) {
   // was running, calling Start() would put the animation in the
   // started-but-not-yet-reached-the-first-frame phase.
   last_frame_time_ = -1;
-  first_frame_time_ = -1;
+  has_active_sample_ = false;
   start_time_ = -1;
   timeline_start_time_ = -1;
   AddAnimationCallback(0);
@@ -588,7 +589,7 @@ std::unique_ptr<ValueAnimator> ValueAnimator::Clone() const {
   clone->overall_fraction_ = overall_fraction_;
   clone->current_fraction_ = current_fraction_;
   clone->last_frame_time_ = last_frame_time_;
-  clone->first_frame_time_ = first_frame_time_;
+  clone->has_active_sample_ = has_active_sample_;
   clone->running_ = running_;
   clone->started_ = started_;
   clone->start_listeners_called_ = false;
@@ -616,7 +617,7 @@ void ValueAnimator::Reset() {
   start_listeners_called_ = false;
   animation_prepared_ = false;
   last_frame_time_ = -1;
-  first_frame_time_ = -1;
+  has_active_sample_ = false;
   start_time_ = -1;
   // reversing_ needs to be reset *after* notifying the listeners for the end
   // callbacks.
@@ -640,6 +641,7 @@ void ValueAnimator::EndAnimation(bool remove) {
   if (remove) {
     running_ = false;
   }
+  has_active_sample_ = false;
   // should not notify end event duplicated.
   // end_listeners_called_ will be set false when animator restart.
   if ((started_ || running_) && !end_listeners_called_) {
@@ -708,10 +710,11 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
   bool done = false;
   if (running_) {
     int64_t scaledDuration = GetScaledDuration();
-    float fraction =
-        scaledDuration > 0
-            ? static_cast<float>(current_time - start_time_) / scaledDuration
-            : 1.f;
+    // Samples before the active phase still render the initial value.
+    const int64_t play_time = std::max(current_time, start_time_) - start_time_;
+    float fraction = scaledDuration > 0
+                         ? static_cast<float>(play_time) / scaledDuration
+                         : 1.f;
     float lastFraction = overall_fraction_;
     bool lastIterationFinished =
         (fraction >= repeat_count_ + 1) && (repeat_count_ != kInfinite);
@@ -721,21 +724,14 @@ bool ValueAnimator::AnimateBasedOnTime(int64_t current_time,
       // 0 duration animator, ignore the repeat count and skip to the end
       done = true;
     } else {
-      // Lifecycle-only animators may skip UI frames, so one callback can cross
-      // multiple iteration boundaries. Report every crossed boundary instead
-      // of collapsing them into a single repeat event.
-      const int64_t first_crossed_iteration =
-          static_cast<int64_t>(std::floor(lastFraction)) + 1;
-      int64_t last_crossed_iteration =
-          static_cast<int64_t>(std::floor(fraction));
-      if (repeat_count_ != kInfinite) {
-        // The boundary after the final iteration produces the end event, not
-        // another repeat event.
-        last_crossed_iteration = std::min(last_crossed_iteration,
-                                          static_cast<int64_t>(repeat_count_));
-      }
-      for (int64_t iteration = first_crossed_iteration;
-           iteration <= last_crossed_iteration; ++iteration) {
+      const bool is_active =
+          current_time >= start_time_ && !lastIterationFinished;
+      const bool was_active = std::exchange(has_active_sample_, is_active);
+      const int64_t previous_iteration =
+          static_cast<int64_t>(std::floor(lastFraction));
+      const int64_t iteration = static_cast<int64_t>(std::floor(fraction));
+      // Only active-to-active samples can report an iteration boundary.
+      if (was_active && is_active && iteration > previous_iteration) {
         const double elapsed_time =
             lynx::gfx::GetRepeatDuration(
                 iteration, fml::TimeDelta::FromMilliseconds(duration_))
@@ -976,8 +972,7 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
 
       last_frame_time_ = frame_time;
 
-      bool finished =
-          AnimateBasedOnTime(std::max(frame_time, start_time_), false);
+      bool finished = AnimateBasedOnTime(frame_time, false);
       if (finished) {
         EndAnimation(!(fill_mode_ & kForwards));
       }
@@ -1062,12 +1057,7 @@ bool ValueAnimator::DoAnimationFrame(int64_t frame_time, bool update_values) {
         false;  // allow start time to be compensated for jank
   }
   last_frame_time_ = frame_time;
-  // The frame time might be before the start time during the first frame of
-  // an animation.  The "current time" must always be on or after the start
-  // time to avoid animating frames at negative time intervals.  In practice,
-  // this is very rare and only happens when seeking backwards.
-  int64_t current_time = std::max(frame_time, start_time_);
-  bool finished = AnimateBasedOnTime(current_time);
+  bool finished = AnimateBasedOnTime(frame_time);
 
   if (finished) {
     EndAnimation(!(fill_mode_ & kForwards));
