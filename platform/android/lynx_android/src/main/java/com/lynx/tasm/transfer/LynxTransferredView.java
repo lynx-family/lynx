@@ -68,15 +68,32 @@ public final class LynxTransferredView extends FrameLayout {
   }
 
   /**
-   * Replaces this component's props. Returning does not mean that rendering has completed.
-   * Page data and global props are not changed. Updates after release or page destruction
-   * are logged and ignored.
+   * Replaces this component's props and keeps its state, like {@code updateGlobalProps}. Use it
+   * for updates of the same content, such as a streaming message. Returning does not mean that
+   * rendering has completed. Updates after release or page destruction are logged and ignored.
    */
   @UiThread
-  public void setProps(@NonNull ReadableMap nextProps) {
+  public void updateProps(@NonNull ReadableMap nextProps) {
+    dispatchProps("updateProps", LynxTransferManager.UPDATE_TRANSFER,
+        TraceEventDef.TRANSFER_UPDATE_PROPS, nextProps);
+  }
+
+  /**
+   * Replaces this component's props and resets its state, like a template reload. Use it when this
+   * view is reused for other content. Returning does not mean that rendering has completed. Updates
+   * after release or page destruction are logged and ignored.
+   */
+  @UiThread
+  public void reloadProps(@NonNull ReadableMap nextProps) {
+    dispatchProps("reloadProps", LynxTransferManager.RELOAD_TRANSFER,
+        TraceEventDef.TRANSFER_RELOAD_PROPS, nextProps);
+  }
+
+  private void dispatchProps(
+      String method, String type, String traceEvent, @NonNull ReadableMap nextProps) {
     UIThreadUtils.assertOnUiThread();
     if (mOwner == null) {
-      LLog.w("LynxTransferredView", "Ignoring setProps for released transfer " + mTransferId);
+      LLog.w("LynxTransferredView", "Ignoring " + method + " for released transfer " + mTransferId);
       return;
     }
     if (!mCreateDispatched) {
@@ -84,11 +101,11 @@ public final class LynxTransferredView extends FrameLayout {
       mPendingProps = nextProps;
       return;
     }
-    TransferTrace.begin(TraceEventDef.TRANSFER_SET_PROPS, mInstanceId, mTransferId, -1);
+    TransferTrace.begin(traceEvent, mInstanceId, mTransferId, -1);
     JavaOnlyMap data = createEventData();
     data.put("props", nextProps);
-    mOwner.dispatchTransferEvent(LynxTransferManager.SET_TRANSFER_PROPS, data);
-    TransferTrace.end(TraceEventDef.TRANSFER_SET_PROPS);
+    mOwner.dispatchTransferEvent(type, data);
+    TransferTrace.end(traceEvent);
   }
 
   /** Releases the component and its content. Repeated calls have no effect. */
