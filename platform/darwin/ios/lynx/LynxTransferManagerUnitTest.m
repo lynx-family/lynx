@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxTransferListener.h>
+#import <Lynx/LynxTransferWrapperView.h>
 #import <Lynx/LynxView.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -17,6 +18,7 @@
                           view:(UIView*)view
                        dataset:(NSDictionary*)dataset;
 - (void)dispatchTransferDatasetUpdate:(UIView*)view dataset:(NSDictionary*)dataset;
+- (void)dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView*)view;
 
 @end
 
@@ -55,6 +57,22 @@
 
 - (void)onRemove:(NSString*)transferId view:(UIView*)view {
   self.removeCount++;
+}
+
+@end
+
+@interface LynxTransferSizeListener : LynxTransferTestListener
+
+@property(nonatomic, assign) NSInteger sizeChangeCount;
+@property(nonatomic, strong) LynxTransferWrapperView* lastSizeView;
+
+@end
+
+@implementation LynxTransferSizeListener
+
+- (void)transferViewDidChangeIntrinsicContentSize:(LynxTransferWrapperView*)view {
+  self.sizeChangeCount++;
+  self.lastSizeView = view;
 }
 
 @end
@@ -105,6 +123,37 @@
   XCTAssertEqual(listener.createCount, 1);
   XCTAssertEqualObjects(listener.createDataset, updatedDataset);
   XCTAssertEqual(listener.datasetUpdateCount, 0);
+}
+
+- (void)testIntrinsicContentSizeChangeNotifiesOnlyListenersThatImplementIt {
+  LynxTransferManager* manager = [LynxTransferManager new];
+  LynxTransferSizeListener* sizeListener = [LynxTransferSizeListener new];
+  sizeListener.acceptedTransferId = @"size";
+  LynxTransferTestListener* plainListener = [LynxTransferTestListener new];
+  plainListener.acceptedTransferId = @"plain";
+  LynxTransferWrapperView* sizeWrapper = OCMClassMock([LynxTransferWrapperView class]);
+  LynxTransferWrapperView* plainWrapper = OCMClassMock([LynxTransferWrapperView class]);
+
+  [manager registerTransferListener:sizeListener];
+  [manager registerTransferListener:plainListener];
+  [manager dispatchTransferCreate:@"size" view:sizeWrapper dataset:@{}];
+  [manager dispatchTransferCreate:@"plain" view:plainWrapper dataset:@{}];
+  [manager dispatchTransferIntrinsicContentSizeChange:sizeWrapper];
+  [manager dispatchTransferIntrinsicContentSizeChange:plainWrapper];
+
+  XCTAssertEqual(sizeListener.sizeChangeCount, 1);
+  XCTAssertEqual(sizeListener.lastSizeView, sizeWrapper);
+}
+
+- (void)testLynxViewForwardsIntrinsicContentSizeChange {
+  LynxView* lynxView = [[LynxView alloc] initWithoutRender];
+  id manager = OCMClassMock([LynxTransferManager class]);
+  [lynxView setValue:manager forKey:@"transferManager"];
+  LynxTransferWrapperView* wrapper = OCMClassMock([LynxTransferWrapperView class]);
+
+  [lynxView dispatchTransferIntrinsicContentSizeChange:wrapper];
+
+  OCMVerify([manager dispatchTransferIntrinsicContentSizeChange:wrapper]);
 }
 
 - (void)testPropsDidUpdateDispatchesCurrentDataset {

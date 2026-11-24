@@ -4461,6 +4461,7 @@ public protocol LynxTransferListener-p : <NSObject> {
   public BOOL LynxTransferListener-p::onCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
   public void LynxTransferListener-p::onDatasetUpdate:dataset:(NSString *transferId,[dataset] NSDictionary *dataset);
   public void LynxTransferListener-p::onRemove:view:(NSString *transferId,[view] UIView *view);
+  public void LynxTransferListener-p::transferViewDidChangeIntrinsicContentSize:(LynxTransferWrapperView *view);
 }
 
 public class LynxTransferManager : NSObject {
@@ -4468,6 +4469,7 @@ public class LynxTransferManager : NSObject {
   public void LynxTransferManager::unregisterTransferListener:(id< LynxTransferListener > listener);
   public void LynxTransferManager::dispatchTransferCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
   public void LynxTransferManager::dispatchTransferDatasetUpdate:dataset:(UIView *view,[dataset] NSDictionary *dataset);
+  public void LynxTransferManager::dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView *view);
   public void LynxTransferManager::dispatchTransferRemove:view:(NSString *transferId,[view] UIView *view);
   public void LynxTransferManager::clearTransfers();
 }
@@ -4477,7 +4479,15 @@ public class LynxTransferShadowNode : LynxCustomMeasureShadowNode {
 }
 
 public class LynxTransferWrapperView : UIView {
+  public LynxViewSizeMode LynxTransferWrapperView::layoutWidthMode layoutWidthMode;
+  public LynxViewSizeMode LynxTransferWrapperView::layoutHeightMode layoutHeightMode;
+  public CGFloat LynxTransferWrapperView::preferredLayoutWidth preferredLayoutWidth;
+  public CGFloat LynxTransferWrapperView::preferredLayoutHeight preferredLayoutHeight;
+  public CGFloat LynxTransferWrapperView::preferredMaxLayoutWidth preferredMaxLayoutWidth;
+  public CGFloat LynxTransferWrapperView::preferredMaxLayoutHeight preferredMaxLayoutHeight;
+  public BOOL LynxTransferWrapperView::enableAutoLayout enableAutoLayout;
   public instancetype LynxTransferWrapperView::initWithTransfer:(LynxUITransfer *transfer);
+  public void LynxTransferWrapperView::triggerLayout();
 }
 
 public class LynxTransformOriginRaw : NSObject {
