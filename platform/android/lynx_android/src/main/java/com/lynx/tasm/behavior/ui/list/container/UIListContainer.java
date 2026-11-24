@@ -37,7 +37,6 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
-import com.lynx.tasm.behavior.render.IRendererHost;
 import com.lynx.tasm.behavior.render.Renderer;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -45,13 +44,13 @@ import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
 import com.lynx.tasm.behavior.ui.scroll.utils.AutoScroller;
 import com.lynx.tasm.behavior.ui.scroll.utils.ScrollSnapHelper;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.ComponentView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.ui.view.UISimpleView;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxDetailEvent;
 import com.lynx.tasm.event.LynxScrollEvent;
-import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
 import com.lynx.tasm.gesture.handler.GestureConstants;
@@ -180,14 +179,14 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @Override
   public void insertChild(LynxBaseUI child, int index) {
-    // The list container should manager the view of component on the interface of
-    // "onLayoutFinish()"
     super.onInsertChild(child, index);
-    if (mView.getRenderer() != null && child instanceof UIComponent) {
-      View view = ((UIComponent) child).getView();
-      if (view != null) {
-        mView.publishChildTreeState(view, view.getParent() == mView.getRendererChildViewGroup());
-      }
+    if (isCUIList() && isCUIListItem(child)) {
+      // Reattach the item view after a z-index reorder reinserts its draw-tree node.
+      // Other lists attach item views on a list mount notification or layout completion.
+      UIComponent component = (UIComponent) child;
+      insertListItemNodeInternal(component);
+      View view = component.getView();
+      mView.publishChildTreeState(view, view.getParent() == mView.getRendererChildViewGroup());
     }
     mView.markRendererDrawingOrderDirty();
     if (mEnableListSticky && !mUpdateStickyForDiff) {
@@ -256,7 +255,13 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @Override
   public void removeChild(LynxBaseUI child) {
-    super.removeChild(child);
+    if (isCUIList() && isCUIListItem(child)) {
+      if (super.onRemoveChild(child)) {
+        doRemoveView(child);
+      }
+    } else {
+      super.removeChild(child);
+    }
     mView.markRendererDrawingOrderDirty();
     if (child instanceof UIComponent) {
       UIComponent component = (UIComponent) child;
@@ -419,7 +424,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     if (childView != null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
         childView.setOutlineProvider(null);
-        if (mView.getRenderer() != null && ViewCompat.getTranslationZ(childView) != translateZ) {
+        if (isCUIList() && ViewCompat.getTranslationZ(childView) != translateZ) {
           mView.markRendererDrawingOrderDirty();
         }
         ViewCompat.setTranslationZ(childView, translateZ);
@@ -1386,6 +1391,18 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
+  private boolean isCUIList() {
+    return mView != null && mView.getRenderer() != null;
+  }
+
+  private boolean isCUIListItem(@Nullable LynxBaseUI child) {
+    if (!(child instanceof UIComponent)) {
+      return false;
+    }
+    AndroidView childView = ((UIComponent) child).getView();
+    return childView != null && childView.getRenderer() != null;
+  }
+
   private int getIndexFromItemKey(String itemKey) {
     if (TextUtils.isEmpty(itemKey) || !mItemKeyMap.containsKey(itemKey)) {
       return -1;
@@ -1453,15 +1470,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   private void publishStickyItemOffset(UIComponent component, float offset, boolean sticky) {
-    View view = component.getView();
-    if (mView.getRenderer() == null || !(view instanceof IRendererHost)) {
+    if (!isCUIList() || !isCUIListItem(component)) {
       return;
     }
-    Renderer renderer = ((IRendererHost) view).getRenderer();
-    if (renderer != null) {
-      // Use the sticky offset directly: View translation may also contain CSS transforms.
-      renderer.publishStickyOffset(mIsVertical ? 0 : offset, mIsVertical ? offset : 0, sticky);
-    }
+    // Use the sticky offset directly: View translation may also contain CSS transforms.
+    Renderer renderer = component.getView().getRenderer();
+    renderer.publishStickyOffset(mIsVertical ? 0 : offset, mIsVertical ? offset : 0, sticky);
   }
 
   private void resetStickyItem(UIComponent component) {

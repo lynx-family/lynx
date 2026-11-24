@@ -425,6 +425,27 @@ void UIList::AddChild(lynx::tasm::harmony::UIBase* child, int index) {
     children_.insert(children_.begin() + index, child);
   }
   child->SetParent(this);
+  if (context_->IsFragmentLayerRenderOn()) {
+    if (enable_list_sticky_ && update_sticky_for_diff_ && IsListItem(child)) {
+      auto* component = static_cast<UIComponent*>(child);
+      // A z-index reorder clears the listener but keeps the sticky item
+      // registered. Match the component by identity because its item key may
+      // also have changed.
+      const auto matches_component = [component](const auto& entry) {
+        return entry.second == component;
+      };
+      if (std::any_of(sticky_top_item_map_.begin(), sticky_top_item_map_.end(),
+                      matches_component) ||
+          std::any_of(sticky_bottom_item_map_.begin(),
+                      sticky_bottom_item_map_.end(), matches_component)) {
+        component->SetNodeReadyListener(this);
+      }
+    }
+    if (NodeManager::Instance().InsertNode(container_layout_, child->DrawNode(),
+                                           -1)) {
+      child->OnAttachedToFragmentLayerTree();
+    }
+  }
 }
 
 void UIList::RemoveChild(lynx::tasm::harmony::UIBase* child) {

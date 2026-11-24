@@ -220,10 +220,11 @@ LYNX_REGISTER_UI("list-container")
 }
 
 - (void)insertChild:(LynxUI *)child atIndex:(NSInteger)index {
-  // TODO: Remount CUI list-item views when dynamic z-index updates reorder items.
-  // Removal detaches the UIView, but reinsertion here only restores the logical
-  // UI tree, leaving already-bound items detached from view tree and invisible.
-  if (child != nil) {
+  if ([self isCUIList] && [LynxListItemHelper isCUIListItem:child]) {
+    // A z-index reorder detaches the item's UIView. Let the superclass reinsert
+    // both the child and its view in the new order.
+    [super insertChild:child atIndex:index];
+  } else if (child != nil) {
     child.parent = self;
     if ((NSUInteger)index > self.children.count) {
       [self.children addObject:child];
