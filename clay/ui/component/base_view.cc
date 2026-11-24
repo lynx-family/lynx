@@ -2477,11 +2477,15 @@ void BaseView::SetPaddings(float padding_left, float padding_top,
   FloatRect new_rect(PaddingLeft() + BorderLeft(), PaddingTop() + BorderTop(),
                      Width() - PaddingRight() - BorderRight(),
                      Height() - PaddingBottom() - BorderBottom());
-  if (new_rect.width() != old_rect.width() ||
-      new_rect.height() != old_rect.height()) {
+  if (ShouldNotifyContentSizeChangedForPadding(old_rect, new_rect)) {
     OnContentSizeChanged(old_rect, new_rect);
   }
   OnLayoutChange();
+}
+
+bool BaseView::ShouldNotifyContentSizeChangedForPadding(
+    const FloatRect& old_rect, const FloatRect& new_rect) const {
+  return old_rect.size() != new_rect.size();
 }
 
 void BaseView::SetMargins(float margin_left, float margin_top,
