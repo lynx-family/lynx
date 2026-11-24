@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 
+#include "base/include/platform/operating_system.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
@@ -86,6 +87,23 @@ class PaintingContextScrollTest : public UITest {
   std::unique_ptr<ViewContext> view_context_;
   ScrollWrapper* scroll_view_ = nullptr;
 };
+
+TEST_F_UI(PaintingContextScrollTest, FadingEdgeLengthUpdatesRenderScroll) {
+  if constexpr (lynx::base::GetOSType() != lynx::base::OSType::kMacOS) {
+    GTEST_SKIP() << "ScrollView fading edges are available on macOS.";
+  }
+  auto* render_scroll = scroll_view_->GetScrollView()->GetRenderScroll();
+  EXPECT_FALSE(render_scroll->HasFadingEdge());
+
+  scroll_view_->SetAttribute("fading-edge-length", clay::Value("20px"));
+  EXPECT_TRUE(render_scroll->HasFadingEdge());
+
+  scroll_view_->SetAttribute("scroll-x", clay::Value(true));
+  EXPECT_EQ(render_scroll->GetScrollDirection(), ScrollDirection::kHorizontal);
+
+  scroll_view_->SetAttribute("fading-edge-length", clay::Value("-1px"));
+  EXPECT_FALSE(render_scroll->HasFadingEdge());
+}
 
 TEST_F_UI(PaintingContextScrollTest, PanHandlerBlocksWrappedNativeTouchScroll) {
   scroll_view_->SetGestureDetectorMap({{1, {1, lynx::tasm::GestureType::PAN}}});
