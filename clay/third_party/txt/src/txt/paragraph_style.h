@@ -18,13 +18,14 @@
 #define CLAY_THIRD_PARTY_TXT_SRC_TXT_PARAGRAPH_STYLE_H_
 
 #include <climits>
+#include <cstdint>
 #include <limits>
 #include <string>
 #include <vector>
 
-#include "font_style.h"
-#include "font_weight.h"
-#include "text_style.h"
+#include "clay/third_party/txt/src/txt/font_style.h"
+#include "clay/third_party/txt/src/txt/font_weight.h"
+#include "clay/third_party/txt/src/txt/text_style.h"
 
 namespace txt {
 
@@ -43,6 +44,8 @@ enum class TextDirection {
 };
 
 enum RulerType { kAtLeast, kAuto, kExact };
+
+enum class Hyphens : uint8_t { kNone, kManual, kAuto, kUnspecified };
 
 // Adjusts the leading over and under text.
 //
@@ -77,6 +80,7 @@ class ParagraphStyle {
   RulerType height_type = RulerType::kAuto;
   bool has_height_override = false;
   size_t text_height_behavior = TextHeightBehavior::kAll;
+  Hyphens hyphens = Hyphens::kUnspecified;
 
   // Strut properties. strut_enabled must be set to true for the rest of the
   // properties to take effect.

@@ -16,6 +16,7 @@
 #include <textra/layout_region.h>
 #include <textra/paragraph.h>
 #include <textra/style.h>
+
 #if defined(ENABLE_SKITY)
 #include "clay/fml/paths.h"
 #include "clay/testing/testing.h"
@@ -152,6 +153,45 @@ TEST(ParagraphTTTextTest, KeepsIndexesInSyncForEmbeddedNull) {
 }
 
 #if defined(ENABLE_SKITY)
+TEST(ParagraphTTTextTest, DiscretionaryHyphenPreservesSourceIndices) {
+  if (!ParagraphTTText::SupportsHyphenation()) {
+    GTEST_SKIP() << "TTText hyphenation is unavailable.";
+  }
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+  tttext::Style style;
+  tttext::FontDescriptor descriptor;
+  descriptor.font_family_list_ = {kFixtureFontFamily};
+  descriptor.font_style_ = tttext::FontStyle::Bold();
+  style.SetFontDescriptor(descriptor);
+  style.SetTextSize(20.f);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText reference(font_collection, paragraph_style, nullptr);
+  reference.AddTextRun(style, u"AA");
+  reference.Layout(100.f);
+  const double width = reference.GetLongestLine() + 1.f;
+
+  const std::u16string text = u"A\u00adAAAAAAA";
+  ParagraphTTText manual(font_collection, paragraph_style, nullptr);
+  manual.SetHyphens(Hyphens::kManual);
+  manual.AddTextRun(style, text);
+  manual.Layout(width);
+  const auto& manual_lines = manual.GetLineMetrics();
+  ASSERT_GT(manual_lines.size(), 1u);
+  EXPECT_EQ(manual_lines.front().end_index, 2u);
+  EXPECT_EQ(manual_lines[1].start_index, 2u);
+  EXPECT_EQ(manual.GetTextSize(), text.size());
+
+  ParagraphTTText none(font_collection, paragraph_style, nullptr);
+  none.SetHyphens(Hyphens::kNone);
+  none.AddTextRun(style, text);
+  none.Layout(width);
+  const auto& none_lines = none.GetLineMetrics();
+  ASSERT_GT(none_lines.size(), 1u);
+  EXPECT_GT(none_lines.front().end_index, 2u);
+}
+
 TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
   constexpr float kFontSize = 40.f;
   auto font_collection = CreateFixtureFontCollection();

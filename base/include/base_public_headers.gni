@@ -112,6 +112,7 @@ base_core_public_headers_list = [
   "no_destructor.h",
   "notification_center.h",
   "path_utils.h",
+  "platform/operating_system.h",
   "position.h",
   "shared_vector.h",
   "sorted_for_each.h",
