@@ -1962,6 +1962,11 @@ public class com::lynx::tasm::behavior::ui::UIExposure::ExposureCallback : com.l
   public LynxBaseUI com.lynx.tasm.behavior.ui.UIExposure.ExposureCallback.findNode(int sign);
 }
 
+public class com::lynx::jsbridge::RuntimeLifecycleListenerDelegate::ExtensionDelegate :  {
+  public synchronized long com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.ExtensionDelegate.getNativePtr();
+  public synchronized void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.ExtensionDelegate.destroy();
+}
+
 public class com::lynx::tasm::TimingHandler::ExtraTimingInfo :  {
   public long com.lynx.tasm.TimingHandler.ExtraTimingInfo.mOpenTime mOpenTime;
   public long com.lynx.tasm.TimingHandler.ExtraTimingInfo.mContainerInitStart mContainerInitStart;
@@ -1984,6 +1989,10 @@ public class com::lynx::tasm::behavior::ui::list::FactoredPagerSnapHelper : Page
   public View com.lynx.tasm.behavior.ui.list.FactoredPagerSnapHelper.findSnapView(RecyclerView.LayoutManager layoutManager);
   public int com.lynx.tasm.behavior.ui.list.FactoredPagerSnapHelper.findTargetSnapPosition(RecyclerView.LayoutManager layoutManager, int velocityX, int velocityY);
   public void com.lynx.tasm.behavior.ui.list.FactoredPagerSnapHelper.attachToRecyclerView(@Nullable RecyclerView recyclerView);
+}
+
+public interface com::lynx::jsbridge::RuntimeLifecycleListenerDelegate::Factory {
+  public RuntimeLifecycleListenerDelegate com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.Factory.create();
 }
 
 public interface com::lynx::tasm::service::ILynxTrailService::FetchCallback {
@@ -10100,6 +10109,7 @@ public class com::lynx::jsbridge::RuntimeLifecycleListenerDelegate : com.lynx.js
   public com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.RuntimeLifecycleListenerDelegate( @NonNull WeakReference< LynxContext > lynxContext, @NonNull RuntimeLifecycleListener listener);
   public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeAttach(long napiEnv, String runtimeType);
   public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeDetach();
+  public static ExtensionDelegate com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.createExtensionDelegate(Factory factory);
 }
 
 public class abstract com::lynx::react::bridge::SafeRunnable : Runnable {
