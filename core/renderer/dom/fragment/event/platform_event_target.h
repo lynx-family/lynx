@@ -154,7 +154,7 @@ class PlatformEventTarget
   bool OverflowX() const { return overflow_x_; }
   bool OverflowY() const { return overflow_y_; }
   bool IsLayoutOnly() const { return is_layout_only_; }
-  const gfx::Matrix44* Transform() const { return transform_.get(); }
+  const gfx::Matrix44* Transform() const;
   bool IsRoot() const { return sign_ == root_id_; }
   bool IsPageRoot() const { return IsRoot() && root_id_ == kRootId; }
   const base::Vector<PlatformEventName>& EventSet() const {
@@ -223,7 +223,7 @@ class PlatformEventTarget
   bool GetPointInTarget(float target_point[2],
                         fml::RefPtr<PlatformEventTarget> parent_target,
                         float point[2]);
-  bool ContainsPoint(float point[2]);
+  bool ContainsPoint(float point[2], HitTestMode mode = HitTestMode::kDefault);
   bool IsVisibleForExposure(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
       float root_view_origin_on_screen[2], const float window_rect[4]) const;
@@ -364,6 +364,7 @@ class PlatformEventTarget
   };
   HitTestResult HitTestInternal(float point[2], HitTestMode mode,
                                 bool visit_children);
+  std::array<float, 2> LocalBoundsSize() const;
   float DistanceToTouchTarget(const float point[2]) const;
 
   template <typename T>
@@ -383,7 +384,7 @@ class PlatformEventTarget
   bool HitEventRegions(const std::vector<EventRegion>& regions,
                        float point[2]) const;
   float ConvertEventRegionSizeValue(const EventRegionSizeValue& value,
-                                    bool is_horizontal) const;
+                                    float reference_size) const;
 
   void GetOrUpdateTargetScreenRect(
       std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,

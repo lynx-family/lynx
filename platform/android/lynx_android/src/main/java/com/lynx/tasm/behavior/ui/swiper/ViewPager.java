@@ -19,6 +19,8 @@ import android.widget.Scroller;
 import androidx.core.math.MathUtils;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.render.IRendererHost;
+import com.lynx.tasm.behavior.render.Renderer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -703,6 +705,24 @@ public class ViewPager extends ViewGroup {
     for (View child : children) {
       recycleView(child, mKeepItemView);
     }
+    publishPageStates();
+  }
+
+  private void publishPageStates() {
+    if (getParent() instanceof SwiperView) {
+      SwiperView host = (SwiperView) getParent();
+      if (host.getRenderer() != null) {
+        host.getRenderer().publishChildPositions();
+        for (int i = 0; i < getChildCount(); i++) {
+          View child = getChildAt(i);
+          Renderer renderer =
+              child instanceof IRendererHost ? ((IRendererHost) child).getRenderer() : null;
+          if (renderer != null) {
+            renderer.publishViewTransform(mTransformer != null);
+          }
+        }
+      }
+    }
   }
 
   private void relayoutChild(final View child, int position, int begin, int end) {
@@ -788,6 +808,12 @@ public class ViewPager extends ViewGroup {
     if (!keepItemView) {
       // addViewInLayout() + removeView() will trigger requestLayout one time
       removeView(child);
+      if (child instanceof IRendererHost) {
+        Renderer renderer = ((IRendererHost) child).getRenderer();
+        if (renderer != null) {
+          renderer.publishIsOnTree(false);
+        }
+      }
       int position = ((LayoutParams) child.getLayoutParams()).position;
       mAdapter.recycle(this, position, child);
     }
@@ -1684,6 +1710,7 @@ public class ViewPager extends ViewGroup {
     }
     this.mTransformer = transformer;
     transformIfNeeded();
+    publishPageStates();
   }
 
   public void setIsRTL(boolean isRTL) {

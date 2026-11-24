@@ -70,6 +70,19 @@ void UpdateScrollOffset(JNIEnv* env, jobject caller, jlong native_ptr,
   }
 }
 
+void UpdateViewTransform(JNIEnv* env, jobject caller, jlong native_ptr,
+                         jint sign, jfloatArray matrix) {
+  if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {
+    if (!matrix) {
+      renderer->UpdateViewTransform(nullptr, 0, 0);
+    } else if (env->GetArrayLength(matrix) == 11) {
+      float values[11];
+      env->GetFloatArrayRegion(matrix, 0, 11, values);
+      renderer->UpdateViewTransform(values, values[9], values[10]);
+    }
+  }
+}
+
 void UpdateStickyOffset(JNIEnv* env, jobject caller, jlong native_ptr,
                         jint sign, jfloat x, jfloat y, jboolean sticky) {
   if (auto* renderer = GetRendererForStateUpdate(native_ptr, sign)) {

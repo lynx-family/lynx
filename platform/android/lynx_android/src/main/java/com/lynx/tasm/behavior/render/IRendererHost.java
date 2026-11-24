@@ -34,6 +34,12 @@ public interface IRendererHost {
     return view != null ? view.getHeight() : 0;
   }
 
+  // Coordinate-container classification for renderer hit testing, independent
+  // of the UI's accessibility scrollability.
+  default boolean isRendererHostScrollContainer() {
+    return false;
+  }
+
   default int getRendererHostScrollX() {
     View view = getView();
     return view != null ? view.getScrollX() : 0;

@@ -69,6 +69,14 @@ void PlatformEventTarget::RefreshScrollOffset() {
   UpdateScrollOffsetIfNeeded();
 }
 
+const gfx::Matrix44* PlatformEventTarget::Transform() const {
+  if (const auto* state = PublishedPlatformState();
+      state && state->view_transform) {
+    return &state->view_transform->matrix;
+  }
+  return transform_.get();
+}
+
 void PlatformEventTarget::SetTransform(const float transform[16]) {
   if (transform == nullptr) {
     transform_.reset();
@@ -93,6 +101,14 @@ void PlatformEventTarget::UpdateScrollOffsetIfNeeded() {
   scroll_offset_y_ = offset[1];
 }
 
+std::array<float, 2> PlatformEventTarget::LocalBoundsSize() const {
+  if (const auto* state = PublishedPlatformState();
+      state && state->view_transform) {
+    return state->view_transform->size;
+  }
+  return {Width(), Height()};
+}
+
 float PlatformEventTarget::DistanceToTouchTarget(const float point[2]) const {
   if (minimum_touch_target_px_ < 0.f || !ShouldHitTest() ||
       PointerEvents() == LynxPointerEventsValue::kNone) {
@@ -101,14 +117,15 @@ float PlatformEventTarget::DistanceToTouchTarget(const float point[2]) const {
   // Minimum target sizes are physical pixels; geometry uses platform units.
   const float minimum = minimum_touch_target_px_ /
                         target_helper_->GetPhysicalPixelsPerLayoutUnit();
-  const float padding_x = std::max(0.f, minimum - Width()) / 2;
-  const float padding_y = std::max(0.f, minimum - Height()) / 2;
-  if (point[0] < -padding_x || point[0] >= Width() + padding_x ||
-      point[1] < -padding_y || point[1] >= Height() + padding_y) {
+  const auto size = LocalBoundsSize();
+  const float padding_x = std::max(0.f, minimum - size[0]) / 2;
+  const float padding_y = std::max(0.f, minimum - size[1]) / 2;
+  if (point[0] < -padding_x || point[0] >= size[0] + padding_x ||
+      point[1] < -padding_y || point[1] >= size[1] + padding_y) {
     return std::numeric_limits<float>::infinity();
   }
-  const float dx = std::max({0.f, -point[0], point[0] - Width()});
-  const float dy = std::max({0.f, -point[1], point[1] - Height()});
+  const float dx = std::max({0.f, -point[0], point[0] - size[0]});
+  const float dy = std::max({0.f, -point[1], point[1] - size[1]});
   return dx * dx + dy * dy;
 }
 
@@ -147,7 +164,7 @@ PlatformEventTarget::HitTestResult PlatformEventTarget::HitTestInternal(
               local, fml::RefPtr<PlatformEventTarget>(this), point)) {
         continue;
       }
-      const bool inside = (*child)->ContainsPoint(local);
+      const bool inside = (*child)->ContainsPoint(local, mode);
       if (!inside && (!event_targets_only ||
                       !std::isfinite((*child)->DistanceToTouchTarget(local)))) {
         continue;
@@ -174,8 +191,9 @@ PlatformEventTarget::HitTestResult PlatformEventTarget::HitTestInternal(
   const float distance = event_targets_only
                              ? DistanceToTouchTarget(point)
                              : std::numeric_limits<float>::infinity();
-  const bool direct = point[0] >= 0.f && point[0] < Width() &&
-                      point[1] >= 0.f && point[1] < Height();
+  const auto size = LocalBoundsSize();
+  const bool direct = point[0] >= 0.f && point[0] < size[0] &&
+                      point[1] >= 0.f && point[1] < size[1];
   if (!result.targets.empty()) {
     if (std::isfinite(distance)) {
       // An eligible ancestor also receives this branch. Its sharing policy
@@ -279,7 +297,7 @@ void PlatformEventTarget::NormalizeEventRegionUnits(EventRegion* regions,
   }
 }
 
-bool PlatformEventTarget::ContainsPoint(float point[2]) {
+bool PlatformEventTarget::ContainsPoint(float point[2], HitTestMode mode) {
   float x = point[0];
   float y = point[1];
   if (hit_test_regions_) {
@@ -293,13 +311,21 @@ bool PlatformEventTarget::ContainsPoint(float point[2]) {
   }
   float left = 0.f;
   float top = 0.f;
-  float right = Width();
-  float bottom = Height();
+  const auto size = LocalBoundsSize();
+  float right = size[0];
+  float bottom = size[1];
   if (hit_slop_) {
-    left = -ConvertEventRegionSizeValue((*hit_slop_)[0], true);
-    top = -ConvertEventRegionSizeValue((*hit_slop_)[1], false);
-    right = Width() + ConvertEventRegionSizeValue((*hit_slop_)[2], true);
-    bottom = Height() + ConvertEventRegionSizeValue((*hit_slop_)[3], false);
+    left = -ConvertEventRegionSizeValue((*hit_slop_)[0], size[0]);
+    top = -ConvertEventRegionSizeValue((*hit_slop_)[1], size[1]);
+    right += ConvertEventRegionSizeValue((*hit_slop_)[2], size[0]);
+    bottom += ConvertEventRegionSizeValue((*hit_slop_)[3], size[1]);
+  }
+  // Native boxes stay half-open, including after hit-slop expansion. Explicit
+  // hit regions above keep their own boundaries. For ViewPager, the native box
+  // is the individual page view's bounds within the LynxView.
+  if (const auto* state = PublishedPlatformState();
+      state && state->view_transform) {
+    return x >= left && x < right && y >= top && y < bottom;
   }
   if (x >= left && x <= right && y >= top && y <= bottom) {
     return true;
@@ -311,7 +337,7 @@ bool PlatformEventTarget::ContainsPoint(float point[2]) {
     return false;
   }
   if (overflow_x_ || overflow_y_) {
-    auto hit_target = HitTest(point);
+    auto hit_target = HitTest(point, mode);
     return hit_target != nullptr && hit_target.get() != this;
   }
   return false;
@@ -323,8 +349,9 @@ void PlatformEventTarget::GetOrUpdateTargetScreenRect(
     float root_view_origin_on_screen[2]) const {
   out_rect[0] = 0;
   out_rect[1] = 0;
-  out_rect[2] = target->Width();
-  out_rect[3] = target->Height();
+  const auto size = target->LocalBoundsSize();
+  out_rect[2] = size[0];
+  out_rect[3] = size[1];
 
   const int32_t sign = target->Sign();
   auto it = common_ancestor_rect_map.find(sign);
@@ -353,7 +380,8 @@ void PlatformEventTarget::GetOrUpdateTargetScreenRect(
 bool PlatformEventTarget::IsVisibleForExposure(
     std::unordered_map<int32_t, CommonAncestorRect>& common_ancestor_rect_map,
     float root_view_origin_on_screen[2], const float window_rect[4]) const {
-  if (Width() == 0.f || Height() == 0.f) {
+  const auto size = LocalBoundsSize();
+  if (size[0] == 0.f || size[1] == 0.f) {
     return false;
   }
 
@@ -385,7 +413,7 @@ bool PlatformEventTarget::IsVisibleForExposure(
   float root_rect[4] = {0};
   std::memcpy(root_rect, parent_rect, sizeof(float) * 4);
 
-  float target_rect[4] = {0, 0, Width(), Height()};
+  float target_rect[4] = {0, 0, size[0], size[1]};
   bool target_rect_calculated = false;
   for (const auto& parent : parent_array) {
     GetOrUpdateTargetScreenRect(common_ancestor_rect_map, parent, parent_rect,
@@ -492,11 +520,13 @@ bool PlatformEventTarget::EventThroughInternal(
 
 bool PlatformEventTarget::HitEventRegions(
     const std::vector<EventRegion>& regions, float point[2]) const {
+  const float width = Width();
+  const float height = Height();
   for (const auto& region : regions) {
-    const float left = ConvertEventRegionSizeValue(region[0], true);
-    const float top = ConvertEventRegionSizeValue(region[1], false);
-    const float right = left + ConvertEventRegionSizeValue(region[2], true);
-    const float bottom = top + ConvertEventRegionSizeValue(region[3], false);
+    const float left = ConvertEventRegionSizeValue(region[0], width);
+    const float top = ConvertEventRegionSizeValue(region[1], height);
+    const float right = left + ConvertEventRegionSizeValue(region[2], width);
+    const float bottom = top + ConvertEventRegionSizeValue(region[3], height);
     if (point[0] >= left && point[0] < right && point[1] >= top &&
         point[1] < bottom) {
       return true;
@@ -506,9 +536,9 @@ bool PlatformEventTarget::HitEventRegions(
 }
 
 float PlatformEventTarget::ConvertEventRegionSizeValue(
-    const EventRegionSizeValue& value, bool is_horizontal) const {
+    const EventRegionSizeValue& value, float reference_size) const {
   if (value.type == EventRegionSizeValue::Type::kPercentage) {
-    return value.value * (is_horizontal ? Width() : Height());
+    return value.value * reference_size;
   }
   if (value.type == EventRegionSizeValue::Type::kLayoutUnit) {
     return value.value;
