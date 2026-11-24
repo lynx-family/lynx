@@ -20,6 +20,7 @@ void TemplateEntryHolder::InsertEntry(const std::string& name,
   if (!entry->IsCard()) {
     TryPostJSBundle(name, entry->template_bundle());
   }
+  std::lock_guard<std::mutex> lock(bundle_mutex_);
   template_entries_.try_emplace(name, std::move(entry));
 }
 
@@ -49,14 +50,17 @@ std::shared_ptr<TemplateEntry> TemplateEntryHolder::FindTemplateEntry(
 
 std::optional<LynxTemplateBundle> TemplateEntryHolder::FindTemplateBundle(
     const std::string& entry_name) {
-  auto bundle_iter = template_entries_.find(entry_name);
-  if (bundle_iter != template_entries_.end()) {
-    return bundle_iter->second->template_bundle();
-  }
+  {
+    std::lock_guard<std::mutex> lock(bundle_mutex_);
+    auto bundle_iter = template_entries_.find(entry_name);
+    if (bundle_iter != template_entries_.end()) {
+      return bundle_iter->second->template_bundle();
+    }
 
-  auto preload_bundle_iter = preload_template_bundles_.find(entry_name);
-  if (preload_bundle_iter != preload_template_bundles_.end()) {
-    return preload_bundle_iter->second;
+    auto preload_bundle_iter = preload_template_bundles_.find(entry_name);
+    if (preload_bundle_iter != preload_template_bundles_.end()) {
+      return preload_bundle_iter->second;
+    }
   }
 
   return component_loader_ ? component_loader_->GetTemplateBundle(entry_name)
@@ -81,7 +85,10 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
   if (template_entries_.find(url) == template_entries_.end()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE,
                 "url", url);
-    preload_template_bundles_.try_emplace(url, bundle);
+    {
+      std::lock_guard<std::mutex> lock(bundle_mutex_);
+      preload_template_bundles_.try_emplace(url, bundle);
+    }
     TryPostTemplateBundle(url, bundle);
   }
 
@@ -112,6 +119,7 @@ void TemplateEntryHolder::TryPostTemplateBundle(
 std::optional<LynxTemplateBundle> TemplateEntryHolder::GetPreloadTemplateBundle(
     const std::string& name) {
   std::optional<LynxTemplateBundle> bundle = std::nullopt;
+  std::lock_guard<std::mutex> lock(bundle_mutex_);
   auto iter = preload_template_bundles_.find(name);
   if (iter != preload_template_bundles_.end()) {
     bundle = std::move(iter->second);

@@ -86,6 +86,11 @@ class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
   std::unordered_map<std::string, LynxTemplateBundle> preload_template_bundles_;
 
   std::shared_ptr<JsBundleHolderImpl> js_bundle_holder_;
+
+  // FindTemplateBundle is also called from the JS thread through
+  // JsBundleHolderImpl, while both maps are written on the engine thread.
+  // Engine-thread-only readers do not need it.
+  std::mutex bundle_mutex_;
 };
 }  // namespace tasm
 }  // namespace lynx

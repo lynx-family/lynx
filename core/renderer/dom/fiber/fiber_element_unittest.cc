@@ -15,6 +15,8 @@
 #include <memory>
 #include <mutex>
 #include <random>
+#include <string>
+#include <thread>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -1085,6 +1087,29 @@ TEST_P(FiberElementTest, LoadStyleSheetUsesBundleCSSRuleConfig) {
       fml::static_ref_ptr_cast<SharedCSSFragmentWrapper>(result.RefCounted());
   ASSERT_TRUE(wrapper);
   EXPECT_TRUE(wrapper->fragment_->enable_css_rule());
+}
+
+TEST_P(FiberElementTest, FindTemplateBundleWhileInsertingBundles) {
+  // The JS thread looks up bundles through JsBundleHolderImpl while the engine
+  // thread registers them. A missing key walks both maps on every lookup.
+  constexpr int kBundleCount = 512;
+  std::atomic<bool> done{false};
+  std::thread reader([this, &done]() {
+    while (!done.load()) {
+      EXPECT_FALSE(tasm->FindTemplateBundle("missing").has_value());
+    }
+  });
+
+  for (int i = 0; i < kBundleCount; ++i) {
+    tasm->InsertLynxTemplateBundle("bundle-" + std::to_string(i),
+                                   LynxTemplateBundle());
+  }
+  done.store(true);
+  reader.join();
+
+  EXPECT_TRUE(tasm->FindTemplateBundle("bundle-0").has_value());
+  EXPECT_EQ(tasm->preload_template_bundles_.size(),
+            static_cast<size_t>(kBundleCount));
 }
 
 TEST_P(FiberElementTest, ReplaceStyleSheetsRestoresExistingNodes) {
