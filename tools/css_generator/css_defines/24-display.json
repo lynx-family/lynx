@@ -242,5 +242,5 @@
     }
   },
   "is_shorthand": false,
-  "formal_syntax": "flex | linear | none | grid | relative | -x-box"
+  "formal_syntax": "none | flex | grid | linear | relative | block | auto | -x-box"
 }

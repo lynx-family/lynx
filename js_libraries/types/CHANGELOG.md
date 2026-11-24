@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.6.2
+
+- Fix `listMainAxisGap` CSS typing (`string | number`) and move `backgroundPosition` and `whiteSpace` from `Shorthands` to `Longhands` in `csstype.d.ts`.
+
 ## 4.6.1
 
 - Add the `punctuation-trim-rule` attribute to `<text>` for configuring compression ratios per punctuation character.

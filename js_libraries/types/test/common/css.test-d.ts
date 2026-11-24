@@ -44,6 +44,9 @@ describe('CSSProperty Type Test', () => {
       verticalAlign: 'baseline',
       direction: 'normal',
       pointerEvents: 'auto',
+      listMainAxisGap: 10,
+      backgroundPosition: 'center',
+      whiteSpace: 'nowrap',
     });
 
     assertType<CSSProperties>({
@@ -85,6 +88,9 @@ describe('CSSProperty Type Test', () => {
       verticalAlign: 'baseline',
       direction: 'normal',
       pointerEvents: 'auto',
+      listMainAxisGap: 10,
+      backgroundPosition: 'center',
+      whiteSpace: 'nowrap',
     });
 
     assertType<CSSPropertiesWithShorthands>({

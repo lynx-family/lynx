@@ -7,7 +7,8 @@
   "author": "tangruiwen",
   "consumption_status": "skip",
   "desc": "The `background-position` CSS property sets the initial position for each background image.",
-  "is_shorthand": true,
+  "formal_syntax": "<position>",
+  "is_shorthand": false,
   "compat_data": {
     "background-position": {
       "__compat": {
