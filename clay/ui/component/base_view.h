@@ -687,6 +687,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   virtual void OnDetachFromTree();
   virtual void OnAttachToTree();
   virtual void Invalidate();
+  // Padding changes pass the trailing edges in the rectangle's size fields.
+  virtual bool ShouldNotifyContentSizeChangedForPadding(
+      const FloatRect& old_rect, const FloatRect& new_rect) const;
   bool IsPointInsideHitSlop(const FloatPoint& point_by_self) const;
   void LayoutUpdated();
 #if OS_IOS
