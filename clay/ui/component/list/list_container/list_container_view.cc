@@ -13,6 +13,7 @@
 
 #include "base/include/auto_reset.h"
 #include "base/include/float_comparison.h"
+#include "base/include/platform/operating_system.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/gfx/scroll_direction.h"
@@ -264,9 +265,16 @@ void ListContainerView::UpdateContentOffsetForListContainer(
     float content_size, float target_content_offset_x,
     float target_content_offset_y) {
   lynx::base::AutoReset<bool> resetter(&should_block_did_scroll_, true);
+  const bool logical_rtl = UsesLogicalRtlScrollOffset();
+  const float old_max_x =
+      logical_rtl ? GetRenderScroll()->MaxScrollWidth() : 0.f;
+  const float old_x = scroll_offset_.x();
   SetMaxContent(content_size);
   if (CanScrollY()) {
     OnScrollUpdate(scroll_offset_.y() + target_content_offset_y);
+  } else if (logical_rtl) {
+    const float logical_x = old_max_x - old_x + target_content_offset_x;
+    OnScrollUpdate(GetRenderScroll()->MaxScrollWidth() - logical_x);
   } else {
     OnScrollUpdate(scroll_offset_.x() + target_content_offset_x);
   }
@@ -794,10 +802,25 @@ void ListContainerView::SetScrollState(ListScrollState state) {
 void ListContainerView::DidScroll() {
   ScrollView::DidScroll();
   if (!should_block_did_scroll_ && delegate_) {
-    delegate_->OnScrollByListContainer(scroll_offset_.x(), scroll_offset_.y(),
-                                       scroll_offset_.x(), scroll_offset_.y());
+    const float x =
+        UsesLogicalRtlScrollOffset()
+            ? GetRenderScroll()->MaxScrollWidth() - scroll_offset_.x()
+            : scroll_offset_.x();
+    delegate_->OnScrollByListContainer(x, scroll_offset_.y(), x,
+                                       scroll_offset_.y());
     UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
     UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
+  }
+}
+
+bool ListContainerView::UsesLogicalRtlScrollOffset() const {
+  return lynx::base::GetOSType() == lynx::base::OSType::kMacOS &&
+         CanScrollX() && IsRtlDirection();
+}
+
+void ListContainerView::UpdateScrollOffsetForRTL() {
+  if (!UsesLogicalRtlScrollOffset()) {
+    ScrollView::UpdateScrollOffsetForRTL();
   }
 }
 

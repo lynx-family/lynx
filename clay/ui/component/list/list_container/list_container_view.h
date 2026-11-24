@@ -74,6 +74,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
 
  protected:
   void CalculateOverFlow() override;
+  void UpdateScrollOffsetForRTL() override;
   void OnOverscroll(FloatPoint prev_overscroll_offset) override;
 #ifdef ENABLE_ACCESSIBILITY
   void PrepareSemantics(
@@ -84,6 +85,7 @@ class ListContainerView : public WithTypeInfo<ListContainerView, ScrollView>,
   bool OnScrollToMiddle(BaseView* target_view);
 
  private:
+  bool UsesLogicalRtlScrollOffset() const;
   void DidScroll() override;
   void DidUpdateAttributes() override;
 

@@ -129,6 +129,7 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
 
  protected:
   virtual void CalculateOverFlow();
+  virtual void UpdateScrollOffsetForRTL();
 
   void ResetScroll() override { OnScrollUpdate(0); }
 
@@ -152,8 +153,6 @@ class ScrollView : public WithTypeInfo<ScrollView, NestedScrollable>,
   NestedScrollable* FindScrollableById(const std::string& id);
 
   bool CanInvokeScrollImmediately() const;
-
-  void UpdateScrollOffsetForRTL();
 
   bool enable_content_size_changed_event_ = false;
 
