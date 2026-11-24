@@ -7309,6 +7309,8 @@ public class com::lynx::tasm::transfer::LynxTransferManager :  {
 
 public class com::lynx::tasm::transfer::LynxTransferredView : FrameLayout {
   public void com.lynx.tasm.transfer.LynxTransferredView.setProps(@NonNull ReadableMap nextProps);
+  public void com.lynx.tasm.transfer.LynxTransferredView.updateProps(@NonNull ReadableMap nextProps);
+  public void com.lynx.tasm.transfer.LynxTransferredView.reload(@NonNull ReadableMap nextProps);
   public void com.lynx.tasm.transfer.LynxTransferredView.release();
 }
 
@@ -10932,6 +10934,8 @@ public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
 public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_LOAD TRANSFER_LOAD;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_SET_PROPS TRANSFER_SET_PROPS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_UPDATE TRANSFER_UPDATE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_RELOAD TRANSFER_RELOAD;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_CREATE TRANSFER_CREATE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_DISPOSE TRANSFER_DISPOSE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TRANSFER_REMOVE TRANSFER_REMOVE;

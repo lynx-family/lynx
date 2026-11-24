@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class LynxTransferManager {
   static final String CREATE_TRANSFER = "__CreateTransfer";
   static final String SET_TRANSFER_PROPS = "__SetTransferProps";
+  static final String UPDATE_TRANSFER = "__UpdateTransfer";
+  static final String RELOAD_TRANSFER = "__ReloadTransfer";
   static final String DESTROY_TRANSFER = "__DestroyTransfer";
   private static final String MANAGED_ID_PREFIX = "__lynx_sdk_transfer_";
   private static final AtomicLong NEXT_TRANSFER_ID = new AtomicLong();
