@@ -25,13 +25,19 @@ public class LynxAnimaXImageService implements IAnimaXImageService {
       return false;
     }
 
-    ImageRequestInfo imageRequestInfo =
-        ImageRequestInfoBuilder.newBuilderWithSource(request.getUri())
-            .setResizeWidth(imageInfo.getWidth())
-            .setResizeHeight(imageInfo.getHeight())
-            .setBitmapConfig(Bitmap.Config.ARGB_8888)
-            .setForceStaticImage(true)
-            .build();
+    ImageRequestInfoBuilder builder = ImageRequestInfoBuilder.newBuilderWithSource(request.getUri())
+                                          .setBitmapConfig(Bitmap.Config.ARGB_8888)
+                                          .setForceStaticImage(true);
+    // Only independent original-size loads opt out of the legacy resize and
+    // downsampling policy. Missing parameters preserve component loading.
+    Object sizeMode =
+        request.getParams() == null ? null : request.getParams().get("image_size_mode");
+    if (Integer.valueOf(1).equals(sizeMode)) {
+      builder.setEnableDownSampling(false);
+    } else {
+      builder.setResizeWidth(imageInfo.getWidth()).setResizeHeight(imageInfo.getHeight());
+    }
+    ImageRequestInfo imageRequestInfo = builder.build();
 
     imageService.decodeImage(imageRequestInfo, new ImageLoadListener() {
       @Override
