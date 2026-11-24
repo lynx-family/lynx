@@ -32,8 +32,8 @@ base::flex_optional<tasm::CSSValue> ConvertCanonicalComputedValueForTransition(
 
 class CSSTransitionManager : public CSSKeyframeManager {
  public:
-  CSSTransitionManager(tasm::Element* element) : CSSKeyframeManager(element) {}
-  ~CSSTransitionManager() = default;
+  CSSTransitionManager(tasm::Element* element);
+  ~CSSTransitionManager() override;
 
   void setTransitionData(const starlight::TransitionData& transition_data);
 
@@ -50,9 +50,13 @@ class CSSTransitionManager : public CSSKeyframeManager {
       const starlight::ComputedCSSStyle& previous_final_style,
       const starlight::ComputedCSSStyle& new_base_style,
       const tasm::StyleMap& previous_underlying_layout_only_styles,
-      const tasm::StyleMap& new_underlying_layout_only_styles);
+      const tasm::StyleMap& new_underlying_layout_only_styles,
+      const tasm::StyleMap& keyframe_overrides = {},
+      const CSSKeyframeManager* keyframes = nullptr);
   AnimationSampleForNewPipeline CollectTransitionUpdatesForNewPipeline(
       fml::TimePoint& time);
+  bool HasPendingOpacitySnapshot() const;
+  bool NeedsFutureTickForNewPipeline() const;
 
   bool NeedsTransition(tasm::CSSPropertyID css_id);
 
@@ -64,19 +68,35 @@ class CSSTransitionManager : public CSSKeyframeManager {
   void ClearPreviousEndValue(tasm::CSSPropertyID css_id);
 
  private:
-  void TryToStopTransitionAnimator(
-      starlight::AnimationPropertyType property_type);
-  void TryToStopTransitionAnimatorWithPendingCleanup(
-      starlight::AnimationPropertyType property_type);
+  struct PlatformTransition {
+    tasm::CSSPropertyID property;
+    PlatformAnimationPtr state{};
+    fml::RefPtr<gfx::PlatformTransitionSnapshot> pending_snapshot{};
+    bool hold_release_queued{false};
+    float last_keyframe_opacity{0.f};
+  };
+
+  PlatformTransition* FindPlatformTransition(tasm::CSSPropertyID css_id);
+  void RemovePlatformTransition(PlatformTransition& transition, bool cancel);
+  void RequestPlatformFallback(PlatformTransition& transition,
+                               bool keyframe_override = false);
+  void ApplyReadyPlatformFallbacks();
+  void StartCoreTransition(std::shared_ptr<Animation>&& animation,
+                           bool play_handles_initial_frame);
+  void StopTransitionAnimator(tasm::CSSPropertyID css_id,
+                              starlight::AnimationPropertyType property_type,
+                              bool play_handles_initial_frame);
+  void CancelPlatformTransition(tasm::CSSPropertyID css_id);
   void PrepareTransitionRemovalCleanup(
       const std::shared_ptr<Animation>& animation);
   void SyncTransitionData(const starlight::TransitionData& transition_data,
                           bool use_legacy_destroy_path);
   bool UpdateTransitionAnimator(tasm::CSSPropertyID css_id,
                                 starlight::AnimationPropertyType property_type,
-                                tasm::CSSValue start_value,
-                                tasm::CSSValue end_value,
-                                bool play_handles_initial_frame);
+                                tasm::CSSValue&& start_value,
+                                tasm::CSSValue&& end_value,
+                                bool play_handles_initial_frame,
+                                bool allow_platform = false);
   bool IsValueValid(starlight::AnimationPropertyType type,
                     const tasm::CSSValue& value,
                     const tasm::CSSParserConfigs& configs);
@@ -91,12 +111,17 @@ class CSSTransitionManager : public CSSKeyframeManager {
 
   bool IsShouldTransitionType(starlight::AnimationPropertyType type);
 
+  PlatformTransition platform_transitions_[1]{{tasm::kPropertyIDOpacity}};
+
  protected:
   Animation::Origin ResolveAnimationOrigin(
       const starlight::AnimationData&) const override {
     return Animation::Origin::kCSSTransition;
   }
 
+  gfx::AnimationKind GetAnimationKind() const override {
+    return gfx::AnimationKind::kTransition;
+  }
   base::LinearFlatMap<unsigned int, starlight::AnimationData> transition_data_;
   base::LinearFlatMap<base::String, tasm::CSSKeyframesContent> keyframe_tokens_;
   base::LinearFlatSet<unsigned int> property_types_;

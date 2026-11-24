@@ -5,6 +5,7 @@
 #ifndef GFX_ANIMATION_PLATFORM_ANIMATION_H_
 #define GFX_ANIMATION_PLATFORM_ANIMATION_H_
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -38,8 +39,8 @@ enum class PlatformAnimationCommandType : uint8_t {
   kHandoff = 0,
   kUpdate,
   kCancel,
-  // Remove the platform executor while the logical animation continues in
-  // C++ New Animator, without canceling the animation.
+  // Release the platform executor when Core takes over. A transition detach
+  // can capture the displayed value for a new target or preserve playback.
   kDetach,
 };
 
@@ -280,6 +281,44 @@ struct PlatformAnimationProperty {
   using TriviallyRelocatable = bool;
 };
 
+// An iOS transition detach has one UI-thread writer and a Core reader.
+class PlatformTransitionSnapshot final
+    : public fml::RefCountedThreadSafe<PlatformTransitionSnapshot> {
+ public:
+  using Value = float;
+  struct Timeline {
+    fml::TimePoint start_time;
+    bool started;
+  };
+
+  explicit PlatformTransitionSnapshot(bool capture_timeline = false)
+      : capture_timeline_(capture_timeline) {}
+  bool capture_timeline() const { return capture_timeline_; }
+  const Timeline& timeline() const { return timeline_; }
+
+  void Publish() { status_.store(State::kMissing, std::memory_order_release); }
+
+  void PublishOpacity(float value,
+                      Timeline timeline = {fml::TimePoint::Min(), false}) {
+    value_ = value;
+    timeline_ = timeline;
+    status_.store(State::kReady, std::memory_order_release);
+  }
+
+  bool Read(const Value*& value) const {
+    const auto state = status_.load(std::memory_order_acquire);
+    value = state == State::kReady ? &value_ : nullptr;
+    return state != State::kPending;
+  }
+
+ private:
+  enum class State : uint8_t { kPending, kMissing, kReady };
+  Value value_{};
+  Timeline timeline_{};
+  const bool capture_timeline_;
+  std::atomic<State> status_{State::kPending};
+};
+
 struct PlatformAnimationCommand {
   PlatformAnimationCommand() = default;
   PlatformAnimationCommand(PlatformAnimationCommand&&) = default;
@@ -307,6 +346,7 @@ struct PlatformAnimationCommand {
   // New Animator and the platform. Unlike generation, this token does not
   // change for updates that keep the same execution backend.
   uint64_t executor{0};
+  fml::RefPtr<PlatformTransitionSnapshot> transition_snapshot;
 
   // All owning members refer to heap storage, never to this command's address.
   using TriviallyRelocatable = bool;

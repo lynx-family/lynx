@@ -33,12 +33,15 @@ struct AnimationData {
   AnimationDirectionType direction;
   AnimationPlayStateType play_state;
 
-  bool operator==(const AnimationData& rhs) const {
+  bool EqualsIgnoringPlayState(const AnimationData& rhs) const {
     return name == rhs.name && timing_func == rhs.timing_func &&
            iteration_count == rhs.iteration_count &&
            fill_mode == rhs.fill_mode && duration == rhs.duration &&
-           delay == rhs.delay && direction == rhs.direction &&
-           play_state == rhs.play_state;
+           delay == rhs.delay && direction == rhs.direction;
+  }
+
+  bool operator==(const AnimationData& rhs) const {
+    return EqualsIgnoringPlayState(rhs) && play_state == rhs.play_state;
   }
 
   bool operator!=(const AnimationData& rhs) const { return !operator==(rhs); }

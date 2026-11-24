@@ -15,6 +15,7 @@
 #include <utility>
 
 #include "core/animation/animation.h"
+#include "core/animation/css_transition_manager.h"
 #include "core/animation/keyframe_effect.h"
 #include "core/animation/keyframe_model.h"
 #include "core/animation/keyframed_animation_curve.h"
@@ -2338,6 +2339,120 @@ TEST_F(CSSAnimationRoutingTest, RunningFallbackPreservesTimeAcrossDelay) {
   }
 }
 
+TEST_F(CSSAnimationRoutingTest, DelayedKeyframeKeepsPlatformOpacityTransition) {
+  target->has_painting_node_ = true;
+  animation::CSSTransitionManager transition(target.get());
+  starlight::ComputedCSSStyle initial{1.f, 1.f}, style{1.f, 1.f};
+  initial.SetValue(kPropertyIDOpacity, CSSValue(0.2f, CSSValuePattern::NUMBER));
+  style.SetValue(kPropertyIDOpacity, CSSValue(0.8f, CSSValuePattern::NUMBER));
+  auto& transition_data = style.transition_data();
+  transition_data.properties.push_back(
+      starlight::AnimationPropertyType::kOpacity);
+  transition_data.durations.push_back(2000);
+  transition_data.delays.push_back(0);
+  transition_data.timing_funcs.emplace_back();
+  auto update_transition = [&](const starlight::ComputedCSSStyle& previous) {
+    const StyleMap empty;
+    transition.UpdateTransitionsForNewPipeline(previous, previous, style, empty,
+                                               empty, empty, animator.get());
+  };
+
+  update_transition(initial);
+  const auto& commands = target->platform_animation_commands_;
+  ASSERT_NE(commands, nullptr);
+  ASSERT_EQ(commands->size(), 1u);
+  const auto transition_id = commands->front().animation_id;
+  EXPECT_EQ(commands->front().type,
+            gfx::PlatformAnimationCommandType::kHandoff);
+
+  data[0].delay = 1000;
+  data[0].fill_mode = starlight::AnimationFillModeType::kNone;
+  UpdateOpacityKeyframes(target.get(), data[0].name, 0.1, 0.9);
+  animator->SyncAnimationDataForNewPipeline(data);
+  ASSERT_EQ(animator->platform_animations_.size(), 1u);
+  const auto& playback =
+      animator->platform_animations_.front()->animation->playback();
+  playback->SetPaused(true);
+  playback->SetCurrentTime(fml::TimeDelta::FromMilliseconds(500));
+  ASSERT_EQ(commands->size(), 2u);
+  update_transition(style);
+  EXPECT_EQ(commands->size(), 2u);
+
+  playback->SetCurrentTime(fml::TimeDelta::FromMilliseconds(1000));
+  update_transition(style);
+  EXPECT_EQ(commands->size(), 2u);
+
+  playback->SetCurrentTime(
+      fml::TimeDelta::FromMilliseconds(data[0].delay + data[0].duration));
+  initial.SetValue(kPropertyIDOpacity, CSSValue(0.8f, CSSValuePattern::NUMBER));
+  style.SetValue(kPropertyIDOpacity, CSSValue(0.4f, CSSValuePattern::NUMBER));
+  update_transition(initial);
+  ASSERT_EQ(commands->size(), 3u);
+  EXPECT_EQ(commands->back().animation_id, transition_id);
+  EXPECT_EQ(commands->back().type, gfx::PlatformAnimationCommandType::kUpdate);
+}
+
+TEST_F(CSSAnimationRoutingTest, CoreKeyframePreservesOpacityTransitionTime) {
+  using Command = gfx::PlatformAnimationCommandType;
+  target->has_painting_node_ = true;
+  animation::CSSTransitionManager transition(target.get());
+  starlight::ComputedCSSStyle initial{1.f, 1.f}, goal{1.f, 1.f};
+  initial.SetValue(kPropertyIDOpacity, CSSValue(0.f, CSSValuePattern::NUMBER));
+  goal.SetValue(kPropertyIDOpacity, CSSValue(1.f, CSSValuePattern::NUMBER));
+  auto& config = goal.transition_data();
+  config.properties.push_back(starlight::AnimationPropertyType::kOpacity);
+  config.durations.push_back(2000);
+  config.delays.push_back(1000);
+  config.timing_funcs.emplace_back();
+  transition.UpdateTransitionsForNewPipeline(initial, initial, goal, {}, {});
+  auto& commands = *target->platform_animation_commands_;
+  ASSERT_EQ(commands.back().type, Command::kHandoff);
+
+  auto& keyframe = data.front();
+  keyframe.duration = 100;
+  keyframe.fill_mode = starlight::AnimationFillModeType::kNone;
+  keyframe.timing_func.timing_func = starlight::TimingFunctionType::kSteps;
+  keyframe.timing_func.x1 = 2;
+  UpdateOpacityKeyframes(target.get(), keyframe.name, 0.8, 0.8);
+  animator->SyncAnimationDataForNewPipeline(data);
+  EXPECT_TRUE(animator->platform_animations_.empty());
+
+  auto frame = fml::TimePoint::FromTicks(10000000000LL);
+  auto covered = animator->CollectAnimationUpdatesForNewPipeline(frame);
+  ASSERT_TRUE(covered.property_overrides.contains(kPropertyIDOpacity));
+  transition.UpdateTransitionsForNewPipeline(goal, goal, goal, {}, {},
+                                             covered.property_overrides);
+  ASSERT_EQ(commands.back().type, Command::kDetach);
+  auto snapshot = commands.back().transition_snapshot;
+  ASSERT_TRUE(snapshot && snapshot->capture_timeline());
+  snapshot->PublishOpacity(
+      0.f,
+      {fml::TimePoint::Now() - fml::TimeDelta::FromMilliseconds(200), false});
+  transition.CollectTransitionUpdatesForNewPipeline(frame);
+  EXPECT_TRUE(transition.TakePendingAnimationEventsForNewPipeline().empty());
+  ASSERT_EQ(commands.size(), 3u);
+  EXPECT_EQ(commands.back().type, Command::kDetach);
+  EXPECT_EQ(commands.back().transition_snapshot, nullptr);
+
+  frame = frame + fml::TimeDelta::FromMilliseconds(100);
+  EXPECT_FALSE(animator->CollectAnimationUpdatesForNewPipeline(frame)
+                   .property_overrides.contains(kPropertyIDOpacity));
+  auto delayed = transition.CollectTransitionUpdatesForNewPipeline(frame);
+  ASSERT_TRUE(delayed.property_overrides.contains(kPropertyIDOpacity));
+  EXPECT_FLOAT_EQ(delayed.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+                  0.f);
+  EXPECT_TRUE(transition.TakePendingAnimationEventsForNewPipeline().empty());
+
+  frame = frame + fml::TimeDelta::FromSeconds(1);
+  auto resumed = transition.CollectTransitionUpdatesForNewPipeline(frame);
+  ASSERT_TRUE(resumed.property_overrides.contains(kPropertyIDOpacity));
+  EXPECT_NEAR(resumed.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+              0.15, 0.02);
+  const auto events = transition.TakePendingAnimationEventsForNewPipeline();
+  ASSERT_EQ(events.size(), 1u);
+  EXPECT_TRUE(events.front().send_start_event);
+}
+
 TEST_F(CSSAnimationRoutingTest, KeyframeTimingOverridesAnimationTiming) {
   data[0].timing_func.timing_func = starlight::TimingFunctionType::kEaseIn;
   // A single interval takes its explicit keyframe easing instead of ease-in.
@@ -2383,10 +2498,9 @@ TEST_F(CSSAnimationRoutingTest, PlatformKeyframesFollowTheirInputs) {
   sync();
   const auto& pause = commands->back();
   EXPECT_EQ(pause.animation_id, initial_id);
-  EXPECT_FALSE(pause.reuse_keyframes);
+  EXPECT_TRUE(pause.reuse_keyframes);
   EXPECT_EQ(pause.generation, 2u);
-  ASSERT_FALSE(pause.properties.empty());
-  EXPECT_FLOAT_EQ(FirstOpacity(pause.properties), 0.8f);
+  EXPECT_TRUE(pause.properties.empty());
   for (bool reset : {false, true}) {
     if (reset) {
       underlying.clear();
@@ -2473,7 +2587,8 @@ TEST_F(CSSAnimationRoutingTest, PlatformHandoffsPreserveAnimationListOrder) {
       EXPECT_EQ(command.name, data[i].name.str());
       EXPECT_EQ(command.type, type);
       EXPECT_EQ(command.generation, reorder ? 2u : 1u);
-      EXPECT_FALSE(command.properties.empty());
+      EXPECT_EQ(command.reuse_keyframes, reorder);
+      EXPECT_EQ(command.properties.empty(), reorder);
     }
     commands = nullptr;
   }

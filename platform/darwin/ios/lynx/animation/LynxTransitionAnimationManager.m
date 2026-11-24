@@ -29,24 +29,41 @@ static NSUInteger RoutedTransitionSlot(LynxAnimationProp property) {
   return property == TRANSITION_TRANSFORM ? kTransformTransitionSlot : kOpacityTransitionSlot;
 }
 
+typedef NS_ENUM(uint8_t, LynxRoutedTransitionState) {
+  LynxRoutedTransitionRunning,
+  LynxRoutedTransitionHolding,
+  LynxRoutedTransitionDetached,
+  LynxRoutedTransitionStopped,
+};
 @interface LynxRoutedTransition : NSObject <CAAnimationDelegate> {
  @public
   __weak LynxTransitionAnimationManager* _manager;
   uint64_t _animationID;
   uint32_t _generation;
   LynxAnimationProp _property;
-  id _startValue;  // The installed start value, cleared when the transition stops.
+  LynxRoutedTransitionState _state;
+  id _startValue;
+  id _targetValue;
+  LynxAnimationInfo* _animationInfo;
+  CFTimeInterval _beginTime;
+  BOOL _didStart;
 
  @private
   LynxGlobalObserver* _observer;
-  BOOL _didStart;
 }
+- (NSTimeInterval)elapsedSinceBegin __attribute__((objc_direct));
+- (void)sendCancelEvent __attribute__((objc_direct));
+- (void)sendTransitionEvent:(NSString*)name
+                elapsedTime:(NSTimeInterval)elapsedTime __attribute__((objc_direct));
 - (void)endObservation __attribute__((objc_direct));
 @end
 
 static id RoutedStartValue(LynxUI* ui, LynxRoutedTransition* transition) {
-  if (!transition || !transition->_startValue) {
+  if (!transition) {
     return nil;
+  }
+  if (transition->_state != LynxRoutedTransitionRunning) {
+    return transition->_startValue;
   }
   CALayer* layer = transition->_property == OPACITY ? ui.backgroundManager.opacityView.layer : nil;
   CALayer* presentation = (layer ?: ui.view.layer).presentationLayer;
@@ -55,6 +72,15 @@ static id RoutedStartValue(LynxUI* ui, LynxRoutedTransition* transition) {
   }
   return transition->_property == OPACITY ? @(presentation.opacity)
                                           : [NSValue valueWithCATransform3D:presentation.transform];
+}
+
+static void AttachPlatformTransition(LynxUI* ui, CAAnimation* animation, LynxAnimationProp property,
+                                     NSString* name) {
+  if (property == OPACITY && ui.backgroundManager.opacityView) {
+    [LynxAnimationUtils attachOpacityTo:ui animation:animation forKey:name];
+  } else {
+    [LynxAnimationUtils attachTo:ui animation:animation forKey:name];
+  }
 }
 
 typedef struct {
@@ -124,12 +150,10 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 @interface LynxTransitionAnimationManager () {
   LynxRoutedTransition* _routedTransitions[kRoutedTransitionCount];
   NSMutableDictionary<NSNumber*, CAAnimation*>* _transitionAnimations;
+  NSMutableDictionary<NSNumber*, LynxAnimationInfo*>* _transitionInfos;
+  NSMutableDictionary<NSNumber*, LynxAnimationDelegate*>* _transitionDelegates;
 }
 @property(nonatomic, weak, readonly) LynxUI* ui;
-@property(nonatomic, readonly, nullable)
-    NSMutableDictionary<NSNumber*, LynxAnimationInfo*>* transitionInfos;
-@property(nonatomic, readonly, nullable)
-    NSMutableDictionary<NSNumber*, LynxAnimationDelegate*>* transitionDelegates;
 @property(nonatomic) CGRect latestFrame;
 
 - (BOOL)removePlatformTransition:(LynxRoutedTransition*)transition __attribute__((objc_direct));
@@ -156,17 +180,50 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 @implementation LynxRoutedTransition
 
 - (void)animationDidStart:(CAAnimation*)animation {
-  if (_startValue && !_didStart) {
+  if (_state == LynxRoutedTransitionRunning && !_didStart) {
     _didStart = YES;
     _observer = _manager.ui.context.observer;
     [_observer notifyAnimationStart];
+    if (_state == LynxRoutedTransitionRunning) {
+      [self sendTransitionEvent:(NSString*)kTransitionEventStart
+                    elapsedTime:MIN(MAX(-_animationInfo.delay, 0), animation.duration)];
+    }
   }
 }
 
 - (void)animationDidStop:(CAAnimation*)animation finished:(BOOL)finished {
-  if (_startValue && ![_manager removePlatformTransition:self]) {
-    [self endObservation];
+  if (_state == LynxRoutedTransitionRunning) {
+    if (!finished) {
+      _targetValue = nil;
+    }
+    if (![_manager removePlatformTransition:self]) {
+      [self endObservation];
+    } else if (finished) {
+      [self sendTransitionEvent:(NSString*)kTransitionEventEnd elapsedTime:animation.duration];
+    } else {
+      [self sendCancelEvent];
+    }
   }
+}
+
+- (NSTimeInterval)elapsedSinceBegin {
+  return [_manager.ui.view.layer convertTime:CACurrentMediaTime() fromLayer:nil] - _beginTime;
+}
+
+- (void)sendCancelEvent {
+  [self sendTransitionEvent:@"transitioncancel"
+                elapsedTime:MIN(MAX([self elapsedSinceBegin], 0), _animationInfo.duration)];
+}
+
+- (void)sendTransitionEvent:(NSString*)name elapsedTime:(NSTimeInterval)elapsedTime {
+  [LynxAnimationDelegate sendAnimationEvent:_manager.ui
+                                  eventName:name
+                                eventParams:@{
+                                  @"new_animator" : @YES,
+                                  @"animation_type" : @"transition-animation",
+                                  @"animation_name" : _animationInfo.name,
+                                  @"elapsedTime" : @(elapsedTime)
+                                }];
 }
 
 - (void)endObservation {
@@ -330,6 +387,16 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
   }
   LynxUI* ui = _ui;
   from = RoutedStartValue(ui, previous) ?: from;
+
+  LynxRoutedTransition* transition = [LynxRoutedTransition new];
+  transition->_manager = self;
+  transition->_animationID = animationID;
+  transition->_generation = generation;
+  transition->_property = property;
+  transition->_startValue = from;
+  transition->_targetValue = to;
+  transition->_animationInfo = info;
+
   CAAnimation* animation;
   if (property == OPACITY) {
     animation = [LynxAnimationUtils createBasicAnimation:@"opacity" from:from to:to info:info];
@@ -343,50 +410,113 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
     ConvertPlatformTransformEndpoint(to, ui, &end);
     animation = CreateTransformTransition(&start, &end, info);
   }
-  LynxRoutedTransition* transition = [LynxRoutedTransition new];
-  transition->_manager = self;
-  transition->_animationID = animationID;
-  transition->_generation = generation;
-  transition->_property = property;
-  transition->_startValue = from;
   _routedTransitions[slot] = transition;
-
+  const BOOL replacedRunning = previous && previous->_state == LynxRoutedTransitionRunning;
   if (previous) {
+    previous->_state = LynxRoutedTransitionStopped;
     previous->_startValue = nil;
   }
   NSString* name = [LynxConverter toLynxPropName:property];
   [LynxAnimationUtils removeAnimation:ui withName:name];
   [previous endObservation];
-  if (_routedTransitions[slot] != transition || !transition->_startValue) {
+  if (replacedRunning) {
+    [previous sendCancelEvent];
+  }
+  if (_routedTransitions[slot] != transition || transition->_state != LynxRoutedTransitionRunning) {
     return;
   }
-
   animation.delegate = transition;
   [self prepareTransitionAnimation:animation withConfig:info forLayer:ui.view.layer];
-  if (property == OPACITY && ui.backgroundManager.opacityView) {
-    [LynxAnimationUtils attachOpacityTo:ui animation:animation forKey:name];
-  } else {
-    [LynxAnimationUtils attachTo:ui animation:animation forKey:name];
-  }
+  transition->_beginTime = animation.beginTime;
+  AttachPlatformTransition(ui, animation, property, name);
 }
 
-- (void)cancelPlatformTransition:(uint64_t)animationID generation:(uint32_t)generation {
+- (NSNumber*)stopPlatformTransition:(uint64_t)animationID
+                         generation:(uint32_t)generation
+                             cancel:(BOOL)cancel
+                           snapshot:(LynxTransitionTimingSnapshot*)snapshot {
+  LynxRoutedTransition* transition = nil;
   for (NSUInteger slot = 0; slot < kRoutedTransitionCount; ++slot) {
-    LynxRoutedTransition* transition = _routedTransitions[slot];
-    if (transition && transition->_animationID == animationID &&
-        generation >= transition->_generation) {
-      transition->_generation = generation;
-      [self removePlatformTransition:transition];
-      return;
+    LynxRoutedTransition* candidate = _routedTransitions[slot];
+    if (candidate && candidate->_animationID == animationID) {
+      transition = candidate;
+      break;
     }
   }
+  if (!transition ||
+      (snapshot ? generation != transition->_generation : generation < transition->_generation)) {
+    return nil;
+  }
+  if (!snapshot) {
+    const BOOL canceled = cancel && (transition->_state == LynxRoutedTransitionRunning ||
+                                     transition->_state == LynxRoutedTransitionDetached);
+    transition->_generation = generation;
+    transition->_targetValue = nil;
+    if ([self removePlatformTransition:transition] && canceled) {
+      [transition sendCancelEvent];
+    }
+    return nil;
+  }
+  if (transition->_property != OPACITY) {
+    return nil;
+  }
+  if (snapshot->captureTimeline) {
+    if (transition->_state != LynxRoutedTransitionRunning) {
+      return nil;
+    }
+    snapshot->currentTime =
+        MAX([transition elapsedSinceBegin] + transition->_animationInfo.delay, 0);
+    snapshot->started = transition->_didStart;
+    id start = transition->_startValue;
+    // The Core keyframe's opacity has already been committed for this update.
+    transition->_state = LynxRoutedTransitionDetached;
+    transition->_startValue = nil;
+    [LynxAnimationUtils removeAnimation:_ui withName:[LynxConverter toLynxPropName:OPACITY]];
+    [transition endObservation];
+    return start;
+  }
+  if (transition->_state == LynxRoutedTransitionHolding) {
+    return transition->_startValue;
+  }
+
+  LynxUI* ui = _ui;
+  const BOOL running = transition->_state == LynxRoutedTransitionRunning;
+  NSNumber* value = transition->_state == LynxRoutedTransitionStopped
+                        ? transition->_targetValue
+                        : RoutedStartValue(ui, transition);
+  if (!value) {
+    return nil;
+  }
+  // Keep the displayed value until Core commits its first sample.
+  NSString* name = [LynxConverter toLynxPropName:OPACITY];
+  CABasicAnimation* hold = [LynxAnimationUtils createBasicAnimation:@"opacity"
+                                                               from:value
+                                                                 to:value
+                                                               info:transition->_animationInfo];
+  hold.duration = 1;
+  hold.speed = 0;
+  hold.fillMode = kCAFillModeBoth;
+  hold.removedOnCompletion = NO;
+  transition->_state = LynxRoutedTransitionHolding;
+  transition->_startValue = value;
+  [LynxAnimationUtils removeAnimation:ui withName:name];
+  if (_routedTransitions[kOpacityTransitionSlot] == transition &&
+      transition->_state == LynxRoutedTransitionHolding) {
+    AttachPlatformTransition(ui, hold, OPACITY, name);
+  }
+  [transition endObservation];
+  if (running) {
+    [transition sendCancelEvent];
+  }
+  return value;
 }
 
 - (BOOL)removePlatformTransition:(LynxRoutedTransition*)transition {
-  if (!transition || !transition->_startValue ||
+  if (!transition || transition->_state == LynxRoutedTransitionStopped ||
       _routedTransitions[RoutedTransitionSlot(transition->_property)] != transition) {
     return NO;
   }
+  transition->_state = LynxRoutedTransitionStopped;
   transition->_startValue = nil;
   [LynxAnimationUtils removeAnimation:_ui
                              withName:[LynxConverter toLynxPropName:transition->_property]];
@@ -396,7 +526,7 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 
 - (void)removeLegacyTransformTransition {
   LynxRoutedTransition* transition = _routedTransitions[kTransformTransitionSlot];
-  if (!transition || !transition->_startValue) {
+  if (!transition || transition->_state == LynxRoutedTransitionStopped) {
     [self removeTransitionAnimation:TRANSITION_TRANSFORM];
   }
 }
@@ -891,9 +1021,13 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 }
 
 - (void)removeTransitionAnimation:(LynxAnimationProp)prop {
-  if ((prop == OPACITY || prop == TRANSITION_TRANSFORM) &&
-      [self removePlatformTransition:_routedTransitions[RoutedTransitionSlot(prop)]]) {
-    return;
+  if (prop == OPACITY || prop == TRANSITION_TRANSFORM) {
+    LynxRoutedTransition* transition = _routedTransitions[RoutedTransitionSlot(prop)];
+    if (transition && transition->_state != LynxRoutedTransitionStopped) {
+      transition->_targetValue = nil;
+      [self removePlatformTransition:transition];
+      return;
+    }
   }
   NSNumber* key = [NSNumber numberWithUnsignedInteger:prop];
   LynxAnimationDelegate* delegate = [_transitionDelegates objectForKey:key];
@@ -967,7 +1101,7 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
                    }];
 
         // keep callback just exec once.
-        [strongSelf.transitionDelegates
+        [strongSelf->_transitionDelegates
             removeObjectForKey:[NSNumber numberWithUnsignedInteger:info.prop]];
       }];
 }

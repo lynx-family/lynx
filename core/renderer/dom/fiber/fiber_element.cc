@@ -501,6 +501,10 @@ Element::SampleAnimationOverridesForNewPipeline(
       has_keyframe_props_changed_ = false;
       needs_keyframe_effect_rebuild_ = false;
     }
+    if (css_transition_manager_ &&
+        css_transition_manager_->HasPendingOpacitySnapshot()) {
+      css_keyframe_manager_->DropPendingOpacityRestore();
+    }
     auto keyframe_sample =
         css_keyframe_manager_->CollectAnimationUpdatesForNewPipeline(
             sample_time);
@@ -519,7 +523,8 @@ Element::SampleAnimationOverridesForNewPipeline(
         committed_underlying_layout_only_styles != nullptr
             ? *committed_underlying_layout_only_styles
             : empty_underlying_layout_only_styles,
-        new_underlying_layout_only_styles);
+        new_underlying_layout_only_styles, animation_sample.property_overrides,
+        css_keyframe_manager_.get());
     auto transition_sample =
         css_transition_manager_->CollectTransitionUpdatesForNewPipeline(
             sample_time);
