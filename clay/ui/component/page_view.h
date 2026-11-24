@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -503,6 +504,13 @@ class PageView : public BaseView,
                            const std::string& scroll_monitor_tag);
   void EndFluencyMonitor(uintptr_t id);
 
+  enum class ScrollMonitorEvent { kScroll, kAnimationEnd };
+  using ScrollMonitorCallback = std::function<void(
+      ScrollMonitorEvent, const std::string&, const std::string&)>;
+  void SetScrollMonitorCallback(ScrollMonitorCallback callback);
+  void NotifyScrollMonitor(ScrollMonitorEvent event, const std::string& tag,
+                           const std::string& monitor_tag) const;
+
   GestureHandlerDispatcher* GetGestureHandlerDispatcher() const {
     return gesture_handler_dispatcher_.get();
   }
@@ -717,6 +725,7 @@ class PageView : public BaseView,
   std::shared_ptr<PipelineTimingDelegate> pipeline_timing_delegate_;
   std::shared_ptr<ScrollFluencyMonitorDelegate>
       scroll_fluency_monitor_delegate_;
+  ScrollMonitorCallback scroll_monitor_callback_;
 
   friend class ViewContext;
   ViewContext* view_context_ = nullptr;
