@@ -87,9 +87,6 @@ declare_args() {
   # Which directory the Node header will be copied into
   node_headers_dst_dir = node_headers_dst
 
-  # enable lynx clang static checker plugin
-  enable_lynx_clang_plugin = false
-
   # enable 16kb align for android
   enable_16kb_align = false
 
