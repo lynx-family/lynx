@@ -35,6 +35,10 @@ class ClosureEventListener : public event::EventListener {
 
   bool Matches(EventListener* listener) override;
 
+  bool IsLepusListener() const override {
+    return closure_type_ == ClosureType::kCore;
+  }
+
   ClosureType closure_type() { return closure_type_; }
 
   lepus::Value& lepus_object() { return lepus_object_; }

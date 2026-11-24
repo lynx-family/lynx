@@ -61,6 +61,9 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) override;
 
+  runtime::ContextProxy *GetContextProxy(
+      runtime::ContextProxy::Type type) override;
+
   bool EnableEventHandleRefactor() const override;
 
   bool SupportComponentJS() const override;

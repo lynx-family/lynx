@@ -103,6 +103,7 @@ class Event : public lepus::RefCounted {
     kMouseEvent,
     kMessageEvent,
     kCustomEvent,
+    kBubbleEvent,
   };
 
   Event(const std::string&, int64_t, EventType, Capture, Bubbles, Cancelable,
@@ -113,6 +114,9 @@ class Event : public lepus::RefCounted {
 
   Event(const std::string&, EventType, Capture, Bubbles, Cancelable,
         ComposedMode);
+
+  Event(const std::string&, EventType, Capture, Bubbles, Cancelable,
+        ComposedMode, const lepus::Value&);
 
   Event(const std::string&, int64_t, EventType, Capture, Bubbles, Cancelable,
         ComposedMode, PhaseType, const lepus::Value&);
@@ -176,6 +180,8 @@ class Event : public lepus::RefCounted {
   void InitEventPath(EventTarget& target);
   virtual DispatchEventResult DispatchEvent(EventDispatcher&);
 
+  // Prepare state and parameters that must be ready before listeners run.
+  virtual void PrepareForDispatch() { HandleEventCustomDetail(); }
   // Called before triggering (invoke the listener) an event to get the base
   // part of detail_.
   virtual void HandleEventBaseDetail(bool is_core_event = false);

@@ -367,6 +367,15 @@ TEST_F(TouchEventHandlerTest, TouchCancelListenerCanDestroyPageState) {
 }
 
 TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
+  auto page_config = std::make_shared<PageConfig>();
+  tasm_->page_config_ = page_config;
+  tasm_->template_loaded_ = true;
+  auto* manager = tasm_->page_proxy()->element_manager().get();
+  manager->SetConfig(page_config);
+  auto target = manager->CreateFiberElement(base::String("view"));
+  target->MarkAttached();
+  target->CheckTriggerGlobalEvent("trigger-global-event", lepus::Value(true));
+
   auto* native_context_proxy =
       tasm_->GetContextProxy(runtime::ContextProxy::Type::kNative);
   ASSERT_NE(native_context_proxy, nullptr);
@@ -381,19 +390,27 @@ TEST_F(TouchEventHandlerTest, SendGlobalEventToCoreContext) {
             received_args = lepus_value::ShallowCopy(args);
           }));
 
-  lepus::Value info(lepus::Dictionary::Create());
-  info.SetProperty("key", lepus::Value("value"));
-  touch_event_handler_->SendGlobalEvent(tasm_.get(), EventType::kComponent,
-                                        "global-event", info);
+  for (bool enabled : {false, true}) {
+    SCOPED_TRACE(enabled);
+    page_config->SetEnableEventHandleRefactor(enabled);
+    event_count = 0;
+    received_args = lepus::Value();
+    auto params = lepus::Dictionary::Create();
+    params->SetValue("key", lepus::Value("value"));
+    params->SetValue("type", lepus::Value("wheel"));
+    tasm_->SendBubbleEvent("wheel", target->impl_id(), params);
 
-  EXPECT_EQ(event_count, 1);
-  ASSERT_TRUE(received_args.IsArray());
-  ASSERT_EQ(received_args.Array()->size(), 2U);
-  EXPECT_EQ(received_args.Array()->get(0), lepus::Value("global-event"));
-  const auto& received_params = received_args.Array()->get(1);
-  ASSERT_TRUE(received_params.IsArray());
-  ASSERT_EQ(received_params.Array()->size(), 1U);
-  EXPECT_EQ(received_params.Array()->get(0), info);
+    EXPECT_EQ(event_count, 1);
+    ASSERT_TRUE(received_args.IsArray());
+    ASSERT_EQ(received_args.Array()->size(), 2U);
+    EXPECT_EQ(received_args.Array()->get(0), lepus::Value("wheel"));
+    const auto& received_params = received_args.Array()->get(1);
+    ASSERT_TRUE(received_params.IsArray());
+    ASSERT_EQ(received_params.Array()->size(), 1U);
+    const auto& received_info = received_params.Array()->get(0);
+    EXPECT_EQ(received_info.GetProperty("key"), lepus::Value("value"));
+    EXPECT_EQ(received_info.GetProperty("type"), lepus::Value("wheel"));
+  }
 }
 
 #if defined(OS_WIN) || defined(OS_MAC) || defined(OS_LINUX)
@@ -538,10 +555,13 @@ TEST_F(TouchEventHandlerTest, MouseBoundariesKeepLegacyPropagation) {
     manager->SetConfig(page_config);
     for (const auto* name : {"mouseenter", "mouseleave"}) {
       SCOPED_TRACE(name);
-      capture_parent->SetJSEventHandler(name, "capture-bind", "parentCapture");
-      bubble_parent->SetJSEventHandler(name, "bindEvent", "bubble");
-      outer->SetJSEventHandler(name, "capture-bind", "outerCapture");
-      target->SetJSEventHandler(name, "bindEvent", "targetMouse");
+      capture_parent->FiberAddEvent("capture-bind", name,
+                                    lepus::Value("parentCapture"), "");
+      bubble_parent->FiberAddEvent("bindEvent", name, lepus::Value("bubble"),
+                                   "");
+      outer->FiberAddEvent("capture-bind", name, lepus::Value("outerCapture"),
+                           "");
+      target->FiberAddEvent("bindEvent", name, lepus::Value("targetMouse"), "");
       delegate_->ss_.str("");
       touch_event_handler_->HandleBubbleEvent(tasm_.get(), "", name,
                                               target->impl_id(),

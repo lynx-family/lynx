@@ -90,7 +90,16 @@ bool EventListenerMap::Add(const std::string& type,
                                 std::forward_as_tuple(type), std::tuple<>())
                   .second;
   }
-  vector->emplace_back(std::move(listener));
+  // Run main-thread listeners first so stopImmediatePropagation can prevent
+  // JS dispatch in every event phase. Preserve registration order per kind.
+  if (listener->IsLepusListener()) {
+    auto position =
+        std::find_if(vector->begin(), vector->end(),
+                     [](const auto& item) { return !item->IsLepusListener(); });
+    vector->insert(position, std::move(listener));
+  } else {
+    vector->emplace_back(std::move(listener));
+  }
   return true;
 }
 
