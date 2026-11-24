@@ -117,10 +117,13 @@ class CSSKeyframeManager : public AnimationDelegate {
   AnimationSampleForNewPipeline CollectAnimationUpdatesForNewPipeline(
       fml::TimePoint& time);
 
+  void DropPendingOpacityRestore();
+
   AnimationEventRecordsForNewPipeline
   TakePendingAnimationEventsForNewPipeline();
 
   bool NeedsFutureTickForNewPipeline() const;
+  bool PlatformKeyframeCanAffectProperty(tasm::CSSPropertyID property) const;
 
   virtual void TickAllAnimation(fml::TimePoint& time);
 
@@ -215,6 +218,7 @@ class CSSKeyframeManager : public AnimationDelegate {
     gfx::AnimationId animation_id{0};
     uint32_t generation{1};
     gfx::TimingFunctionData platform_timing;
+    // Empty after submission; later commands reuse the platform keyframes.
     base::Vector<gfx::PlatformAnimationProperty> properties;
     bool handed_off{false};
     // Only properties with implicit endpoints depend on these base values.
@@ -237,8 +241,12 @@ class CSSKeyframeManager : public AnimationDelegate {
     PlatformAnimationPtr platform_animation;
   };
 
-  void QueuePlatformAnimationCommands(PlatformAnimationState& animation,
-                                      gfx::PlatformAnimationCommandType type);
+  AnimationBuildResult BuildTransitionAnimation(starlight::AnimationData& data,
+                                                bool allow_platform,
+                                                bool defer_core);
+  gfx::PlatformAnimationCommand& QueuePlatformAnimationCommands(
+      PlatformAnimationState& animation,
+      gfx::PlatformAnimationCommandType type);
 
  private:
   struct ParsedKeyframe {

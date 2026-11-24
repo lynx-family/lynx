@@ -29,6 +29,7 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "gfx/animation/animation_timing.h"
 #include "gfx/animation/timing_function.h"
 
 namespace lynx {
@@ -41,7 +42,7 @@ namespace {
 constexpr bool kHasPlatformAnimationBackend =
     LYNX_HAS_PLATFORM_ANIMATION_BACKEND;
 
-// LOGI may be compiled out depending on LYNX_MIN_LOG_LEVEL.
+// LOGD may be compiled out depending on LYNX_MIN_LOG_LEVEL.
 [[maybe_unused]] const char* AnimationFallbackReasonToString(
     AnimationFallbackReason reason) {
   switch (reason) {
@@ -387,6 +388,30 @@ CSSKeyframeManager::FindPlatformAnimation(const base::String& name) {
   return nullptr;
 }
 
+bool CSSKeyframeManager::PlatformKeyframeCanAffectProperty(
+    tasm::CSSPropertyID property) const {
+  for (const auto& state : platform_animations_) {
+    if (!state || !state->animation->GetRawStyleSet().count(property)) {
+      continue;
+    }
+    const auto& animation = *state->animation;
+    const auto data = ToGfxAnimationData(*animation.animation_data());
+    if (data.fill_mode == gfx::AnimationFillModeType::kForwards ||
+        data.fill_mode == gfx::AnimationFillModeType::kBoth) {
+      return true;
+    }
+    gfx::AnimationTimingInput timing;
+    timing.animation_data = &data;
+    timing.duration = fml::TimeDelta::FromMilliseconds(data.duration);
+    // The shared playback clock already gives time relative to the start.
+    if (gfx::CalculatePhase(timing, animation.GetCurrentTime()) !=
+        gfx::TimingPhase::AFTER) {
+      return true;
+    }
+  }
+  return false;
+}
+
 CSSKeyframeManager::PlatformAnimationPtr
 CSSKeyframeManager::CreatePlatformAnimationState(
     ParsedPropertyMap& properties, std::shared_ptr<Animation> logical) {
@@ -414,7 +439,8 @@ CSSKeyframeManager::CreatePlatformAnimationState(
   return animation;
 }
 
-void CSSKeyframeManager::QueuePlatformAnimationCommands(
+gfx::PlatformAnimationCommand&
+CSSKeyframeManager::QueuePlatformAnimationCommands(
     PlatformAnimationState& animation, gfx::PlatformAnimationCommandType type) {
   if (type == gfx::PlatformAnimationCommandType::kUpdate) {
     ++animation.generation;
@@ -435,10 +461,11 @@ void CSSKeyframeManager::QueuePlatformAnimationCommands(
     command.animation_data =
         ToGfxAnimationData(animation.animation->get_animation_data());
     command.animation_data.timing_func = animation.platform_timing;
-    // Submit each rebuilt state once. The command takes its keyframes.
+    command.reuse_keyframes = animation.properties.empty();
     command.properties = std::move(animation.properties);
     animation.handed_off = true;
   }
+  return command;
 }
 
 void CSSKeyframeManager::TickAllAnimation(fml::TimePoint& frame_time) {
@@ -634,10 +661,18 @@ void CSSKeyframeManager::SetAnimationDataAndPlayInternal(
     }
     const auto& previous =
         platform ? (*platform)->animation : animation->second;
-    if (platform || force_rebuild || invalidated_keyframes_.count(data.name) ||
-        (!prepared.empty() && prepared[index].value->backend.CanRun())) {
+    const bool keyframes_changed =
+        force_rebuild || invalidated_keyframes_.count(data.name);
+    const bool can_route =
+        !prepared.empty() && prepared[index].value->backend.CanRun();
+    if (platform || keyframes_changed || can_route) {
       auto* existing_platform = platform ? platform->get() : nullptr;
-      auto rebuilt = build_animation(index, previous->GetOrigin());
+      const bool reuse =
+          existing_platform && can_route && !keyframes_changed &&
+          previous->get_animation_data().EqualsIgnoringPlayState(data) &&
+          !underlying_values_changed(*existing_platform);
+      auto rebuilt = reuse ? AnimationBuildResult{nullptr, std::move(*platform)}
+                           : build_animation(index, previous->GetOrigin());
       if (existing_platform && rebuilt.platform_animation) {
         rebuilt.platform_animation->RetainIdentityFrom(*existing_platform);
       } else if (rebuilt.new_animator_animation || rebuilt.platform_animation ||
@@ -972,6 +1007,10 @@ CSSKeyframeManager::CollectAnimationUpdatesForNewPipeline(
                             : AnimationSampleForNewPipeline{};
 }
 
+void CSSKeyframeManager::DropPendingOpacityRestore() {
+  pending_property_overrides_.erase(tasm::kPropertyIDOpacity);
+}
+
 AnimationEventRecordsForNewPipeline
 CSSKeyframeManager::TakePendingAnimationEventsForNewPipeline() {
   auto pending_event_records = std::move(pending_event_records_);
@@ -1165,7 +1204,7 @@ CSSKeyframeManager::PreparedAnimation::PreparedAnimation(
       backend_result = {false, AnimationFallbackReason::kBackendUnavailable};
     }
     if (!backend_result.CanRun()) {
-      LOGI("[AnimationRouting] executor=new-animator element_id="
+      LOGD("[AnimationRouting] executor=new-animator element_id="
            << manager.element_->impl_id() << " name=" << data.name.str()
            << " kind="
            << (manager.GetAnimationKind() == gfx::AnimationKind::kKeyframe
@@ -1217,6 +1256,18 @@ CSSKeyframeManager::BuildPreparedAnimation(
     AddParsedPropertyToNewAnimator(std::move(property), animation.get());
   }
   return {std::move(animation), nullptr};
+}
+
+CSSKeyframeManager::AnimationBuildResult
+CSSKeyframeManager::BuildTransitionAnimation(starlight::AnimationData& data,
+                                             bool allow_platform,
+                                             bool defer_core) {
+  PreparedAnimation prepared(*this, data, nullptr, nullptr, allow_platform);
+  if (defer_core && !prepared.backend.CanRun()) {
+    return {};
+  }
+  return BuildPreparedAnimation(data, std::move(prepared),
+                                Animation::Origin::kCSSTransition);
 }
 
 std::shared_ptr<Animation> CSSKeyframeManager::CreateAnimation(

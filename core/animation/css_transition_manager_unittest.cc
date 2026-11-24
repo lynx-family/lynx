@@ -21,6 +21,7 @@
 #include "core/inspector/observer/inspector_animation_observer.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/measure_context.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -32,6 +33,7 @@
 #include "core/style/filter_data.h"
 #include "core/style/transform_raw_data.h"
 #include "core/style/transition_data.h"
+#include "gfx/animation/capabilities/ios_animation_capabilities_generated.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -85,6 +87,14 @@ uint32_t GetBoxShadowColor(const tasm::CSSValue& value) {
   return static_cast<uint32_t>(shadow->GetValue("color").Number());
 }
 
+class RoutingMockPaintingContext : public MockPaintingContext {
+ public:
+  const gfx::AnimationBackendCapabilities& GetPlatformAnimationCapabilities()
+      override {
+    return gfx::GetIOSAnimationBackendCapabilities();
+  }
+};
+
 }  // namespace
 
 class CSSTransitionManagerTest : public ::testing::Test {
@@ -100,7 +110,7 @@ class CSSTransitionManagerTest : public ::testing::Test {
     tasm_mediator = std::make_shared<
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
     manager = std::make_unique<lynx::tasm::ElementManager>(
-        std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
+        std::make_unique<RoutingMockPaintingContext>(), tasm_mediator.get(),
         lynx_env_config);
     auto config = std::make_shared<PageConfig>();
     config->SetEnableZIndex(true);
@@ -761,6 +771,222 @@ TEST_F(CSSTransitionManagerTest,
 }
 
 TEST_F(CSSTransitionManagerTest,
+       RoutedOpacityTransitionHandsOffAndRetargetsWithPlatformUpdate) {
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
+  auto make_style = [this](float opacity, bool transition = true) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    if (transition) {
+      SetTransitionProperties(style,
+                              {starlight::AnimationPropertyType::kOpacity});
+    }
+    style.SetValue(tasm::kPropertyIDOpacity,
+                   tasm::CSSValue(opacity, CSSValuePattern::NUMBER));
+    return style;
+  };
+  for (bool raster : {false, true}) {
+    SCOPED_TRACE(raster);
+    manager->GetConfig()->SetEnableRasterAnimation(raster);
+    auto test_element = InitElement();
+    test_element->has_painting_node_ = true;
+    auto test_manager =
+        std::make_unique<animation::CSSTransitionManager>(test_element.get());
+    tasm::StyleMap empty;
+    auto sync = [&](const auto& before, const auto& displayed,
+                    const auto& after) {
+      test_manager->UpdateTransitionsForNewPipeline(before, displayed, after,
+                                                    empty, empty);
+    };
+    const auto initial = make_style(0.2f, false);
+    const auto first_target = make_style(0.8f);
+    const auto second_target = make_style(0.4f);
+    sync(initial, initial, first_target);
+    EXPECT_TRUE(test_manager->animations_map_.empty());
+    ASSERT_TRUE(test_element->HasPendingPlatformAnimationCommands());
+    auto& commands = *test_element->platform_animation_commands_;
+    ASSERT_EQ(commands.size(), 1u);
+    const auto& command = commands.front();
+    EXPECT_EQ(command.type, gfx::PlatformAnimationCommandType::kHandoff);
+    EXPECT_EQ(command.kind, gfx::AnimationKind::kTransition);
+    ASSERT_EQ(command.properties.size(), 1u);
+    EXPECT_EQ(command.properties.front().property,
+              gfx::AnimationPropertyType::kOpacity);
+    ASSERT_EQ(command.properties.front().keyframes.size(), 2u);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        command.properties.front().keyframes.front().get())
+                        ->Value(),
+                    0.2f);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        command.properties.front().keyframes.back().get())
+                        ->Value(),
+                    0.8f);
+    const auto animation_id = command.animation_id;
+    sync(first_target, first_target, second_target);
+    ASSERT_EQ(commands.size(), 2u);
+    const auto& update = commands.back();
+    EXPECT_EQ(update.type, gfx::PlatformAnimationCommandType::kUpdate);
+    EXPECT_EQ(update.animation_id, animation_id);
+    EXPECT_EQ(update.generation, 2u);
+    ASSERT_EQ(update.properties.size(), 1u);
+    ASSERT_EQ(update.properties.front().keyframes.size(), 2u);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        update.properties.front().keyframes.front().get())
+                        ->Value(),
+                    0.8f);
+    EXPECT_FLOAT_EQ(static_cast<const gfx::FloatKeyframe*>(
+                        update.properties.front().keyframes.back().get())
+                        ->Value(),
+                    0.4f);
+    sync(second_target, second_target, initial);
+    ASSERT_EQ(commands.size(), 3u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kCancel);
+    EXPECT_TRUE(commands.back().properties.empty());
+    // Removing a transition must clear the old target cache before re-adding
+    // it.
+    sync(initial, initial, second_target);
+    ASSERT_EQ(commands.size(), 4u);
+    EXPECT_EQ(commands.back().type,
+              gfx::PlatformAnimationCommandType::kHandoff);
+    EXPECT_NE(commands.back().animation_id, animation_id);
+    auto make_fallback_style = [&](float opacity) {
+      auto style = make_style(opacity);
+      auto& timing = style.transition_data().timing_funcs.front();
+      timing.timing_func = starlight::TimingFunctionType::kSteps;
+      timing.x1 = 4;
+      timing.steps_type = starlight::StepsType::kStart;
+      style.transition_data().delays.front() = 100;
+      return style;
+    };
+    const auto fallback_target = make_fallback_style(0.9f);
+    sync(second_target, second_target, fallback_target);
+    ASSERT_EQ(commands.size(), 5u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kDetach);
+    auto snapshot = commands.back().transition_snapshot;
+    ASSERT_NE(snapshot, nullptr);
+    EXPECT_TRUE(test_manager->NeedsFutureTickForNewPipeline());
+    auto frame_time = animation::Animation::GetAnimationDummyStartTime();
+    EXPECT_TRUE(test_manager->CollectTransitionUpdatesForNewPipeline(frame_time)
+                    .property_overrides.empty());
+    EXPECT_EQ(commands.size(), 5u);
+
+    // A newer target can reuse the pending snapshot. Its timing wins.
+    const auto newest_target = make_fallback_style(0.6f);
+    sync(fallback_target, fallback_target, newest_target);
+    ASSERT_EQ(commands.size(), 5u);
+
+    // A Core keyframe can cover the property before the retarget snapshot
+    // arrives. Detach the hold immediately without discarding the snapshot.
+    tasm::StyleMap keyframe_overrides;
+    keyframe_overrides.emplace(tasm::kPropertyIDOpacity,
+                               tasm::CSSValue(0.9f, CSSValuePattern::NUMBER));
+    test_manager->UpdateTransitionsForNewPipeline(newest_target, newest_target,
+                                                  newest_target, empty, empty,
+                                                  keyframe_overrides);
+    ASSERT_EQ(commands.size(), 6u);
+    EXPECT_EQ(commands.back().type, gfx::PlatformAnimationCommandType::kDetach);
+    EXPECT_EQ(commands.back().transition_snapshot, nullptr);
+    EXPECT_TRUE(test_manager->NeedsFutureTickForNewPipeline());
+
+    snapshot->PublishOpacity(0.3f);
+    frame_time = fml::TimePoint::FromTicks(1000000000);
+    auto expect_opacity = [&](float expected) {
+      auto sample =
+          test_manager->CollectTransitionUpdatesForNewPipeline(frame_time);
+      ASSERT_TRUE(sample.property_overrides.contains(tasm::kPropertyIDOpacity));
+      EXPECT_FLOAT_EQ(
+          sample.property_overrides.at(tasm::kPropertyIDOpacity).GetNumber(),
+          expected);
+    };
+    expect_opacity(0.3f);
+    frame_time = frame_time + fml::TimeDelta::FromMilliseconds(99);
+    expect_opacity(0.3f);
+    frame_time = frame_time + fml::TimeDelta::FromMilliseconds(1);
+    expect_opacity(0.375f);
+    EXPECT_EQ(commands.size(), 6u);
+    EXPECT_EQ(test_manager->previous_end_values_.at(tasm::kPropertyIDOpacity),
+              tasm::CSSValue(0.6f, CSSValuePattern::NUMBER));
+  }
+}
+
+TEST_F(CSSTransitionManagerTest,
+       OpacityRetargetWithCoreKeyframeUsesPresentationValue) {
+  using Command = gfx::PlatformAnimationCommandType;
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
+  auto make_style = [this](float opacity) {
+    starlight::ComputedCSSStyle style{1.f, 1.f};
+    style.SetValue(kPropertyIDOpacity,
+                   tasm::CSSValue(opacity, CSSValuePattern::NUMBER));
+    SetTransitionProperties(style,
+                            {starlight::AnimationPropertyType::kOpacity});
+    return style;
+  };
+  const auto initial = make_style(0.f);
+  const auto old_target = make_style(1.f);
+  const auto new_target = make_style(0.5f);
+  tasm::StyleMap keyframe_overrides;
+  keyframe_overrides.emplace(kPropertyIDOpacity,
+                             tasm::CSSValue(0.9f, CSSValuePattern::NUMBER));
+  for (float previous_opacity : {1.f, 0.5f}) {
+    SCOPED_TRACE(previous_opacity);
+    auto element = InitElement();
+    element->has_painting_node_ = true;
+    animation::CSSTransitionManager transition(element.get());
+    transition.UpdateTransitionsForNewPipeline(initial, initial, old_target, {},
+                                               {});
+    ASSERT_TRUE(element->HasPendingPlatformAnimationCommands());
+    const auto& commands = *element->platform_animation_commands_;
+    ASSERT_EQ(commands.size(), 1u);
+    ASSERT_EQ(commands.front().type, Command::kHandoff);
+
+    transition.UpdateTransitionsForNewPipeline(
+        old_target, make_style(previous_opacity), new_target, {}, {},
+        keyframe_overrides);
+    ASSERT_EQ(commands.size(), 3u);
+    ASSERT_EQ(commands[1].type, Command::kDetach);
+    auto snapshot = commands[1].transition_snapshot;
+    ASSERT_TRUE(snapshot && !snapshot->capture_timeline());
+    EXPECT_EQ(commands.back().type, Command::kDetach);
+    EXPECT_EQ(commands.back().transition_snapshot, nullptr);
+    EXPECT_EQ(commands.back().animation_id, commands.front().animation_id);
+
+    auto frame = fml::TimePoint::FromTicks(1000000000);
+    animation::CSSKeyframeManager keyframes(element.get());
+    auto removed = std::make_shared<animation::Animation>(base::String("fade"));
+    removed->SetRawCssId(kPropertyIDOpacity);
+    tasm::StyleMap base_opacity;
+    base_opacity.emplace(kPropertyIDOpacity,
+                         tasm::CSSValue(0.5f, CSSValuePattern::NUMBER));
+    keyframes.ClearAnimationEffects(removed, &base_opacity, nullptr);
+    ASSERT_TRUE(transition.HasPendingOpacitySnapshot());
+    keyframes.DropPendingOpacityRestore();
+    auto cleanup = keyframes.CollectAnimationUpdatesForNewPipeline(frame);
+    EXPECT_FALSE(cleanup.property_overrides.contains(kPropertyIDOpacity));
+    transition.UpdateTransitionsForNewPipeline(new_target, make_style(0.9f),
+                                               new_target, {}, {},
+                                               cleanup.property_overrides);
+    auto waiting = transition.CollectTransitionUpdatesForNewPipeline(frame);
+    ASSERT_TRUE(waiting.property_overrides.contains(kPropertyIDOpacity));
+    EXPECT_FLOAT_EQ(
+        waiting.property_overrides.at(kPropertyIDOpacity).GetNumber(), 0.9f);
+    EXPECT_EQ(commands.size(), 3u);
+
+    snapshot->PublishOpacity(0.2f);
+    auto first = transition.CollectTransitionUpdatesForNewPipeline(frame);
+    ASSERT_TRUE(first.property_overrides.contains(kPropertyIDOpacity));
+    EXPECT_FLOAT_EQ(first.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+                    0.2f);
+    frame = frame + fml::TimeDelta::FromMilliseconds(100);
+    transition.UpdateTransitionsForNewPipeline(new_target, make_style(0.9f),
+                                               new_target, {}, {});
+    auto resumed = transition.CollectTransitionUpdatesForNewPipeline(frame);
+    ASSERT_TRUE(resumed.property_overrides.contains(kPropertyIDOpacity));
+    EXPECT_NEAR(resumed.property_overrides.at(kPropertyIDOpacity).GetNumber(),
+                0.215, 0.001);
+  }
+}
+
+TEST_F(CSSTransitionManagerTest,
        NewPipelineReplacementAndRemovalNotifyInspector) {
   if (!ENABLE_INSPECTOR) {
     GTEST_SKIP() << "Inspector is disabled";
@@ -768,14 +994,21 @@ TEST_F(CSSTransitionManagerTest,
 
   class RecordingObserver : public InspectorAnimationObserver {
    public:
+    void OnAnimationCreated(animation::Animation* animation) override {
+      last_created_id = animation->id();
+    }
     void OnAnimationCanceled(animation::Animation* animation) override {
       canceled.push_back(animation->id());
     }
+    int64_t last_created_id{-1};
     base::Vector<int64_t> canceled;
   };
   auto observer = std::make_shared<RecordingObserver>();
   manager->SetInspectorAnimationObserver(observer);
+  manager->supports_platform_animation_routing_ = true;
+  manager->GetConfig()->SetEnableFiberArch(true);
   auto test_element = InitElement();
+  test_element->has_painting_node_ = true;
   auto test_manager = InitTestTransitionManager(test_element.get());
   starlight::ComputedCSSStyle previous_base{1.f, 1.f};
   starlight::ComputedCSSStyle previous_final{1.f, 1.f};
@@ -794,8 +1027,11 @@ TEST_F(CSSTransitionManagerTest,
         previous_base, previous_final, next_base, empty_styles, empty_styles);
   };
   sync();
+  ASSERT_FALSE(test_element->HasPendingPlatformAnimationCommands());
+  ASSERT_TRUE(test_manager->HasActiveTransition(kPropertyIDOpacity));
   const auto first_id =
       test_manager->animations_map().at(base::String("opacity"))->id();
+  EXPECT_EQ(first_id, observer->last_created_id);
   EXPECT_TRUE(observer->canceled.empty());
   previous_base.SetValue(kPropertyIDOpacity,
                          CSSValue(0.8, CSSValuePattern::NUMBER));

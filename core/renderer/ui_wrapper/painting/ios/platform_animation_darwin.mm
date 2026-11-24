@@ -238,13 +238,29 @@ LynxPlatformAnimationPlayback* MakePlatformPlayback(
 }
 
 void ApplyTransitionCommand(LynxUI* ui, const gfx::PlatformAnimationCommand& command) {
-  if (command.type == gfx::PlatformAnimationCommandType::kCancel) {
+  const bool cancel = command.type == gfx::PlatformAnimationCommandType::kCancel;
+  if (cancel || command.type == gfx::PlatformAnimationCommandType::kDetach) {
+    const auto& snapshot = command.transition_snapshot;
+    LynxTransitionTimingSnapshot timing{};
+    timing.captureTimeline = snapshot && snapshot->capture_timeline();
+    const auto sampled_at = timing.captureTimeline ? fml::TimePoint::Now() : fml::TimePoint::Min();
     auto* manager = [ui transitionManagerCreatingIfNeeded:NO];
-    [manager cancelPlatformTransition:command.animation_id generation:command.generation];
+    NSNumber* value = [manager stopPlatformTransition:command.animation_id
+                                           generation:command.generation
+                                               cancel:cancel
+                                             snapshot:snapshot ? &timing : nullptr];
+    if (snapshot) {
+      if (value) {
+        snapshot->PublishOpacity(value.floatValue,
+                                 {sampled_at - fml::TimeDelta::FromSecondsF(timing.currentTime),
+                                  static_cast<bool>(timing.started)});
+      } else {
+        snapshot->Publish();
+      }
+    }
     return;
   }
-  if (command.type == gfx::PlatformAnimationCommandType::kDetach ||
-      command.properties.size() != 1) {
+  if (!ui || command.properties.size() != 1) {
     return;
   }
   const auto& property = command.properties.front();
@@ -273,7 +289,7 @@ void ApplyTransitionCommand(LynxUI* ui, const gfx::PlatformAnimationCommand& com
 
 void ApplyPlatformAnimationCommands(
     LynxUI* ui, const fml::RefPtr<gfx::PlatformAnimationCommandBatch>& commands) {
-  if (ui == nil || commands == nullptr || commands->empty()) {
+  if (commands == nullptr || commands->empty()) {
     return;
   }
 
@@ -282,7 +298,7 @@ void ApplyPlatformAnimationCommands(
       ApplyTransitionCommand(ui, command);
       continue;
     }
-    if (command.kind != gfx::AnimationKind::kKeyframe) {
+    if (!ui || command.kind != gfx::AnimationKind::kKeyframe) {
       continue;
     }
     const bool cancel = command.type == gfx::PlatformAnimationCommandType::kCancel;

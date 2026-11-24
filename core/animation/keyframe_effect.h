@@ -10,6 +10,7 @@
 #define CORE_ANIMATION_KEYFRAME_EFFECT_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "base/include/fml/time/time_point.h"
@@ -86,6 +87,8 @@ class KeyframeEffect {
 
   void NotifyUnitValuesUpdated(tasm::CSSValuePattern);
 
+  void SetOpacityBeforeDelay(float opacity) { opacity_before_delay_ = opacity; }
+
   void SetHasCustomPropertyKeyframes(bool has_custom_property_keyframes) {
     has_custom_property_keyframes_ = has_custom_property_keyframes;
   }
@@ -117,6 +120,7 @@ class KeyframeEffect {
   bool has_custom_property_keyframes_{false};
   gfx::TimingRunState custom_property_run_state_{gfx::TimingRunState::STARTING};
   int custom_property_current_iteration_count_{0};
+  std::optional<float> opacity_before_delay_;
 };
 
 }  // namespace animation

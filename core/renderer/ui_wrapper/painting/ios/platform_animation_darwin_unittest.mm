@@ -4,10 +4,12 @@
 
 #import <Lynx/LynxAnimationDelegate.h>
 #import <Lynx/LynxConverter+Transform.h>
+#import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
+#import <Lynx/LynxUIContext.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
@@ -59,6 +61,19 @@ void Apply(LynxUI* ui, gfx::PlatformAnimationCommand command) {
   auto commands = lynx::fml::MakeRefCounted<gfx::PlatformAnimationCommandBatch>();
   commands->push_back(std::move(command));
   tasm::ApplyPlatformAnimationCommands(ui, commands);
+}
+
+lynx::fml::RefPtr<gfx::PlatformTransitionSnapshot> DetachTransition(LynxUI* ui, uint32_t generation,
+                                                                    bool capture_timeline = false) {
+  auto snapshot = lynx::fml::MakeRefCounted<gfx::PlatformTransitionSnapshot>(capture_timeline);
+  gfx::PlatformAnimationCommand command;
+  command.kind = gfx::AnimationKind::kTransition;
+  command.type = gfx::PlatformAnimationCommandType::kDetach;
+  command.animation_id = 1;
+  command.generation = generation;
+  command.transition_snapshot = snapshot;
+  Apply(ui, std::move(command));
+  return snapshot;
 }
 
 id HasElapsedTime(NSTimeInterval elapsedTime) {
@@ -419,13 +434,126 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
   XCTAssertNil([layer animationForKey:key]);
 }
 
+- (void)testOpacityKeyframesKeepTransitionAndItsEvents {
+  [self.events stopMocking];
+  self.events = nil;
+  id emitter = OCMStrictClassMock([LynxEventEmitter class]);
+  id context = OCMClassMock([LynxUIContext class]);
+  OCMStub([context eventEmitter]).andReturn(emitter);
+  self.ui.context = context;
+  [self.ui setRawEvents:[NSSet setWithObjects:@"transitionstart(bindEvent)",
+                                              @"transitionend(bindEvent)", nil]
+      andLepusRawEvents:nil];
+  id (^eventMatching)(NSString*, double) = ^id(NSString* name, double elapsedTime) {
+    return [OCMArg checkWithBlock:^BOOL(LynxCustomEvent* event) {
+      return [event.eventName isEqualToString:name] && [event.params isEqualToDictionary:@{
+               @"new_animator" : @YES,
+               @"animation_type" : @"transition-animation",
+               @"animation_name" : @"opacity",
+               @"elapsedTime" : @(elapsedTime)
+             }];
+    }];
+  };
+
+  auto transition = OpacityCommand(1, 2000);
+  transition.kind = gfx::AnimationKind::kTransition;
+  transition.name = "opacity";
+  Apply(self.ui, std::move(transition));
+  CALayer* layer = self.ui.view.layer;
+  NSString* const key = @"transition-opacity";
+  CAAnimation* initial = [layer animationForKey:key];
+  XCTAssertNotNil(initial);
+  OCMExpect([emitter dispatchCustomEvent:eventMatching(@"transitionstart", 0)]);
+  [initial.delegate animationDidStart:initial];
+  [initial.delegate animationDidStart:initial];
+
+  uint32_t generation = 0;
+  for (int delay : {0, 500}) {
+    auto keyframe = OpacityCommand(++generation, 100, 1, 0.8f, 0.8f);
+    keyframe.animation_data.delay = delay;
+    keyframe.animation_data.fill_mode = gfx::AnimationFillModeType::kNone;
+    auto playback = lynx::fml::MakeRefCounted<gfx::AnimationPlaybackState>(
+        lynx::fml::TimeDelta::Zero(), false, EventState::kNotStarted);
+    keyframe.playback = playback;
+    keyframe.executor = playback->ChangeExecutor();
+    Apply(self.ui, std::move(keyframe));
+
+    CAKeyframeAnimation* native = [self animationForKeyPath:@"opacity"];
+    XCTAssertNotNil(native);
+    playback->SetCurrentTime(lynx::fml::TimeDelta::FromMilliseconds(delay));
+    [native.delegate animationDidStart:native];
+    XCTAssertNotNil([layer animationForKey:key]);
+    [native.delegate animationDidStop:native finished:YES];
+    XCTAssertNil([self animationForKeyPath:@"opacity"]);
+
+    CAAnimation* remaining = [layer animationForKey:key];
+    XCTAssertNotNil(remaining);
+    XCTAssertEqual(remaining.beginTime, initial.beginTime);
+    XCTAssertEqual(remaining.duration, initial.duration);
+  }
+
+  OCMExpect([emitter dispatchCustomEvent:eventMatching(@"transitionend", 2)]);
+  [initial.delegate animationDidStop:initial finished:YES];
+  [initial.delegate animationDidStop:initial finished:YES];
+  OCMVerify(times(1), [emitter dispatchCustomEvent:eventMatching(@"transitionstart", 0)]);
+  OCMVerify(times(1), [emitter dispatchCustomEvent:eventMatching(@"transitionend", 2)]);
+  [context stopMocking];
+}
+
+- (void)testOpacityTransitionReportsCancelToLateListener {
+  [self.events stopMocking];
+  self.events = nil;
+  id emitter = OCMStrictClassMock([LynxEventEmitter class]);
+  id context = OCMClassMock([LynxUIContext class]);
+  OCMStub([context eventEmitter]).andReturn(emitter);
+  self.ui.context = context;
+
+  auto transition = OpacityCommand(1, 2000);
+  transition.kind = gfx::AnimationKind::kTransition;
+  transition.name = "opacity";
+  transition.animation_data.delay = 250;
+  CALayer* layer = self.ui.view.layer;
+  layer.speed = 0;
+  layer.timeOffset = 10;
+  Apply(self.ui, std::move(transition));
+  NSString* const key = @"transition-opacity";
+  CAAnimation* native = [layer animationForKey:key];
+  XCTAssertNotNil(native);
+  layer.timeOffset = native.beginTime + 0.5;
+  [native.delegate animationDidStart:native];
+
+  [self.ui setRawEvents:[NSSet setWithObject:@"transitioncancel(bindEvent)"] andLepusRawEvents:nil];
+  id event = [OCMArg checkWithBlock:^BOOL(LynxCustomEvent* value) {
+    return [value.eventName isEqualToString:@"transitioncancel"] &&
+           [value.params[@"animation_name"] isEqual:@"opacity"] &&
+           [value.params[@"elapsedTime"] isEqual:@0.5];
+  }];
+  OCMExpect([emitter dispatchCustomEvent:event]);
+  for (int i = 0; i < 2; ++i) {
+    gfx::PlatformAnimationCommand cancel;
+    cancel.type = gfx::PlatformAnimationCommandType::kCancel;
+    cancel.kind = gfx::AnimationKind::kTransition;
+    cancel.animation_id = 1;
+    cancel.generation = 1;
+    Apply(self.ui, std::move(cancel));
+  }
+  [native.delegate animationDidStop:native finished:NO];
+  OCMVerify(times(1), [emitter dispatchCustomEvent:event]);
+  XCTAssertNil([layer animationForKey:key]);
+  [context stopMocking];
+}
+
 - (void)testOpacityTransitionRetargetsBeforeFirstFrameAndCancels {
   auto command = OpacityCommand();
   command.kind = gfx::AnimationKind::kTransition;
   Apply(self.ui, std::move(command));
   auto* layer = (ManuallyDrivenAnimationLayer*)self.ui.view.layer;
   NSString* const key = @"transition-opacity";
-  XCTAssertNotNil([layer animationForKey:key]);
+  CAAnimation* previous = [layer animationForKey:key];
+  XCTAssertNotNil(previous);
+  OCMReject([self.events sendAnimationEvent:self.ui
+                                  eventName:@"transitionend"
+                                eventParams:[OCMArg any]]);
 
   auto update = OpacityCommand(2, 10000, 1, 0.8f, 0.4f);
   update.kind = gfx::AnimationKind::kTransition;
@@ -434,14 +562,47 @@ id HasElapsedTime(NSTimeInterval elapsedTime) {
   XCTAssertEqualWithAccuracy([animation.fromValue doubleValue], 0.2, 1e-5);
   XCTAssertEqualWithAccuracy([animation.toValue doubleValue], 0.4, 1e-5);
 
+  [previous.delegate animationDidStop:previous finished:YES];
+  auto snapshot = DetachTransition(self.ui, 2);
+  [animation.delegate animationDidStop:animation finished:YES];
+  const gfx::PlatformTransitionSnapshot::Value* captured = nullptr;
+  XCTAssertTrue(snapshot->Read(captured));
+  XCTAssertEqualWithAccuracy(captured ? *captured : -1, 0.2, 1e-5);
+  CABasicAnimation* hold = (CABasicAnimation*)[layer animationForKey:key];
+  XCTAssertEqualObjects(hold.keyPath, @"opacity");
+  XCTAssertEqualWithAccuracy([hold.fromValue doubleValue], 0.2, 1e-5);
   layer.opacity = 0.4;
-  gfx::PlatformAnimationCommand cancel;
-  cancel.type = gfx::PlatformAnimationCommandType::kCancel;
-  cancel.kind = gfx::AnimationKind::kTransition;
-  cancel.animation_id = 1;
-  cancel.generation = 2;
-  Apply(self.ui, std::move(cancel));
+  gfx::PlatformAnimationCommand release;
+  release.type = gfx::PlatformAnimationCommandType::kDetach;
+  release.kind = gfx::AnimationKind::kTransition;
+  release.animation_id = 1;
+  release.generation = 2;
+  Apply(self.ui, std::move(release));
   XCTAssertNil([layer animationForKey:key]);
   XCTAssertEqualWithAccuracy(self.ui.view.layer.opacity, 0.4, 1e-5);
+
+  auto next = OpacityCommand(3, 2000, 1, 0.4f, 1.f);
+  next.kind = gfx::AnimationKind::kTransition;
+  next.animation_data.delay = 250;
+  layer.speed = 0;
+  layer.timeOffset = 10;
+  Apply(self.ui, std::move(next));
+  CAAnimation* running = [layer animationForKey:key];
+  XCTAssertNotNil(running);
+  layer.timeOffset = running.beginTime + 0.5;
+  [running.delegate animationDidStart:running];
+  const auto expected = lynx::fml::TimeDelta::FromMilliseconds(750);
+  const auto earliest_start = lynx::fml::TimePoint::Now() - expected;
+  OCMReject([self.events sendAnimationEvent:self.ui
+                                  eventName:@"transitioncancel"
+                                eventParams:[OCMArg any]]);
+  auto timeline = DetachTransition(self.ui, 3, true);
+  const auto latest_start = lynx::fml::TimePoint::Now() - expected;
+  XCTAssertTrue(timeline->Read(captured));
+  XCTAssertEqualWithAccuracy(captured ? *captured : -1, 0.4, 1e-5);
+  XCTAssertTrue(timeline->timeline().started);
+  XCTAssertTrue(timeline->timeline().start_time >= earliest_start);
+  XCTAssertTrue(timeline->timeline().start_time <= latest_start);
+  XCTAssertNil([layer animationForKey:key]);
 }
 @end

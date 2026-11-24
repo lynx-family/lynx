@@ -7,10 +7,19 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /** @cond */
+typedef struct {
+  NSTimeInterval currentTime;
+  BOOL started;
+  BOOL captureTimeline;
+} LynxTransitionTimingSnapshot;
+
 @interface LynxTransitionAnimationManager ()
 - (void)removeLegacyTransformTransition;
-- (void)cancelPlatformTransition:(uint64_t)animationID
-                      generation:(uint32_t)generation __attribute__((objc_direct));
+- (nullable NSNumber*)stopPlatformTransition:(uint64_t)animationID
+                                  generation:(uint32_t)generation
+                                      cancel:(BOOL)cancel
+                                    snapshot:(LynxTransitionTimingSnapshot* _Nullable)snapshot
+    __attribute__((objc_direct));
 // Endpoints are numbers for opacity and arrays of LynxTransformRaw for transform.
 - (void)applyPlatformTransition:(LynxAnimationInfo*)info
                            from:(id)from

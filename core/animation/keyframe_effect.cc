@@ -194,6 +194,17 @@ KeyframeEffect::KeyframeSampleResult KeyframeEffect::SampleKeyframeModel(
     return result;
   }
 
+  // Preserve a transferred transition's start value until its easing begins.
+  if (LYNX_HAS_PLATFORM_ANIMATION_BACKEND && opacity_before_delay_ &&
+      tick_result.samples.empty() && animation_delegate_ &&
+      CurrentTime(monotonic_time) < fml::TimeDelta::FromMilliseconds(
+                                        animation_->animation_data()->delay)) {
+    animation_delegate_->NotifyClientAnimated(
+        result.styles,
+        tasm::CSSValue(*opacity_before_delay_, tasm::CSSValuePattern::NUMBER),
+        tasm::kPropertyIDOpacity);
+  }
+
   for (const auto& sample : tick_result.samples) {
     auto* curve = static_cast<AnimationCurve*>(sample.curve);
     if (curve == nullptr) {
