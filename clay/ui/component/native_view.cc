@@ -11,7 +11,7 @@
 #include "base/include/fml/macros.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/drawable_image.h"
-#if OS_LINUX
+#if OS_LINUX || OS_MAC
 #include "clay/common/graphics/shared_image_external_bitmap.h"
 #endif
 #include "clay/common/graphics/shared_image_external_texture.h"
@@ -81,7 +81,7 @@ void NativeView::BindExternalTexture(fml::RefPtr<SharedImageSink> image_sink) {
     return;
   }
   std::shared_ptr<SharedDrawableImage> drawable_image;
-#if OS_LINUX
+#if OS_LINUX || OS_MAC
   if (page_view()->UseTextureBackend()) {
     drawable_image = std::make_shared<SharedImageExternalTexture>(image_sink);
   } else {

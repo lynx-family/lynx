@@ -57,6 +57,10 @@ class SharedDrawableImage : public clay::DrawableImage {
   // Called from raster thread.
   void AdvanceFrameConsumption(bool freeze);
 
+  // Bitmap consumers own a CPU snapshot and do not need to hold its producer
+  // buffer while the layer is frozen or waits for another page frame.
+  void ReleaseFrontAfterSnapshot();
+
 #ifndef ENABLE_SKITY
   // Called from raster thread.
   void DrawSkiaImage(sk_sp<SkImage> sk_image, PaintContext& context,

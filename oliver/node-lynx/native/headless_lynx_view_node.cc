@@ -2234,14 +2234,16 @@ class HeadlessLynxViewNode {
     return GetUndefined(env);
   }
 
-  void SendPointerEventFromHost(const lynx_pointer_event_t& event) {
+  void SendPointerEventFromHost(const lynx_pointer_event_t& event,
+                                clay::KeyModifiers modifiers = {}) {
     if (!dispatcher_) {
       return;
     }
-    dispatcher_->Post([this, event]() mutable {
+    dispatcher_->Post([this, event, modifiers]() mutable {
       if (destroyed_ || !renderer_) {
         return;
       }
+      key_modifiers_ = modifiers;
       lynx_pointer_event_t event_copy = event;
       renderer_->SendPointerEvent(&event_copy);
     });
@@ -2255,6 +2257,7 @@ class HeadlessLynxViewNode {
       if (destroyed_ || !renderer_) {
         return;
       }
+      key_modifiers_ = event.modifiers;
       lynx_key_event_t event_copy = event.event;
       event_copy.character =
           event.character.empty() ? nullptr : event.character.c_str();
@@ -2315,8 +2318,9 @@ class HeadlessLynxViewNode {
     if (windowed_) {
       window_host_ = NodeLynxWindowHost::Create(
           dispatcher_ ? dispatcher_->Loop() : nullptr, window_options_,
-          [this](const lynx_pointer_event_t& event) {
-            SendPointerEventFromHost(event);
+          [this](const lynx_pointer_event_t& event,
+                 clay::KeyModifiers modifiers) {
+            SendPointerEventFromHost(event, modifiers);
           },
           [this](const WindowedKeyEvent& event) {
             SendKeyEventFromHost(event);
@@ -2402,6 +2406,9 @@ class HeadlessLynxViewNode {
     // The Skia headless path does not resolve lazy texture-backed images, so
     // software windowless rendering must use raster image resources.
     page_view->SetUseTextureBackend(renderer_type != kRendererTypeSoftware);
+    if (auto* delegate = page_view->GetEventDelegate()) {
+      delegate->SetKeyModifiersProvider([this] { return key_modifiers_; });
+    }
   }
 
   clay::PageView* GetPageView() {
@@ -2495,6 +2502,7 @@ class HeadlessLynxViewNode {
   double device_pixel_ratio_ = 1;
   bool windowed_ = false;
   WindowedLynxViewOptions window_options_;
+  clay::KeyModifiers key_modifiers_;
   bool destroyed_ = false;
   JsDispatcher* dispatcher_ = nullptr;
   std::shared_ptr<ViewState> state_;

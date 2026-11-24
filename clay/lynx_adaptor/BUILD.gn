@@ -60,6 +60,7 @@ source_set("lynx_adaptor") {
     "base_def.h",
     "clay_value.cc",
     "clay_value.h",
+    "key_modifiers.h",
     "layout_context_clay.cc",
     "layout_context_clay.h",
     "lynx_event_dispatcher.cc",

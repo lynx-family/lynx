@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#include "clay/public/event_delegate.h"
 #include "platform/embedder/public/capi/lynx_types.h"
 
 namespace lynx {
@@ -29,11 +30,13 @@ struct WindowedLynxViewOptions {
 struct WindowedKeyEvent {
   lynx_key_event_t event;
   std::string character;
+  clay::KeyModifiers modifiers;
 };
 
 class NodeLynxWindowHost {
  public:
-  using PointerCallback = std::function<void(const lynx_pointer_event_t&)>;
+  using PointerCallback =
+      std::function<void(const lynx_pointer_event_t&, clay::KeyModifiers)>;
   using KeyCallback = std::function<void(const WindowedKeyEvent&)>;
   using ResizeCallback =
       std::function<void(double width, double height, double pixel_ratio)>;

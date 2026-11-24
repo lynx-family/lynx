@@ -7,8 +7,10 @@
 
 #include <stdint.h>
 
+#include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -23,9 +25,26 @@ struct EventDispatchOptions {
   bool emergency{false};
 };
 
+struct KeyModifiers {
+  bool alt = false;
+  bool control = false;
+  bool shift = false;
+  bool meta = false;
+};
+
 class EventDelegate {
  public:
   virtual ~EventDelegate() {}
+
+  // Embedders may supply local input state instead of polling system HID
+  // state. An absent provider preserves the platform's default behavior.
+  void SetKeyModifiersProvider(std::function<KeyModifiers()> provider) {
+    key_modifiers_provider_ = std::move(provider);
+  }
+  std::optional<KeyModifiers> GetKeyModifiersOverride() const {
+    if (key_modifiers_provider_) return key_modifiers_provider_();
+    return std::nullopt;
+  }
 
   // Pointer identity lasts from contact down through its end or cancellation.
   virtual void OnTouchEvent(const std::string& event_name, int tag, float x,
@@ -89,6 +108,9 @@ class EventDelegate {
                               float, float, float, float, float, float, int64_t,
                               int) {}
 #endif
+
+ private:
+  std::function<KeyModifiers()> key_modifiers_provider_;
 };
 
 }  // namespace clay
