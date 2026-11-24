@@ -175,6 +175,10 @@ void ScrollView::OnLayout(LayoutContext* context) {
     SetScrollToIndex(pending_scroll_index_);
     pending_scroll_index_ = -1;
   }
+  UpdateBounceViewPosition();
+}
+
+void ScrollView::UpdateBounceViewPosition() {
   if (!bounce_view_) {
     return;
   }
