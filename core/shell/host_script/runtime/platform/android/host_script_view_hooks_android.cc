@@ -170,6 +170,15 @@ class AndroidLynxView final : public lynx::shell::LynxViewRefProxy {
     });
   }
 
+  bool UpdateViewport(
+      lynx::shell::LynxViewRefUpdateViewportRequest request) override {
+    return Run([&](JNIEnv* env, jobject view) {
+      Java_HostScriptViewHooks_updateViewport(env, view, view_id_,
+                                              request.width, request.height,
+                                              request.need_layout);
+    });
+  }
+
   void Invalidate() override { invalidated_.store(true); }
 
  private:

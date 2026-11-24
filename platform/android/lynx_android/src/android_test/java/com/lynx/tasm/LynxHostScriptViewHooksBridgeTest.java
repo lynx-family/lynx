@@ -19,6 +19,7 @@ import android.content.Context;
 import android.view.View.MeasureSpec;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import com.lynx.tasm.behavior.ILynxUIRenderer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -125,5 +126,34 @@ public class LynxHostScriptViewHooksBridgeTest {
     verify(delegate, never()).registerView(any(), anyLong());
     verify(delegate, never()).unregisterView(anyLong());
     verify(delegate, never()).beforeUpdateViewport(anyLong(), anyInt(), anyInt());
+  }
+
+  @Test
+  public void onMeasureAppliesViewportInterceptorSpecs() {
+    LynxHostScriptViewHooks.Delegate delegate = mock(LynxHostScriptViewHooks.Delegate.class);
+    LynxHostScriptViewHooks.setDelegate(delegate);
+
+    Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+    LynxView view = new LynxView(context);
+    LynxTemplateRender render = mock(LynxTemplateRender.class);
+    ILynxUIRenderer uiRenderer = mock(ILynxUIRenderer.class);
+    view.mLynxTemplateRender = render;
+    when(render.getLogContextSnapshot()).thenReturn(new LynxLogContext(42L, 1L, 2L));
+    when(render.lynxUIRenderer()).thenReturn(uiRenderer);
+    when(delegate.isEnabled()).thenReturn(true);
+
+    int hostWidth = MeasureSpec.makeMeasureSpec(1080, MeasureSpec.EXACTLY);
+    int hostHeight = MeasureSpec.makeMeasureSpec(2400, MeasureSpec.EXACTLY);
+    int patchedWidth = MeasureSpec.makeMeasureSpec(561, MeasureSpec.EXACTLY);
+    int patchedHeight = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+    long packed = ((long) patchedWidth << 32) | (patchedHeight & 0xffffffffL);
+    when(delegate.beforeUpdateViewport(42L, hostWidth, hostHeight)).thenReturn(packed);
+
+    view.onMeasure(hostWidth, hostHeight);
+
+    assertEquals(patchedWidth, view.getCurrentWidthMeasureSpec());
+    assertEquals(patchedHeight, view.getCurrentHeightMeasureSpec());
+    verify(delegate).beforeUpdateViewport(42L, hostWidth, hostHeight);
+    verify(render).onMeasure(patchedWidth, patchedHeight);
   }
 }
