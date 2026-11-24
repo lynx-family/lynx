@@ -86,6 +86,10 @@ class EventListener {
 
   Type type() const { return type_; }
 
+  virtual bool IsLepusListener() const {
+    return type_ == Type::kLepusClosureEventListener;
+  }
+
   const Options& GetOptions() const { return options_; }
 
   virtual void Invoke(fml::RefPtr<Event> event) = 0;

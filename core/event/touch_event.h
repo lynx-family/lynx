@@ -45,6 +45,8 @@ class TouchEvent : public Event {
   int64_t identifier() const { return identifier_; }
   bool is_multi_touch() const { return is_multi_touch_; }
 
+  void PrepareForDispatch() override;
+
   void HandleEventBaseDetail(bool is_core_event = false) override;
 
   void HandleEventCustomDetail() override;
@@ -67,6 +69,7 @@ class TouchEvent : public Event {
   int64_t identifier_;
   // Indicates whether the touch event contains multi-finger information.
   bool is_multi_touch_{false};
+  bool custom_detail_pending_{false};
   // Save the touched object and its touch information.
   lepus::Value targets_touches_{};
   TouchEventTargetPoints current_target_points_;

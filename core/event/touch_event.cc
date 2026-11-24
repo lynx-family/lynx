@@ -47,7 +47,20 @@ TouchEvent::TouchEvent(const std::string& event_name,
   event_type_ = EventType::kTouchEvent;
 }
 
+void TouchEvent::PrepareForDispatch() {
+  // Multi-touch parameters also update page-owned contacts, even when there
+  // are no listeners. Single-touch parameters can wait for a consumer.
+  custom_detail_pending_ = !is_multi_touch_;
+  if (is_multi_touch_) {
+    HandleEventCustomDetail();
+  }
+}
+
 void TouchEvent::HandleEventBaseDetail(bool is_core_event) {
+  if (custom_detail_pending_) {
+    custom_detail_pending_ = false;
+    HandleEventCustomDetail();
+  }
   Event::HandleEventBaseDetail(is_core_event);
   if (current_target_points_.empty() || !current_target_ ||
       !detail_.IsTable()) {
@@ -154,7 +167,10 @@ void TouchEvent::HandleEventCustomDetail() {
 
     float detail_x = 0.f, detail_y = 0.f;
     auto changed_touches = lepus::CArray::Create();
-    auto touches_with_deleted = lepus::Value::Clone(state->current_touches);
+    lepus::Value touches_with_deleted;
+    if (enable_multi_touch_params_compatible && type_ == EVENT_TOUCH_END) {
+      touches_with_deleted = lepus::Value::Clone(state->current_touches);
+    }
     for (const auto& target_touches : *(targets_touches_.Table())) {
       if (target_touches.second.IsArray()) {
         // touches: includes all touches on the same target.

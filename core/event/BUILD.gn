@@ -21,10 +21,14 @@ event_shared_sources = [
   "event_target.h",
   "keyboard_event.cc",
   "keyboard_event.h",
+  "mouse_event.cc",
+  "mouse_event.h",
   "pointer_event.cc",
   "pointer_event.h",
   "touch_event.cc",
   "touch_event.h",
+  "wheel_event.cc",
+  "wheel_event.h",
 ]
 
 lynx_core_source_set("event") {

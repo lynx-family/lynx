@@ -72,6 +72,21 @@ Event::Event(const std::string& type, EventType event_type, Capture capture,
             event_type, capture, bubbles, cancelable, composed_mode,
             PhaseType::kNone) {}
 
+Event::Event(const std::string& type, EventType event_type, Capture capture,
+             Bubbles bubbles, Cancelable cancelable, ComposedMode composed_mode,
+             const lepus::Value& event_param)
+    : Event(type, event_type, capture, bubbles, cancelable, composed_mode) {
+  if (event_param.IsTable()) {
+    for (const auto& item : *event_param.Table()) {
+      detail_.Table()->SetValue(item.first, item.second);
+    }
+  }
+  BASE_STATIC_STRING_DECL(kType, "type");
+  BASE_STATIC_STRING_DECL(kTimestamp, "timestamp");
+  detail_.Table()->SetValue(kType, type_);
+  detail_.Table()->SetValue(kTimestamp, time_stamp_);
+}
+
 Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
              Capture capture, Bubbles bubbles, Cancelable cancelable,
              ComposedMode composed_mode, PhaseType phase_type,
@@ -131,7 +146,8 @@ bool Event::IsCaptureBubbleEvent() {
          event_type_ == EventType::kMouseEvent ||
          event_type_ == EventType::kWheelEvent ||
          event_type_ == EventType::kKeyboardEvent ||
-         event_type_ == EventType::kPointerEvent;
+         event_type_ == EventType::kPointerEvent ||
+         event_type_ == EventType::kBubbleEvent;
 }
 
 }  // namespace event

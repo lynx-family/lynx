@@ -13,6 +13,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "core/event/event_dispatch_result.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
+#include "core/runtime/common/bindings/event/context_proxy.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
@@ -85,6 +86,11 @@ class ElementManagerDelegate {
   // Call for dispatching message event.
   virtual event::DispatchEventResult DispatchMessageEvent(
       fml::RefPtr<runtime::MessageEvent> event) = 0;
+
+  virtual runtime::ContextProxy *GetContextProxy(
+      runtime::ContextProxy::Type type) {
+    return nullptr;
+  }
 
   virtual bool EnableEventHandleRefactor() const = 0;
 

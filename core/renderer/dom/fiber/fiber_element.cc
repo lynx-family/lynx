@@ -128,6 +128,12 @@ void RecordRefactoredEventForReplay(const char *prefix,
     case event::Event::EventType::kTouchEvent:
       event_type = "TouchEvent";
       break;
+    case event::Event::EventType::kMouseEvent:
+    case event::Event::EventType::kKeyboardEvent:
+    case event::Event::EventType::kWheelEvent:
+    case event::Event::EventType::kBubbleEvent:
+      event_type = "BubbleEvent";
+      break;
     case event::Event::EventType::kCustomEvent:
       if (dispatched_event->from_frontend()) {
         return;

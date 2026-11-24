@@ -53,11 +53,8 @@ DispatchEventResult EventTarget::DispatchEvent(fml::RefPtr<Event> event) {
     return {EventCancelType::kNotCanceled, false};
   }
 
-  // Fire all listeners registered for this event. Don't fire listeners removed
-  // during event dispatch. Also, don't fire event listeners added during event
-  // dispatch. Conveniently, all new event listeners will be added after or at
-  // index |size|, so iterating up to (but not including) |size| naturally
-  // excludes new event listeners.
+  // Snapshot listeners to exclude additions during dispatch. Removed listeners
+  // are marked and skipped below.
   EventListenerVector copy = *vector;
   bool consumed = false;
   bool is_catch = false;
