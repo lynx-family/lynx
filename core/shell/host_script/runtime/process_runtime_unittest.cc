@@ -137,6 +137,11 @@ class FakeLynxView final : public LynxViewRefProxy {
   bool SendGlobalEvent(LynxViewRefGlobalEventRequest request) override {
     return Add("sendGlobalEvent:" + request.name + request.params_json);
   }
+  bool UpdateViewport(LynxViewRefUpdateViewportRequest request) override {
+    return Add("updateViewport:" + std::to_string(request.width) + "," +
+               std::to_string(request.height) + "," +
+               (request.need_layout ? "1" : "0"));
+  }
   void Invalidate() override {}
 
  private:
@@ -357,8 +362,10 @@ TEST_F(ProcessRuntimeTest, LynxViewProxyValidatesAndQueuesOperations) {
      view.hydrateSSR({data: bytes, url: 'https://h'}),
      view.reloadTemplate(),
      view.sendGlobalEvent('evt', 1, 'two'),
+     view.updateViewport({width: 0x400002d0, height: -2147482048}),
+     view.updateViewport({width: 0x40000231, height: 0, needLayout: false}),
      view.on('loadSuccess', () => {}) === view])"),
-            "[true,\"4\",true,true,true,true,true,true]");
+            "[true,\"4\",true,true,true,true,true,true,true,true]");
   EXPECT_EQ(Value(Domain::kBTS, R"(
     const codes = [];
     const cyclic = {};
@@ -369,13 +376,20 @@ TEST_F(ProcessRuntimeTest, LynxViewProxyValidatesAndQueuesOperations) {
       () => view.loadURL(''),
       () => view.loadURL('https://u', {data: 1}),
       () => view.sendGlobalEvent('evt', cyclic),
+      () => view.updateViewport({width: 0x400002d0}),
+      () => view.updateViewport({width: -1, height: 0}),
+      () => view.updateViewport({width: 2147483648, height: 0}),
+      () => view.updateViewport({width: 1.5, height: 0}),
+      () => view.updateViewport({width: 0, height: 0, needLayout: 1}),
       () => view.on('ready', () => {}),
     ]) {
       try { call(); codes.push('ok'); } catch (e) { codes.push(e.code); }
     }
     codes)"),
             "[\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\","
-            "\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\"]");
+            "\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\","
+            "\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\","
+            "\"INVALID_ARGUMENT\",\"INVALID_ARGUMENT\"]");
   Flush();
   EXPECT_EQ(Commands(), (std::vector<std::string>{
                             "loadTemplate:https://t+bytes {\"a\":1} p ro",
@@ -383,6 +397,8 @@ TEST_F(ProcessRuntimeTest, LynxViewProxyValidatesAndQueuesOperations) {
                             "hydrateSSR:https://h",
                             "reloadTemplate:{}",
                             "sendGlobalEvent:evt[1,\"two\"]",
+                            "updateViewport:1073742544,-2147482048,1",
+                            "updateViewport:1073742385,0,0",
                         }));
 }
 

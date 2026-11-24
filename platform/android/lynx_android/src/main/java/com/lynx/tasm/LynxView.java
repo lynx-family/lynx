@@ -1317,6 +1317,16 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
       onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_MEASURE);
       return;
     }
+    int resolvedWidthSpec = widthMeasureSpec;
+    int resolvedHeightSpec = heightMeasureSpec;
+    if (LynxHostScriptViewHooks.isEnabled()) {
+      long specs = LynxHostScriptViewHooks.beforeUpdateViewport(
+          mLynxTemplateRender, widthMeasureSpec, heightMeasureSpec);
+      resolvedWidthSpec = (int) (specs >>> 32);
+      resolvedHeightSpec = (int) specs;
+      mCurrentWidthMeasureSpec = resolvedWidthSpec;
+      mCurrentHeightMeasureSpec = resolvedHeightSpec;
+    }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_START);
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
 
@@ -1330,12 +1340,12 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
           ((UIBody) rootUI).rebuildViewTree();
         }
       }
-      mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      mLynxTemplateRender.onMeasure(resolvedWidthSpec, resolvedHeightSpec);
       if (shouldInvokeNativeViewMethod || isFragmentLayerRender) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        super.onMeasure(resolvedWidthSpec, resolvedHeightSpec);
       }
     } else {
-      onMeasureWhenDetach(widthMeasureSpec, heightMeasureSpec);
+      onMeasureWhenDetach(resolvedWidthSpec, resolvedHeightSpec);
     }
 
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_END);
