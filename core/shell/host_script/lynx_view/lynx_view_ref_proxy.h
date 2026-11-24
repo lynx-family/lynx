@@ -23,6 +23,7 @@ class LynxViewRefProxy {
   virtual bool UpdateMetaData(LynxViewRefUpdateMetaDataRequest request) = 0;
   virtual bool ReloadTemplate(LynxViewRefReloadTemplateRequest request) = 0;
   virtual bool SendGlobalEvent(LynxViewRefGlobalEventRequest request) = 0;
+  virtual bool UpdateViewport(LynxViewRefUpdateViewportRequest request) = 0;
 
   virtual void Invalidate() = 0;
 };

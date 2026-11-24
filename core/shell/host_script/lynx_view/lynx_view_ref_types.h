@@ -45,6 +45,12 @@ struct LynxViewRefGlobalEventRequest {
   std::string params_json;
 };
 
+struct LynxViewRefUpdateViewportRequest {
+  int32_t width = 0;
+  int32_t height = 0;
+  bool need_layout = true;
+};
+
 }  // namespace shell
 }  // namespace lynx
 

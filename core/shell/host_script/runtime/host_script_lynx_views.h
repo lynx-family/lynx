@@ -82,6 +82,7 @@ class HostScriptLynxViews final
   static Napi::Value UpdateMetaData(const Napi::CallbackInfo& info);
   static Napi::Value ReloadTemplate(const Napi::CallbackInfo& info);
   static Napi::Value SendGlobalEvent(const Napi::CallbackInfo& info);
+  static Napi::Value UpdateViewport(const Napi::CallbackInfo& info);
   static Napi::Value On(const Napi::CallbackInfo& info);
   static Napi::Value Off(const Napi::CallbackInfo& info);
 
