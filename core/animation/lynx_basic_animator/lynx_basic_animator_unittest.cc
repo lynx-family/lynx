@@ -5,10 +5,13 @@
 #define protected public
 
 #include <cmath>
+#include <memory>
 #include <numeric>
+#include <optional>
 
 #include "base/include/fml/message_loop.h"
 #include "core/animation/lynx_basic_animator/basic_animator.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -115,6 +118,26 @@ TEST_F(LynxBasicAnimatorTest, HowToUseBasicAnimator) {
   EXPECT_FLOAT_EQ(0.0f, res1);
   EXPECT_FLOAT_EQ(0.5f, res2);
   EXPECT_FLOAT_EQ(1.0f, res3);
+}
+
+TEST_F(LynxBasicAnimatorTest, RecreatedProviderReceivesFirstSharedFrame) {
+  class ManualVSyncMonitor : public base::VSyncMonitor {
+   public:
+    void RequestVSync() override {}
+  };
+  auto& loop = fml::MessageLoop::EnsureInitializedForCurrentThread();
+  auto monitor = std::make_shared<ManualVSyncMonitor>();
+  monitor->BindTaskRunner(loop.GetTaskRunner());
+
+  std::optional<animation::basic::BasicAnimatorFrameCallbackProvider> provider(
+      std::in_place, monitor);
+  provider->RequestNextFrame([](const fml::TimePoint&) {});
+  // Reconstruct in the same storage with the old request still pending.
+  provider.emplace(monitor);
+  int frame_count = 0;
+  provider->RequestNextFrame([&](const fml::TimePoint&) { ++frame_count; });
+  monitor->OnVSync(100, 116);
+  EXPECT_EQ(frame_count, 1);
 }
 
 }  // namespace testing

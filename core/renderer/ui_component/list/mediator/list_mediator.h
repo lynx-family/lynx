@@ -128,7 +128,7 @@ class ListMediator : public lynx::list::ElementDelegate {
                             float content_height) override;
 
   int GetThreadStrategy() const override;
-  std::shared_ptr<base::VSyncMonitor> GetCustomVSyncMonitor() const override;
+  std::shared_ptr<base::VSyncMonitor> GetAnimationVSyncMonitor() const override;
 
   bool IsFiberArch() const override;
 

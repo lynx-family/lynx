@@ -86,6 +86,16 @@ void VSyncMonitor::ScheduleVSyncSecondaryCallback(uintptr_t id,
 
 void VSyncMonitor::StopVSync() { stop_vsync_ = true; }
 
+void VSyncMonitor::DiscardPendingVSync() {
+  fml::TaskRunner::RunNowOrPostTask(runner_, [weak_self = weak_from_this()] {
+    if (auto self = weak_self.lock()) {
+      self->requested_ = false;
+      self->callback_ = nullptr;
+      self->secondary_callbacks_.clear();
+    }
+  });
+}
+
 void VSyncMonitor::OnVSync(int64_t frame_start_time,
                            int64_t frame_target_time) {
   if (!platform_impl_ && runner_->RunsTasksOnCurrentThread()) {

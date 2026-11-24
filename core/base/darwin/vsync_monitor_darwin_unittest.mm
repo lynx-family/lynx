@@ -83,6 +83,33 @@ class FrameTaskRunnerDelegate : public lynx::fml::TaskRunnerDelegate {
   }
 }
 
+- (void)testHighRefreshConfiguredOnTASMUsesMainFrameSource {
+  XCTAssertTrue([NSThread isMainThread]);
+  lynx::fml::Thread tasm("VSyncMonitorDarwinTest");
+  FrameTaskRunnerDelegate delegate(tasm.GetTaskRunner());
+  auto runner = lynx::fml::MakeRefCounted<lynx::fml::TaskRunner>(nullptr);
+  runner->SetDelegate(&delegate);
+  auto monitor = VSyncMonitor::Create(true);
+  XCTestExpectation *frame = [self expectationWithDescription:@"high refresh frame on TASM"];
+
+  tasm.GetTaskRunner()->PostSyncTask([&] {
+    monitor->BindTaskRunner(runner);
+    // Configure high refresh before the first frame, without explicitly initializing the monitor.
+    monitor->SetHighRefreshRate();
+    monitor->AsyncRequestVSync([runner, frame](int64_t start, int64_t target) {
+      XCTAssertTrue(runner->RunsTasksOnCurrentThread());
+      XCTAssertFalse([NSThread isMainThread]);
+      XCTAssertGreaterThan(start, 0);
+      XCTAssertGreaterThan(target, start);
+      [frame fulfill];
+    });
+  });
+
+  [self waitForExpectations:@[ frame ] timeout:5];
+  tasm.GetTaskRunner()->PostSyncTask([&] { monitor.reset(); });
+  XCTAssertEqual(delegate.MainThreadPosts(), 1);
+}
+
 - (void)testSharedHighRefreshFrameWithMergedRunnerAndDestroyedSubscriber {
   XCTAssertTrue([NSThread isMainThread]);
   lynx::fml::MessageLoop::EnsureInitializedForCurrentThread();

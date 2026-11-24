@@ -930,6 +930,11 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     return vsync_monitor_;
   }
 
+  void SetSharePageVSyncWithList(bool share) {
+    share_page_vsync_with_list_ = share;
+  }
+  std::shared_ptr<base::VSyncMonitor> GetListAnimationVSyncMonitor() const;
+
   bool Hydrate(AttributeHolder *node, Element *shadow_node);
 
   void SetGlobalBindElementId(const base::String &name,
@@ -1627,6 +1632,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
   // Capture once per page so experiment updates cannot interrupt resume.
   bool enable_pause_element_vsync_in_background_{true};
+  bool share_page_vsync_with_list_{false};
   bool animation_vsync_stopped_{false};
   bool element_vsync_paused_{false};
 
