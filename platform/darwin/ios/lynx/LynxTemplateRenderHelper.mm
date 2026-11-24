@@ -74,6 +74,15 @@
 
 namespace {
 
+void RegisterAnimaXPreloadModule(lynx::runtime::js::ModuleFactoryDarwin* factory,
+                                 bool shared_modules) {
+  // Register only in the selected factory, not in a LynxConfig that may also
+  // serve pages using the other factory type. This creates no module or host.
+  Class module_class = NSClassFromString(shared_modules ? @"LynxAnimaXSharedPreloadInitModule"
+                                                        : @"LynxAnimaXPreloadInitModule");
+  if (module_class) factory->registerModule(module_class);
+}
+
 bool HasNativePaintingCtxPlatformRef(lynx::tasm::PaintingCtxPlatformImpl* painting_context) {
   if (painting_context == nullptr) {
     return false;
@@ -441,6 +450,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
           std::make_unique<lynx::runtime::js::SharedModuleCreator>();
       module_factory->Bind(std::move(module_creator));
       module_factory->addWrappers(init_module_factory->moduleWrappers());
+      RegisterAnimaXPreloadModule(module_factory.get(), true);
       module_factory_ = module_factory;
       LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
       if (_config != globalConfig && globalConfig) {
@@ -496,6 +506,7 @@ NSMutableDictionary<NSString*, id>* GetSharedBuiltInModuleWrappers() {
       module_factory->addWrappers([_builder getModuleWrapper]);
     }
   }
+  RegisterAnimaXPreloadModule(module_factory.get(), false);
   module_factory_ = module_factory;
 
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
