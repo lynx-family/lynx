@@ -158,6 +158,18 @@ TEST_F(ListElementTest, ResolveEnableNativeListUsesShellFirst) {
   EXPECT_EQ(list_element_->GetPlatformNodeTag().str(), "my-list");
 }
 
+TEST_F(ListElementTest, FragmentLayerListKeepsNativeListBehavior) {
+  auto options = manager_->GetPageOptions();
+  options.SetEmbeddedMode(EmbeddedMode::FRAGMENT_LAYER_RENDER);
+  manager_->SetPageOptions(options);
+
+  ASSERT_TRUE(manager_->GetEnableNativeListFromShell());
+  list_element_->PrepareForCreateOrUpdate();
+
+  EXPECT_TRUE(list_element_->DisableListPlatformImplementation());
+  EXPECT_FALSE(list_element_->UsesLegacyIOSListBehavior());
+}
+
 TEST_F(ListElementTest, ResolveEnableNativeListUsesListContainerName) {
   // custom-list-name=list-container should enable native list through the
   // property branch, even when lower-priority switches are disabled.

@@ -5,10 +5,12 @@
 #include "clay/ui/rendering/render_scroll.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 
 #include "clay/flow/animation/scroll_offset_animation.h"
+#include "clay/gfx/style/color_source.h"
 #include "clay/ui/compositing/pending_offset_layer.h"
 #include "clay/ui/compositing/pending_scroll_offset_layer.h"
 
@@ -17,6 +19,72 @@ namespace clay {
 const char* RenderScroll::GetName() const { return "RenderScroll"; }
 
 void RenderScroll::Paint(PaintingContext& context, const FloatPoint& offset) {
+  if constexpr (lynx::IsIOS()) {
+    if (HasFadingEdge() && Width() > 0.f && Height() > 0.f) {
+      PaintFadingEdge(context, offset);
+      return;
+    }
+  }
+  PaintContents(context, offset);
+}
+
+void RenderScroll::PaintFadingEdge(PaintingContext& context,
+                                   const FloatPoint& offset) {
+  if constexpr (lynx::IsIOS()) {
+    const bool horizontal = scroll_direction_ == ScrollDirection::kHorizontal;
+    const auto scroll_offset = GetPaintOffsetForScroll();
+    const float current = horizontal ? scroll_offset.x() : scroll_offset.y();
+    const float maximum = horizontal ? MaxScrollWidth() : MaxScrollHeight();
+    // The iOS scroller normalizes the fade by its frame width in both
+    // directions.
+    float start = std::clamp(current, 0.f, fading_edge_length_) / Width();
+    float end =
+        std::clamp(maximum - current, 0.f, fading_edge_length_) / Width();
+    if (start + end > 1.f) {
+      const float total = start + end;
+      start /= total;
+      end = 1.f - start;
+    }
+
+    const FloatRect bounds(offset.x(), offset.y(), Width(), Height());
+    context.PushClipRect(
+        bounds, offset,
+        [&](PaintingContext& context, const FloatPoint& offset) {
+          if (start == 0.f && end == 0.f) {
+            PaintContents(context, offset);
+            return;
+          }
+          const Color opaque = Color::kWhite();
+          const Color transparent = Color::kTransparent();
+          const Color colors[] = {start > 0.f ? transparent : opaque, opaque,
+                                  opaque, end > 0.f ? transparent : opaque};
+          const float stops[] = {0.f, start, 1.f - end, 1.f};
+          auto shader =
+              ColorSource::MakeLinear({0.f, 0.f},
+                                      horizontal ? skity::Vec2{Width(), 0.f}
+                                                 : skity::Vec2{0.f, Height()},
+                                      4, colors, stops, TileMode::kClamp);
+          context.PushShaderMask(
+              std::move(shader), bounds, BlendMode::kDstIn, offset,
+              [this](PaintingContext& context, const FloatPoint& offset) {
+                PaintContents(context, offset);
+              });
+        });
+  }
+}
+
+void RenderScroll::SetFadingEdgeLength(float length) {
+  if constexpr (lynx::IsIOS()) {
+    const float resolved = std::isfinite(length) ? std::max(0.f, length) : 0.f;
+    if (fading_edge_length_ != resolved) {
+      fading_edge_length_ = resolved;
+      MarkNeedsPaint();
+    }
+  }
+}
+
+void RenderScroll::PaintContents(PaintingContext& context,
+                                 const FloatPoint& offset) {
   RenderBox::Paint(context, offset);
 
   auto painter = [this](PaintingContext& ctx, const FloatPoint& offset) {

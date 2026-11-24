@@ -4,6 +4,7 @@
 
 #include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/component/nested_scroll/nested_scrollable.h"
 #include "clay/ui/component/nested_scroll/raster_fling_manager.h"
@@ -81,9 +82,9 @@ void NestedScrollManager::DragUpdate(NestedScrollable* source_scrollable,
 }
 
 void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
-                                  FloatSize velocity) {
-  if (source_scrollable_ != source_scrollable) {
-    // FML_DCHECK(false) << "source_scrollable is not match";
+                                  FloatSize velocity, bool canceled) {
+  if (source_scrollable_ != source_scrollable ||
+      (lynx::IsIOS() && status_ != Scrollable::ScrollStatus::kDragging)) {
     return;
   }
   if (!source_scrollable->ShouldConsumeGesture()) {
@@ -98,7 +99,13 @@ void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
   auto v = source_scrollable->GetScrollDirection() == ScrollDirection::kVertical
                ? velocity.height()
                : velocity.width();
-  if (ShouldTriggerFling(v)) {
+  if (lynx::IsIOS() && !canceled && current_scrollable_ &&
+      !FindOverscrollView() && current_scrollable_->HandleDragEnd(v)) {
+    // The snap animator owns the view's state until its animation completes.
+    SetScrollStatus(Scrollable::ScrollStatus::kIdle,
+                    current_scrollable_->GetScrollStatus() !=
+                        Scrollable::ScrollStatus::kAnimating);
+  } else if (ShouldTriggerFling(v)) {
     StartFling(v, IsSmoothScrollEnabled());
   } else if (auto overscroll_view = FindOverscrollView()) {
     TryStartBounce(overscroll_view, v);
@@ -108,6 +115,20 @@ void NestedScrollManager::DragEnd(NestedScrollable* source_scrollable,
   if (current_scrollable_) {
     current_scrollable_->DecodeImagesRecursively();
   }
+}
+
+void NestedScrollManager::StopFling(NestedScrollable* scrollable) {
+  if (current_scrollable_.get() != scrollable ||
+      status_ != Scrollable::ScrollStatus::kFling) {
+    return;
+  }
+  if (IsFlingRunning()) {
+    fling_animator_->Cancel();
+  }
+  if (raster_fling_manager_) {
+    raster_fling_manager_->StopAnimation();
+  }
+  SetScrollStatus(Scrollable::ScrollStatus::kIdle);
 }
 
 NestedScrollable* NestedScrollManager::FindOuterScrollable(
@@ -294,10 +315,11 @@ void NestedScrollManager::OnDynamicAnimationEnd(DynamicAnimator& animation,
   }
 }
 
-void NestedScrollManager::SetScrollStatus(Scrollable::ScrollStatus status) {
+void NestedScrollManager::SetScrollStatus(Scrollable::ScrollStatus status,
+                                          bool update_current_scrollable) {
   if (status_ != status) {
     status_ = status;
-    if (current_scrollable_) {
+    if (current_scrollable_ && update_current_scrollable) {
       current_scrollable_->SetScrollStatus(status);
     }
 

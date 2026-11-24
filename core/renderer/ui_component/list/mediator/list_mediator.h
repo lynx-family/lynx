@@ -77,6 +77,7 @@ class ListMediator : public lynx::list::ElementDelegate {
   void MarkListElementLayoutDirty() override;
 
   bool IsRTL() const override;
+  bool KeepScrollStartOnDataChange() const override;
 
   float GetWidth() const override;
 
