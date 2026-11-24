@@ -52,6 +52,7 @@ class DrawableImage : public ContextListener {
     clay::GrContext* gr_context = nullptr;
     const clay::GrPaint* sk_paint = nullptr;
     const clay::Paint* clay_paint = nullptr;
+    fml::closure request_new_frame = {};
   };
 
   DrawableImage();           // Called from UI or raster thread.

@@ -158,6 +158,7 @@ struct PaintContext {
   // Will add accesses count as a tag to every raster cache area.
   bool enable_raster_cache_tag = false;
 #endif
+  std::function<void()> request_new_frame = {};
 };
 
 // Represents a single composited layer. Created on the UI thread but then

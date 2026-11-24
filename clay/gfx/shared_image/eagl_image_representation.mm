@@ -198,8 +198,9 @@ class EAGLFenceContext {
     else
       glDeleteSyncAPPLE(sync);
   }
-  GLenum PollSync(GLsync sync) {
-    return es3_ ? glClientWaitSync(sync, 0, 0) : glClientWaitSyncAPPLE(sync, 0, 0);
+  GLenum ClientWaitSync(GLsync sync, uint64_t timeout_ns) {
+    return es3_ ? glClientWaitSync(sync, 0, timeout_ns)
+                : glClientWaitSyncAPPLE(sync, 0, timeout_ns);
   }
   void WaitSync(GLsync sync) {
     if (es3_)

@@ -6,11 +6,9 @@
 #define CLAY_GFX_SHARED_IMAGE_APPLE_GL_FENCE_SYNC_H_
 
 #include <atomic>
-#include <chrono>
 #include <cstring>
 #include <memory>
 #include <mutex>
-#include <thread>
 #include <utility>
 
 #include "clay/gfx/shared_image/fence_sync.h"
@@ -88,24 +86,19 @@ class AppleGLFenceSync final : public FenceSync {
     // A legacy wait or another fence's query must not turn Poll into a wait.
     std::unique_lock<std::mutex> lock(context_->mutex, std::try_to_lock);
     if (!lock.owns_lock()) return PollResult::kPending;
-    typename Context::ScopedCurrent current(context_.get());
-    if (!current.valid()) return PollResult::kFailed;
-    const auto result = context_->PollSync(sync_);
-    if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED)
-      return PollResult::kSignaled;
-    if (result == GL_TIMEOUT_EXPIRED) return PollResult::kPending;
-    failed_ = true;
-    return PollResult::kFailed;
+    return WaitInQueryContext(0);
   }
 
   bool ClientWait() override {
-    // This is the explicitly blocking legacy API. Release both the private
-    // context and its mutex between queries, so concurrent Poll stays bounded.
+    if (completed_) return true;
+    if (unsupported_ || failed_) return false;
+    // Let the driver wake us on completion. Bound each use of the shared
+    // query context so other fences can also make progress.
     for (;;) {
-      const auto result = Poll();
+      std::lock_guard<std::mutex> lock(context_->mutex);
+      const auto result = WaitInQueryContext(1000000);  // 1 ms in nanoseconds.
       if (result != PollResult::kPending)
         return result == PollResult::kSignaled;
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
 
@@ -122,6 +115,17 @@ class AppleGLFenceSync final : public FenceSync {
   }
 
  private:
+  PollResult WaitInQueryContext(uint64_t timeout_ns) {
+    typename Context::ScopedCurrent current(context_.get());
+    if (!current.valid()) return PollResult::kFailed;
+    const auto result = context_->ClientWaitSync(sync_, timeout_ns);
+    if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED)
+      return PollResult::kSignaled;
+    if (result == GL_TIMEOUT_EXPIRED) return PollResult::kPending;
+    failed_ = true;
+    return PollResult::kFailed;
+  }
+
   static bool Finish() {
     if (!ClearAppleGLFenceErrors()) return false;
     glFinish();

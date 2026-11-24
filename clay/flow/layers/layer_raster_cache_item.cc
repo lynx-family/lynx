@@ -147,6 +147,7 @@ bool Rasterize(RasterCacheItem::CacheState cache_state, Layer* layer,
       .raster_cache                  = paint_context.raster_cache,
 #endif  // ENABLE_SKITY
       .frame_device_pixel_ratio      = paint_context.frame_device_pixel_ratio,
+      .request_new_frame             = paint_context.request_new_frame,
       // clang-format on
   };
 

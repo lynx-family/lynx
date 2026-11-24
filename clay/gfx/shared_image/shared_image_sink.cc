@@ -4,6 +4,7 @@
 
 #include "clay/gfx/shared_image/shared_image_sink.h"
 
+#include <iterator>
 #include <string>
 #include <utility>
 
@@ -18,9 +19,10 @@ SharedImageSink::SharedImageSink(UpdateFrontMode update_front_mode)
 
 SharedImageSinkManaged::SharedImageSinkManaged(
     BufferMode buffer_mode, const SharedImageFactory& shared_image_factory,
-    UpdateFrontMode update_front_mode)
+    UpdateFrontMode update_front_mode, SkippedWriteFence skipped_write_fence)
     : SharedImageSink(update_front_mode),
       capacity_(buffer_mode),
+      skipped_write_fence_(skipped_write_fence),
       shared_image_factory_(std::move(shared_image_factory)) {}
 
 SharedImageSinkManaged::~SharedImageSinkManaged() = default;
@@ -74,8 +76,19 @@ void SharedImageSinkManaged::SetFrameAvailableCallback(
   std::lock_guard<std::mutex> l(mutex_);
 
   frame_available_callback_ = callback;
+  if (!callback && update_front_mode() == UpdateFrontMode::kLatestReady) {
+    for (auto& slot : front_backings_) slot.awaiting_raster = false;
+  }
 
   backings_cond_.notify_one();
+}
+
+void SharedImageSinkManaged::CancelBack() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (!back_backings_.empty()) {
+    back_backings_.front().is_current = false;
+    if (capacity_ == kSingleBuffer) front_cond_.notify_one();
+  }
 }
 
 void SharedImageSinkManaged::ClearBackFences() {
@@ -97,13 +110,17 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFront(
       // Single Buffer Synchronous Mode
       if (back_backings_.front().is_current) {
         // Wait for back releasing
-        if (!front_cond_.wait_for(l, timeout_,
-                                  [&] { return !front_backings_.empty(); })) {
+        if (!front_cond_.wait_for(l, timeout_, [&] {
+              return !front_backings_.empty() ||
+                     (!back_backings_.empty() &&
+                      !back_backings_.front().is_current);
+            })) {
           FML_LOG(ERROR) << "timeout to wait front available";
           return nullptr;
         }
-      } else {
-        // Steal the backing directly
+      }
+      if (front_backings_.empty()) {
+        // No write is in progress, including after a canceled acquisition.
         front_backings_.swap(back_backings_);
       }
     } else {
@@ -114,6 +131,7 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFront(
 
   auto& curr_front = front_backings_.front();
 
+  curr_front.awaiting_raster = false;
   curr_front.is_current = true;
 
   return curr_front.shared_image;
@@ -121,17 +139,79 @@ fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFront(
 
 fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::UpdateFrontToLatest(
     std::unique_ptr<FenceSync> produced_fence_sync) {
-  std::unique_lock<std::mutex> l(mutex_);
-  if (front_backings_.empty()) {
-    return nullptr;
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (front_backings_.empty()) return nullptr;
+  return AdvanceToFront(std::prev(front_backings_.end()),
+                        std::move(produced_fence_sync));
+}
+
+bool SharedImageSinkManaged::TryLatchReadyFront(
+    bool& retry_pending,
+    const std::function<bool(SharedImageBacking*, std::unique_ptr<FenceSync>&)>&
+        prepare) {
+  retry_pending = false;
+  std::unique_lock<std::mutex> lock(mutex_);
+  for (auto end = front_backings_.end(); end != front_backings_.begin();) {
+    auto candidate = std::prev(end);
+    if (candidate->is_current) break;
+    auto fence = candidate->shared_image->GetFenceSync();
+    auto status = fence ? fence->Poll() : FenceSync::PollResult::kSignaled;
+    candidate->shared_image->SetFenceSync(std::move(fence));
+    if (status == FenceSync::PollResult::kPending) {
+      retry_pending = true;
+      candidate->awaiting_raster = true;
+      end = candidate;
+      continue;
+    }
+    if (status != FenceSync::PollResult::kSignaled) {
+      // Its completion cannot be proven. Retire the allocation, not just its
+      // fence; a subsequent acquisition must allocate fresh storage.
+      end = front_backings_.erase(candidate);
+      if (used_ > 0) --used_;
+      backings_cond_.notify_one();
+      continue;
+    }
+    candidate->is_current = true;
+    lock.unlock();
+    std::unique_ptr<FenceSync> release;
+    bool ready = prepare(candidate->shared_image.get(), release);
+    lock.lock();
+    if (!ready) {
+      end = front_backings_.erase(candidate);
+      if (used_ > 0) --used_;
+      backings_cond_.notify_one();
+      continue;
+    }
+    AdvanceToFront(candidate, std::move(release));
+    return true;
   }
-  while (front_backings_.size() > 1) {
-    front_backings_.front().is_current = true;
-    // The fence sync is in fact only moved once for the head of front backings
+  return false;
+}
+
+void SharedImageSinkManaged::DiscardFailedBack() {
+  std::lock_guard<std::mutex> lock(mutex_);
+  FML_DCHECK(!back_backings_.empty() && back_backings_.front().is_current);
+  back_backings_.pop_front();
+  if (used_ > 0) --used_;
+  backings_cond_.notify_one();
+}
+
+fml::RefPtr<SharedImageBacking> SharedImageSinkManaged::AdvanceToFront(
+    std::list<SharedImageSlot>::iterator selected,
+    std::unique_ptr<FenceSync> produced_fence_sync) {
+  while (front_backings_.begin() != selected) {
+    auto& skipped = front_backings_.front();
+    if (!skipped.is_current &&
+        skipped_write_fence_ == SkippedWriteFence::kPreserve) {
+      // No consumer read this frame. Its producer may still be writing it.
+      produced_fence_sync = skipped.shared_image->GetFenceSync();
+    }
+    skipped.is_current = true;
     InternalReleaseCurrentFront(std::move(produced_fence_sync));
   }
   auto& curr_front = front_backings_.front();
 
+  curr_front.awaiting_raster = false;
   curr_front.is_current = true;
 
   return curr_front.shared_image;
@@ -181,7 +261,18 @@ SharedImageSinkManaged::AcquireBack(
       }
     }
   } else {
-    if (back_backings_.empty() && used_ < capacity_) {
+    if (back_backings_.empty() && used_ >= capacity_) {
+      // A failed publication can free capacity without returning a backing.
+      if (!backings_cond_.wait_for(l, timeout_, [&] {
+            return !back_backings_.empty() || used_ < capacity_ ||
+                   !frame_available_callback_;
+          })) {
+        FML_LOG(ERROR) << "timeout to wait back available";
+        return std::make_tuple(nullptr, 0);
+      }
+      if (!frame_available_callback_) return std::make_tuple(nullptr, 0);
+    }
+    if (back_backings_.empty()) {
       SharedImageSlot slot = {
           .shared_image = shared_image_factory_(size, gfx_handle),
           .generation = generation_};
@@ -189,18 +280,7 @@ SharedImageSinkManaged::AcquireBack(
       back_backings_.emplace_back(slot);
       used_++;
     } else {
-      if (!backings_cond_.wait_for(l, timeout_, [&] {
-            return !back_backings_.empty() || !frame_available_callback_;
-          })) {
-        FML_LOG(ERROR) << "timeout to wait back available";
-        return std::make_tuple(nullptr, 0);
-      }
-      // No `frame_available_callback_` means the sink front is detached,
-      // return null directly to prevent deadlock.
-      if (!frame_available_callback_) {
-        return std::make_tuple(nullptr, 0);
-      }
-
+      if (!frame_available_callback_) return std::make_tuple(nullptr, 0);
       if (back_backings_.front().generation != generation_ ||
           back_backings_.front().shared_image->GetSize() != size ||
           (gfx_handle.has_value() && gfx_handle.value())) {
@@ -320,12 +400,17 @@ SharedImageSinkManaged::AcquireBackForced(
       }
 
       if (back_backings_.empty()) {
-        if (front_backings_.size() == 0 ||
-            (front_backings_.size() == 1 &&
-             front_backings_.front().is_current)) {
+        if (front_backings_.size() == 0 || front_backings_.back().is_current) {
           if (status) {
             *status = AcquireBackStatus::kFullAttach;
           }
+          return std::make_tuple(nullptr, 0);
+        }
+        if (front_backings_.back().awaiting_raster) {
+          // Give the raster retry one producer turn. A hidden/frozen layer
+          // may never paint again, so this reservation must expire on use.
+          front_backings_.back().awaiting_raster = false;
+          if (status) *status = AcquireBackStatus::kFullAttach;
           return std::make_tuple(nullptr, 0);
         }
         FML_DCHECK(!front_backings_.back().is_current);
@@ -421,6 +506,7 @@ void SharedImageSinkManaged::InternalReleaseCurrentFront(
   } else {
     auto& curr_front = front_backings_.front();
     curr_front.is_current = false;
+    curr_front.awaiting_raster = false;
     curr_front.shared_image->SetFenceSync(std::move(fence_sync));
     back_backings_.splice(back_backings_.end(), front_backings_,
                           front_backings_.begin(), ++front_backings_.begin());

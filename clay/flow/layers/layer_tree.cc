@@ -220,6 +220,7 @@ void LayerTree::Paint(CompositorContext::ScopedFrame& frame,
       .drawable_image_registry       = frame.context().drawable_image_registry(),
       .raster_cache                  = cache,
       .frame_device_pixel_ratio      = device_pixel_ratio_,
+      .request_new_frame             = request_new_frame_,
       // clang-format on
   };
 

@@ -32,14 +32,46 @@ SharedImageSinkAccessor::~SharedImageSinkAccessor() {
 }
 
 fml::RefPtr<SharedImageRepresentation> SharedImageSinkAccessor::UpdateFront() {
-  switch (sink_->update_front_mode()) {
-    case SharedImageSink::UpdateFrontMode::kSequence:
-      return UpdateFrontSequence();
-    case SharedImageSink::UpdateFrontMode::kLatest:
-      return UpdateFrontToLatest();
-    default:
-      return UpdateFrontSequence();
+  bool retry_pending;
+  return UpdateFront(retry_pending);
+}
+
+fml::RefPtr<SharedImageRepresentation> SharedImageSinkAccessor::UpdateFront(
+    bool& retry_pending,
+    const std::function<bool(SharedImageRepresentation*)>& prepare_image) {
+  retry_pending = false;
+  const auto mode = sink_->update_front_mode();
+  if (mode == SharedImageSink::UpdateFrontMode::kLatestReady &&
+      sink_->IsManaged()) {
+    bool latched =
+        static_cast<SharedImageSinkManaged*>(sink_.get())
+            ->TryLatchReadyFront(
+                retry_pending, [&](SharedImageBacking* backing,
+                                   std::unique_ptr<FenceSync>& release) {
+                  auto next = GetRepresentation(backing);
+                  if (!next) return false;
+                  next->ConsumeFence(backing->GetFenceSync());
+                  if (prepare_image && !prepare_image(next.get())) {
+                    next->EndRead();
+                    return false;
+                  }
+                  if (front_repr_) {
+                    if (!front_repr_->EndRead()) {
+                      release = std::make_unique<FailedFenceSync>();
+                    } else {
+                      release = front_repr_->ProduceFence();
+                    }
+                  }
+                  front_repr_ = std::move(next);
+                  return true;
+                });
+    return latched ? front_repr_ : nullptr;
   }
+  auto front = mode == SharedImageSink::UpdateFrontMode::kSequence
+                   ? UpdateFrontSequence()
+                   : UpdateFrontToLatest();
+  if (front && prepare_image && !prepare_image(front.get())) return nullptr;
+  return front;
 }
 
 fml::RefPtr<SharedImageRepresentation>
@@ -142,6 +174,49 @@ SharedImageSinkAccessor::AcquireBackForced(
   }
   back_repr_->ConsumeFence(backing->GetFenceSync());
   return std::make_tuple(back_repr_, buffer_age);
+}
+
+std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t>
+SharedImageSinkAccessor::AcquireBackForcedForGL(
+    const skity::Vec2& size, SharedImageSink::AcquireBackStatus& status) {
+  auto [backing, age] = sink_->AcquireBackForced(size, {}, &status);
+  if (!backing) return {nullptr, 0};
+
+  // Only an admitted writer may publish this slot, including on destruction.
+  back_repr_ = nullptr;
+  auto repr = GetRepresentation(backing.get());
+  if (!repr) {
+    status = SharedImageSink::AcquireBackStatus::kUnkown;
+    sink_->CancelBack();
+    return {nullptr, 0};
+  }
+  auto fence = backing->GetFenceSync();
+  if (fence && !fence->EnqueueWait()) {
+    const auto completion = fence->Poll();
+    // A legacy external fence may only support a client wait.
+    const bool ready = completion == FenceSync::PollResult::kSignaled ||
+                       (completion == FenceSync::PollResult::kUnsupported &&
+                        fence->ClientWait());
+    if (!ready) {
+      if (completion == FenceSync::PollResult::kPending) {
+        status = SharedImageSink::AcquireBackStatus::kFencePending;
+      } else {
+        status = SharedImageSink::AcquireBackStatus::kUnkown;
+      }
+      backing->SetFenceSync(std::move(fence));
+      if (completion != FenceSync::PollResult::kPending && sink_->IsManaged() &&
+          sink_->update_front_mode() ==
+              SharedImageSink::UpdateFrontMode::kLatestReady) {
+        static_cast<SharedImageSinkManaged*>(sink_.get())->DiscardFailedBack();
+        status = SharedImageSink::AcquireBackStatus::kBackingRetired;
+      } else {
+        sink_->CancelBack();
+      }
+      return {nullptr, 0};
+    }
+  }
+  back_repr_ = std::move(repr);
+  return {back_repr_, age};
 }
 
 std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t,

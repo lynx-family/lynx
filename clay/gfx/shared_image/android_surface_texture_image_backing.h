@@ -66,6 +66,11 @@ class SurfaceTextureImageBacking final : public SharedImageBackingUnmanaged {
   // wait inside the platform BufferQueue.
   // Legacy UpdateFront/BeginRead may wait on callback-only dependencies.
   UpdateResult TryUpdateFront();
+  // The exclusive EGL window producer may take over the internal listener.
+  // Invoke the returned closure after each successful swap, then restore the
+  // listener before handing the window to another producer.
+  fml::closure TakeFrameNotification();
+  void RestoreFrameListener();
   bool BeginRead();
   bool EndRead();
   std::unique_ptr<FenceSync> ProduceReadFence();
@@ -82,11 +87,11 @@ class SurfaceTextureImageBacking final : public SharedImageBackingUnmanaged {
     fml::closure callback;
     bool has_pending_frame = false;
     bool is_valid = true;
+    uint64_t source_generation = 0;
     uint64_t available_sequence = 0;
   };
 
-  static void TriggerFrameCallback(
-      const std::shared_ptr<FrameCallbackState>& state);
+  fml::closure NewFrameNotifier();
 
   fml::RefPtr<SurfaceTexture> surface_texture_;
   GLuint texture_ = 0;

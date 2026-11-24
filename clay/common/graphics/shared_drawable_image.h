@@ -55,7 +55,8 @@ class SharedDrawableImage : public clay::DrawableImage {
   bool EnsureAttached();
 
   // Called from raster thread.
-  void AdvanceFrameConsumption(bool freeze);
+  void AdvanceFrameConsumption(bool freeze,
+                               const fml::closure& request_new_frame);
 
 #ifndef ENABLE_SKITY
   // Called from raster thread.
@@ -80,7 +81,7 @@ class SharedDrawableImage : public clay::DrawableImage {
   skity::Matrix transform_;
 
  private:
-  [[nodiscard]] bool Update();
+  [[nodiscard]] bool Update(bool& retry_pending);
 
   fml::RefPtr<SharedImageSink> image_sink_;
   std::unique_ptr<SharedImageSinkAccessor> accessor_;

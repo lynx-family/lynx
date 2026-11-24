@@ -43,7 +43,7 @@ void SharedImageExternalTexture::Paint(PaintContext& context,
   if (!EnsureAttached()) {
     return;
   }
-  AdvanceFrameConsumption(freeze);
+  AdvanceFrameConsumption(freeze, context.request_new_frame);
 
 #ifndef ENABLE_SKITY
   if (!sk_image_) {

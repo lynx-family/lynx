@@ -87,6 +87,7 @@ void DrawableImageLayer::Paint(PaintContext& context) const {
       .gr_context = context.gr_context,
       .sk_paint = context.state_stack.fill(sk_paint),
       .clay_paint = context.state_stack.fill(clay_paint),
+      .request_new_frame = context.request_new_frame,
   };
 
   // Image coordinates are physical pixels. We need to apply scale and convert
