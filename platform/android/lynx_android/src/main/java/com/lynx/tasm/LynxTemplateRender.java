@@ -1332,6 +1332,12 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   }
 
   public void updateGlobalProps(TemplateData props) {
+    if (!mAsyncRender && !UIThreadUtils.isOnUiThread()
+        && LynxEnv.inst().enableUpdateGlobalPropsOnUiThread()) {
+      // Use the same UI queue as loadTemplate so a subsequent load sees the update.
+      UIThreadUtils.runOnUiThread(() -> updateGlobalProps(props));
+      return;
+    }
     LLog.d(TAG, "updateGlobalProps with url: " + getTemplateUrl());
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_SET_GLOBAL_PROPS);
     if (checkIfEnvPrepared() && (mNativePtr != 0) && props != null) {
