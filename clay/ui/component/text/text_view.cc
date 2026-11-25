@@ -908,8 +908,9 @@ bool TextView::ClickOnText(size_t glyph_index,
   if (paragraph) {
     auto line_metrics = paragraph->GetLineMetrics();
     for (auto line_metric : line_metrics) {
+      // The trailing half of the last glyph can resolve to the end caret.
       if (glyph_index < line_metric.start_index ||
-          glyph_index >= line_metric.end_index) {
+          glyph_index > line_metric.end_index) {
         continue;
       }
       auto text_boxes = paragraph->GetRectsForRange(
