@@ -734,6 +734,10 @@ export abstract class BaseApp<
         return callback(error);
       }
 
+      if (!exports) {
+        exports = tryGetLoadScriptCache(cacheKey);
+      }
+
       try {
         return callback(null, this._$executeInit(exports, { path, cacheKey }));
       } catch (e) {
