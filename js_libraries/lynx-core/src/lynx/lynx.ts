@@ -42,6 +42,24 @@ export class Lynx {
   static __registerSharedDataCounter: number = 0;
   __globalProps: GlobalProps;
   __presetData: Record<string, unknown>;
+  /**
+   * The card's initial data, merged from the load-time initData and
+   * updateData. Frameworks used to compute this by reading the injected
+   * app's private `_params`; the core now owns the merge so scripts can
+   * read it straight off `lynx`.
+   */
+  __initData?: Record<string, unknown>;
+  /**
+   * Marks a core that delivers every app-level callback a UI framework
+   * needs as a `MessageEvent` on the context proxies, so frameworks can
+   * subscribe with `lynx.getCoreContext().addEventListener(...)` instead
+   * of assigning methods onto the injected app object.
+   *
+   * Frameworks must feature-detect this: on an older core the callbacks
+   * still arrive as property lookups on the app object and the framework
+   * has to keep assigning them.
+   */
+  readonly __appEventsAsMessages: boolean = true;
   _switches: Record<string, boolean>;
   targetSdkVersion?: string;
 
@@ -59,6 +77,16 @@ export class Lynx {
     this.getNativeApp().setTimeout,
     'setTimeout Error'
   );
+
+  /**
+   * Runs the core's before-publish-event AOP hook. Frameworks used to
+   * reach this through the injected app object.
+   */
+  callBeforePublishEvent = (eventData?: unknown): void => {
+    ((this.getApp() as unknown) as {
+      callBeforePublishEvent?: (eventData?: unknown) => void;
+    }).callBeforePublishEvent?.(eventData);
+  };
 
   public rebind(getApp: () => BaseApp) {
     this.init(getApp);
