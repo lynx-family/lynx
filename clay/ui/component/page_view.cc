@@ -2503,6 +2503,7 @@ void PageView::ResetPageView(bool recycle) {
   tap_return_.reset();
   if (recycle) {
     tap_return_touch_ids_.clear();
+    scroll_monitor_callback_ = nullptr;
   }
   DestroyAllChildren();
   const auto self = GetWeakPtr();
@@ -2882,6 +2883,18 @@ void PageView::StartFluencyMonitor(uintptr_t id, const std::string& scene,
 void PageView::EndFluencyMonitor(uintptr_t id) {
   if (scroll_fluency_monitor_delegate_) {
     scroll_fluency_monitor_delegate_->EndFluencyMonitor(id);
+  }
+}
+
+void PageView::SetScrollMonitorCallback(ScrollMonitorCallback callback) {
+  scroll_monitor_callback_ = std::move(callback);
+}
+
+void PageView::NotifyScrollMonitor(ScrollMonitorEvent event,
+                                   const std::string& tag,
+                                   const std::string& monitor_tag) const {
+  if (scroll_monitor_callback_) {
+    scroll_monitor_callback_(event, tag, monitor_tag);
   }
 }
 

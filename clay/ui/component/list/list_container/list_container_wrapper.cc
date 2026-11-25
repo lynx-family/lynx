@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/float_comparison.h"
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/base_view.h"
@@ -231,9 +232,26 @@ void ListContainerWrapper::RemoveListItemPaintingNode(BaseView* view) {
   GetListContainerView()->RemoveListItemPaintingNode(view);
 }
 
+void ListContainerWrapper::SetDirection(int type) {
+  if constexpr (lynx::IsIOS()) {
+    view_->SetDirection(type);
+    scrollbar_->SetDirection(type);
+  } else {
+    ScrollbarWrapper::SetDirection(type);
+  }
+}
+
 void ListContainerWrapper::SetAttribute(const char* attr_c,
                                         const clay::Value& value) {
   auto kw = GetKeywordID(attr_c);
+  if (lynx::IsIOS() && kw == KeywordID::kVerticalOrientation) {
+    const bool vertical = attribute_utils::GetBool(value, true);
+    view_->SetAttribute("scroll-orientation",
+                        clay::Value(vertical ? "vertical" : "horizontal"));
+    scrollbar_->SetScrollDirection(
+        GetListContainerView()->GetScrollDirection());
+    return;
+  }
   if (kw == KeywordID::kClayDisablePlatformScrollEvent) {
     // kClayDisablePlatformScrollEvent is handle in BeforeSetAttribute.
     // No need to set this attribute on the view.

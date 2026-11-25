@@ -6,8 +6,13 @@
 
 #include <algorithm>
 #include <memory>
+#include <string>
+#include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/lynx_adaptor/painting_context_clay.h"
+#include "clay/ui/component/bounce_view/bounce_view.h"
+#include "clay/ui/component/css_property.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/scroll_wrapper.h"
 #include "clay/ui/component/view.h"
@@ -216,6 +221,50 @@ TEST_F_UI(ScrollViewTest, ScrollToId) {
   view_a.reset();
   view_b.reset();
   view_c.reset();
+}
+
+TEST_F_UI(ScrollViewTest, PositionsBounceViewsAtBothEnds) {
+  auto start = std::make_unique<BounceView>(11, page_.get());
+  auto end = std::make_unique<BounceView>(12, page_.get());
+  start->SetBounceDirection(Direction::kTop);
+  end->SetBounceDirection(Direction::kBottom);
+  start->SetBound(0, 0, 100, 20);
+  end->SetBound(0, 0, 100, 20);
+  outer_view_->AddChild(start.get(), 1);
+  outer_view_->AddChild(end.get(), 2);
+  outer_view_->OnLayoutUpdated();
+  Layout();
+
+  EXPECT_FLOAT_EQ(start->Top(), lynx::IsIOS() ? -20.f : 0.f);
+  EXPECT_FLOAT_EQ(end->Top(),
+                  outer_view_->GetRenderScroll()->OverflowRect().MaxY());
+
+  outer_view_->RemoveChild(end.get());
+  start->SetY(0);
+  Layout();
+  EXPECT_FLOAT_EQ(start->Top(), lynx::IsIOS() ? -20.f : 0.f);
+  outer_view_->RemoveChild(start.get());
+}
+
+TEST_F_UI(PaintingContextScrollTest, CssBorderRadiusReachesScrollView) {
+  BaseView* wrapper = scroll_view_;
+  const Length radius(16.f, LengthUnit::kNum);
+  wrapper->SetBorderRadius(0, {radius, radius});
+  wrapper->SetOverflow(CSSProperty::OVERFLOW_XY);
+  auto* scroll = scroll_view_->GetScrollView()->GetRenderScroll();
+  EXPECT_FLOAT_EQ(scroll->Border().radius_x_top_left_,
+                  lynx::IsIOS() ? 16.f : 0.f);
+  EXPECT_FLOAT_EQ(scroll->Border().radius_y_top_left_,
+                  lynx::IsIOS() ? 16.f : 0.f);
+  wrapper->SetBorderRadius(0, {});
+  EXPECT_FALSE(scroll->Border().HasBorderRadius());
+}
+
+TEST_F_UI(ScrollViewTest, DirectionChangeUpdatesRenderScroll) {
+  outer_view_->SetScrollDirection(ScrollDirection::kHorizontal);
+  EXPECT_EQ(outer_view_->GetRenderScroll()->GetScrollDirection(),
+            lynx::IsIOS() ? ScrollDirection::kHorizontal
+                          : ScrollDirection::kVertical);
 }
 
 TEST_F_UI(ScrollViewTest, NestedScrollGestureOnPC) {
@@ -680,6 +729,50 @@ TEST_F_UI(ScrollViewTest, InitialScrollOffsetUsesLogicalPixels) {
 
   EXPECT_EQ(page_->ConvertFrom<kPixelTypeLogical>(50),
             scroll_view->GetScrollOffset().y());
+}
+
+TEST_F_UI(PaintingContextScrollTest, ScrollMonitorReportsCompletedAnimation) {
+  using Event = PageView::ScrollMonitorEvent;
+  std::vector<Event> events;
+  auto* scroll_view = scroll_view_->GetScrollView();
+  page_->SetScrollMonitorCallback(
+      [&](Event event, const std::string& tag, const std::string& monitor_tag) {
+        EXPECT_EQ(tag, "scroll-view");
+        EXPECT_EQ(monitor_tag, "scroll-demo");
+        events.push_back(event);
+      });
+  scroll_view_->SetAttribute("scroll-monitor-tag", Value("scroll-demo"));
+  scroll_view->ScrollTo(false, 20);
+  EXPECT_TRUE(events.empty());
+
+  scroll_view_->SetAttribute("enable-scroll-monitor", Value(true));
+  scroll_view->ScrollTo(false, 30);
+  if constexpr (lynx::IsIOS()) {
+    EXPECT_THAT(events, ::testing::ElementsAre(Event::kScroll));
+  } else {
+    EXPECT_TRUE(events.empty());
+  }
+  events.clear();
+
+  scroll_view->ScrollTo(true, 100);
+  ResetAnimationTime();
+  DoAnimation(10);
+  DoAnimation(100);
+  if constexpr (lynx::IsIOS()) {
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events.back(), Event::kScroll);
+  }
+  DoAnimation(1000);
+  EXPECT_EQ(scroll_view->GetScrollOffset().y(), 100);
+  if constexpr (lynx::IsIOS()) {
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(events.back(), Event::kAnimationEnd);
+    EXPECT_EQ(std::count(events.begin(), events.end(), Event::kAnimationEnd),
+              1);
+  } else {
+    EXPECT_TRUE(events.empty());
+  }
+  page_->SetScrollMonitorCallback(nullptr);
 }
 
 // TODO(liuguoliang): Fix scrollWidth/scrollHeight and add test case

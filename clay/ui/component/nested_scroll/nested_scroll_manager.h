@@ -35,7 +35,9 @@ class NestedScrollManager : public DynamicAnimator::AnimationListener {
 
   void DragStart(NestedScrollable* source_scrollable);
   void DragUpdate(NestedScrollable* source_scrollable, FloatPoint delta);
-  void DragEnd(NestedScrollable* source_scrollable, FloatSize velocity);
+  void DragEnd(NestedScrollable* source_scrollable, FloatSize velocity,
+               bool canceled = false);
+  void StopFling(NestedScrollable* scrollable);
 
   NestedScrollable* FindOuterScrollable(NestedScrollable* scrollable);
 
@@ -85,7 +87,8 @@ class NestedScrollManager : public DynamicAnimator::AnimationListener {
   void OnDynamicAnimationEnd(DynamicAnimator& animation, bool canceled,
                              float value, float velocity) override;
 
-  void SetScrollStatus(Scrollable::ScrollStatus status);
+  void SetScrollStatus(Scrollable::ScrollStatus status,
+                       bool update_current_scrollable = true);
   void StopScrollForGestureInterception();
 
   bool IsFlingRunning() const {

@@ -9,6 +9,7 @@
 #include <sstream>
 
 #include "base/include/auto_reset.h"
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/animation/animation_properties_util.h"
 #include "clay/gfx/geometry/float_rounded_rect.h"
@@ -236,7 +237,15 @@ void RenderObject::SetShadow(const Shadow& shadow) {
 
 void RenderObject::SetShadows(std::vector<Shadow>&& shadows) {
   if (!shadows_.has_value() || shadows != shadows_) {
+    const bool update_parent_layer =
+        lynx::IsIOS() && IsRepaintBoundary() && Parent();
+    const auto old_layer_offset =
+        update_parent_layer ? OffsetInLayer() : FloatPoint();
     shadows_ = std::move(shadows);
+    if (update_parent_layer && old_layer_offset != OffsetInLayer()) {
+      // Repaint the parent so it repositions the child's composited layer.
+      static_cast<RenderObject*>(Parent())->MarkNeedsPaint();
+    }
     MarkNeedsPaint();
   }
 }
@@ -260,9 +269,11 @@ FloatRect RenderObject::GetFrameRectEx() const {
       auto radius = 2.0 * shadow.blur_radius + shadow.spread_radius;
       shadow_rect.Move(shadow.offset_x - radius, shadow.offset_y - radius);
       shadow_rect.Expand(2 * radius, 2 * radius);
-      shadow_rect.SetLocation(
-          {std::min(0.f, shadow_rect.location().x() - box_data_.Left()),
-           std::min(0.f, shadow_rect.location().y() - box_data_.Top())});
+      if constexpr (!lynx::IsIOS()) {
+        shadow_rect.SetLocation(
+            {std::min(0.f, shadow_rect.location().x() - box_data_.Left()),
+             std::min(0.f, shadow_rect.location().y() - box_data_.Top())});
+      }
       bounds.ExpandToInclude(shadow_rect);
     }
   }

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/auto_reset.h"
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/rendering_backend.h"
 #include "clay/lynx_adaptor/layout_context_clay.h"
@@ -69,6 +70,38 @@ Value CreateEventThroughActiveRegions(
 }
 
 class BaseViewTest : public UITest {};
+
+TEST_F_UI(BaseViewTest, AppliesBrightnessContrastAndSaturationFilters) {
+  auto view = std::make_unique<View>(1, page_.get());
+  const struct {
+    ClayFilterType type;
+    float amount;
+    float red_gain;
+    float green_into_red;
+    float red_offset;
+  } cases[] = {
+      {ClayFilterType::kBrightness, 15.f, 2.f, 0.f, 0.f},
+      {ClayFilterType::kContrast, 15.f, 3.f, 0.f, -1.f},
+      {ClayFilterType::kSaturate, 0.f, 0.213f, 0.715f, 0.f},
+  };
+  for (const auto& test_case : cases) {
+    Value::Array filter;
+    filter.emplace_back(static_cast<int>(test_case.type));
+    filter.emplace_back(test_case.amount);
+    view->SetFilter(filter);
+    if constexpr (!lynx::IsIOS()) {
+      EXPECT_FALSE(view->render_object()->HasColorFilter());
+      continue;
+    }
+    const auto& matrix = view->render_object()->ColorFilterMatrix();
+    ASSERT_EQ(matrix.size(), 20u);
+    EXPECT_FLOAT_EQ(matrix[0], test_case.red_gain);
+    EXPECT_FLOAT_EQ(matrix[1], test_case.green_into_red);
+    EXPECT_FLOAT_EQ(matrix[4], test_case.red_offset);
+  }
+  view->SetFilter({});
+  EXPECT_FALSE(view->render_object()->HasColorFilter());
+}
 
 clay::Value::Array BackgroundImage(const std::string& url) {
   clay::Value::Array background_image;

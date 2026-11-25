@@ -13,10 +13,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "core/list/decoupled_list_types.h"
 #include "core/renderer/dom/fiber/element_template_instance.h"
 #include "core/renderer/dom/fiber/list_element_template_instance.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fragment/fragment.h"
 #include "core/renderer/dom/fragment/list_fragment_behavior.h"
 #include "core/renderer/dom/list_component_info.h"
@@ -638,10 +638,21 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
       if (engine_scroll_managed_) {
         list_mediator_->EnableEngineManagedScroll();
       }
-      // Note: if enable native list only from env, we should not send scroll
-      // to threshold event on diff layout to avoid breaking change.
+      // Fragment-layer rendering also forces the core list on native hosts.
+      use_legacy_ios_list_behavior_ =
+          IsIOS() && element_manager_->GetEnableNativeListFromShell() &&
+          !element_manager_->IsFragmentLayerRenderModeOn() &&
+          !platform_node_tag_.IsEqual(list::kListContainer) &&
+          !platform_node_tag_.IsEqual(kListScrollNewArch);
+      if (use_legacy_ios_list_behavior_) {
+        // UIKit's legacy list defaults to flow and applies column-count even
+        // when the template specifies the legacy single layout name.
+        list_mediator_->ResolveAttribute(
+            BASE_STATIC_STRING(::lynx::list::kPropListType),
+            lepus::Value(lynx::list::kPropValueListTypeFlow));
+      }
       list_mediator_->SetEnableScrollToThresholdEventOnDiffLayout(
-          !enable_native_list_only_from_env_);
+          !enable_native_list_only_from_env_ && !use_legacy_ios_list_behavior_);
     }
   }
 
@@ -708,6 +719,16 @@ ParallelFlushReturn ListElement::PrepareForCreateOrUpdate() {
 
 bool ListElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
+  if (use_legacy_ios_list_behavior_ && key.IsEqual(lynx::list::kPropListType) &&
+      (value.IsNil() || value.IsUndefined() ||
+       (value.IsString() &&
+        value.String().IsEqual(lynx::list::kPropValueListTypeSingle)))) {
+    if (list_mediator_->ResolveAttribute(
+            key, lepus::Value(lynx::list::kPropValueListTypeFlow))) {
+      Element::SetAttributeInternal(key, value);
+    }
+    return true;
+  }
   if (key.IsEqual("engine-scroll-managed") && value.IsBool() && value.Bool()) {
     EnableEngineManagedScroll();
   }

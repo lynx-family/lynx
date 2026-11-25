@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/rubberband_distance.h"
 #include "clay/ui/gesture_handler/gesture_handler_dispatcher.h"
@@ -210,6 +211,9 @@ void Scrollable::SetScrollDirection(ScrollDirection direction) {
   if (scroll_direction_ != direction) {
     ResetScroll();
     scroll_direction_ = direction;
+    if constexpr (lynx::IsIOS()) {
+      GetRenderScroll()->SetScrollDirection(direction);
+    }
     ResetGestureRecognizers();
   }
 }
