@@ -6,6 +6,7 @@
 #define CLAY_UI_COMPONENT_TEXT_TEXT_STYLE_H_
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -17,6 +18,10 @@
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/painter/gradient.h"
 #include "clay/ui/shadow/vertical_align_style.h"
+
+namespace txt {
+enum class Hyphens : uint8_t;
+}
 
 namespace clay {
 
@@ -126,6 +131,7 @@ struct TextStyle {
   std::optional<TextOverflow> overflow;
   std::optional<std::u16string> ellipsis;
   std::optional<WordBreak> word_break;
+  std::optional<txt::Hyphens> hyphens;
   std::optional<WhiteSpace> white_space;
   std::optional<int> foreground_id;
   std::optional<bool> keep_trailing_spaces;
@@ -175,6 +181,7 @@ struct TextStyle {
            this->overflow == style.overflow &&
            this->ellipsis == style.ellipsis &&
            this->word_break == style.word_break &&
+           this->hyphens == style.hyphens &&
            this->white_space == style.white_space &&
            this->foreground_id == style.foreground_id &&
            this->keep_trailing_spaces == style.keep_trailing_spaces &&

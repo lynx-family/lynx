@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <memory>
 
+#include "base/include/platform/operating_system.h"
 #include "core/renderer/dom/element.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 
 namespace lynx {
@@ -66,7 +66,7 @@ class ImageElement : public Element {
   ImagePaintInfo paint_info_;
 
  private:
-  template <OSType type>
+  template <base::OSType type>
   int32_t GetImageNodeInfo() const {
     if (has_auto_size_) {
       return kCustomBuiltInNodeInfo;
@@ -77,7 +77,7 @@ class ImageElement : public Element {
 };
 
 template <>
-inline int32_t ImageElement::GetImageNodeInfo<OSType::kIOS>() const {
+inline int32_t ImageElement::GetImageNodeInfo<base::OSType::kIOS>() const {
   if (has_auto_size_) {
     return kCustomBuiltInNodeInfo;
   }
@@ -85,7 +85,7 @@ inline int32_t ImageElement::GetImageNodeInfo<OSType::kIOS>() const {
 }
 
 template <>
-inline int32_t ImageElement::GetImageNodeInfo<OSType::kHarmony>() const {
+inline int32_t ImageElement::GetImageNodeInfo<base::OSType::kHarmony>() const {
   if (has_auto_size_) {
     return kCustomBuiltInNodeInfo;
   }

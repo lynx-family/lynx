@@ -154,6 +154,8 @@ txt::TextShadow ToTextShadow(const Shadow& shadow) {
 
 void ApplyParagraphStyle(const TextStyle& clay_style,
                          txt::ParagraphStyle& txt_style) {
+  txt_style.hyphens = clay_style.hyphens.value_or(txt::Hyphens::kUnspecified);
+
   if (clay_style.font_weight) {
     txt_style.font_weight = ToTxtFontWeight(clay_style.font_weight.value());
   }
