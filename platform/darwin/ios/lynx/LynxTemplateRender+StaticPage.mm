@@ -17,7 +17,9 @@ static BOOL IsStaticPageData(LynxTemplateData* data) {
   return data && LynxTemplateDataIsForStaticPage(data);
 }
 
-static NSDictionary<NSString*, id>* StaticPageData(LynxTemplateData* data) {
+static NSDictionary<NSString*, id>* TemplateDataDictionary(LynxTemplateData* data) {
+  // Static-page data returns its retained platform dictionary. Standard TemplateData is accepted
+  // only for global props and is materialized here at the direct-load boundary.
   return data ? data.dictionary : nil;
 }
 
@@ -39,10 +41,10 @@ static NSDictionary<NSString*, id>* StaticPageData(LynxTemplateData* data) {
       _LogE(@"Repeated loadTemplate is not supported for a static page direct load");
       return NO;
     }
-    if ((initialData && !IsStaticPageData(initialData)) ||
-        (_globalProps && !IsStaticPageData(_globalProps)) ||
-        (loadGlobalProps && !IsStaticPageData(loadGlobalProps))) {
-      _LogE(@"Static page direct data cannot be mixed with standard LynxTemplateData");
+    // Page data has no standard-data fallback. Global props may use standard TemplateData and are
+    // materialized once when the direct load is registered.
+    if (initialData && !IsStaticPageData(initialData)) {
+      _LogE(@"Static page direct load requires static page initial data");
       return NO;
     }
     if (_threadStrategyForRendering == LynxThreadStrategyForRenderMostOnTASM ||
@@ -57,19 +59,21 @@ static NSDictionary<NSString*, id>* StaticPageData(LynxTemplateData* data) {
       return NO;
     }
 
-    if (loadGlobalProps && ![self mergeStaticPageGlobalProps:loadGlobalProps]) {
-      return NO;
+    if (loadGlobalProps) {
+      [self mergeStaticPageGlobalProps:loadGlobalProps];
     }
     if (!_staticPageHost) {
       _staticPageHost = [self createStaticPageHost];
     }
     NSDictionary<NSString*, id>* registeredGlobalProps =
         [_staticPageHost registerInstanceId:instanceId
-                                       data:StaticPageData(initialData)
-                                globalProps:StaticPageData(_globalProps)];
+                                       data:TemplateDataDictionary(initialData)
+                                globalProps:TemplateDataDictionary(_globalProps)];
     _globalProps =
         registeredGlobalProps ? [LynxTemplateData createForStaticPage:registeredGlobalProps] : nil;
     if (_globalProps) {
+      // Static-page loading skips the standard updateGlobalPropsWithTemplateData path. Report the
+      // final merged value so DevTool observes the same load-time global props.
       [_devTool onGlobalPropsUpdated:_globalProps];
     }
     return YES;
@@ -96,16 +100,11 @@ static NSDictionary<NSString*, id>* StaticPageData(LynxTemplateData* data) {
 
     NSDictionary<NSString*, id>* mergedGlobalProps = nil;
     if (globalProps) {
-      if (![self mergeStaticPageGlobalProps:globalProps]) {
-        return;
-      }
-      mergedGlobalProps = StaticPageData(_globalProps);
+      [self mergeStaticPageGlobalProps:globalProps];
+      mergedGlobalProps = TemplateDataDictionary(_globalProps);
       [_devTool onGlobalPropsUpdated:_globalProps];
     }
-    if (data) {
-      [_devTool onUpdateDataWithTemplateData:data];
-    }
-    [_staticPageHost updateMetaData:StaticPageData(data) globalProps:mergedGlobalProps];
+    [_staticPageHost updateMetaData:TemplateDataDictionary(data) globalProps:mergedGlobalProps];
   }
 }
 
@@ -118,19 +117,14 @@ static NSDictionary<NSString*, id>* StaticPageData(LynxTemplateData* data) {
   return _staticPageHost.isRegistered;
 }
 
-- (BOOL)mergeStaticPageGlobalProps:(LynxTemplateData*)globalProps {
+- (void)mergeStaticPageGlobalProps:(LynxTemplateData*)globalProps {
   if (!_globalProps) {
     _globalProps = globalProps;
-    return YES;
+    return;
   }
-  if (!IsStaticPageData(_globalProps)) {
-    _LogE(@"Static page direct globalProps cannot be mixed with standard LynxTemplateData");
-    return NO;
-  }
-  NSMutableDictionary<NSString*, id>* merged = [StaticPageData(_globalProps) mutableCopy];
-  [merged addEntriesFromDictionary:StaticPageData(globalProps)];
+  NSMutableDictionary<NSString*, id>* merged = [TemplateDataDictionary(_globalProps) mutableCopy];
+  [merged addEntriesFromDictionary:TemplateDataDictionary(globalProps)];
   _globalProps = [LynxTemplateData createForStaticPage:[merged copy]];
-  return YES;
 }
 
 - (StaticPageHost*)createStaticPageHost {
