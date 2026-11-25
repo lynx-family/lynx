@@ -51,14 +51,6 @@ LynxUIRendererWin::LynxUIRendererWin(lynx_view_builder_t* builder)
   properties.enable_software_rendering = builder->enable_software_rendering;
   properties.enable_display_p3 =
       builder->color_space == kLynxColorSpaceDisplayP3;
-#ifdef ENABLE_SKITY
-  if (properties.enable_software_rendering) {
-    LOGW(
-        "Software rendering requires the Skia backend; using hardware "
-        "rendering.");
-    properties.enable_software_rendering = false;
-  }
-#endif
 
   const char* icu_data_path = builder->GetICUDataPath();
   std::wstring icu_wstr;
