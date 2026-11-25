@@ -171,6 +171,8 @@ source_set("weak_node_api_host") {
 
   configs += [ "../../third_party/weak-node-api:weak_node_api_config" ]
 
+  configs = [ "../../third_party/weak-node-api:weak_node_api_config" ]
+
   if (use_weak_node_api_source) {
     public_deps += [ "../weak-node-api:weak_node_api_source" ]
   } else {
