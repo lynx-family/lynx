@@ -19,6 +19,10 @@
 #include "clay/third_party/txt/src/tttext/tttext_index_mapper.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
 
+namespace clay {
+class TextParagraphBuilderTTTextTest_BaselineShiftPropagatesToTTTextStyle_Test;
+}
+
 namespace ttoffice {
 namespace tttext {
 class Paragraph;
@@ -115,6 +119,8 @@ class ParagraphTTText : public Paragraph {
   tttext::WriteDirection GetResolvedWriteDirection() const;
 
  private:
+  friend class clay::
+      TextParagraphBuilderTTTextTest_BaselineShiftPropagatesToTTTextStyle_Test;
   friend class ParagraphTTTextTest_KeepsIndexesInSyncForEmbeddedNull_Test;
   friend class
       ParagraphTTTextTest_DefaultPlaceholderUsesAlphabeticBaseline_Test;
