@@ -32,6 +32,7 @@ class TextParagraphBuilder {
   void AddPlaceholder(txt::PlaceholderRun& placeholder);
 
  private:
+  friend class TextTest_BaselineShiftPropagatesAndInherits_Test;
   friend class TextTest_FontVariationAttributesPropagateToTxtStyle_Test;
   friend std::unique_ptr<txt::Paragraph> Build(
       std::unique_ptr<TextParagraphBuilder> builder);
