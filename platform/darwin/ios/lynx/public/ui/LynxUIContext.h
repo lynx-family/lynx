@@ -6,7 +6,6 @@
 #import <Lynx/ListNodeInfoFetcherProtocol.h>
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxEventEmitter.h>
-#import <Lynx/LynxFrameViewProvider.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxImageConfig.h>
 #import <Lynx/LynxImageFetcher.h>
@@ -63,9 +62,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) id<LynxMediaResourceFetcher> mediaResourceFetcher;
 @property(nonatomic, strong, nullable) id<LynxTemplateResourceFetcher> templateResourceFetcher;
 @property(nonatomic, assign) BOOL enableFetchUIImage;
-
-// LynxFrameViewProvider support
-@property(nonatomic, strong, nullable) id<LynxFrameViewProvider> lynxFrameViewProvider;
 
 @property(nonatomic, strong, nullable) LynxImageConfig* imageConfig;
 
