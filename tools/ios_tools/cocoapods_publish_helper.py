@@ -262,15 +262,9 @@ def upload_zip_sources_to_s3(src_dir, component):
 
 def get_enable_trace_param(version: str) -> str:
     """
-    Returns '--enable-trace' if the version ends with '-dev', otherwise returns an empty string.
-    Args:
-        version (str): The version string to check.
-    Returns:
-        str: '--enable-trace' if version ends with '-dev', else ''.
+    Keep Perfetto events in every published CocoaPods source package.
     """
-    if version.endswith('-dev'):
-        return '--enable-trace'
-    return ''
+    return '--enable-trace'
 
 def prepare_cocoapods_publish_source(
         version,
