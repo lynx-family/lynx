@@ -135,7 +135,7 @@ index 6cba947..52ba3f0 100644
 +void xh_log_format(char* buf, size_t size, const char* fmt, ...) {
 +  va_list args;
 +  va_start(args, fmt);
-+  snprintf(buf, size, fmt, args);
++  vsnprintf(buf, size, fmt, args);
 +  va_end(args);
 +}
  
