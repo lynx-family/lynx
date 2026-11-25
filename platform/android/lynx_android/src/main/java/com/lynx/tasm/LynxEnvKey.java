@@ -44,6 +44,8 @@ public enum LynxEnvKey {
   ENABLE_LAZY_INIT_A11Y("enable_lazy_init_a11y"),
   ENABLE_TEXT_LAYOUT_CACHE("enable_text_layout_cache"),
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
+  // Temporary rollback switch for global props UI ordering. Remove in the next release.
+  ENABLE_UPDATE_GLOBAL_PROPS_ON_UI_THREAD("enable_update_global_props_on_ui_thread"),
   ENABLE_CLEAR_UPDATED_DATA_LIST("enable_clear_updated_data_list"),
   FSP_ENABLE("enable_fsp"),
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),

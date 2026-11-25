@@ -1553,6 +1553,10 @@ public class LynxEnv {
     return mEnableDataListFix;
   }
 
+  boolean enableUpdateGlobalPropsOnUiThread() {
+    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_UPDATE_GLOBAL_PROPS_ON_UI_THREAD, true);
+  }
+
   boolean enableClearUpdatedDataList() {
     return mEnableClearUpdatedDataList;
   }
