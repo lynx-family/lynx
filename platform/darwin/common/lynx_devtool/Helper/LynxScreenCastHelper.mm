@@ -173,7 +173,7 @@ int const ScreenshotPreviewDelayTime = 1500;
 
 - (NSString*)Get1xJPEGBytesFromUIImage:(UIImage*)uiimage withQuality:(int)quality {
   NSData* data = UIImageJPEGRepresentation(uiimage, quality / 100.0);
-  NSString* str = [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+  NSString* str = [data base64EncodedStringWithOptions:0];
   return str;
 }
 
@@ -242,7 +242,7 @@ int const ScreenshotPreviewDelayTime = 1500;
       [NSDictionary dictionaryWithObject:[NSNumber numberWithFloat:quality / 100.0]
                                   forKey:NSImageCompressionFactor];
   NSData* data = [bits representationUsingType:NSJPEGFileType properties:imageProps];
-  NSString* str = [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+  NSString* str = [data base64EncodedStringWithOptions:0];
   return str;
 }
 
