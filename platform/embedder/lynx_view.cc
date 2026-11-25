@@ -193,6 +193,7 @@ LYNX_EXTERN_C lynx_view_t* lynx_view_create(lynx_view_builder_t* builder,
   if (builder->group) {
     settings.group_id = builder->group->id;
     settings.enable_js_group_thread = builder->group->enable_js_group_thread;
+    settings.js_group_thread_name = builder->group->js_group_thread_name;
     settings.preload_js_paths = builder->group->preload_js_paths;
     settings.white_board = builder->group->white_board;
   }

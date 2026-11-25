@@ -11,8 +11,10 @@
 #include "base/include/fml/message_loop.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/events/closure_event_listener.h"
+#include "core/runtime/js/jsi/jsi.h"
 #include "core/runtime/js/runtime_constant.h"
 #include "core/services/performance/performance_controller.h"
+#include "core/shell/runtime/bts/bts_runtime.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "platform/embedder/lynx_view_priv.h"
 #include "platform/embedder/public/lynx_env.h"
@@ -22,6 +24,42 @@
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace {
+
+class IdleVSyncSource : public lynx::base::VSyncMonitorPlatformImpl {
+ public:
+  void RequestVSync(Callback) override {}
+};
+
+class ThreadTestResourceLoader : public lynx::pub::LynxResourceLoader {
+ protected:
+  void LoadResourceInternal(
+      const lynx::pub::LynxResourceRequest&,
+      lynx::base::MoveOnlyClosure<void, lynx::pub::LynxResourceResponse&>
+          callback) override {
+    // Thread selection does not require the page-facing core JavaScript APIs.
+    lynx::pub::LynxResourceResponse response;
+    response.data = {'v', 'o', 'i', 'd', ' ', '0', ';'};
+    callback(response);
+  }
+};
+
+class PreloadTestResourceLoader : public ThreadTestResourceLoader {
+ protected:
+  void LoadResourceInternal(
+      const lynx::pub::LynxResourceRequest& request,
+      lynx::base::MoveOnlyClosure<void, lynx::pub::LynxResourceResponse&>
+          callback) override {
+    if (request.url != "test://preload.js") {
+      ThreadTestResourceLoader::LoadResourceInternal(request,
+                                                     std::move(callback));
+      return;
+    }
+    const std::string source = "globalThis.__preload_reset_test = 42;";
+    lynx::pub::LynxResourceResponse response;
+    response.data.assign(source.begin(), source.end());
+    callback(response);
+  }
+};
 
 class InspectableTemplateRenderer
     : public lynx::embedder::LynxTemplateRenderer {
@@ -212,6 +250,97 @@ TEST_F(LynxViewTest, ResetRecreatesPlatformPerformanceController) {
   EXPECT_NE(
       renderer.shell()->GetPerfControllerActor()->Impl()->GetPlatformImpl(),
       nullptr);
+}
+
+TEST_F(LynxViewTest, JSGroupThreadUsesConfiguredNameOrGroupID) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  for (const auto& name : {std::string("custom-js-thread"), std::string()}) {
+    InspectableTemplateRenderer::Settings settings;
+    settings.screen_size = {320, 480};
+    settings.viewport_size = {320, 480};
+    settings.group_id =
+        name.empty() ? "default-thread-group" : "custom-thread-group";
+    settings.enable_js_group_thread = true;
+    settings.js_group_thread_name = name;
+    settings.use_quickjs = true;
+    settings.resource_loader = std::make_shared<ThreadTestResourceLoader>();
+    settings.vsync_monitor_platform_impl = std::make_shared<IdleVSyncSource>();
+    const auto expected = lynx::base::TaskRunnerManufactor::GetJSRunner(
+        name.empty() ? settings.group_id : name);
+    {
+      InspectableTemplateRenderer renderer(
+          settings, ui_renderer.GetUIDelegate(), nullptr, nullptr);
+      renderer.Initialize();
+      EXPECT_EQ(renderer.shell()->GetRunners()->GetJSTaskRunner(), expected);
+      renderer.Reset();
+      EXPECT_EQ(renderer.shell()->GetRunners()->GetJSTaskRunner(), expected);
+    }
+    expected->PostSyncTask([] {});
+    lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  }
+}
+
+TEST_F(LynxViewTest, DisabledJSGroupThreadIgnoresConfiguredName) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  InspectableTemplateRenderer::Settings settings;
+  settings.screen_size = {320, 480};
+  settings.viewport_size = {320, 480};
+  settings.js_group_thread_name = "unused-js-thread";
+  settings.use_quickjs = true;
+  settings.resource_loader = std::make_shared<ThreadTestResourceLoader>();
+  settings.vsync_monitor_platform_impl = std::make_shared<IdleVSyncSource>();
+  const auto expected = lynx::base::TaskRunnerManufactor::GetJSRunner("");
+  {
+    InspectableTemplateRenderer renderer(settings, ui_renderer.GetUIDelegate(),
+                                         nullptr, nullptr);
+    renderer.Initialize();
+    EXPECT_EQ(renderer.shell()->GetRunners()->GetJSTaskRunner(), expected);
+  }
+  expected->PostSyncTask([] {});
+  lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+}
+
+TEST_F(LynxViewTest, ResetReevaluatesPreloadScripts) {
+  lynx::pub::LynxView::Builder builder;
+  lynx::embedder::TestLynxUIRenderer ui_renderer(builder.Impl());
+  const auto runner = lynx::base::TaskRunnerManufactor::GetJSRunner("");
+  for (const auto* group_id : {"-1", "preload-reset-group"}) {
+    InspectableTemplateRenderer::Settings settings;
+    settings.screen_size = {320, 480};
+    settings.viewport_size = {320, 480};
+    settings.group_id = group_id;
+    settings.preload_js_paths = {"test://preload.js"};
+    settings.use_quickjs = true;
+    settings.resource_loader = std::make_shared<PreloadTestResourceLoader>();
+    settings.vsync_monitor_platform_impl = std::make_shared<IdleVSyncSource>();
+    {
+      InspectableTemplateRenderer renderer(
+          settings, ui_renderer.GetUIDelegate(), nullptr, nullptr);
+      renderer.Initialize();
+      for (int reset_count = 0; reset_count < 3; ++reset_count) {
+        if (reset_count > 0) renderer.Reset(true);
+        runner->PostSyncTask([&] {
+          auto* runtime = renderer.shell()
+                              ->GetRuntimeActor()
+                              ->Impl()
+                              ->GetJSRuntimeWeak()
+                              .Lock();
+          ASSERT_NE(runtime, nullptr);
+          lynx::runtime::js::Scope scope(*runtime);
+          auto value =
+              runtime->global().getProperty(*runtime, "__preload_reset_test");
+          ASSERT_TRUE(value.has_value());
+          ASSERT_TRUE(value->isNumber())
+              << "group: " << group_id << ", reset: " << reset_count;
+          EXPECT_EQ(value->getNumber(), 42);
+        });
+      }
+    }
+    runner->PostSyncTask([] {});
+    lynx::fml::MessageLoop::GetCurrent().RunExpiredTasksNow();
+  }
 }
 
 TEST_F(LynxViewTest, DisabledJSInitializesMTSWithoutBTS) {

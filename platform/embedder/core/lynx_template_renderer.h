@@ -115,6 +115,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     bool enable_native_list = false;
     std::string group_id = "-1";
     bool enable_js_group_thread = false;
+    std::string js_group_thread_name;
     std::vector<std::string> preload_js_paths;
     bool use_quickjs = false;
     bool enable_bytecode = false;
