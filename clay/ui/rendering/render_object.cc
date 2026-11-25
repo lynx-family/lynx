@@ -203,8 +203,9 @@ void RenderObject::SetBorders(const BordersData& borders_data) {
 }
 
 void RenderObject::SetOutline(const OutlineData& outline_data) {
-  outline_ = std::make_optional<OutlineData>(outline_data);
-  MarkNeedsPaint();
+  const FloatPoint previous_offset = OffsetInLayer();
+  outline_ = outline_data;
+  MarkNeedsPaintAfterDecorationChange(previous_offset);
 }
 
 void RenderObject::SetVisible(bool visible) {
@@ -226,19 +227,32 @@ void RenderObject::SetDisplayNone(bool display_none) {
 }
 
 void RenderObject::SetShadow(const Shadow& shadow) {
+  const FloatPoint previous_offset = OffsetInLayer();
   if (!shadows_.has_value()) {
     shadows_ = std::make_optional<std::vector<Shadow>>();
   }
 
   shadows_->push_back(shadow);
-  MarkNeedsPaint();
+  MarkNeedsPaintAfterDecorationChange(previous_offset);
 }
 
 void RenderObject::SetShadows(std::vector<Shadow>&& shadows) {
   if (!shadows_.has_value() || shadows != shadows_) {
+    const FloatPoint previous_offset = OffsetInLayer();
     shadows_ = std::move(shadows);
-    MarkNeedsPaint();
+    MarkNeedsPaintAfterDecorationChange(previous_offset);
   }
+}
+
+void RenderObject::MarkNeedsPaintAfterDecorationChange(
+    const FloatPoint& previous_offset) {
+  // The parent sets the composited layer's offset. Repainting this object
+  // alone only updates the content within that layer.
+  if (Parent() && GetLayer() && IsRepaintBoundary() &&
+      OffsetInLayer() != previous_offset) {
+    static_cast<RenderObject*>(Parent())->MarkNeedsPaint();
+  }
+  MarkNeedsPaint();
 }
 
 FloatRect RenderObject::GetFrameRectEx() const {
@@ -552,8 +566,9 @@ void RenderObject::SetHasDefaultFocusRing(bool has_default_focus_ring) {
   if (has_default_focus_ring == has_default_focus_ring_) {
     return;
   }
+  const FloatPoint previous_offset = OffsetInLayer();
   has_default_focus_ring_ = has_default_focus_ring;
-  MarkNeedsPaint();
+  MarkNeedsPaintAfterDecorationChange(previous_offset);
 }
 
 void RenderObject::SetImageFilterMode(FilterMode mode) {
