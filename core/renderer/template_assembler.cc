@@ -245,9 +245,14 @@ TemplateAssembler::~TemplateAssembler() {
 };
 
 void TemplateAssembler::TriggerVmGC() {
+  if (!page_config_) {
+    return;
+  }
   if (page_config_->GetEnableLepusNG()) {
     auto vm = FindEntry(tasm::DEFAULT_ENTRY_NAME)->GetVm();
-    vm->TriggerVmGC();
+    if (vm) {
+      vm->TriggerVmGC();
+    }
   }
 }
 
