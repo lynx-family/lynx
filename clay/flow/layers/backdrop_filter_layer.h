@@ -17,6 +17,9 @@ namespace clay {
 
 class BackdropFilterLayer : public ContainerLayer {
  public:
+#ifdef ENABLE_SKITY
+  bool CanSegmentDisplay() const override { return false; }
+#endif
   BackdropFilterLayer(std::shared_ptr<const clay::ImageFilter> filter,
                       clay::BlendMode blend_mode);
 
