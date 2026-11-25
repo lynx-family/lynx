@@ -34,10 +34,12 @@ void JSRealmManagerDelegateImpl::BeforeRuntimeCreate(
     bool force_use_lightweight_js_engine) {
   JSDebugHelper::GetInstance()->RegisterNapiRuntimeProxy();
 #if OS_HARMONY
+  if constexpr (!LYNX_HARMONY_TARGET_X64) {
 #if ENABLE_NAPI_BINDING
-  static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
-  RegisterJSVMRuntimeProxyFactory(&factory);
+    static runtime::js::NapiRuntimeProxyJSVMFactoryImpl factory;
+    RegisterJSVMRuntimeProxyFactory(&factory);
 #endif  // ENABLE_NAPI_BINDING
+  }
 #endif  // OS_HARMONY
 }
 
@@ -110,8 +112,12 @@ JSRealmManagerDelegateImpl::MakeRuntimeForSharedContext(
     return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineQuickjs);
   } else {
 #if OS_HARMONY
-    LOGI("js debug: make JSVM runtime; JS debugging is not supported");
-    return runtime::js::makeJSVMRuntime();
+    if constexpr (LYNX_HARMONY_TARGET_X64) {
+      return JSDebugHelper::GetInstance()->MakeRuntime(kKeyEngineQuickjs);
+    } else {
+      LOGI("js debug: make JSVM runtime; JS debugging is not supported");
+      return runtime::js::makeJSVMRuntime();
+    }
 #elif JS_ENGINE_TYPE == 1
     LOGI("js debug: make JSC runtime; JS debugging is not supported");
     return runtime::js::makeJSCRuntime();

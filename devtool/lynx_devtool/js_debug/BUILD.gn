@@ -114,6 +114,13 @@ devtool_source_set("devtool_common_js_debug") {
 
 devtool_source_set("devtool_js_debug") {
   sources = devtool_js_debug_sources
+  if (is_harmony) {
+    if (current_cpu == "x64") {
+      defines = [ "LYNX_HARMONY_TARGET_X64=1" ]
+    } else {
+      defines = [ "LYNX_HARMONY_TARGET_X64=0" ]
+    }
+  }
   deps = [
     ":devtool_common_js_debug",
     "../../../base/src:base_log_headers",
