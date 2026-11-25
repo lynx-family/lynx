@@ -68,6 +68,21 @@ void PaintingContextHarmonyRef::UpdateContentOffsetForListContainer(
       from_layout);
 }
 
+void PaintingContextHarmonyRef::ListReusePaintingNode(
+    int sign, const std::string& item_key) {
+  ui_owner_->ListReusePaintingNode(sign, item_key);
+}
+
+void PaintingContextHarmonyRef::ListCellWillAppear(
+    int sign, const std::string& item_key) {
+  ui_owner_->ListCellWillAppear(sign, item_key);
+}
+
+void PaintingContextHarmonyRef::ListCellDisappear(int sign, bool isExist,
+                                                  const std::string& item_key) {
+  ui_owner_->ListCellDisappear(sign, isExist, item_key);
+}
+
 void PaintingContextHarmonyRef::UpdateNodeReadyPatching(
     std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
   for (int node_ready_id : ready_ids) {

@@ -343,6 +343,34 @@ void UIOwner::RemoveListItemPaintingNode(int list_sign, int child_sign) {
   }
 }
 
+void UIOwner::ListCellWillAppear(int sign, const std::string& item_key) {
+  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    UIBase* list_item = it->second.get();
+    if (list_item && list_item->Parent() && list_item->Parent()->IsList()) {
+      list_item->OnListCellAppear(item_key, list_item->Parent());
+    }
+  }
+}
+
+void UIOwner::ListCellDisappear(int sign, bool isExist,
+                                const std::string& item_key) {
+  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    UIBase* list_item = it->second.get();
+    if (list_item && list_item->Parent() && list_item->Parent()->IsList()) {
+      list_item->OnListCellDisAppear(item_key, list_item->Parent(), isExist);
+    }
+  }
+}
+
+void UIOwner::ListReusePaintingNode(int sign, const std::string& item_key) {
+  if (auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    UIBase* list_item = it->second.get();
+    if (list_item && list_item->Parent() && list_item->Parent()->IsList()) {
+      list_item->OnListCellPrepareForReuse(item_key, list_item->Parent());
+    }
+  }
+}
+
 UIOwner::~UIOwner() = default;
 
 void UIOwner::AttachPageRoot(NativeNodeContent* content) {

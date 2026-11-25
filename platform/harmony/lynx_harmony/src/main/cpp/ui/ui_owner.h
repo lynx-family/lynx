@@ -63,6 +63,10 @@ class UIOwner {
                         float estimated_offset, bool scrolling);
   void InsertListItemPaintingNode(int list_sign, int child_sign);
   void RemoveListItemPaintingNode(int list_sign, int child_sign);
+  void ListReusePaintingNode(int sign, const std::string& item_key);
+  void ListCellWillAppear(int sign, const std::string& item_key);
+  void ListCellDisappear(int sign, bool isExist, const std::string& item_key);
+
   ~UIOwner();
 
   void UpdateExtraData(
