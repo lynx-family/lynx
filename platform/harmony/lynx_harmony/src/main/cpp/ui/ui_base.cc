@@ -508,6 +508,16 @@ void UIBase::RemoveChild(UIBase* child) {
 }
 
 void UIBase::InsertNode(UIBase* child, int index) {
+  if (fragment_owner_path_ || child->fragment_owner_path_) {
+    LOGI("[HarmonyRetainedClip] insert parent_sign="
+         << Sign() << " parent_tag=" << Tag() << " child_sign=" << child->Sign()
+         << " child_tag=" << child->Tag()
+         << " parent_draw=" << (draw_node_ != nullptr) << " child_draw="
+         << (child->draw_node_ != nullptr) << " parent_node_parent="
+         << (NodeManager::Instance().GetParent(Node()) != nullptr)
+         << " child_node_parent="
+         << (NodeManager::Instance().GetParent(child->Node()) != nullptr));
+  }
   NodeManager::Instance().InsertNode(Node(), child->DrawNode(), index);
 }
 
@@ -1592,9 +1602,23 @@ void UIBase::UpdateFragmentLayerContentClip(const DisplayList& display_list) {
   }
   if (path.empty() && !fragment_content_clip_path_.empty()) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+    if (fragment_owner_path_) {
+      // The content clip occupies NODE_CLIP_SHAPE on the native node. Force
+      // the owner clip to be restored after the content clip is removed.
+      fragment_owner_clip_node_ = nullptr;
+      fragment_owner_request_.reset();
+    }
+  } else if (!path.empty() && fragment_owner_native_clip_applied_) {
+    // Content clipping and retained-owner clipping share the native clip
+    // attribute. Let the content clip take over until it is removed.
+    NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+    fragment_owner_native_clip_applied_ = false;
   }
   fragment_content_clip_path_ = std::move(path);
   ApplyFragmentLayerContentClip();
+  if (fragment_content_clip_path_.empty() && fragment_owner_path_) {
+    ApplyFragmentLayerOwnerClip();
+  }
 }
 
 void UIBase::ApplyFragmentLayerContentClip() {
@@ -1674,6 +1698,11 @@ void UIBase::UpdateFragmentLayerSubtreeProperties(
         break;
       }
       case DisplayListSubtreePropertyOpType::kClipPath:
+        LOGI("[HarmonyRetainedClip] property sign="
+             << Sign() << " tag=" << Tag() << " path_index="
+             << property.data.clip_path.path_index << " node_parent="
+             << (NodeManager::Instance().GetParent(Node()) != nullptr)
+             << " draw=" << (draw_node_ != nullptr));
         fragment_owner_path_ = fml::RefPtr<const gfx::Path>(
             property.data.clip_path.path_index == UINT32_MAX
                 ? nullptr
@@ -1688,10 +1717,24 @@ void UIBase::UpdateFragmentLayerSubtreeProperties(
 }
 
 void UIBase::ApplyFragmentLayerOwnerClip() {
+  if (fragment_owner_path_) {
+    LOGI("[HarmonyRetainedClip] apply_begin sign="
+         << Sign() << " tag=" << Tag() << " draw=" << (draw_node_ != nullptr)
+         << " node_parent="
+         << (NodeManager::Instance().GetParent(Node()) != nullptr)
+         << " draw_parent="
+         << (draw_node_ != nullptr &&
+             NodeManager::Instance().GetParent(draw_node_) != nullptr)
+         << " draw_behind=" << CanDrawBehind());
+  }
   if (!fragment_owner_path_) {
     if (fragment_owner_clip_node_) {
       NodeManager::Instance().ResetAttribute(fragment_owner_clip_node_,
                                              NODE_CLIP_SHAPE);
+    }
+    if (fragment_owner_native_clip_applied_) {
+      NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+      fragment_owner_native_clip_applied_ = false;
     }
     fragment_owner_clip_node_ = nullptr;
     fragment_owner_request_.reset();
@@ -1714,6 +1757,10 @@ void UIBase::ApplyFragmentLayerOwnerClip() {
     return;
   const auto& rect = request.second;
   auto payload = request.first->MakePayload(rect[0], rect[1], rect[2], rect[3]);
+  LOGI("[HarmonyRetainedClip] apply_payload sign="
+       << Sign() << " tag=" << Tag()
+       << " status=" << static_cast<int>(payload.status)
+       << " width=" << payload.width << " height=" << payload.height);
   if (payload.status == HarmonyNodePathStatus::kEmpty) {
     // Keep empty clips on the node with a zero-area path.
     payload.commands = "M0 0Z";
@@ -1721,6 +1768,13 @@ void UIBase::ApplyFragmentLayerOwnerClip() {
     return;
   }
   ApplyClipPath(draw_node_, payload.width, payload.height, payload.commands);
+  // Draw-behind hosts render their retained content from Node(), while the
+  // owner layer's background/border is rendered by draw_node_. Keep the same
+  // clip on both nodes so native descendants remain inside nested owners.
+  if (fragment_content_clip_path_.empty()) {
+    ApplyClipPath(Node(), payload.width, payload.height, payload.commands);
+    fragment_owner_native_clip_applied_ = true;
+  }
   fragment_owner_clip_node_ = draw_node_;
   fragment_owner_request_ = std::move(request);
 }
@@ -2560,6 +2614,12 @@ void UIBase::InitDrawNode() {
     return;
   }
   auto parent = NodeManager::Instance().GetParent(Node());
+  if (fragment_owner_path_) {
+    LOGI("[HarmonyRetainedClip] init_draw sign="
+         << Sign() << " tag=" << Tag() << " has_parent=" << (parent != nullptr)
+         << " node_parent="
+         << (NodeManager::Instance().GetParent(Node()) != nullptr));
+  }
   if (parent || (node_content_ && node_content_->UI() == this) ||
       fragment_owner_path_) {
     draw_node_ = NodeManager::Instance().CreateNode(ARKUI_NODE_CUSTOM);
@@ -2582,6 +2642,12 @@ void UIBase::InitDrawNode() {
                                    draw_node_);
     }
     manager.InsertNode(draw_node_, Node(), 0);
+    if (fragment_owner_path_) {
+      LOGI("[HarmonyRetainedClip] init_draw_attached sign="
+           << Sign() << " tag=" << Tag()
+           << " node_parent=" << (manager.GetParent(Node()) != nullptr)
+           << " draw_parent=" << (manager.GetParent(draw_node_) != nullptr));
+    }
     if (renderer_) {
       auto& manager = NodeManager::Instance();
       auto move_attribute = [&](ArkUI_NodeAttributeType type) {
@@ -2646,6 +2712,10 @@ void UIBase::InitDrawNode() {
 
 void UIBase::DestroyDrawNode() {
   if (draw_node_) {
+    if (fragment_owner_native_clip_applied_) {
+      NodeManager::Instance().ResetAttribute(Node(), NODE_CLIP_SHAPE);
+      fragment_owner_native_clip_applied_ = false;
+    }
     fragment_owner_clip_node_ = nullptr;
     fragment_owner_request_.reset();
     NodeManager::Instance().UnregisterNodeCustomEvent(

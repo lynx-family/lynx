@@ -446,6 +446,35 @@ void NativeView::MarkLayoutDirty() {
   }
 }
 
+void NativeView::RequestSubtreeRasterSnapshot(float scale,
+                                              RasterSnapshotCallback callback) {
+  if (!callback) {
+    return;
+  }
+  if (scale <= 0.f || scale > 1.f || !page_view() || Width() <= 0.f ||
+      Height() <= 0.f) {
+    callback(nullptr, 0, 0, false);
+    return;
+  }
+
+  auto* render_object = this->render_object();
+  const bool snapshot_only =
+      render_object && !render_object->ShouldBuildIntoLayerTree();
+  if (!render_object || render_object->NeedsPaint() ||
+      render_object->NeedsEffect() || !render_object->IsRepaintBoundary() ||
+      !render_object->GetLayer()) {
+    callback(nullptr, 0, 0, snapshot_only);
+    return;
+  }
+
+  page_view()->MakeRasterSnapshot(
+      this, /*compress_jpeg=*/false, scale,
+      [callback = std::move(callback), snapshot_only](
+          GrDataPtr data, int32_t width, int32_t height) mutable {
+        callback(std::move(data), width, height, snapshot_only);
+      });
+}
+
 void NativeView::MarkAsEditing() {
   if (!is_editing_) {
     is_editing_ = true;
