@@ -315,31 +315,33 @@ TEST_F(HostScriptInterceptorTest, DomainsCanShareOneOwnerThread) {
   mts->Uninstall();
 }
 
-TEST_F(HostScriptInterceptorTest,
-       RejectsDuplicateHandlersForSingleHandlerEvents) {
-  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS}) {
+TEST_F(HostScriptInterceptorTest, SupportsMultipleHandlersAcrossAllEventKinds) {
+  for (auto domain : {Interceptor::Domain::kUI, Interceptor::Domain::kBTS,
+                      Interceptor::Domain::kMTS}) {
     Install(domain);
     const char* names =
-        // In InterceptKind order, which is the dispatch order below.
         domain == Interceptor::Domain::kUI
             ? "['view.created','view.loadTemplate','view.updateMetaData',"
               "'view.create','view.updateViewport','resource.fetch']"
-            : "['view.created']";
+            : (domain == Interceptor::Domain::kBTS
+                   ? "['view.created','jsb.call','jsb.result',"
+                     "'jsb.callback','jsb.resolveModule']"
+                   : "['view.created']");
     std::string script = R"(
       globalThis.calls = [];
+      globalThis.firstSubs = [];
       globalThis.names = )" +
                          std::string(names) + R"(;
       for (const name of names) {
         // Without View bindings every proxy is null and creation never fires.
+        firstSubs.push(interceptor.on(name, (e,c,v) => {
+          calls.push(v === null ? name + '#1' : 'proxy');
+          return c.next();
+        }));
         interceptor.on(name, (e,c,v) => {
-          calls.push(v === null ? name : 'proxy');
+          calls.push(v === null ? name + '#2' : 'proxy');
           return c.proceed();
         });
-        let message = '';
-        try { interceptor.on(name, () => { throw Error('duplicate ran'); }); }
-        catch (e) { message = e.message; }
-        if (!message.includes('already registered'))
-          throw Error('duplicate registration was not rejected');
       }
     )";
     Script(script.c_str());
@@ -347,8 +349,16 @@ TEST_F(HostScriptInterceptorTest,
       auto kind = static_cast<InterceptKind>(i);
       if (provider_->HasHandlers(kind)) EXPECT_FALSE(Dispatch(kind).failed);
     }
+    EXPECT_EQ(
+        EvalString("calls.join(',')"),
+        EvalString("names.slice(1).flatMap(n=>[n+'#1',n+'#2']).join(',')"));
+    Script("calls = []; for (const sub of firstSubs) sub.dispose();");
+    for (size_t i = 0; i < static_cast<size_t>(InterceptKind::kCount); ++i) {
+      auto kind = static_cast<InterceptKind>(i);
+      if (provider_->HasHandlers(kind)) EXPECT_FALSE(Dispatch(kind).failed);
+    }
     EXPECT_EQ(EvalString("calls.join(',')"),
-              EvalString("names.slice(1).join(',')"));
+              EvalString("names.slice(1).map(n=>n+'#2').join(',')"));
     provider_->Uninstall();
     provider_.reset();
   }
@@ -358,7 +368,7 @@ TEST_F(HostScriptInterceptorTest, ProceedCommitsSingleHandlerPatch) {
   Install();
   Script(R"(
     interceptor.on('view.loadTemplate', (e,c) => {
-      if ('next' in c || Object.keys(c).sort().join() !== 'mock,proceed')
+      if (Object.keys(c).sort().join() !== 'mock,next,proceed')
         throw Error('unexpected chain decisions');
       return c.proceed({url:'patched-2'});
     });
@@ -400,10 +410,17 @@ TEST_F(HostScriptInterceptorTest, ExplicitUndefinedMeansOmission) {
   EXPECT_TRUE(result.patch.GetProperty("value").IsUndefined());
 }
 
-TEST_F(HostScriptInterceptorTest, RejectsRemovedNextDecision) {
+TEST_F(HostScriptInterceptorTest, NextPassesThroughWhenUnmodified) {
   Install();
   Script(R"(
-    interceptor.on('view.loadTemplate', () => ({action:'next', payload:{}}));
+    interceptor.on('view.loadTemplate', (_e, c) => c.next());
+    interceptor.on('view.loadTemplate', (_e, c) => c.next(undefined));
+  )");
+  auto pass = Dispatch();
+  EXPECT_FALSE(pass.failed);
+  EXPECT_FALSE(pass.patch.IsTable());
+  Script(R"(
+    interceptor.on('view.loadTemplate', () => ({action:'next'}));
   )");
   EXPECT_TRUE(Dispatch().failed);
 }
@@ -784,6 +801,7 @@ TEST_F(HostScriptInterceptorTest,
     globalThis.subscription = interceptor.on('view.loadTemplate', (e,c) => {
       globalThis.savedProceed = c.proceed;
       globalThis.savedMock = c.mock;
+      globalThis.savedNext = c.next;
       const proceed = c.proceed;
       c.proceed = () => { throw Error('modified chain leaked'); };
       return proceed();
@@ -799,7 +817,9 @@ TEST_F(HostScriptInterceptorTest,
   provider_.reset();
   LEPUS_RunGC(runtime_);
   Script(R"(
-    for (const [fn, action] of [[savedProceed,'proceed'], [savedMock,'mock']]) {
+    for (const [fn, action] of [
+      [savedProceed,'proceed'], [savedMock,'mock'], [savedNext,'next']
+    ]) {
       const payload = {value:7};
       const result = fn(payload);
       if (result.action !== action || result.payload !== payload)
@@ -809,6 +829,7 @@ TEST_F(HostScriptInterceptorTest,
     }
     delete globalThis.savedProceed;
     delete globalThis.savedMock;
+    delete globalThis.savedNext;
   )");
   LEPUS_RunGC(runtime_);
 }
@@ -1062,6 +1083,372 @@ TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {
   EXPECT_FALSE(Interceptor::IsViewAlive(0));
   EXPECT_TRUE(Interceptor::IsViewAlive(42));
   Interceptor::DestroyView(42);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       UiChainMergesIncrementalNextPatchesAndPreservesTemplateBytes) {
+  Install();
+  lepus::Value source(lepus::Dictionary::Create());
+  source.SetProperty("kind", lepus::Value("url"));
+  lepus::Value request(lepus::Dictionary::Create());
+  request.SetProperty("url", lepus::Value("https://example.com/card-a"));
+  request.SetProperty("source", source);
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("viewId", lepus::Value("1"));
+  event.SetProperty("origin", lepus::Value("host"));
+  event.SetProperty("request", request);
+  Script(R"(
+    globalThis.seen = [];
+    interceptor.on('view.loadTemplate', (e, c) => {
+      seen.push(['s1', e.request.source.kind, e.request.initialData]);
+      return c.next({
+        source: {kind: 'bytes', bytes: new Uint8Array([7, 8, 9]).buffer},
+        initialData: {step: 1},
+      });
+    });
+    interceptor.on('view.loadTemplate', (e, c) => {
+      seen.push([
+        's2',
+        e.request.source.kind,
+        e.request.source.size,
+        'bytes' in e.request.source,
+        e.request.initialData.step,
+      ]);
+      // Spreading e.request passes the public source descriptor unchanged;
+      // native must retain the binary replacement from slot 1.
+      return c.next({...e.request, globalProps: {theme: 'dark'}});
+    });
+    globalThis.stopper = interceptor.on('view.loadTemplate', (e, c) => {
+      seen.push(['s3', e.request.globalProps.theme]);
+      return c.proceed({url: 'https://example.com/card-a-v2'});
+    });
+    interceptor.on('view.loadTemplate', (_e, c) => {
+      seen.push(['s4-skipped']);
+      return c.next({globalProps: {theme: 'light'}});
+    });
+  )");
+  auto result = provider_->Dispatch(InterceptKind::kLoadTemplate, event);
+  ASSERT_FALSE(result.failed);
+  EXPECT_EQ(EvalString("JSON.stringify(seen)"),
+            R"([["s1","url",null],["s2","bytes",3,false,1],["s3","dark"]])");
+  EXPECT_EQ(result.patch.GetProperty("url").StdString(),
+            "https://example.com/card-a-v2");
+  EXPECT_EQ(
+      result.patch.GetProperty("initialData").GetProperty("step").Number(), 1);
+  EXPECT_EQ(
+      result.patch.GetProperty("globalProps").GetProperty("theme").StdString(),
+      "dark");
+  auto patched_source = result.patch.GetProperty("source");
+  EXPECT_EQ(patched_source.GetProperty("kind").StdString(), "bytes");
+  auto bytes = patched_source.GetProperty("bytes").ByteArray();
+  ASSERT_NE(bytes, nullptr);
+  ASSERT_EQ(bytes->GetLength(), 3u);
+  EXPECT_EQ(bytes->GetPtr()[0], 7);
+  EXPECT_EQ(bytes->GetPtr()[2], 9);
+  // Caller input remains unmutated.
+  EXPECT_EQ(request.GetProperty("url").StdString(),
+            "https://example.com/card-a");
+  EXPECT_EQ(request.GetProperty("source").GetProperty("kind").StdString(),
+            "url");
+
+  // Disposing the proceed stopper lets the chain flow to slot 4 and commit
+  // all accumulated next() patches at the end of the chain.
+  Script("seen = []; stopper.dispose();");
+  auto full_chain = provider_->Dispatch(InterceptKind::kLoadTemplate, event);
+  ASSERT_FALSE(full_chain.failed);
+  EXPECT_EQ(full_chain.patch.GetProperty("globalProps")
+                .GetProperty("theme")
+                .StdString(),
+            "light");
+  EXPECT_EQ(full_chain.patch.GetProperty("source")
+                .GetProperty("bytes")
+                .ByteArray()
+                ->GetLength(),
+            3u);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       UiChainSupportsCreateViewportUpdateAndResourceFetch) {
+  Install();
+  Script(R"(
+    interceptor.on('view.create', (_e, c) =>
+      c.next({threadStrategy: 3, lynxViewConfig: {a: '1', shared: 'first'}}));
+    interceptor.on('view.create', (e, c) => {
+      if (e.request.threadStrategy !== 3 || e.request.lynxViewConfig.a !== '1')
+        throw Error('create patch did not propagate');
+      return c.next({fontScale: 1.5, lynxViewConfig: {b: '2', shared: 'second'}});
+    });
+    interceptor.on('view.updateMetaData', (_e, c) =>
+      c.next({updateData: {count: 2}}));
+    interceptor.on('view.updateMetaData', (_e, c) =>
+      c.next({globalProps: {flag: true}}));
+    interceptor.on('view.updateViewport', (_e, c) => c.next({width: 0x400002d0}));
+    interceptor.on('view.updateViewport', (_e, c) => c.next({height: 0x40000500}));
+    globalThis.mockResource = false;
+    interceptor.on('resource.fetch', (e, c) =>
+      c.next({url: e.request.url + '?step=1'}));
+    interceptor.on('resource.fetch', (e, c) =>
+      mockResource
+        ? c.mock({bytes: new Uint8Array([4, 5]).buffer})
+        : c.next({url: e.request.url + '&step=2'}));
+  )");
+
+  lepus::Value create_req(lepus::Dictionary::Create());
+  create_req.SetProperty("threadStrategy", lepus::Value(0));
+  create_req.SetProperty("fontScale", lepus::Value(1.0));
+  lepus::Value create_event(lepus::Dictionary::Create());
+  create_event.SetProperty("request", create_req);
+  auto created = provider_->Dispatch(InterceptKind::kCreate, create_event);
+  ASSERT_FALSE(created.failed);
+  EXPECT_EQ(created.patch.GetProperty("threadStrategy").Number(), 3);
+  EXPECT_EQ(created.patch.GetProperty("fontScale").Number(), 1.5);
+  auto cfg = created.patch.GetProperty("lynxViewConfig");
+  EXPECT_EQ(cfg.GetProperty("a").StdString(), "1");
+  EXPECT_EQ(cfg.GetProperty("b").StdString(), "2");
+  EXPECT_EQ(cfg.GetProperty("shared").StdString(), "second");
+
+  auto updated = Dispatch(InterceptKind::kUpdateMetaData);
+  ASSERT_FALSE(updated.failed);
+  EXPECT_EQ(
+      updated.patch.GetProperty("updateData").GetProperty("count").Number(), 2);
+  EXPECT_TRUE(
+      updated.patch.GetProperty("globalProps").GetProperty("flag").Bool());
+
+  auto viewport = Dispatch(InterceptKind::kUpdateViewport);
+  ASSERT_FALSE(viewport.failed);
+  EXPECT_EQ(viewport.patch.GetProperty("width").Number(), 0x400002d0);
+  EXPECT_EQ(viewport.patch.GetProperty("height").Number(), 0x40000500);
+
+  auto redirected = Dispatch(InterceptKind::kResourceFetch);
+  ASSERT_FALSE(redirected.failed);
+  EXPECT_EQ(redirected.patch.GetProperty("url").StdString(),
+            "original?step=1&step=2");
+  Script("mockResource = true;");
+  auto mocked = Dispatch(InterceptKind::kResourceFetch);
+  ASSERT_FALSE(mocked.failed);
+  EXPECT_FALSE(mocked.patch.IsTable());
+  EXPECT_EQ(mocked.mock.GetProperty("bytes").ByteArray()->GetLength(), 2u);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       NativeScopeBypassesNonMatchingHandlersWithoutCallingJS) {
+  Install(Interceptor::Domain::kUI);
+  Script(R"(
+    globalThis.invocations = [];
+    // If invoked for an out-of-scope View, this throws and fails dispatch.
+    interceptor.on('view.loadTemplate', {viewId: '1'}, () => {
+      invocations.push('wrong-view');
+      throw Error('out-of-scope viewId ran');
+    });
+    interceptor.on('view.loadTemplate',
+      {urlIncludes: 'weather', origin: 'host'},
+      (_e, c) => {
+        invocations.push('weather-1');
+        return c.next({url: 'http://127.0.0.1/local.bin', initialData: {w: 1}});
+      });
+    // viewURL stays anchored to the load's initial URL across the chain,
+    // so a second subscriber with the same urlIncludes still matches.
+    interceptor.on('view.loadTemplate',
+      {urlPrefix: 'https://cdn.example.com/', urlIncludes: 'weather', origin: 'host'},
+      (_e, c) => {
+        invocations.push('weather-2');
+        return c.next({globalProps: {w: 2}});
+      });
+  )");
+  auto make_load = [](const char* view_id, const char* url,
+                      const char* origin) {
+    lepus::Value req(lepus::Dictionary::Create());
+    req.SetProperty("url", lepus::Value(url));
+    lepus::Value ev(lepus::Dictionary::Create());
+    ev.SetProperty("viewId", lepus::Value(view_id));
+    ev.SetProperty("origin", lepus::Value(origin));
+    ev.SetProperty("request", req);
+    return ev;
+  };
+  const auto before_failures = Interceptor::FailureCount();
+  // Unrelated card passes straight through without calling any JS handler.
+  auto other = provider_->Dispatch(
+      InterceptKind::kLoadTemplate,
+      make_load("2", "https://cdn.example.com/news/card.js", "host"));
+  EXPECT_FALSE(other.failed);
+  EXPECT_FALSE(other.patch.IsTable());
+  // Script-originated load skips origin:'host' handlers.
+  auto from_script = provider_->Dispatch(
+      InterceptKind::kLoadTemplate,
+      make_load("2", "https://cdn.example.com/weather/card.js", "host-script"));
+  EXPECT_FALSE(from_script.failed);
+  EXPECT_FALSE(from_script.patch.IsTable());
+  EXPECT_EQ(EvalString("invocations.length"), "0");
+
+  auto matched = provider_->Dispatch(
+      InterceptKind::kLoadTemplate,
+      make_load("2", "https://cdn.example.com/weather/card.js", "host"));
+  ASSERT_FALSE(matched.failed);
+  EXPECT_EQ(EvalString("invocations.join(',')"), "weather-1,weather-2");
+  EXPECT_EQ(matched.patch.GetProperty("url").StdString(),
+            "http://127.0.0.1/local.bin");
+  EXPECT_EQ(matched.patch.GetProperty("initialData").GetProperty("w").Number(),
+            1);
+  EXPECT_EQ(matched.patch.GetProperty("globalProps").GetProperty("w").Number(),
+            2);
+  EXPECT_EQ(Interceptor::FailureCount(), before_failures);
+  provider_->Uninstall();
+  provider_.reset();
+
+  // BTS module & method scopes.
+  Install(Interceptor::Domain::kBTS);
+  Interceptor::UpdateViewUrl(9, "https://cdn.example.com/profile");
+  Script(R"(
+    globalThis.jsbHits = [];
+    interceptor.on('jsb.call', {module: 'other'}, () => {
+      throw Error('wrong module ran');
+    });
+    interceptor.on('jsb.call',
+      {viewId: '9', urlIncludes: 'profile', module: 'storage', method: 'getItem'},
+      (_e, c) => {
+        jsbHits.push('hit');
+        return c.mock({returnValue: 'cached'});
+      });
+  )");
+  auto make_call = [](const char* view, const char* mod, const char* method) {
+    lepus::Value ev(lepus::Dictionary::Create());
+    ev.SetProperty("viewId", lepus::Value(view));
+    ev.SetProperty("module", lepus::Value(mod));
+    ev.SetProperty("method", lepus::Value(method));
+    ev.SetProperty("args", lepus::Value(lepus::CArray::Create()));
+    ev.SetProperty("callbackIndices", lepus::Value(lepus::CArray::Create()));
+    ev.SetProperty("opaqueIndices", lepus::Value(lepus::CArray::Create()));
+    return ev;
+  };
+  EXPECT_FALSE(
+      provider_
+          ->Dispatch(InterceptKind::kCall, make_call("9", "storage", "setItem"))
+          .mock.IsTable());
+  EXPECT_FALSE(
+      provider_
+          ->Dispatch(InterceptKind::kCall, make_call("8", "storage", "getItem"))
+          .mock.IsTable());
+  auto jsb_matched = provider_->Dispatch(InterceptKind::kCall,
+                                         make_call("9", "storage", "getItem"));
+  ASSERT_FALSE(jsb_matched.failed);
+  EXPECT_EQ(jsb_matched.mock.GetProperty("returnValue").StdString(), "cached");
+  EXPECT_EQ(EvalString("jsbHits.join(',')"), "hit");
+  Interceptor::ClearViewUrl(9);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       PriorityOrdersHandlersDescendingAndPreservesFifoTies) {
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    globalThis.order = [];
+    interceptor.on('jsb.callback', (_e, c) => {
+      order.push('p0#1');
+      return c.next();
+    });
+    interceptor.on('jsb.callback', {priority: -10}, (e, c) => {
+      order.push('p-10:' + e.args[0]);
+      return c.next();
+    });
+    interceptor.on('jsb.callback', {priority: 10}, async (_e, c) => {
+      order.push('p10#1');
+      await Promise.resolve();
+      return c.next({args: ['from-p10#1']});
+    });
+    interceptor.on('jsb.callback', (_e, c) => {
+      order.push('p0#2');
+      return c.next();
+    });
+    interceptor.on('jsb.callback', {priority: 10}, (e, c) => {
+      order.push('p10#2:' + e.args[0]);
+      return c.next({args: ['from-p10#2']});
+    });
+  )");
+  lepus::Value event(lepus::Dictionary::Create());
+  auto args = lepus::CArray::Create();
+  args->push_back(lepus::Value("initial"));
+  event.SetProperty("args", lepus::Value(args));
+  auto result = provider_->Dispatch(InterceptKind::kCallback, event);
+  ASSERT_TRUE(result.pending);
+  bool completed = false;
+  result.pending([&](InterceptResult settled) {
+    completed = true;
+    ASSERT_FALSE(settled.failed);
+    EXPECT_EQ(settled.patch.GetProperty("args").GetProperty(0u).StdString(),
+              "from-p10#2");
+  });
+  DrainJobs();
+  EXPECT_TRUE(completed);
+  EXPECT_EQ(EvalString("order.join(',')"),
+            "p10#1,p10#2:from-p10#1,p0#1,p0#2,p-10:from-p10#2");
+}
+
+TEST_F(HostScriptInterceptorTest,
+       LaterInvalidDecisionRollsBackEarlierNextPatches) {
+  Install();
+  lepus::Value request(lepus::Dictionary::Create());
+  request.SetProperty("url", lepus::Value("https://example.com/original"));
+  lepus::Value event(lepus::Dictionary::Create());
+  event.SetProperty("request", request);
+  Script(R"(
+    interceptor.on('view.loadTemplate', (_e, c) =>
+      c.next({url: 'https://example.com/step1', initialData: {ok: true}}));
+    interceptor.on('view.loadTemplate', () => { throw Error('boom'); });
+  )");
+  auto result = provider_->Dispatch(InterceptKind::kLoadTemplate, event);
+  EXPECT_TRUE(result.failed);
+  EXPECT_FALSE(result.patch.IsTable());
+  EXPECT_EQ(request.GetProperty("url").StdString(),
+            "https://example.com/original");
+}
+
+TEST_F(HostScriptInterceptorTest, RejectsInvalidOptionsAtRegistrationTime) {
+  Install(Interceptor::Domain::kUI);
+  Script(R"(
+    // Explicit undefined options and fields are accepted.
+    interceptor.on('view.loadTemplate', undefined, (_e, c) => c.next()).dispose();
+    interceptor.on('view.loadTemplate',
+      {viewId: undefined, priority: undefined, origin: undefined},
+      (_e, c) => c.next()).dispose();
+    const invalidCalls = [
+      () => interceptor.on('view.loadTemplate'),
+      () => interceptor.on('view.loadTemplate', {}, (_e, c) => c.next(), 1),
+      () => interceptor.on('view.loadTemplate', null, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', [], (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', new Date(), (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {unknown: 1}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {priority: NaN}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {priority: Infinity}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {priority: '1'}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {viewId: ''}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {urlIncludes: ''}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {urlPrefix: ''}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {origin: 'page'}, (_e, c) => c.next()),
+      () => interceptor.on('view.loadTemplate', {module: 'bridge'}, (_e, c) => c.next()),
+      () => interceptor.on('view.create', {viewId: '1'}, (_e, c) => c.next()),
+      () => interceptor.on('view.updateViewport', {origin: 'host'}, (_e, c) => c.next()),
+    ];
+    for (let i = 0; i < invalidCalls.length; ++i) {
+      let threw = false;
+      try { invalidCalls[i](); } catch (e) { threw = e instanceof TypeError; }
+      if (!threw) throw Error('expected TypeError at index ' + i);
+    }
+  )");
+  provider_->Uninstall();
+  provider_.reset();
+
+  Install(Interceptor::Domain::kBTS);
+  Script(R"(
+    for (const call of [
+      () => interceptor.on('jsb.call', {origin: 'host'}, (_e, c) => c.next()),
+      () => interceptor.on('jsb.call', {module: ''}, (_e, c) => c.next()),
+      () => interceptor.on('jsb.call', {method: ''}, (_e, c) => c.next()),
+      () => interceptor.on('jsb.resolveModule', {method: 'm'}, (_e, c) => c.next()),
+    ]) {
+      let threw = false;
+      try { call(); } catch (e) { threw = e instanceof TypeError; }
+      if (!threw) throw Error('expected BTS TypeError');
+    }
+  )");
 }
 
 }  // namespace

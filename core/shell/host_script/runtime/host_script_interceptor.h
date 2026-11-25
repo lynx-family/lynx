@@ -21,19 +21,29 @@ namespace lynx::shell {
 
 // The runtime owner installs this into an existing environment, on its owning
 // thread. This component never creates a VM, thread or cross-thread JS handle.
-// JSB decisions accept multiple handlers in registration order. Other events
-// accept one handler per kind. Handlers return `next` to continue a JSB chain,
-// `proceed` with an optional patch, or `mock` when supported. Their third
-// argument is the event's `LynxView` proxy (or null). The view.created
-// notification accepts handlers in every domain, passes only the proxy and
-// ignores return values. A new view.created handler first receives the existing
-// Views, asynchronously, and each handler is notified at most once per View.
+// Every event accepts multiple handlers ordered by descending priority and then
+// registration order. Optional scope filters run natively before JS dispatch so
+// non-matching events pass straight through. Decision handlers return `next`
+// with an optional incremental patch to continue the chain, `proceed` with an
+// optional patch to finish, or `mock` when supported. Their third argument is
+// the event's `LynxView` proxy (or null). `view.created` accepts handlers in
+// every domain, broadcasts to matching handlers, replays existing Views
+// asynchronously per registration, and notifies each handler at most once per
+// View.
 class HostScriptLynxViews;
 
 class HostScriptInterceptor final
     : public Interceptor,
       public std::enable_shared_from_this<HostScriptInterceptor> {
  public:
+  struct Scope {
+    std::string view_id;
+    std::string url_includes;
+    std::string url_prefix;
+    std::string origin;
+    std::string module;
+    std::string method;
+  };
   using Guard = std::function<bool()>;
   using Reporter = std::function<void(const std::string&)>;
   // Whether the domain accepts any event kind. Install fails otherwise.
@@ -51,8 +61,8 @@ class HostScriptInterceptor final
   InterceptResult Dispatch(InterceptKind kind,
                            const lepus::Value& event) override;
   void ReportError(const std::string& message) override;
-  // Delivers one View to the view.created handler `entry`, or to the current
-  // handler when `entry` is 0. Owner thread only.
+  // Delivers one View to the view.created handler `entry`, or broadcasts to all
+  // active handlers when `entry` is 0. Owner thread only.
   void NotifyCreated(base::LynxEntityId view, uint64_t entry = 0);
 
  private:
@@ -63,6 +73,8 @@ class HostScriptInterceptor final
   struct Entry {
     uint64_t id;
     InterceptKind kind;
+    double priority = 0.0;
+    Scope scope;
     Napi::FunctionReference function;
     bool active = true;
     // Views already delivered to this view.created handler.
@@ -79,25 +91,30 @@ class HostScriptInterceptor final
   struct Pending {
     InterceptCompletion complete;
     lepus::Value event;
+    lepus::Value merged_patch;
     uint64_t handler;
-    // The last handler present when the callback was first dispatched.
-    uint64_t last_handler;
+    std::vector<std::shared_ptr<Entry>> remaining;
     std::string view_url;
     bool mock;
   };
-  InterceptResult DispatchFrom(InterceptKind kind, const lepus::Value& event,
-                               uint64_t after_handler, uint64_t last_handler,
-                               std::string view_url);
+  InterceptResult DispatchEntries(
+      InterceptKind kind, lepus::Value event, lepus::Value merged_patch,
+      const std::vector<std::shared_ptr<Entry>>& entries, size_t start_index,
+      std::string view_url);
   std::function<void(InterceptCompletion)> WaitForCallbacks(
-      Napi::Array promises, const lepus::Value& event, uint64_t handler,
-      bool mock, uint64_t last_handler = 0, const std::string& view_url = {});
+      Napi::Array promises, const lepus::Value& event,
+      const lepus::Value& merged_patch, uint64_t handler, bool mock,
+      std::vector<std::shared_ptr<Entry>> remaining = {},
+      const std::string& view_url = {});
   void Complete(uint64_t id, Napi::Value value, bool failed,
                 bool cancelled = false);
   void CancelPending(uint64_t handler = 0, const std::string& view = {});
   static Napi::Value Settled(const Napi::CallbackInfo& info);
   std::function<void(InterceptCompletion)> ReadCallbacks(
       Napi::Value& returned, InterceptKind kind, const lepus::Value& event,
-      uint64_t handler, uint64_t last_handler, const std::string& view_url);
+      const lepus::Value& merged_patch, uint64_t handler,
+      const std::vector<std::shared_ptr<Entry>>& entries, size_t next_index,
+      const std::string& view_url);
   void Remove(uint64_t id);
   Napi::Env env_;
   Domain domain_;
