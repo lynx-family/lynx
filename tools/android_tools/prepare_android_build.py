@@ -62,7 +62,7 @@ def install_android_sdk(root_path, ndk_version=ndk_version_21):
     return r
 
   print("\n====> SUCCESS!!! <====\nAndroid environment setup completed.")
-  print("Now you can run `cd explorer/android` and `./gradlew :LynxExplorer:assembleNoAsanDebug` to build LynxExplorer APP.")
+  print("Now you can run `cd explorer/android` and `./gradlew :LynxExplorer:assembleWithoutSparklingNoasanDebug` to build LynxExplorer APP.")
 
 def main():
   parser = argparse.ArgumentParser()
