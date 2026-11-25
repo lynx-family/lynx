@@ -6,6 +6,7 @@
 #define CLAY_SHELL_PLATFORM_HEADLESS_CLAY_HEADLESS_ENGINE_H_
 
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 
@@ -57,6 +58,7 @@ class ClayHeadlessEngine : public clay::PlatformViewEmbedderDelegate {
   void DemandDrawHw();
 
   void SetVisible(bool enable);
+  void SetBackgroundColor(uint32_t color);
   void SetFontFaceCache(const char* font_family, const char* local_path);
 
   void SendViewportMetrics(int32_t width, int32_t height, double pixel_ratio);

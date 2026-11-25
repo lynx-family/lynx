@@ -1206,8 +1206,52 @@ Shell::GetResourceLoaderIntercept() {
   return nullptr;
 }
 
+namespace {
+uint32_t ResolveScreenshotBackgroundColor(
+    const std::optional<uint32_t>& request_color,
+    const Rasterizer* rasterizer) {
+  if (request_color.has_value()) {
+    return *request_color;
+  }
+  if (rasterizer && rasterizer->GetBackgroundColor().has_value()) {
+    return *rasterizer->GetBackgroundColor();
+  }
+  return Color::kWhite().Value();
+}
+}  // namespace
+
+void Shell::SetBackgroundColor(uint32_t color) {
+  FML_DCHECK(is_setup_);
+  const bool using_sync_compositor = settings_.enable_sync_compositor;
+  fml::TaskRunner::RunNowOrPostTask(
+      task_runners_.GetPlatformTaskRunner(),
+      [rasterizer_service = rasterizer_service_, color,
+       using_sync_compositor]() mutable {
+        rasterizer_service.Act([color,
+                                using_sync_compositor](auto& impl) mutable {
+          Rasterizer* rasterizer = impl.GetRasterizer();
+          if (!rasterizer || rasterizer->GetBackgroundColor() == color) {
+            return;
+          }
+          rasterizer->SetBackgroundColor(color);
+          if (!rasterizer->HasSurface() || !rasterizer->GetLastLayerTree()) {
+            return;
+          }
+          if (using_sync_compositor) {
+            clay::Puppet<clay::Owner::kRaster, RasterFrameService>
+                raster_frame_service = rasterizer->GetServiceManager()
+                                           ->GetService<RasterFrameService>();
+            raster_frame_service->RequestRasterFrame();
+          } else {
+            rasterizer->DrawLastLayerTree();
+          }
+        });
+      });
+}
+
 ScreenshotData Shell::ScreenshotSync(
-    ScreenshotData::ScreenshotType screenshot_type, uint32_t background_color) {
+    ScreenshotData::ScreenshotType screenshot_type,
+    std::optional<uint32_t> background_color) {
   TRACE_EVENT("clay", "Shell::ScreenshotSync");
   constexpr int kScreenshotTimeoutMs = 30;
 
@@ -1239,7 +1283,9 @@ ScreenshotData Shell::ScreenshotSync(
           ScreenshotData result;
           if (weak_rasterizer) {
             result = weak_rasterizer->ScreenshotLastLayerTree(
-                screenshot_type, false, background_color);
+                screenshot_type, false,
+                ResolveScreenshotBackgroundColor(background_color,
+                                                 weak_rasterizer.get()));
           }
           state->promise.set_value(std::move(result));
         };
@@ -1257,7 +1303,9 @@ ScreenshotData Shell::ScreenshotSync(
               ScreenshotData result;
               if (weak_rasterizer) {
                 result = weak_rasterizer->ScreenshotLastLayerTree(
-                    screenshot_type, false, background_color);
+                    screenshot_type, false,
+                    ResolveScreenshotBackgroundColor(background_color,
+                                                     weak_rasterizer.get()));
               }
               state->promise.set_value(std::move(result));
             },
@@ -1276,7 +1324,7 @@ ScreenshotData Shell::ScreenshotSync(
 }
 
 void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
-                            uint32_t background_color,
+                            std::optional<uint32_t> background_color,
                             std::function<void(ScreenshotData)> callback) {
   fml::RefPtr<fml::TaskRunner> platform_task_runner =
       task_runners_.GetPlatformTaskRunner();
@@ -1320,7 +1368,9 @@ void Shell::ScreenshotAsync(ScreenshotData::ScreenshotType screenshot_type,
             ScreenshotData result;
             if (weak_rasterizer) {
               result = weak_rasterizer->ScreenshotLastLayerTree(
-                  screenshot_type, false, background_color);
+                  screenshot_type, false,
+                  ResolveScreenshotBackgroundColor(background_color,
+                                                   weak_rasterizer.get()));
             }
             state->platform_task_runner->PostTask(fml::MakeCopyable(
                 [state, result = std::move(result)]() mutable {

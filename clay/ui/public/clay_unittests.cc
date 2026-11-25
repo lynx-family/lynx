@@ -4,10 +4,20 @@
 
 #include <array>
 #include <limits>
+#include <optional>
+#include <utility>
 #include <vector>
 
 #include "build/build_config.h"
+#include "clay/common/service/service_manager.h"
+#include "clay/common/thread_host.h"
+#include "clay/flow/frame_timings.h"
+#include "clay/flow/layers/transform_layer.h"
+#include "clay/flow/surface.h"
 #include "clay/public/clay.h"
+#include "clay/shell/common/rasterizer.h"
+#include "clay/shell/common/services/platform_const_service.h"
+#include "clay/shell/common/services/rasterizer_service.h"
 #if defined(OS_HARMONY)
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -225,6 +235,206 @@ INSTANTIATE_TEST_SUITE_P(
     [](const ::testing::TestParamInfo<ClayImageFormat>& info) {
       return info.param == kClayImageFormatPNG ? "PNG" : "JPEG";
     });
+
+#ifdef ENABLE_SKITY
+class TestSkitySurface final : public skity::GPUSurface {
+ public:
+  TestSkitySurface(uint32_t width, uint32_t height)
+      : bitmap_(width, height, skity::AlphaType::kPremul_AlphaType),
+        canvas_(skity::Canvas::MakeSoftwareCanvas(&bitmap_)) {}
+
+  uint32_t GetWidth() const override { return bitmap_.Width(); }
+  uint32_t GetHeight() const override { return bitmap_.Height(); }
+  float ContentScale() const override { return 1.f; }
+  skity::Canvas* LockCanvas(bool clear) override {
+    if (clear) {
+      canvas_->Clear(skity::Color_TRANSPARENT);
+    }
+    return canvas_.get();
+  }
+  void Flush() override { canvas_->Flush(); }
+  std::shared_ptr<skity::Pixmap> ReadPixels(const skity::Rect& rect) override {
+    return bitmap_.GetPixmap();
+  }
+  const skity::Bitmap& GetBitmap() const { return bitmap_; }
+
+ private:
+  skity::Bitmap bitmap_;
+  std::unique_ptr<skity::Canvas> canvas_;
+};
+#endif
+
+class TestRasterSurface final : public Surface {
+ public:
+  using AcquireCallback =
+      std::function<std::unique_ptr<SurfaceFrame>(const skity::Vec2&)>;
+
+  explicit TestRasterSurface(AcquireCallback on_acquire)
+      : on_acquire_(std::move(on_acquire)) {}
+
+  bool IsValid() override { return true; }
+  std::unique_ptr<SurfaceFrame> AcquireFrame(const skity::Vec2& size) override {
+    return on_acquire_(size);
+  }
+  skity::Matrix GetRootTransformation() const override {
+    skity::Matrix identity;
+    identity.Reset();
+    return identity;
+  }
+  clay::GrContext* GetContext() override { return nullptr; }
+  clay::GrContextPtr GetContextPtr() override { return nullptr; }
+  std::unique_ptr<GLContextResult> MakeRenderContextCurrent() override {
+    return std::make_unique<GLContextDefaultResult>(true);
+  }
+  bool ClearRenderContext() override { return true; }
+  bool AllowsDrawingWhenGpuDisabled() const override { return true; }
+
+ private:
+  AcquireCallback on_acquire_;
+};
+
+TEST(RasterizerCanvasBackgroundTest, ClearsSurfaceAndMarksFullDamageOnUpdate) {
+  ThreadHost thread_host("lynx.clay.rasterizer.bg.test.",
+                         ThreadHost::Type::Platform | ThreadHost::Type::RASTER |
+                             ThreadHost::Type::IO | ThreadHost::Type::UI);
+  TaskRunners task_runners("test", thread_host.platform_thread->GetTaskRunner(),
+                           thread_host.raster_thread->GetTaskRunner(),
+                           thread_host.ui_thread->GetTaskRunner(),
+                           thread_host.io_thread->GetTaskRunner());
+
+  task_runners.GetRasterTaskRunner()->PostSyncTask([&] {
+    auto service_manager = ServiceManager::Create(
+        {task_runners.GetPlatformTaskRunner(), task_runners.GetUITaskRunner(),
+         task_runners.GetRasterTaskRunner(), task_runners.GetIOTaskRunner()});
+    Settings settings;
+    service_manager->RegisterService<PlatformConstService>(
+        std::make_shared<PlatformConstService>(settings, true, nullptr));
+
+    auto rasterizer = std::make_unique<Rasterizer>(service_manager);
+    service_manager->Attach<Owner::kRaster>(
+        RasterServiceContext{.rasterizer = rasterizer.get()});
+    EXPECT_FALSE(rasterizer->GetBackgroundColor().has_value());
+
+#ifdef ENABLE_SKITY
+    std::shared_ptr<TestSkitySurface> latest_surface;
+#else
+    sk_sp<SkSurface> latest_surface;
+#endif
+    std::optional<skity::Rect> latest_frame_damage;
+    std::optional<skity::Rect> latest_buffer_damage;
+
+    rasterizer->Setup(std::make_unique<TestRasterSurface>(
+        [&](const skity::Vec2& size) -> std::unique_ptr<SurfaceFrame> {
+          SurfaceFrame::FramebufferInfo fb_info;
+          fb_info.supports_partial_repaint = true;
+          fb_info.existing_damage = skity::Rect::MakeXYWH(0, 0, 1, 1);
+#ifdef ENABLE_SKITY
+          latest_surface = std::make_shared<TestSkitySurface>(
+              static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
+#else
+          latest_surface = SkSurface::MakeRaster(SkImageInfo::Make(
+              static_cast<int>(size.x), static_cast<int>(size.y),
+              kRGBA_8888_SkColorType, kPremul_SkAlphaType));
+#endif
+          return std::make_unique<SurfaceFrame>(
+              latest_surface, fb_info,
+              [](SurfaceFrame&, clay::GrCanvas*) { return true; },
+              [&](const SurfaceFrame::SubmitInfo& info) {
+                latest_frame_damage = info.frame_damage;
+                latest_buffer_damage = info.buffer_damage;
+                return true;
+              },
+              size);
+        }));
+
+    auto make_recorder = []() {
+      auto recorder = std::make_unique<FrameTimingsRecorder>();
+      const auto now = fml::TimePoint::Now();
+      recorder->RecordVsync(now, now + fml::TimeDelta::FromMilliseconds(16));
+      recorder->RecordBuildStart(now);
+      recorder->RecordBuildEnd(now);
+      return recorder;
+    };
+
+    auto layer_tree = std::make_shared<LayerTree>(skity::Vec2{40, 40}, 1.0f);
+    skity::Matrix identity;
+    identity.Reset();
+    layer_tree->set_root_layer(std::make_shared<TransformLayer>(identity));
+
+    auto expect_rgba_at_center = [&](uint8_t r, uint8_t g, uint8_t b,
+                                     uint8_t a) {
+#ifdef ENABLE_SKITY
+      auto pixmap = latest_surface->GetBitmap().GetPixmap();
+      ASSERT_NE(pixmap, nullptr);
+      const uint8_t* px = pixmap->Addr8(20, 20);
+#else
+      SkPixmap pixmap;
+      ASSERT_TRUE(latest_surface->peekPixels(&pixmap));
+      const auto* px = reinterpret_cast<const uint8_t*>(pixmap.addr32(20, 20));
+#endif
+      EXPECT_EQ(px[0], r);
+      EXPECT_EQ(px[1], g);
+      EXPECT_EQ(px[2], b);
+      EXPECT_EQ(px[3], a);
+    };
+
+    // Unconfigured canvas clears to transparent.
+    EXPECT_EQ(rasterizer->Draw(layer_tree, make_recorder()),
+              RasterStatus::kSuccess);
+    expect_rgba_at_center(0x00, 0x00, 0x00, 0x00);
+
+    // Updating canvas background color forces full-frame damage on
+    // partial-repaint surfaces and clears to the configured ARGB color.
+    rasterizer->SetBackgroundColor(0xFF123456u);
+    ASSERT_TRUE(rasterizer->GetBackgroundColor().has_value());
+    EXPECT_EQ(*rasterizer->GetBackgroundColor(), 0xFF123456u);
+    EXPECT_EQ(rasterizer->DrawLastLayerTree(), RasterStatus::kSuccess);
+    ASSERT_TRUE(latest_frame_damage.has_value());
+    EXPECT_EQ(*latest_frame_damage, skity::Rect::MakeXYWH(0, 0, 40, 40));
+    ASSERT_TRUE(latest_buffer_damage.has_value());
+    EXPECT_EQ(*latest_buffer_damage, skity::Rect::MakeXYWH(0, 0, 40, 40));
+    expect_rgba_at_center(0x12, 0x34, 0x56, 0xFF);
+
+    // Subsequent static redraw without changing background color only repaints
+    // existing_damage.
+    EXPECT_EQ(rasterizer->DrawLastLayerTree(), RasterStatus::kSuccess);
+    ASSERT_TRUE(latest_buffer_damage.has_value());
+    EXPECT_EQ(*latest_buffer_damage, skity::Rect::MakeXYWH(0, 0, 1, 1));
+
+    // ScreenshotLastLayerTree composites over the configured background color.
+    auto screenshot = rasterizer->ScreenshotLastLayerTree(
+        ScreenshotData::ScreenshotType::UncompressedImage, false,
+        *rasterizer->GetBackgroundColor());
+    ASSERT_NE(screenshot.data, nullptr);
+    ASSERT_GE(DATA_GET_SIZE(screenshot.data), 4u);
+    const auto* shot_bytes =
+        static_cast<const uint8_t*>(DATA_GET_DATA(screenshot.data));
+    EXPECT_EQ(shot_bytes[0], 0x12);
+    EXPECT_EQ(shot_bytes[1], 0x34);
+    EXPECT_EQ(shot_bytes[2], 0x56);
+    EXPECT_EQ(shot_bytes[3], 0xFF);
+
+    // Transparent screenshot preserves zero alpha instead of forcing opaque.
+    auto transparent_shot = rasterizer->ScreenshotLastLayerTree(
+        ScreenshotData::ScreenshotType::UncompressedImage, false,
+        Color::kTransparent().Value());
+    ASSERT_NE(transparent_shot.data, nullptr);
+    ASSERT_GE(DATA_GET_SIZE(transparent_shot.data), 4u);
+    const auto* transparent_bytes =
+        static_cast<const uint8_t*>(DATA_GET_DATA(transparent_shot.data));
+    EXPECT_EQ(transparent_bytes[0], 0x00);
+    EXPECT_EQ(transparent_bytes[1], 0x00);
+    EXPECT_EQ(transparent_bytes[2], 0x00);
+    EXPECT_EQ(transparent_bytes[3], 0x00);
+
+    // CleanForRecycle retains the configured host canvas background color.
+    rasterizer->CleanForRecycle();
+    ASSERT_TRUE(rasterizer->GetBackgroundColor().has_value());
+    EXPECT_EQ(*rasterizer->GetBackgroundColor(), 0xFF123456u);
+
+    service_manager->Detach<Owner::kRaster>();
+  });
+}
 
 }  // namespace
 }  // namespace testing

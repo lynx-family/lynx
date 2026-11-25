@@ -410,6 +410,13 @@ void ClayHeadlessEngine::SetVisible(bool enable) {
   engine_->GetShell().GetEngine()->SetVisible(enable);
 }
 
+void ClayHeadlessEngine::SetBackgroundColor(uint32_t color) {
+  if (!IsValid()) {
+    return;
+  }
+  engine_->GetShell().SetBackgroundColor(color);
+}
+
 void ClayHeadlessEngine::SetFontFaceCache(const char* font_family,
                                           const char* local_path) {
   if (!IsValid()) {

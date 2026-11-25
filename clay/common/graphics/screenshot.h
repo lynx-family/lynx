@@ -42,7 +42,7 @@ struct ScreenshotRequest {
   std::optional<ScreenshotCallback> callback_;
   std::string format_;
   int every_nth_frame_;
-  uint32_t background_color_ = 0xffffffff;
+  std::optional<uint32_t> background_color_;
 };
 
 }  // namespace clay

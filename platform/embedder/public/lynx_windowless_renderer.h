@@ -5,6 +5,7 @@
 #define PLATFORM_EMBEDDER_PUBLIC_LYNX_WINDOWLESS_RENDERER_H_
 
 #include <cstdbool>
+#include <cstdint>
 #include <memory>
 
 #include "capi/lynx_types.h"
@@ -223,6 +224,13 @@ class LynxWindowlessRenderer
             renderer_wrapper->SetEditableTransform(transform);
           }
         });
+  }
+
+  // Sets the canvas background color in non-premultiplied 0xAARRGGBB format.
+  // May be called before or after creating the LynxView.
+  void SetBackgroundColor(uint32_t color) {
+    InitIfNeeded();
+    lynx_windowless_renderer_set_background_color(windowless_renderer_, color);
   }
 
   // Optional synchronous composition for windowless embedders, disabled by

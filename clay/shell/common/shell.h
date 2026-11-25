@@ -8,6 +8,7 @@
 #ifndef CLAY_SHELL_COMMON_SHELL_H_
 #define CLAY_SHELL_COMMON_SHELL_H_
 
+#include <cstdint>
 #include <deque>
 #include <functional>
 #include <memory>
@@ -249,11 +250,14 @@ class Shell final : public PlatformView::Delegate,
   ///
   /// @return     The screenshot result.
   ///
-  ScreenshotData ScreenshotSync(ScreenshotData::ScreenshotType type,
-                                uint32_t background_color);
+  void SetBackgroundColor(uint32_t color);
+
+  ScreenshotData ScreenshotSync(
+      ScreenshotData::ScreenshotType type,
+      std::optional<uint32_t> background_color = std::nullopt);
 
   void ScreenshotAsync(ScreenshotData::ScreenshotType type,
-                       uint32_t background_color,
+                       std::optional<uint32_t> background_color,
                        std::function<void(ScreenshotData)> callback);
 
   //----------------------------------------------------------------------------

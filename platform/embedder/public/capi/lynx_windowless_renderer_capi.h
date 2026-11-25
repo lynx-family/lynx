@@ -112,6 +112,14 @@ lynx_windowless_renderer_get_color_space(lynx_windowless_renderer_t* renderer);
 LYNX_CAPI_EXPORT void* lynx_windowless_renderer_get_user_data(
     lynx_windowless_renderer_t*);
 
+// Sets the canvas background color for the windowless renderer using a
+// non-premultiplied 0xAARRGGBB color (for example, 0x00000000 is transparent
+// and 0xFFFFFFFF is opaque white). May be called before or after creating the
+// LynxView. When set, offscreen frames and snapshots clear the canvas to this
+// color before compositing the layer tree.
+LYNX_CAPI_EXPORT void lynx_windowless_renderer_set_background_color(
+    lynx_windowless_renderer_t*, uint32_t color);
+
 // Optional platform-driven synchronous composition for windowless embedders.
 // Currently validated only on the Linux windowless backend. Other platforms
 // have not been validated and are not guaranteed to work. API presence and a
