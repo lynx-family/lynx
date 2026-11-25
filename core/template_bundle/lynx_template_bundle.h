@@ -83,6 +83,10 @@ class LepusChunkManager {
 //
 class LynxTemplateBundle final {
  public:
+  // Checks the magic word after the 32-bit total-size field without decoding.
+  // A matching header does not guarantee that the remaining data is valid.
+  static bool HasBinaryHeader(const std::vector<uint8_t>& data);
+
   // Decodes using TemplateBinaryReader. Suitable for rendering paths where
   // lazy/async decoding (CSS fragments, element templates, parsed styles,
   // lepus chunks) is desired. Stores a lazy reader delegate in this bundle.
