@@ -31,7 +31,7 @@ struct HostScriptRuntimeCallbacks {
                                  runtime::js::Value&);
 };
 
-constexpr uint32_t kHostScriptRuntimeAbiVersion = 12;
+constexpr uint32_t kHostScriptRuntimeAbiVersion = 13;
 // Engine-owned executor allocation isolates replay/recorder field differences.
 // Shared inline types still require matching build features.
 constexpr uint32_t kHostScriptExecutorFeatures =

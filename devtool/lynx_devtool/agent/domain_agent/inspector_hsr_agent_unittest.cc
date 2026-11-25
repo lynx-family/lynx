@@ -517,6 +517,49 @@ TEST_F(InspectorHSRAgentTest, RejectsInvalidSchemaBeforeCallingRuntime) {
   EXPECT_EQ(facade_.calls, 0);
 }
 
+TEST_F(InspectorHSRAgentTest, ParsesLoadModesAndRejectsInvalidModes) {
+  facade_.handler = [](auto callback) {
+    callback(Json::Value(Json::objectValue), "");
+  };
+  Dispatch("HSR.loadScript",
+           Parse(R"({"source":{"type":"inline","script":"1"}})"));
+  EXPECT_EQ(facade_.last_request.mode, HSRScriptRequest::LoadMode::kReplace);
+
+  for (const auto& entry :
+       {std::make_pair("replace", HSRScriptRequest::LoadMode::kReplace),
+        std::make_pair("append", HSRScriptRequest::LoadMode::kAppend)}) {
+    auto params =
+        Parse(R"({"thread":"ui","source":{"type":"inline","script":"1"}})");
+    params["mode"] = entry.first;
+    auto response = Dispatch("HSR.loadScript", params);
+    EXPECT_TRUE(response["result"].isObject());
+    EXPECT_EQ(facade_.last_request.thread, HSRScriptRequest::Thread::kUI);
+    EXPECT_EQ(facade_.last_request.mode, entry.second);
+
+    auto schema = Parse(R"({"target":"script","script":"1","thread":"ui"})");
+    schema["mode"] = entry.first;
+    bool completed = false;
+    facade_.LoadHSRScriptFromSchema(schema,
+                                    [&completed](const auto&, const auto& err) {
+                                      completed = true;
+                                      EXPECT_TRUE(err.empty());
+                                    });
+    EXPECT_TRUE(completed);
+    EXPECT_EQ(facade_.last_request.mode, entry.second);
+  }
+
+  const auto calls = facade_.calls;
+  for (const auto& invalid :
+       {Json::Value(""), Json::Value("merge"), Json::Value("APPEND"),
+        Json::Value(true), Json::Value(1), Json::Value()}) {
+    auto params = Parse(R"({"source":{"type":"inline","script":"1"}})");
+    params["mode"] = invalid;
+    ExpectError(Dispatch("HSR.loadScript", params),
+                CDPErrorCode::InvalidParams);
+  }
+  EXPECT_EQ(facade_.calls, calls);
+}
+
 }  // namespace testing
 }  // namespace devtool
 }  // namespace lynx

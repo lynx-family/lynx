@@ -1,4 +1,4 @@
-summary: Loads or replaces the selected Host Script context while preserving live View bindings.
+summary: Loads, replaces, or appends a script in the selected Host Script context while preserving live View bindings.
 parameters:
   - name: source
     type: object
@@ -6,7 +6,11 @@ parameters:
   - name: thread
     type: string
     optional: true
-    description: 'Host Script control context to replace: bts (default), mts, or ui. The other two control contexts are preserved.'
+    description: 'Host Script control context: bts (default), mts, or ui. The other two control contexts are preserved.'
+  - name: mode
+    type: string
+    optional: true
+    description: 'Execution mode: replace (default) recreates the selected control context; append executes in the existing context while preserving globals, LynxView proxies, and registered interceptor slots.'
 returns: []
 notes:
   - Uses the global CDP channel (session -1), not a page Runtime.
@@ -15,10 +19,11 @@ notes:
   - Android uses the process-wide external JS resource provider registered in LynxEnv. A missing provider or unsupported scheme is an execution error. Source fetching runs on the existing IO executor and expires after 30 seconds; late resource callbacks are ignored.
   - Source must be valid UTF-8 and at most 512 KiB. Fetching and byte validation happen before replacing the selected context, so resource failures preserve its previous script.
   - Replacement clears only the selected control context and its old callbacks, reuses its configured runner and bindings, and executes the new entry in that context. Globals, callbacks, and registrations in the other two contexts are preserved. Live Views and page JS contexts are not destroyed.
-  - Success means synchronous entry execution finished. The entry completion value is ignored, including Promise values; asynchronous work is not awaited. A script exception cleans up only the failed replacement without restoring its previous script; another load can retry.
-  - Missing, contradictory, or incorrectly typed source fields, and a thread other than bts, mts, or ui, return InvalidParams (-32602). Unsupported platform file access is an execution error.
+  - Append mode executes the fetched or inline entry in the selected existing context without clearing its globals or active interceptor subscriptions. An exception during append reports an execution error while keeping the existing context running.
+  - Success means synchronous entry execution finished. The entry completion value is ignored, including Promise values; asynchronous work is not awaited. A script exception in replace mode cleans up only the failed replacement without restoring its previous script; another load can retry.
+  - Missing, contradictory, or incorrectly typed source fields, a thread other than bts, mts, or ui, or a mode other than replace or append return InvalidParams (-32602). Unsupported platform file access is an execution error.
   - Runtime failures and abandoned callbacks return ServerError (-32000); malformed completion results return InternalError (-32603).
-  - Host schema routers decode target=script with script or target=url with url, and an optional thread, into LoadHSRScriptFromSchema, sharing the same load boundary. Android exposes this through GlobalDevToolPlatformAndroidDelegate.loadHSRScriptFromSchema with a UI-thread completion callback. Concrete app scheme registration is host-owned.
+  - Host schema routers decode target=script with script or target=url with url, and optional thread and mode, into LoadHSRScriptFromSchema, sharing the same load boundary. Android exposes this through GlobalDevToolPlatformAndroidDelegate.loadHSRScriptFromSchema with a UI-thread completion callback. Concrete app scheme registration is host-owned.
   - Another load is rejected with HSR_LOAD_IN_PROGRESS until the current request completes. Evaluation in the context being replaced is rejected with RUNTIME_LOADING; evaluation in the other two contexts continues. Disabling debugging cancels replacement. Resource loads use the debug state at execution time and are not tied to the debug lifecycle in which fetching began.
   - Client timeout does not cancel running JavaScript.
 examples:

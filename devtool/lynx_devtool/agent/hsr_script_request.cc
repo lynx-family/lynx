@@ -28,6 +28,22 @@ bool ParseThread(const Json::Value& params, HSRScriptRequest& request,
   return true;
 }
 
+bool ParseLoadMode(const Json::Value& params, HSRScriptRequest& request,
+                   std::string& error) {
+  if (!params.isMember("mode")) return true;
+  const auto& value = params["mode"];
+  const auto mode = value.isString() ? value.asString() : std::string();
+  if (mode == "replace") {
+    request.mode = HSRScriptRequest::LoadMode::kReplace;
+  } else if (mode == "append") {
+    request.mode = HSRScriptRequest::LoadMode::kAppend;
+  } else {
+    error = "Expected mode: replace or append";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
@@ -44,6 +60,7 @@ bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,
   const auto type = source["type"].asString();
   HSRScriptRequest parsed;
   if (!ParseThread(params, parsed, error)) return false;
+  if (!ParseLoadMode(params, parsed, error)) return false;
   if (type == "inline") {
     if (!source["script"].isString() || source.isMember("url")) {
       error = "Expected source.script without source.url for inline scripts";
@@ -90,6 +107,7 @@ bool ParseHSRSchemaLoad(const Json::Value& params, HSRScriptRequest& request,
   }
   Json::Value normalized(Json::objectValue);
   if (params.isMember("thread")) normalized["thread"] = params["thread"];
+  if (params.isMember("mode")) normalized["mode"] = params["mode"];
   auto& source = normalized["source"];
   const auto target = params["target"].asString();
   if (target == "script") {
