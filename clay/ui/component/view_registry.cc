@@ -78,8 +78,13 @@ ViewRegistry::ViewRegistry() {
   keepExtendElements();
 #if (defined(OS_OSX) || defined(OS_IOS))
   for (auto p = __start_clayview; p != __stop_clayview; ++p) {
-    this->RegisterView(std::string(p->name), p->view_creator,
-                       p->shadow_node_creator);
+    if (!p->name || !p->view_creator) {
+      continue;
+    }
+    this->RegisterView(std::string(p->name), ViewCreator(p->view_creator),
+                       p->shadow_node_creator
+                           ? ShadowNodeCreator(p->shadow_node_creator)
+                           : ShadowNodeCreator());
   }
 #endif
 }
