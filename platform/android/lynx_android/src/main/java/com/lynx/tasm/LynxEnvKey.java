@@ -48,6 +48,8 @@ public enum LynxEnvKey {
   MEMORY_REPORT_INTERVAL_SEC("memory_report_interval_sec"),
   GLOBAL_MEMORY_REPORT_THRESHOLD_MB("global_memory_report_threshold_mb"),
   ENABLE_DATA_LIST_FIX("enable_data_list_fix"),
+  // Temporary rollback switch for global props UI ordering. Remove in the next release.
+  ENABLE_UPDATE_GLOBAL_PROPS_ON_UI_THREAD("enable_update_global_props_on_ui_thread"),
   FSP_ENABLE("enable_fsp"),
   FSP_CONFIG_JSON_STRING("fsp_config_json_string"),
   INIT_DISPLAY_METRICS_IN_ENV("init_display_metrics_in_env"),
