@@ -1,0 +1,28 @@
+From: Lynx Authors <lynx.authors@gmail.com>
+Subject: [PATCH] Fix Windows debug fastfail in Skia Lite
+
+Skia Lite provides sk_abort_no_print in SkMatrix.cpp instead of building
+SkMemory_malloc.cpp. Carry over the Windows intrinsic header and fatal-exit
+constant so debug builds preserve the original fast-fail behavior.
+---
+ src/core/SkMatrix.cpp | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/core/SkMatrix.cpp b/src/core/SkMatrix.cpp
+--- a/src/core/SkMatrix.cpp
++++ b/src/core/SkMatrix.cpp
+@@ -1643,6 +1643,14 @@ void SkMatrix::dump() const {
+     SkDebugf("%s\n", str.c_str());
+ }
+ #else
++#if defined(SK_DEBUG) && defined(SK_BUILD_FOR_WIN)
++#include <intrin.h>
++// Match SkMemory_malloc.cpp without pulling in all of windows.h.
++#ifndef FAST_FAIL_FATAL_APP_EXIT
++#define FAST_FAIL_FATAL_APP_EXIT 7
++#endif
++#endif
++
+ // from SKMemory_malloc.cpp
+ void sk_abort_no_print() {
+ #if defined(SK_DEBUG) && defined(SK_BUILD_FOR_WIN)
