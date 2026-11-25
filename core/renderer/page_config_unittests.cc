@@ -99,6 +99,25 @@ TEST(PageConfigTest, IntersectionObserverInitialRatioCompatibility) {
   }
 }
 
+TEST(PageConfigTest, FetchBundleInCurrentThreadIsOptIn) {
+  constexpr struct {
+    const char* json;
+    bool expected;
+  } cases[] = {
+      {"{}", false},
+      {R"({"fetchBundleInCurrentThread":false})", false},
+      {R"({"fetchBundleInCurrentThread":true})", true},
+  };
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.json);
+    rapidjson::Document doc;
+    doc.Parse(test_case.json);
+    auto config = std::make_shared<PageConfig>();
+    LynxConfigDecoder::DecodePageConfig(config, doc, "");
+    EXPECT_EQ(config->GetFetchBundleInCurrentThread(), test_case.expected);
+  }
+}
+
 TEST(PageConfigTest, EnableFrameNativeData) {
   auto& env = LynxEnv::GetInstance();
   env.external_env_map_.erase(LynxEnv::Key::ENABLE_FRAME_NATIVE_DATA);
