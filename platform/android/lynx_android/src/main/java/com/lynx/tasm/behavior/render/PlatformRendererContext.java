@@ -1008,6 +1008,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
   @CalledByNative
   boolean updateImage(int imageKey, int sign, String src, ReadableMapBuffer paintInfo, int changes,
       int width, int height, int eventMask) {
+    // Fall back to a new manager if updating this one could release an image during UI drawing.
+    if (!UIThreadUtils.isOnUiThread()) {
+      return false;
+    }
     LynxImageManager imageManager = getImage(imageKey);
     if (imageManager == null) {
       return false;
