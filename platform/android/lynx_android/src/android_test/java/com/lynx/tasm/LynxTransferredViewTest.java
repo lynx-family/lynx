@@ -133,11 +133,11 @@ public class LynxTransferredViewTest {
       LynxTransferredView view = mManager.loadTransfer(mOwner, "Message", initial);
       JavaOnlyMap updated = new JavaOnlyMap();
       updated.putString("text", "next");
-      view.setProps(updated);
+      view.updateProps(updated);
       view.release();
 
       assertEquals(
-          Arrays.asList("__CreateTransfer", "__SetTransferProps", "__DestroyTransfer"), mTypes);
+          Arrays.asList("__CreateTransfer", "__UpdateTransfer", "__DestroyTransfer"), mTypes);
       assertEquals(new HashSet<>(Arrays.asList("transferId", "componentName", "initialProps")),
           mData.get(0).asHashMap().keySet());
       assertEquals(
@@ -170,8 +170,8 @@ public class LynxTransferredViewTest {
     assertSame(props, mData.get(0).getMap("initialProps"));
     assertNotEquals(mData.get(0).getString("transferId"), mData.get(1).getString("transferId"));
     JavaOnlyMap nextProps = new JavaOnlyMap();
-    a.setProps(nextProps);
-    assertEquals("__SetTransferProps", mTypes.get(2));
+    a.updateProps(nextProps);
+    assertEquals("__UpdateTransfer", mTypes.get(2));
     assertSame(nextProps, mData.get(2).getMap("props"));
     assertEquals(0, mData.get(2).getMap("props").size());
     assertEquals(mData.get(0).getString("transferId"), mData.get(2).getString("transferId"));
@@ -196,11 +196,11 @@ public class LynxTransferredViewTest {
     View content = new View(mContext);
     mManager.dispatchTransferCreate(bId, mNativeOwner, content);
     assertSame(b, content.getParent());
-    a.setProps(new JavaOnlyMap());
+    a.updateProps(new JavaOnlyMap());
     assertEquals(3, mTypes.size());
-    b.setProps(new JavaOnlyMap());
+    b.updateProps(new JavaOnlyMap());
     assertEquals(4, mTypes.size());
-    assertEquals("__SetTransferProps", mTypes.get(3));
+    assertEquals("__UpdateTransfer", mTypes.get(3));
     b.release();
   }
 
@@ -220,7 +220,7 @@ public class LynxTransferredViewTest {
     assertNull(newContent.getParent());
     view.release();
     assertEquals(1, mTypes.size());
-    view.setProps(new JavaOnlyMap());
+    view.updateProps(new JavaOnlyMap());
     assertEquals(1, mTypes.size());
   }
 
@@ -233,13 +233,13 @@ public class LynxTransferredViewTest {
     try {
       mOwner.mLynxTemplateRender = render;
       for (String command :
-          Arrays.asList("__CreateTransfer", "__SetTransferProps", "__DestroyTransfer")) {
+          Arrays.asList("__CreateTransfer", "__UpdateTransfer", "__DestroyTransfer")) {
         mOwner.dispatchTransferEvent(command, new JavaOnlyMap());
       }
       verify(render, never()).dispatchTransferEvent(anyString(), any(JavaOnlyMap.class));
       mOwner.mLynxTemplateRender = null;
       for (String command :
-          Arrays.asList("__CreateTransfer", "__SetTransferProps", "__DestroyTransfer")) {
+          Arrays.asList("__CreateTransfer", "__UpdateTransfer", "__DestroyTransfer")) {
         mOwner.dispatchTransferEvent(command, new JavaOnlyMap());
       }
       assertTrue(mTypes.isEmpty());
@@ -302,7 +302,7 @@ public class LynxTransferredViewTest {
       assertEquals(1, rejectedLoads[0]);
       assertNull(content.getParent());
       assertFalse(render.isTransferReady());
-      view.setProps(new JavaOnlyMap());
+      view.updateProps(new JavaOnlyMap());
       assertEquals(Arrays.asList("__CreateTransfer"), mTypes);
       try {
         owner.loadTransfer("Message", new JavaOnlyMap());

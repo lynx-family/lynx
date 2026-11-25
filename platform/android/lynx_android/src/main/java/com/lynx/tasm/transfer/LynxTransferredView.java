@@ -68,17 +68,6 @@ public final class LynxTransferredView extends FrameLayout {
   }
 
   /**
-   * Replaces this component's props. Returning does not mean that rendering has completed.
-   * Page data and global props are not changed. Updates after release or page destruction
-   * are logged and ignored.
-   */
-  @UiThread
-  public void setProps(@NonNull ReadableMap nextProps) {
-    dispatchPropsCommand(LynxTransferManager.SET_TRANSFER_PROPS, TraceEventDef.TRANSFER_SET_PROPS,
-        "setProps", nextProps);
-  }
-
-  /**
    * Replaces this component's props while keeping the frontend instance state. Unlike
    * {@link #reload}, the frontend updates the existing subtree in place.
    *
