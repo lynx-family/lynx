@@ -108,7 +108,8 @@ class ParagraphTTText : public Paragraph {
   }
   void AddPlaceholder(tttext::Style& style,
                       PlaceholderRun& span,
-                      bool is_float);
+                      bool is_float,
+                      bool use_parent_x_height_for_middle = false);
   void AddTextRun(tttext::Style& style, const std::u16string& content);
   void AddTextRun(tttext::Style& style, const std::string& content);
   uint32_t GetTextSize() const;
