@@ -849,7 +849,21 @@ void TemplateAssembler::DidLoadTemplate() {
                        << " len: " << source_size_);
 
   // timing actions
-  tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBundleEnd);
+  auto* timing_collector = tasm::TimingCollector::Instance();
+  const auto timestamp = base::CurrentSystemTimeMicroseconds();
+  timing_collector->Mark(tasm::timing::kLoadBundleEnd, timestamp);
+  if (!page_proxy_.GetPageElement()) {
+    // An empty initial page completes at load end. Skipped rendering stages
+    // take zero time, and later rendering is measured as an update.
+    for (const auto* key : {timing::kLayoutStart, timing::kLayoutEnd,
+                            timing::kPaintingUiOperationExecuteStart,
+                            timing::kPaintingUiOperationExecuteEnd,
+                            timing::kLayoutUiOperationExecuteStart,
+                            timing::kLayoutUiOperationExecuteEnd,
+                            timing::kPaintEnd, timing::kPipelineEnd}) {
+      timing_collector->Mark(key, timestamp);
+    }
+  }
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
   if (card && card->GetVm()) {
     card->GetVm()->UpdateGCTiming(false);
