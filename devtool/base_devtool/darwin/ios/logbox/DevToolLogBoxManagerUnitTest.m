@@ -71,6 +71,39 @@ static const NSString* kExpectBriefRawMessage = @"raw error message ";
   // test pass empty string to method
   NSString* emptyRet = method(managerClass, methodSel, @"");
   XCTAssertTrue([emptyRet isEqual:@""]);
+
+  NSArray<NSArray<NSString*>*>* cases = @[
+    @[ @"[{\"error\":\"bad\"}]", @"[{\"error\":\"bad\"}]" ],
+    @[ @"{\"error\":\"[{\\\"status\\\":\\\"fail\\\"}]\"}", @"[{\"status\":\"fail\"}]" ],
+    @[ @"{\"error\":\"[]\"}", @"[]" ],
+    @[ @"{\"error\":[{\"status\":\"fail\"}]}", @"{\"error\":[{\"status\":\"fail\"}]}" ],
+    @[ @"{\"error\":{\"rawError\":[]}}", @"{\"error\":{\"rawError\":[]}}" ],
+    @[
+      @"{\"error\":{\"rawError\":{\"message\":42}}}", @"{\"error\":{\"rawError\":{\"message\":42}}}"
+    ],
+    @[
+      @"{\"error\":{\"rawError\":{\"message\":null}}}",
+      @"{\"error\":{\"rawError\":{\"message\":null}}}"
+    ],
+    @[
+      @"{\"error\":{\"rawError\":{\"message\":[1]}}}",
+      @"{\"error\":{\"rawError\":{\"message\":[1]}}}"
+    ],
+    @[
+      @"{\"error\":{\"rawError\":{\"message\":{\"a\":1}}}}",
+      @"{\"error\":{\"rawError\":{\"message\":{\"a\":1}}}}"
+    ],
+    @[ @"{\"error\":{\"rawError\":{\"message\":\"direct\"}}}", @"direct" ],
+    @[ @"{\"error\":\"{\\\"rawError\\\":{\\\"message\\\":\\\"inner\\\"}}\"}", @"inner" ],
+  ];
+  NSString* truncationInput = [[@"x" stringByPaddingToLength:49 withString:@"x"
+                                             startingAtIndex:0] stringByAppendingString:@"\ny"];
+  for (NSArray<NSString*>* testCase in cases) {
+    XCTAssertEqualObjects(method(managerClass, methodSel, testCase[0]), testCase[1], @"input: %@",
+                          testCase[0]);
+  }
+  XCTAssertEqualObjects(method(managerClass, methodSel, truncationInput),
+                        [[truncationInput substringToIndex:49] stringByAppendingString:@" "]);
 }
 
 @end
