@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <cstdint>
+#include <limits>
+#include <string>
 #include <vector>
 
 #include "base/include/value/array.h"
@@ -10,6 +12,7 @@
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
 #include "core/runtime/lepus/builtin_function_table.h"
+#include "core/runtime/lepus/bytecode_generator.h"
 #include "core/runtime/lepus/function.h"
 #include "core/runtime/lepus/op_code.h"
 #include "core/runtime/lepus/vm_context.h"
@@ -911,6 +914,128 @@ TEST(LEPUSIR_VMContext, LoadSmallInt_Boundaries) {
     ASSERT_TRUE(ret.IsNumber());
     EXPECT_EQ(ret.Int64(), 32767);
   }
+}
+
+namespace {
+
+constexpr int64_t kWrittenValue = 100;
+
+fml::RefPtr<CArray> CreateArrayOfSize(size_t size) {
+  auto array = CArray::Create();
+  for (size_t i = 0; i < size; ++i) {
+    array->push_back(Value(static_cast<int64_t>(i)));
+  }
+  return array;
+}
+
+// Runs "array[key] = kWrittenValue" with the given opcode.
+void RunArrayWrite(TypeOpCode opcode, const fml::RefPtr<CArray>& array,
+                   const Value& key) {
+  auto fn = Function::Create();
+  const auto array_idx = fn->AddConstValue(Value(array));
+  const auto key_idx = fn->AddConstValue(key);
+  const auto value_idx = fn->AddConstValue(Value(kWrittenValue));
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 0, array_idx));
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 1, key_idx));
+  fn->AddInstruction(Instruction::ABxCode(TypeOp_LoadConst, 2, value_idx));
+  fn->AddInstruction(Instruction::ABCCode(opcode, 0, 1, 2));
+  fn->AddInstruction(Instruction::ACode(TypeOp_Ret, 0));
+  RunFunctionAsClosure(fn);
+}
+
+}  // namespace
+
+TEST(LEPUS_IR_VMContext, SetTable_InvalidArrayKeyIsIgnored) {
+  const double infinity = std::numeric_limits<double>::infinity();
+  const Value invalid_keys[] = {
+      Value(int64_t{-1}),
+      Value(int64_t{-2}),
+      Value(std::numeric_limits<int64_t>::min()),
+      Value(std::numeric_limits<int64_t>::max()),
+      Value(int64_t{1} << 32),
+      Value(static_cast<int64_t>(CArray::kMaxSize)),
+      Value(int32_t{-1}),
+      Value(-1.0),
+      Value(-2.5),
+      Value(1e300),
+      Value(infinity),
+      Value(-infinity),
+      Value(std::numeric_limits<double>::quiet_NaN()),
+  };
+  for (const auto opcode : {TypeOp_SetTable, TypeOp_SetTableNumber}) {
+    // Two elements fit in the inline storage while three move to the heap.
+    for (const size_t size : {size_t{0}, size_t{2}, size_t{3}}) {
+      for (const auto& key : invalid_keys) {
+        auto array = CreateArrayOfSize(size);
+        RunArrayWrite(opcode, array, key);
+        ASSERT_EQ(array->size(), size) << key.Number();
+        for (size_t i = 0; i < size; ++i) {
+          EXPECT_EQ(array->get(i).Int64(), static_cast<int64_t>(i));
+        }
+        EXPECT_FALSE(array->IsConst());
+      }
+    }
+  }
+}
+
+TEST(LEPUS_IR_VMContext, SetTable_ValidArrayKeyWrites) {
+  const struct {
+    Value key;
+    size_t expected_index;
+  } cases[] = {
+      {Value(int64_t{0}), 0}, {Value(int64_t{1}), 1}, {Value(int32_t{1}), 1},
+      {Value(1.0), 1},        {Value(1.5), 1},        {Value(-0.5), 0},
+      {Value(int64_t{2}), 2}, {Value(5.0), 5},
+  };
+  for (const auto opcode : {TypeOp_SetTable, TypeOp_SetTableNumber}) {
+    for (const auto& test_case : cases) {
+      auto array = CreateArrayOfSize(2);
+      RunArrayWrite(opcode, array, test_case.key);
+      ASSERT_GT(array->size(), test_case.expected_index);
+      EXPECT_EQ(array->get(test_case.expected_index).Int64(), kWrittenValue);
+    }
+  }
+}
+
+TEST(LEPUS_IR_VMContext, ArrayWriteWithComputedNegativeIndexFromSource) {
+  VMContext ctx;
+  ctx.Initialize();
+  const std::string source = R"(
+    var empty = [];
+    empty[empty.length - 1] = 100;
+    var list = [0, 1];
+    list[list.length - 3] = 100;
+    var minus_one = -1;
+    list[minus_one] = 100;
+    var bit_not = ~0;
+    list[bit_not] = 100;
+    var appended = [0, 1];
+    appended[appended.length] = 100;
+  )";
+  const auto error =
+      BytecodeGenerator::GenerateBytecode(&ctx, source, "3.8", "");
+  ASSERT_TRUE(error.empty()) << error;
+  ASSERT_TRUE(ctx.Execute());
+
+  Value empty;
+  ASSERT_TRUE(ctx.GetTopLevelVariableByName(base::String("empty"), &empty));
+  ASSERT_TRUE(empty.IsArray());
+  EXPECT_EQ(empty.Array()->size(), 0u);
+
+  Value list;
+  ASSERT_TRUE(ctx.GetTopLevelVariableByName(base::String("list"), &list));
+  ASSERT_TRUE(list.IsArray());
+  ASSERT_EQ(list.Array()->size(), 2u);
+  EXPECT_EQ(list.Array()->get(0).Number(), 0.0);
+  EXPECT_EQ(list.Array()->get(1).Number(), 1.0);
+
+  Value appended;
+  ASSERT_TRUE(
+      ctx.GetTopLevelVariableByName(base::String("appended"), &appended));
+  ASSERT_TRUE(appended.IsArray());
+  ASSERT_EQ(appended.Array()->size(), 3u);
+  EXPECT_EQ(appended.Array()->get(2).Number(),
+            static_cast<double>(kWrittenValue));
 }
 
 }  // namespace test
