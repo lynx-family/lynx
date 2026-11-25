@@ -7,6 +7,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -152,6 +153,13 @@ class PageView : public BaseView,
   }
 
   void RequestPaint();
+  // Supplies the Fragment layers on the UI thread before composition.
+  void SetRecordedLayerProvider(
+      std::function<std::unique_ptr<PendingContainerLayer>()> provider) {
+    recorded_layer_provider_ = std::move(provider);
+  }
+
+  void RequestRecordedFrame();
   void RequestPaintBase();
 #if OS_IOS
   // Runs at the start of the next BeginFrame. The caller must already be in a
@@ -640,6 +648,8 @@ class PageView : public BaseView,
   const clay::TaskRunners task_runners_;
 
   std::unique_ptr<Renderer> renderer_;
+  std::function<std::unique_ptr<PendingContainerLayer>()>
+      recorded_layer_provider_;
   std::unique_ptr<LayoutController> layout_controller_;
   std::unique_ptr<FrameBuilder> frame_builder_;
   std::unique_ptr<AnimationHandler> animation_handler_;

@@ -153,6 +153,12 @@ PaintingContextClay::~PaintingContextClay() {
   }
 }
 
+void PaintingContextClay::SetPerfController(
+    const std::shared_ptr<PerfControllerClay>& controller) {
+  static_cast<PaintingContextClayRef&>(*platform_ref_)
+      .SetPerfController(controller);
+}
+
 void PaintingContextClay::Flush() { ui_operation_queue_ref_->Flush(); }
 
 void PaintingContextClay::HandleValidate(int tag) {

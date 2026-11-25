@@ -45,7 +45,12 @@ UIDelegateClay::~UIDelegateClay() {
 
 std::unique_ptr<PaintingCtxPlatformImpl>
 UIDelegateClay::CreatePaintingContext() {
-  auto painting_context = std::make_unique<PaintingContextClay>(view_context_);
+  return BindPaintingContext(
+      std::make_unique<PaintingContextClay>(view_context_));
+}
+
+std::unique_ptr<PaintingCtxPlatformImpl> UIDelegateClay::BindPaintingContext(
+    std::unique_ptr<PaintingContextClay> painting_context) {
   painting_context_ = painting_context.get();
   return painting_context;
 }
@@ -115,12 +120,7 @@ void UIDelegateClay::OnLynxCreate(
     painting_context_->SetListEngineProxy(list_engine_proxy);
     painting_context_->SetEngineProxy(engine_proxy);
     painting_context_->SetRuntimeProxy(runtime_proxy);
-    auto ref = painting_context_->GetPlatformRef();
-    if (ref) {
-      auto* painting_context_ref =
-          static_cast<PaintingContextClayRef*>(ref.get());
-      painting_context_ref->SetPerfController(perf_controller_);
-    }
+    painting_context_->SetPerfController(perf_controller_);
   }
   if (layout_context_) {
     layout_context_->SetEngineProxy(engine_proxy);

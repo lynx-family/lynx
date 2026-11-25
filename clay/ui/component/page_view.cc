@@ -865,7 +865,19 @@ void PageView::CompositeFrame(
     ScopedTimingRecorder scoped_composite_timing(
         *recorder, FrameTimingKey::kBuildFrameStart,
         FrameTimingKey::kBuildFrameEnd);
-    frame_builder_->BuildFrame(renderer_->GetLayer());
+    auto* page_layer = renderer_->GetLayer();
+    auto recorded =
+        recorded_layer_provider_ ? recorded_layer_provider_() : nullptr;
+    if (recorded && page_layer) {
+      // Preserve the page's layout-to-physical transform. Removing the
+      // temporary child also releases it from the pending tree.
+      auto* child = recorded.release();
+      page_layer->AppendChild(child);
+      frame_builder_->BuildFrame(page_layer);
+      page_layer->RemoveChild(child);
+    } else {
+      frame_builder_->BuildFrame(recorded ? recorded.get() : page_layer);
+    }
     scoped_composite_timing.MarkRecordEnd();
   }
   if (performance_overlay_enabled_) {
@@ -2007,6 +2019,11 @@ void PageView::DispatchTransitionEvent(
   ReportTransitionEvent(animation_params, view_id, property_type);
 }
 void PageView::RequestPaint() { Invalidate(); }
+void PageView::RequestRecordedFrame() {
+  // Recorded paint updates do not mark Clay RenderObjects dirty.
+  force_raster_ = true;
+  RequestNewFrame();
+}
 void PageView::RequestPaintBase() { BaseView::Invalidate(); }
 
 #if OS_IOS
@@ -2488,6 +2505,7 @@ void PageView::SetDefaultBackgroundColor(const Color& color) {
 }
 
 void PageView::ResetPageView(bool recycle) {
+  recorded_layer_provider_ = nullptr;
   if (tap_return_) {
     ++tap_return_reset_generation_;
     if (!dispatching_isolated_pointer_events_) {
