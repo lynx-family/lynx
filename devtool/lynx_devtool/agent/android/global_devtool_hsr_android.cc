@@ -23,6 +23,7 @@ struct PendingLoad {
   uint64_t id = 0;
   bool fetching = false;
   ProcessRuntime::Domain domain = ProcessRuntime::Domain::kBTS;
+  ProcessRuntime::LoadMode mode = ProcessRuntime::LoadMode::kReplace;
   std::string url;
   Callback callback;
   fml::RefPtr<fml::TaskRunner> runner;
@@ -34,6 +35,7 @@ PendingLoad& Load() {
 }
 
 ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread);
+ProcessRuntime::LoadMode RuntimeLoadMode(HSRScriptRequest::LoadMode mode);
 
 void FinishLoad(uint64_t id, const std::string& error) {
   auto& load = Load();
@@ -61,7 +63,7 @@ void SourceLoaded(uint64_t id, std::string source, const std::string& error) {
         runner->PostTask(
             [id, error = std::move(error)] { FinishLoad(id, error); });
       },
-      load.domain);
+      load.domain, load.mode);
 }
 
 void StartLoad(HSRScriptRequest request, Callback callback,
@@ -77,9 +79,12 @@ void StartLoad(HSRScriptRequest request, Callback callback,
   load.callback = std::move(callback);
   load.runner = std::move(runner);
   load.domain = RuntimeDomain(request.thread);
+  load.mode = RuntimeLoadMode(request.mode);
   load.url = request.source_type == HSRScriptRequest::SourceType::kUrl
                  ? request.source
-                 : "host-script://cdp-main.js";
+                 : (request.mode == HSRScriptRequest::LoadMode::kAppend
+                        ? "host-script://cdp-append.js"
+                        : "host-script://cdp-main.js");
   if (request.source_type == HSRScriptRequest::SourceType::kInline) {
     SourceLoaded(id, std::move(request.source), "");
     return;
@@ -110,6 +115,12 @@ ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread) {
       return ProcessRuntime::Domain::kUI;
   }
   return ProcessRuntime::Domain::kBTS;
+}
+
+ProcessRuntime::LoadMode RuntimeLoadMode(HSRScriptRequest::LoadMode mode) {
+  return mode == HSRScriptRequest::LoadMode::kAppend
+             ? ProcessRuntime::LoadMode::kAppend
+             : ProcessRuntime::LoadMode::kReplace;
 }
 
 void Evaluate(HSRScriptRequest request, Callback callback) {

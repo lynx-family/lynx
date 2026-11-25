@@ -17,6 +17,7 @@ struct HSRScriptRequest {
   enum class Operation { kLoadScript, kEvaluate };
   enum class SourceType { kInline, kUrl };
   enum class Thread { kBTS, kMTS, kUI };
+  enum class LoadMode { kReplace, kAppend };
 
   Operation operation = Operation::kLoadScript;
   SourceType source_type = SourceType::kInline;
@@ -26,6 +27,7 @@ struct HSRScriptRequest {
   std::string source;
   // Loading and evaluation select a process runtime, independently of any View.
   Thread thread = Thread::kBTS;
+  LoadMode mode = LoadMode::kReplace;
 };
 
 bool ParseHSRLoadScript(const Json::Value& params, HSRScriptRequest& request,

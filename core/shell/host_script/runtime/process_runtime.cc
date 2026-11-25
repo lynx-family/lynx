@@ -43,6 +43,7 @@ using Completion = ProcessRuntime::Completion;
 using Guard = ProcessRuntime::Guard;
 using BindingFactory = ProcessRuntime::BindingFactory;
 using InitializationMode = ProcessRuntime::InitializationMode;
+using LoadMode = ProcessRuntime::LoadMode;
 enum class ProcessState { kRunning, kStopping, kStopped };
 enum class CompletionValue { kJSON, kSynchronous, kIgnored };
 
@@ -635,13 +636,18 @@ class ProcessRuntime::Impl {
   }
 
   void LoadScript(Domain domain, std::string source, std::string url,
-                  Completion completion) {
+                  Completion completion, LoadMode mode) {
     if (!IsValidDomain(domain)) {
       if (completion) completion(WithError({}, "INVALID_DOMAIN"));
       return;
     }
     if (!NormalizeScriptSource(source, true) || url.empty()) {
       if (completion) completion(WithError({}, "INVALID_SCRIPT_SOURCE"));
+      return;
+    }
+    if (mode == LoadMode::kAppend) {
+      AppendScript(domain, std::move(source), std::move(url),
+                   std::move(completion));
       return;
     }
     auto load = std::make_shared<Load>();
@@ -681,6 +687,39 @@ class ProcessRuntime::Impl {
     Completion completion;
     bool cancelled = false;
   };
+
+  void AppendScript(Domain domain, std::string source, std::string url,
+                    Completion completion) {
+    auto generation = Current(domain);
+    auto* endpoint = generation ? generation->Find(domain) : nullptr;
+    const char* error =
+        !IsHostScriptRuntimeEnabled() ? "HSR_DEBUG_DISABLED"
+        : IsLoading(domain)           ? "RUNTIME_LOADING"
+        : !generation || generation->State() != ProcessState::kRunning
+            ? "RUNTIME_NOT_RUNNING"
+        : !generation->IsLazy() &&
+                !endpoint->publication->ready.load(std::memory_order_acquire)
+            ? "RUNTIME_NOT_READY"
+            : nullptr;
+    auto identity = endpoint ? endpoint->publication->Snapshot() : Result{};
+    identity.domain = HostScriptDomainName(domain);
+    if (error) {
+      if (completion) completion(WithError(std::move(identity), error));
+      return;
+    }
+    if (!generation->Post(
+            *endpoint,
+            [&] {
+              return [source = std::move(source), url = std::move(url),
+                      completion = std::move(completion)](auto& owner) mutable {
+                owner->Evaluate(source, url, std::move(completion), {},
+                                CompletionValue::kIgnored);
+              };
+            }) &&
+        completion) {
+      completion(WithError(std::move(identity), "RUNTIME_NOT_RUNNING"));
+    }
+  }
 
   std::shared_ptr<RuntimeGeneration> MakeDomain(Domain domain,
                                                 const Completion& ready,
@@ -846,9 +885,10 @@ void ProcessRuntime::RunOnThread(Domain domain, std::string source,
 }
 
 void ProcessRuntime::LoadScript(std::string source, std::string url,
-                                Completion completion, Domain domain) {
+                                Completion completion, Domain domain,
+                                LoadMode mode) {
   impl_->LoadScript(domain, std::move(source), std::move(url),
-                    std::move(completion));
+                    std::move(completion), mode);
 }
 
 void ProcessRuntime::Shutdown(Completion completion) {

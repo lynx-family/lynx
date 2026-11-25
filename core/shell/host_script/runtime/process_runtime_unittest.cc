@@ -890,6 +890,111 @@ TEST_F(ProcessRuntimeTest, ExplicitShutdownDiscardsLoadConfiguration) {
   EXPECT_TRUE(Load("42").success);
 }
 
+TEST_F(ProcessRuntimeTest, AppendLoadPreservesGlobalsViewsAndInterceptorSlots) {
+  RegisterView(10, "https://example.com/card-a");
+  InitializeWithInterceptor();
+  auto append = [&](const std::string& source, Domain domain = Domain::kUI) {
+    auto results = std::make_shared<Results>();
+    runtime_.LoadScript(source, "host-script-append.js", Collect(results),
+                        domain, ProcessRuntime::LoadMode::kAppend);
+    EXPECT_TRUE(results->WaitFor(1));
+    return results->Values().front();
+  };
+
+  auto initial_ui = Load(R"(
+    globalThis.savedViews = new Map();
+    interceptor.on('view.created', v => savedViews.set(v.viewId, v));
+    interceptor.on('view.loadTemplate', (_e, c) =>
+      c.proceed({initialData: {fromSlot1: true}}));
+  )",
+                         Domain::kUI);
+  ASSERT_TRUE(initial_ui.success) << initial_ui.error;
+
+  // Append a second script whose final value is a non-JSON subscription
+  // object, plus a third script returning a Promise.
+  auto second_ui = append(R"(
+    globalThis.updateSub = interceptor.on('view.updateMetaData', (_e, c) =>
+      c.proceed({globalProps: {fromAppend: 42}}));
+    globalThis.updateSub
+  )");
+  ASSERT_TRUE(second_ui.success) << second_ui.error;
+  EXPECT_EQ(second_ui.runtime_id, initial_ui.runtime_id);
+  EXPECT_FALSE(second_ui.has_value);
+
+  auto third_ui = append(R"(
+    globalThis.appendedFlag = 'ready';
+    Promise.resolve('ignored')
+  )");
+  ASSERT_TRUE(third_ui.success) << third_ui.error;
+  EXPECT_EQ(third_ui.runtime_id, initial_ui.runtime_id);
+
+  // Also verify BTS JSB rule chaining across initial Load and appended script.
+  auto initial_bts = Load(R"(
+    interceptor.on('jsb.call', (e, c) =>
+      e.module === 'bridge' && e.args[0] === 'slot1'
+        ? c.mock({returnValue: 'from-slot1'})
+        : c.next());
+  )",
+                          Domain::kBTS);
+  ASSERT_TRUE(initial_bts.success) << initial_bts.error;
+  auto appended_bts = append(R"(
+    interceptor.on('jsb.call', (e, c) =>
+      e.module === 'bridge' && e.args[0] === 'slot2'
+        ? c.mock({returnValue: 'from-append'})
+        : c.next());
+  )",
+                             Domain::kBTS);
+  ASSERT_TRUE(appended_bts.success) << appended_bts.error;
+  EXPECT_EQ(appended_bts.runtime_id, initial_bts.runtime_id);
+
+  // A throwing append fails its request without tearing down the live context.
+  auto failed_append = append("throw new Error('append failure');");
+  EXPECT_FALSE(failed_append.success);
+  EXPECT_NE(failed_append.error.find("append failure"), std::string::npos);
+  EXPECT_TRUE(runtime_.IsReady(Domain::kUI));
+  EXPECT_EQ(Value(Domain::kUI, "savedViews.get('10').viewId"), "\"10\"");
+  EXPECT_EQ(Value(Domain::kUI, "appendedFlag"), "\"ready\"");
+
+  OnRunner(runners_.ui, [&] {
+    auto provider = Interceptor::Current(
+        {InterceptKind::kLoadTemplate, InterceptKind::kUpdateMetaData},
+        Interceptor::Domain::kUI);
+    ASSERT_NE(provider, nullptr);
+    auto load_res =
+        provider->Dispatch(InterceptKind::kLoadTemplate, LoadEvent("10"));
+    ASSERT_FALSE(load_res.failed);
+    EXPECT_TRUE(load_res.patch.GetProperty("initialData")
+                    .GetProperty("fromSlot1")
+                    .Bool());
+
+    auto update_res =
+        provider->Dispatch(InterceptKind::kUpdateMetaData, LoadEvent("10"));
+    ASSERT_FALSE(update_res.failed);
+    EXPECT_EQ(update_res.patch.GetProperty("globalProps")
+                  .GetProperty("fromAppend")
+                  .Number(),
+              42);
+  });
+
+  OnRunner(runners_.bts, [&] {
+    auto provider =
+        Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kBTS);
+    ASSERT_NE(provider, nullptr);
+    auto call_jsb = [&](const char* name) {
+      lepus::Value ev(lepus::Dictionary::Create());
+      ev.SetProperty("module", lepus::Value("bridge"));
+      auto args = lepus::CArray::Create();
+      args->push_back(lepus::Value(name));
+      ev.SetProperty("args", lepus::Value(args));
+      auto res = provider->Dispatch(InterceptKind::kCall, ev);
+      EXPECT_FALSE(res.failed);
+      return res.mock.GetProperty("returnValue").StdString();
+    };
+    EXPECT_EQ(call_jsb("slot1"), "from-slot1");
+    EXPECT_EQ(call_jsb("slot2"), "from-append");
+  });
+}
+
 }  // namespace
 }  // namespace shell
 }  // namespace lynx

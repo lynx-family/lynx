@@ -35,7 +35,8 @@ LYNX_EXPORT_FOR_DEVTOOL void EvaluateHostScriptRuntime(
 
 LYNX_EXPORT_FOR_DEVTOOL void LoadHostScriptRuntime(
     std::string source, std::string url, ProcessRuntime::Completion completion,
-    ProcessRuntime::Domain domain = ProcessRuntime::Domain::kBTS);
+    ProcessRuntime::Domain domain = ProcessRuntime::Domain::kBTS,
+    ProcessRuntime::LoadMode mode = ProcessRuntime::LoadMode::kReplace);
 
 struct HostScriptTransport {
   using Callback = base::MoveOnlyClosure<void, Json::Value, const std::string&>;

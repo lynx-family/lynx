@@ -31,6 +31,7 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
  public:
   using Domain = HostScriptDomain;
   enum class InitializationMode { kEager, kLazy };
+  enum class LoadMode { kReplace, kAppend };
 
   // Thread-safe; binding guards become false as soon as their generation
   // closes.
@@ -101,19 +102,23 @@ class LYNX_EXPORT_FOR_DEVTOOL ProcessRuntime final {
   void RunOnThread(Domain domain, std::string source, std::string url,
                    Completion completion, Guard guard = {});
 
-  // Replaces the selected control context using its configured runner and
-  // bindings, then executes source there. Source bytes are validated
-  // before closing the old generation; an empty script is allowed. The entry
+  // Loads source into the selected control context. In kReplace mode (default),
+  // replaces the selected context using its configured runner and bindings,
+  // then executes source there. In kAppend mode, executes source in the current
+  // context while preserving existing globals, proxies and interceptor slots.
+  // Source bytes are validated first; an empty script is allowed. The entry
   // script's completion value is ignored, including Promise values. Completion
   // means synchronous entry execution finished, not that async work settled.
   // Evaluate on that domain and another LoadScript return RUNTIME_LOADING
   // during replacement. A failed replacement is cleaned up and leaves only that
   // domain unavailable; a later LoadScript may retry with the retained
-  // configuration. Other domains and live Views are preserved. Shutdown cancels
-  // replacement without reviving the old script. Callbacks run on an owner
-  // runner, or the caller for admission errors.
+  // configuration. A failed kAppend leaves the existing context running. Other
+  // domains and live Views are preserved. Shutdown cancels replacement without
+  // reviving the old script. Callbacks run on an owner runner, or the caller
+  // for admission errors.
   void LoadScript(std::string source, std::string url, Completion completion,
-                  Domain domain = Domain::kBTS);
+                  Domain domain = Domain::kBTS,
+                  LoadMode mode = LoadMode::kReplace);
 
   // Closes admission immediately, then frees each VM on its owner. Completes
   // on the UI lifecycle runner after all three owners acknowledge cleanup.
