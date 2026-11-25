@@ -74,8 +74,9 @@ class ExposeObserver : public IntersectionObserver {
   ExposeAttrs expose_attrs_ = {};
   bool exposure_host_visible_ = true;
   void NotifyAppearEvent(bool appear);
-  void NotifyGlobalEvent(bool appear);
-  void NotifyExposureEvent(bool appear);
+  void NotifyGlobalEvent(bool appear, uint64_t trace_flow_id = 0);
+  void NotifyExposureEvent(bool appear, const char* reason,
+                           double intersection_ratio);
   void AssembleDetailData();
   void NotifyTarget() override;
   std::function<void(clay::Value::Map)> custom_event_callback_ = nullptr;
