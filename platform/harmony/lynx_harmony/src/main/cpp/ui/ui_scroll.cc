@@ -278,6 +278,10 @@ void UIScroll::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
     ScrollToOffset(pending_scroll_offset_);
     pending_scroll_offset_ = scroll::kInvalidScrollOffset;
   }
+  // Initial-scroll-* is consumed only after this pass has measured all
+  // children. OnNodeReady can run before child positions are final, which
+  // otherwise turns an initial index into a zero offset on Harmony.
+  ApplyInitialScrollTargetIfReady();
   // Sticky dirty here comes from OnMeasure(), where Harmony recalculates
   // content size after child layout info is updated.
   RefreshStickyChildrenIfNeeded();
@@ -294,19 +298,14 @@ void UIScroll::OnNodeReady() {
   }
   // Reset scroll_to_index_ / scroll_left_ / scroll_top_.
   ResetScrollTarget();
-  // Consume valid initial-scroll-to-index or initial-scroll-offset.
-  if (should_consume_initial_scroll_target_) {
-    should_consume_initial_scroll_target_ = false;
-    if (IsValidScrollToIndex(initial_scroll_to_index_)) {
-      UIBase* child = children_[initial_scroll_to_index_];
-      scroll_offset = is_horizontal_ ? child->left_ : child->top_;
-    } else if (IsValidScrollOffset(initial_scroll_offset_)) {
-      scroll_offset = initial_scroll_offset_;
-    }
-  }
   if (IsValidScrollOffset(scroll_offset)) {
     ScrollToOffset(scroll_offset);
   }
+  LOGI("[HarmonyScroll] node_ready sign="
+       << Sign() << " children=" << children_.size()
+       << " initial_index=" << initial_scroll_to_index_ << " initial_offset="
+       << initial_scroll_offset_ << " direct_offset=" << scroll_offset
+       << " layout_changed=" << layout_changed_);
   // Sticky dirty here comes from node updates, child insertions/removals, or
   // scroll-view frame/prop changes in the current node-ready cycle.
   RefreshStickyChildrenIfNeeded();
@@ -315,11 +314,45 @@ void UIScroll::OnNodeReady() {
 void UIScroll::OnNodeReload() {
   BaseScrollContainer::OnNodeReload();
   ResetScrollTarget();
+  should_consume_initial_scroll_target_ = true;
   pending_scroll_offset_ = scroll::kInvalidScrollOffset;
   // TODO: Handle scroll requests already scheduled through VSync that may
   // still run after reload:
   // ScrollToAsyncIfNeeded -> OnNodeReload -> VSyncCallback.
   ScrollTo(0.f, 0.f, false);
+}
+
+void UIScroll::ApplyInitialScrollTargetIfReady() {
+  if (!should_consume_initial_scroll_target_) {
+    return;
+  }
+
+  if (initial_scroll_to_index_ >= 0) {
+    if (!IsValidScrollToIndex(initial_scroll_to_index_)) {
+      LOGI("[HarmonyScroll] defer_initial_index sign="
+           << Sign() << " index=" << initial_scroll_to_index_
+           << " children=" << children_.size());
+      return;
+    }
+    UIBase* child = children_[initial_scroll_to_index_];
+    const float offset = is_horizontal_ ? child->left_ : child->top_;
+    should_consume_initial_scroll_target_ = false;
+    LOGI("[HarmonyScroll] apply_initial_index sign="
+         << Sign() << " index=" << initial_scroll_to_index_
+         << " offset=" << offset << " child_sign=" << child->Sign());
+    ScrollToOffset(offset);
+    return;
+  }
+
+  if (IsValidScrollOffset(initial_scroll_offset_)) {
+    should_consume_initial_scroll_target_ = false;
+    LOGI("[HarmonyScroll] apply_initial_offset sign="
+         << Sign() << " offset=" << initial_scroll_offset_);
+    ScrollToOffset(initial_scroll_offset_);
+    return;
+  }
+
+  should_consume_initial_scroll_target_ = false;
 }
 
 void UIScroll::ScrollToOffset(const float scroll_offset) {

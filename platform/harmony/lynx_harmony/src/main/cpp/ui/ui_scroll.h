@@ -131,6 +131,7 @@ class UIScroll : public BaseScrollContainer, public UIStickyScroller {
  private:
   void UpdateStickyOnScroll();
   void RefreshStickyChildrenIfNeeded();
+  void ApplyInitialScrollTargetIfReady();
   void OnScrollSticky(float x_offset, float y_offset);
 
   int UpdateBorderStatus(float x_offset, float y_offset);

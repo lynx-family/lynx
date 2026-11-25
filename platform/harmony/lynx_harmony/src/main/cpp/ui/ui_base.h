@@ -434,6 +434,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   gfx::PathFillRule fragment_owner_fill_{gfx::PathFillRule::kNonzero};
   float fragment_owner_x_{0}, fragment_owner_y_{0};
   ArkUI_NodeHandle fragment_owner_clip_node_{nullptr};
+  bool fragment_owner_native_clip_applied_{false};
   using FragmentOwnerClipRequest =
       std::pair<std::shared_ptr<const HarmonyNodePathDescriptor>,
                 std::array<float, 4>>;
