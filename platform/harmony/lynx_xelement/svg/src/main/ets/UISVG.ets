@@ -30,6 +30,7 @@ export class UISVG extends UIBase {
   private cssColor?: string = undefined;
   private needUpdateContent = false;
   private needRequestSrc = false;
+  private srcRequestGeneration = 0;
   private svgNodeController: SvgRenderNodeController = new SvgRenderNodeController();
   private src: string | undefined = undefined;
   private allowAntiAlias: boolean = true;
@@ -54,17 +55,28 @@ export class UISVG extends UIBase {
   }
 
   override dispose() {
+    this.srcRequestGeneration++;
     this.svgNodeController.dispose();
     super.dispose();
   }
 
   update(prop: Record<string, Object>, events?: EventHandlerArray[]): void {
-    if (prop.content !== undefined && prop.content !== this.content) {
-      this.content = prop.content as string;
+    if (prop.src === null && this.src !== undefined) {
+      this.src = undefined;
+      this.content = '';
+      this.needRequestSrc = false;
       this.needUpdateContent = true;
-    } else if (prop.src !== undefined && this.src !== prop.src) {
+      this.srcRequestGeneration++;
+    }
+
+    const content = prop.content === null ? '' : prop.content;
+    if (content !== undefined && content !== this.content) {
+      this.content = content as string;
+      this.needUpdateContent = true;
+    } else if (prop.src !== undefined && prop.src !== null && this.src !== prop.src) {
       this.src = prop.src as string;
       this.needRequestSrc = true;
+      this.srcRequestGeneration++;
     }
     for (const entry of Object.entries(prop)) {
       if (entry[0] === 'current-color') {
@@ -159,25 +171,30 @@ export class UISVG extends UIBase {
       this.needUpdateContent = true;
     }
     if (this.needUpdateContent) {
-      this.renderContent(true);
+      this.renderContent(this.content.length > 0);
       this.needUpdateContent = false;
     }
-    if (this.needRequestSrc) {
+    const src = this.src;
+    if (this.needRequestSrc && src !== undefined) {
+      this.needRequestSrc = false;
       // base64
-      if (this.src!.startsWith(this.svgBase64Scheme)) {
-        const base64Str = this.src!.substring(this.svgBase64Scheme.length + 1);
+      if (src.startsWith(this.svgBase64Scheme)) {
+        const base64Str = src.substring(this.svgBase64Scheme.length + 1);
         const base64Helper = new util.Base64Helper();
         const uint8Array = base64Helper.decodeSync(base64Str);
         const decoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
         this.content = decoder.decode(uint8Array);
         this.renderContent(true);
-        this.needRequestSrc = false;
         return;
       }
 
-      const request = new LynxResourceRequest(this.src!, LynxResourceType.LYNX_RESOURCE_TYPE_SVG);
+      const requestGeneration = this.srcRequestGeneration;
+      const request = new LynxResourceRequest(src, LynxResourceType.LYNX_RESOURCE_TYPE_SVG);
       this.lynxContext?.getGenericResourceFetcher()?.fetchResource(request,
         (err: BusinessError, res: ArrayBuffer) => {
+          if (requestGeneration !== this.srcRequestGeneration) {
+            return;
+          }
           if (err) {
             LLog.e('UISvg', `SVG getSrcResource Failed code = ${err.code} message = ${err.message}`);
           } else {
@@ -186,7 +203,6 @@ export class UISVG extends UIBase {
             this.renderContent(true);
           }
         });
-      this.needRequestSrc = false;
     }
   }
 }
