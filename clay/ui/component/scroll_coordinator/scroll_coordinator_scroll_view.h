@@ -49,6 +49,7 @@ class ScrollCoordinatorScrollView
   int GetSlotIndex() const { return head_over_slot_ ? 0 : child_count(); }
 
   bool CaptureScroll(FloatPoint delta) override;
+  bool AllowsDescendantDrag(ScrollDirection direction) const override;
   void OnChildSizeChanged(BaseView* child) override;
   FloatPoint DoScroll(FloatPoint delta, bool by_user_input = true,
                       bool ignore_repaint = false) override;
