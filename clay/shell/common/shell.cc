@@ -174,6 +174,12 @@ std::unique_ptr<Shell> Shell::Create(
     const Shell::CreateCallback<PlatformView>& on_create_platform_view,
     const Shell::CreateCallbackFnPtr<Rasterizer>& on_create_rasterizer,
     bool is_gpu_disabled) {
+  FML_LOG(INFO) << "start Clay Shell::Create, task_runners_valid: "
+                << task_runners.IsValid()
+                << " is_gpu_disabled: " << is_gpu_disabled
+                << " verbose_logging: " << settings.verbose_logging
+                << " enable_software_rendering: "
+                << settings.enable_software_rendering;
   clay::Isolate::Instance().SetIOTaskRunner(task_runners.GetIOTaskRunner());
   clay::Isolate::Instance().SetPlatformTaskRunner(
       task_runners.GetPlatformTaskRunner());
@@ -206,13 +212,16 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
     FML_LOG(ERROR) << "Task runners to run the shell were invalid.";
     return nullptr;
   }
-
   auto shell = std::unique_ptr<Shell>(new Shell(service_manager, task_runners,
                                                 resource_cache_limit_calculator,
                                                 settings, is_gpu_disabled));
 
   // Create the platform view on the platform thread (this thread).
   auto platform_view = on_create_platform_view(service_manager, *shell.get());
+  FML_LOG(INFO)
+      << "start Clay Shell::CreateShellOnPlatformThread created PlatformView"
+      << ", is_gpu_disabled: " << is_gpu_disabled
+      << ", platform_view: " << platform_view.get();
   if (!platform_view || !platform_view->GetWeakPtr()) {
     return nullptr;
   }
@@ -274,6 +283,10 @@ std::unique_ptr<Shell> Shell::CreateShellOnPlatformThread(
         TRACE_EVENT("clay", "ShellSetupGPUSubsystem");
         std::unique_ptr<Rasterizer> rasterizer(
             on_create_rasterizer(service_manager));
+        FML_LOG(INFO) << "start Clay Shell::CreateShellOnPlatformThread "
+                         "created Rasterizer"
+                      << ", rasterizer: " << rasterizer.get()
+                      << " page_unique_id: " << page_id;
         rasterizer->set_unref_queue(unref_queue);
         rasterizer->SetRenderSettings(render_settings);
         service_manager->Attach<clay::Owner::kRaster>(
@@ -310,6 +323,10 @@ std::unique_ptr<Shell> Shell::CreateWithSnapshot(
 
   const bool callbacks_valid =
       on_create_platform_view && on_create_rasterizer && on_create_engine;
+  FML_LOG(INFO) << "start Clay Shell::CreateWithSnapshot"
+                << ", task_runners_valid: " << task_runners.IsValid()
+                << " callbacks_valid: " << callbacks_valid
+                << " is_gpu_disabled: " << is_gpu_disabled;
   if (!task_runners.IsValid() || !callbacks_valid) {
     return nullptr;
   }
@@ -561,6 +578,9 @@ bool Shell::IsSetup() const { return is_setup_; }
 
 bool Shell::Setup(std::unique_ptr<PlatformView> platform_view,
                   std::unique_ptr<Engine> engine) {
+  FML_LOG(INFO) << "start Clay Shell::Setup, platform_view: "
+                << platform_view.get() << " engine: " << engine.get()
+                << " is_setup: " << is_setup_;
   if (is_setup_) {
     return false;
   }

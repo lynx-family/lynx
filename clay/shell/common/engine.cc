@@ -13,6 +13,7 @@
 #include "clay/common/graphics/shared_image_external_texture.h"
 #include "clay/flow/frame_timings.h"
 #include "clay/flow/layers/layer_tree.h"
+#include "clay/fml/logging.h"
 #include "clay/shell/common/services/initialize_service.h"
 #include "clay/shell/common/services/ui_frame_service.h"
 #include "clay/shell/common/services/vsync_waiter_service.h"
@@ -33,6 +34,11 @@ Engine::Engine(std::shared_ptr<clay::ServiceManager> service_manager,
       settings_(std::move(settings)),
       delegate_(delegate),
       weak_factory_(this) {
+  FML_LOG(INFO) << "start Clay Engine::Engine"
+                << ", enable_software_rendering: "
+                << settings_.enable_software_rendering
+                << " enable_performance_overlay: "
+                << settings_.enable_performance_overlay;
   Puppet<Owner::kUI, InitializeService> initialize_service =
       service_manager->GetService<InitializeService>();
   ui_frame_service_ = service_manager->GetService<UIFrameService>();
@@ -56,7 +62,7 @@ Engine::Engine(std::shared_ptr<clay::ServiceManager> service_manager,
 }
 
 Engine::~Engine() {
-  FML_DLOG(ERROR) << "Dealloc clay::Engine";
+  FML_DLOG(ERROR) << "start Clay Dealloc clay::Engine";
   page_view_->Destroy();
   // Clean up views following order: leaked views, PageView, ViewContext.
   view_context_->CleanLeakedViews();
@@ -90,7 +96,8 @@ bool Engine::BeginFrame(std::unique_ptr<FrameTimingsRecorder> recorder) {
     pending_layout_ = false;
   }
   if (page_view_) {
-    return page_view_->BeginFrame(std::move(recorder));
+    bool result = page_view_->BeginFrame(std::move(recorder));
+    return result;
   }
   return false;
 }
@@ -107,10 +114,12 @@ void Engine::OnPlatformViewCreated() { page_view_->OnPlatformViewCreated(); }
 void Engine::OnOutputSurfaceCreated() { page_view_->OnOutputSurfaceCreated(); }
 
 void Engine::OnOutputSurfaceCreateFailed() {
+  FML_LOG(INFO) << "start Clay Engine::OnOutputSurfaceCreateFailed";
   page_view_->OnOutputSurfaceCreateFailed();
 }
 
 void Engine::OnOutputSurfaceDestroyed() {
+  FML_LOG(INFO) << "start Clay Engine::OnOutputSurfaceDestroyed";
   page_view_->OnOutputSurfaceDestroyed();
   // It's not enough to release graphic resources of view tree under PageView,
   // because some views may not attached when surface destroyed.
@@ -132,6 +141,10 @@ void Engine::CleanForRecycle() {
 }
 
 void Engine::SetViewportMetrics(const ViewportMetrics& metrics) {
+  FML_LOG(INFO) << "start Clay Engine::SetViewportMetrics"
+                << ", physical_width: " << metrics.physical_width
+                << " physical_height: " << metrics.physical_height
+                << " device_pixel_ratio: " << metrics.device_pixel_ratio;
   page_view_->SetViewportMetrics(metrics);
 #if defined(OS_MAC) || defined(OS_WIN) || defined(OS_LINUX) || \
     defined(ENABLE_HEADLESS)
