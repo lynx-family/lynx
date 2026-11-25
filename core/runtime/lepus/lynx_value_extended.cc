@@ -502,6 +502,7 @@ lynx_api_status lynx_value_move_reference_ext(lynx_api_env env,
       dst_ref_val = (dst_ref_val == nullptr) ? new GCPersistent() : dst_ref_val;
       dst_ref_val->Reset(env->ctx->rt, src_ref_val->Get());
       src_ref_val->Reset(env->ctx->rt);
+      delete src_ref_val;
     } else {
       dst_ref_val = (dst_ref_val == nullptr) ? new GCPersistent() : dst_ref_val;
       dst_ref_val->Reset(env->ctx->rt, WrapJSValue(src_val));
