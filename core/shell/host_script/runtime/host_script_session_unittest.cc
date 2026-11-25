@@ -261,21 +261,21 @@ TEST_F(HostScriptInterceptorTest, DomainLookupRequiresOwnerThread) {
   Script("interceptor.on('jsb.call',(e,c)=>c.next())");
   const auto before = Interceptor::FailureCount();
   EXPECT_EQ(
-      Interceptor::Current(InterceptKind::kCall, Interceptor::Domain::kUI),
+      Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kUI),
       nullptr);
   EXPECT_EQ(
-      Interceptor::Current(InterceptKind::kCall, Interceptor::Domain::kBTS),
+      Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kBTS),
       provider_);
   std::thread other([] {
     EXPECT_EQ(
-        Interceptor::Current(InterceptKind::kCall, Interceptor::Domain::kMTS),
+        Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kMTS),
         nullptr);
   });
   other.join();
   EXPECT_EQ(Interceptor::FailureCount(), before);
   std::thread unsupported([] {
     EXPECT_EQ(
-        Interceptor::Current(InterceptKind::kCall, Interceptor::Domain::kBTS),
+        Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kBTS),
         nullptr);
   });
   unsupported.join();
@@ -291,10 +291,14 @@ TEST_F(HostScriptInterceptorTest, GuardDisablesLookupAndDispatch) {
   Script("interceptor.on('view.create',(e,c)=>c.next({fontScale:2}))");
   EXPECT_EQ(Dispatch().patch.GetProperty("fontScale").Number(), 2);
   *ready = false;
-  EXPECT_EQ(Interceptor::Current(InterceptKind::kCreate), nullptr);
+  EXPECT_EQ(
+      Interceptor::Current({InterceptKind::kCreate}, Interceptor::Domain::kUI),
+      nullptr);
   EXPECT_FALSE(Dispatch().patch.IsTable());
   *ready = true;
-  EXPECT_EQ(Interceptor::Current(InterceptKind::kCreate), provider_);
+  EXPECT_EQ(
+      Interceptor::Current({InterceptKind::kCreate}, Interceptor::Domain::kUI),
+      provider_);
   EXPECT_EQ(Dispatch().patch.GetProperty("fontScale").Number(), 2);
 }
 
@@ -313,12 +317,14 @@ TEST_F(HostScriptInterceptorTest, DomainsCanShareOneOwnerThread) {
   ASSERT_TRUE(Interceptor::Attach(ui, Interceptor::Domain::kUI));
   ASSERT_TRUE(Interceptor::Attach(bts, Interceptor::Domain::kBTS));
   ASSERT_TRUE(Interceptor::Attach(mts, Interceptor::Domain::kMTS));
-  EXPECT_EQ(Interceptor::Current(InterceptKind::kCreate), ui);
   EXPECT_EQ(
-      Interceptor::Current(InterceptKind::kCall, Interceptor::Domain::kBTS),
+      Interceptor::Current({InterceptKind::kCreate}, Interceptor::Domain::kUI),
+      ui);
+  EXPECT_EQ(
+      Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kBTS),
       bts);
   EXPECT_EQ(
-      Interceptor::Current(InterceptKind::kCall, Interceptor::Domain::kMTS),
+      Interceptor::Current({InterceptKind::kCall}, Interceptor::Domain::kMTS),
       mts);
   ui->Uninstall();
   bts->Uninstall();
@@ -370,6 +376,8 @@ TEST_F(HostScriptInterceptorTest, InvalidDecisionsRollbackWholePhase) {
       "return c.next({screenSize: {width:-1,height:1}})",
       "return c.next({screenSize: {width:2147483648,height:1}})",
       "return c.next({screenSize: {width:1}})",
+      "return c.next({lynxViewConfig: {mode:1}})",
+      "return c.next({lynxViewConfig: 'invalid'})",
       "return c.next({presetMeasuredSpec: {width:1.5,height:1}})"};
   for (auto body : invalid) {
     Install();
@@ -394,12 +402,16 @@ TEST_F(HostScriptInterceptorTest, CreatePatchAcceptsIntegerBoundaries) {
   Script(R"(
     interceptor.on('view.create', (e,c) => c.next({
       threadStrategy:3, screenSize:{width:0,height:2147483647},
+      lynxViewConfig:{mode:'native',empty:''},
       presetMeasuredSpec:{width:-2147483648,height:2147483647}
     }));
   )");
   auto result = Dispatch();
   ASSERT_FALSE(result.failed);
   EXPECT_EQ(result.patch.GetProperty("threadStrategy").Number(), 3);
+  auto config = result.patch.GetProperty("lynxViewConfig");
+  EXPECT_EQ(config.GetProperty("mode").StdString(), "native");
+  EXPECT_EQ(config.GetProperty("empty").StdString(), "");
   EXPECT_EQ(
       result.patch.GetProperty("screenSize").GetProperty("width").Number(), 0);
   EXPECT_EQ(result.patch.GetProperty("presetMeasuredSpec")
@@ -522,7 +534,9 @@ TEST_F(HostScriptInterceptorTest, ThreadRegistrationAndUnload) {
       "globalThis.oldApi=interceptor; "
       "interceptor.on('view.create',(e,c)=>c.next())");
   provider_->Uninstall();
-  EXPECT_EQ(Interceptor::Current(InterceptKind::kCreate), nullptr);
+  EXPECT_EQ(
+      Interceptor::Current({InterceptKind::kCreate}, Interceptor::Domain::kUI),
+      nullptr);
   EXPECT_EQ(
       EvalString(
           "try { oldApi.on('view.create',()=>{}); 'bad' } catch(e) { 'ok' }"),
@@ -594,22 +608,33 @@ TEST_F(HostScriptInterceptorTest, MockValidatesAllCallbacksBeforeCommit) {
   lepus::Value event(lepus::Dictionary::Create());
   auto indices = lepus::CArray::Create();
   indices->push_back(lepus::Value(0));
+  indices->push_back(lepus::Value(2));
   event.SetProperty("callbackIndices", lepus::Value(indices));
   Script(
       "globalThis.d = "
       "interceptor.on('jsb.call',(e,c)=>c.mock({returnValue:7,callbacks:[{"
-      "argumentIndex:0,args:[1]},{argumentIndex:0,args:[2]}]}))");
+      "argumentIndex:0,args:[1]},{argumentIndex:2,args:[2]}]}))");
   auto result = provider_->Dispatch(InterceptKind::kCall, event);
   EXPECT_FALSE(result.failed);
   EXPECT_EQ(result.mock.GetProperty("returnValue").Number(), 7);
   EXPECT_EQ(result.mock.GetProperty("callbacks").GetLength(), 2);
   Script(
       "d.dispose(); "
+      "globalThis.d = "
       "interceptor.on('jsb.call',(e,c)=>c.mock({callbacks:[{argumentIndex:0,"
       "args:[]},{argumentIndex:1,args:[]}]}))");
   result = provider_->Dispatch(InterceptKind::kCall, event);
   EXPECT_TRUE(result.failed);
   EXPECT_FALSE(result.mock.IsTable());
+  Script(
+      "d.dispose(); "
+      "interceptor.on('jsb.call',(e,c)=>c.mock({returnValue:7,callbacks:[{"
+      "argumentIndex:0,args:[1]},{argumentIndex:2,args:[2]},"
+      "{argumentIndex:0,args:[3]}]}))");
+  result = provider_->Dispatch(InterceptKind::kCall, event);
+  EXPECT_TRUE(result.failed);
+  EXPECT_FALSE(result.mock.IsTable());
+  EXPECT_FALSE(result.patch.IsTable());
 }
 
 TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {

@@ -26,19 +26,24 @@ int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(
 
 void ModuleDelegateImpl::CallJSCallback(
     const std::shared_ptr<runtime::js::ModuleCallback>& callback,
-    base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete) {
+    base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete,
+    bool force_async) {
   if (!runtime_actor_) {
     return;
   }
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-  runtime_actor_->Act([callback, id_to_delete,
-                       func = std::move(invoke_pre_func),
-                       enqueue_info](auto& runtime) {
+  auto task = [callback, id_to_delete, func = std::move(invoke_pre_func),
+               enqueue_info](auto& runtime) {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
     if (!func || func()) {
       runtime->CallJSCallback(callback, id_to_delete);
     }
-  });
+  };
+  if (force_async) {
+    runtime_actor_->ActAsync(std::move(task));
+  } else {
+    runtime_actor_->Act(std::move(task));
+  }
 }
 
 void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {
