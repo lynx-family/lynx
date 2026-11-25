@@ -62,10 +62,17 @@ void LynxModuleManagerNAPI::SetupRuntimeLifecycleListener(
           weak_from_this()));
 }
 
+}  // namespace embedder
+}  // namespace lynx
+
 #ifdef USE_WEAK_SUFFIX_NAPI
 #include "third_party/weak-node-api/headers/weak_napi_undefs.h"
 #endif
 #include "third_party/napi/include/js_native_api.h"
+
+namespace lynx {
+namespace embedder {
+
 void LynxModuleManagerNAPI::OnRuntimeAttach(Napi::Env env) {
   lynx_napi_set_instance_data(env, LYNX_NAPI_ENV_LYNX_VIEW_TAG, view_context_,
                               nullptr, nullptr);
