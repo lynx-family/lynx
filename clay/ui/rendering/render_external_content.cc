@@ -6,6 +6,7 @@
 
 #include "clay/fml/logging.h"
 #include "clay/ui/compositing/pending_offset_layer.h"
+#include "clay/ui/painter/border_painter.h"
 #include "clay/ui/painter/painting_context.h"
 
 namespace clay {
@@ -36,13 +37,28 @@ void RenderExternalContent::Paint(PaintingContext& context,
   [[maybe_unused]] FloatPoint paint_offset = offset + PaintOffset();
   if (view_id_.has_value()) {
     FML_DCHECK(!drawable_image_id_.has_value());
-    context.PushLayer(
-        new PendingOffsetLayer({paint_offset.x(), paint_offset.y()}),
-        [&](PaintingContext& ctx, const FloatPoint& layer_offset) {
-          ctx.AddPlatformView(0, 0, ContentWidth(), ContentHeight(),
-                              view_id_.value());
-        },
-        FloatPoint(0, 0));
+    auto paint_platform_view = [this](PaintingContext& ctx,
+                                      const FloatPoint& local_offset) {
+      const auto origin = local_offset + PaintOffset();
+      ctx.PushLayer(
+          new PendingOffsetLayer({origin.x(), origin.y()}),
+          [this](PaintingContext& layer, const FloatPoint&) {
+            layer.AddPlatformView(0, 0, ContentWidth(), ContentHeight(),
+                                  view_id_.value());
+          },
+          FloatPoint(0, 0));
+    };
+    if (clip_platform_view_to_border_radius_ && HasBorder() &&
+        Border().HasBorderRadius()) {
+      const FloatRect rect(paint_offset.x(), paint_offset.y(), ContentWidth(),
+                           ContentHeight());
+      BorderPainter border;
+      border.SetOuterRect(rect);
+      border.SetBorder(Border(), rect);
+      context.PushClipRRect(border.OuterRect(), offset, paint_platform_view);
+    } else {
+      paint_platform_view(context, offset);
+    }
   } else if (draw_external_image) {
     FML_DCHECK(!view_id_.has_value());
     context.AddDrawableImage(paint_offset.x(), paint_offset.y(), ContentWidth(),

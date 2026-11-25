@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/fml/make_copyable.h"
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/public/value.h"
 #include "clay/ui/common/attribute_utils.h"
@@ -72,7 +73,29 @@ void TextShadowNode::SetAttribute(const char* attr_c,
       return;
     }
   }
+  const auto keyword = GetKeywordID(attr_c);
+  if ((lynx::IsIOS() ||
+       (owner_ && owner_->DefaultTextOverflow().has_value())) &&
+      (keyword == KeywordID::kOverflow || keyword == KeywordID::kOverflowY)) {
+    const int overflow = attribute_utils::GetInt(value, -1);
+    std::optional<bool> visible;
+    if (overflow >= 0) {
+      visible = overflow == static_cast<int>(ClayOverflowType::kVisible);
+    }
+    if (overflow_y_visible_ != visible) {
+      overflow_y_visible_ = visible;
+      MarkNeedsUpdate(TextUpdateFlag::kUpdateFlagStyle);
+    }
+  }
   BaseTextShadowNode::SetAttribute(attr_c, value);
+}
+
+bool TextShadowNode::ShouldTruncateToHeight() const {
+  if (!owner_) {
+    return false;
+  }
+  const auto default_overflow = owner_->DefaultTextOverflow();
+  return default_overflow && !overflow_y_visible_.value_or(*default_overflow);
 }
 
 void TextShadowNode::OnLayout(float width, TextMeasureMode width_mode,

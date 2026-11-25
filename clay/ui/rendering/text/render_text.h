@@ -101,8 +101,10 @@ class RenderText : public RenderBox {
   Color selection_background_color_ = Color(0x402196F3);
 
  private:
+  void PaintInlineChildren(PaintingContext& context, const FloatPoint& offset);
+  std::optional<FloatRect> TextClipRect(const FloatPoint& offset) const;
   void PaintText(GraphicsContext* graphics_context, const FloatPoint& offset,
-                 bool as_mask = false);
+                 bool as_mask = false, bool clip_in_canvas = true);
   void PaintInlineEmojis(GraphicsContext* graphics_context, double x_offset,
                          double y_offset);
 

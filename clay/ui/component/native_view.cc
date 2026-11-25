@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/include/fml/macros.h"
+#include "base/include/platform_types.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/common/graphics/drawable_image.h"
 #if OS_LINUX
@@ -35,6 +36,11 @@ NativeView::NativeView(int id, std::string tag, PageView* page_view)
     composition_preference_ =
         page_view->GetViewContext()->GetNativeViewCompositionPreference(
             GetName());
+  }
+  if (lynx::IsIOS() &&
+      (GetName() == "blur-view" || GetName() == "x-blur-view")) {
+    static_cast<RenderExternalContent*>(render_object())
+        ->SetClipPlatformViewToBorderRadius();
   }
   Puppet<Owner::kUI, NativeViewService> native_view_service =
       page_view->GetServiceManager()->GetService<NativeViewService>();

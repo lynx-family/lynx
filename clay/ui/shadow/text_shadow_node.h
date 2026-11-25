@@ -36,6 +36,7 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
 
   using BaseTextShadowNode::SetAttribute;
   void SetAttribute(const char* attr_c, const clay::Value& value) override;
+  bool ShouldTruncateToHeight() const;
 
   bool IsTextShadowNode() override { return true; }
   CustomMeasurable* GetCustomMeasurable() override { return this; }
@@ -110,6 +111,8 @@ class TextShadowNode : public BaseTextShadowNode, public CustomMeasurable {
 
  private:
   friend class TextRenderReuseTestPeer;
+
+  std::optional<bool> overflow_y_visible_;
 
   std::unique_ptr<TextRender> text_render_ = nullptr;
   bool need_second_layout_ = false;

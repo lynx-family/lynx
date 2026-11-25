@@ -189,6 +189,32 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
   EXPECT_NEAR(actual_center_from_baseline, expected_center_from_baseline,
               0.01f);
 }
+TEST(ParagraphTTTextTest, TopPlaceholderUsesTheLineOriginForBothQueries) {
+  auto fonts = CreateFixtureFontCollection();
+  ASSERT_NE(fonts, nullptr);
+  tttext::Style style;
+  tttext::FontDescriptor descriptor;
+  descriptor.font_family_list_ = {kFixtureFontFamily};
+  style.SetFontDescriptor(descriptor);
+  style.SetTextSize(40.f);
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(fonts, paragraph_style, nullptr);
+  paragraph.AddTextRun(style, std::u16string(u"A"));
+  PlaceholderRun placeholder(10.f, 10.f, PlaceholderAlignment::kTop,
+                             TextBaseline::kAlphabetic, 10.f);
+  paragraph.AddPlaceholder(style, placeholder, false);
+  paragraph.Layout(100.f);
+
+  const auto placeholders = paragraph.GetRectsForPlaceholders();
+  const auto range = paragraph.GetRectsForRange(
+      1u, 2u, Paragraph::RectHeightStyle::kTight,
+      Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(placeholders.size(), 1u);
+  ASSERT_EQ(range.size(), 1u);
+  EXPECT_FLOAT_EQ(placeholders[0].rect.Top(), 0.f);
+  EXPECT_FLOAT_EQ(range[0].rect.Top(), 0.f);
+  EXPECT_FLOAT_EQ(range[0].rect.Left(), placeholders[0].rect.Left());
+}
 #endif
 
 TEST(ParagraphTTTextTest, DefaultPlaceholderUsesAlphabeticBaseline) {

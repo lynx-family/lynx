@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/platform_types.h"
 #include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/lynx_adaptor/clay_value.h"
@@ -17,6 +18,7 @@
 #include "clay/lynx_adaptor/prop_bundle_impl.h"
 #include "clay/ui/common/measure_constraint.h"
 #include "core/base/trace/trace_event_def.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace {
 
@@ -250,6 +252,13 @@ std::unique_ptr<PlatformExtraBundle> LayoutContextClay::GetPlatformExtraBundle(
   }
   return std::make_unique<PlatformExtraBundleClay>(id, nullptr,
                                                    std::move(bundle));
+}
+
+void LayoutContextClay::SetPageConfig(const PageConfig& config) {
+  if constexpr (lynx::IsIOS()) {
+    view_context_->ConfigureTextLayout(config.GetEnableTextOverflow(),
+                                       !config.GetEnableTextRefactor());
+  }
 }
 
 void LayoutContextClay::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {

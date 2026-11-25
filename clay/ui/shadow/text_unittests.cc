@@ -13,6 +13,8 @@
 
 #include "base/include/fml/synchronization/waitable_event.h"
 #include "base/include/fml/thread.h"
+#include "base/include/platform_types.h"
+#include "base/include/string/string_utils.h"
 #include "clay/fml/icu_util.h"
 #include "clay/public/layout_delegate.h"
 #include "clay/public/style_types.h"
@@ -21,6 +23,7 @@
 #include "clay/ui/common/measure_constraint.h"
 #include "clay/ui/component/text/raw_text_view.h"
 #include "clay/ui/component/text/text_paragraph_builder.h"
+#include "clay/ui/component/text/text_view.h"
 #include "clay/ui/resource/font_collection.h"
 #include "clay/ui/shadow/inline_image_shadow_node.h"
 #include "clay/ui/shadow/inline_text_shadow_node.h"
@@ -112,6 +115,64 @@ class TextTest : public UITest {
   std::unique_ptr<InlineTextShadowNode> inline_text_shadow_node_;
   std::unique_ptr<RawTextShadowNode> raw_text_shadow_node_;
 };
+
+TEST_F_UI(TextTest, EllipsisReflowsWithHeightAndOverflowChanges) {
+  owner_->SetDefaultTextOverflow(false);
+  text_shadow_node_->SetFontSize(12);
+  text_shadow_node_->SetLineHeight(20);
+  text_shadow_node_->SetTextOverflow(TextOverflow::kEllipsis);
+  raw_text_shadow_node_->SetText(
+      "word word word word word word word word word word word word");
+
+  TextRender render(text_shadow_node_.get());
+  const auto* unrestricted = MeasureParagraph(
+      render,
+      {70.f, MeasureMode::kDefinite, std::nullopt, MeasureMode::kIndefinite});
+  ASSERT_NE(unrestricted, nullptr);
+  const auto& metrics = render.GetCacheParagraph()->GetLineMetrics();
+  ASSERT_GE(metrics.size(), 3u);
+  const auto line_bottom = [&metrics](size_t index) {
+    return metrics[index].baseline + metrics[index].descent;
+  };
+  const float short_height = (line_bottom(0) + line_bottom(1)) / 2;
+  const float tall_height = (line_bottom(1) + line_bottom(2)) / 2;
+
+  auto* clipped = MeasureParagraph(
+      render,
+      {70.f, MeasureMode::kDefinite, short_height, MeasureMode::kDefinite});
+  ASSERT_NE(clipped, nullptr);
+  EXPECT_EQ(clipped->GetLineMetrics().size(), 1u);
+  EXPECT_TRUE(clipped->DidExceedMaxLines());
+
+  auto* taller = MeasureParagraph(
+      render,
+      {70.f, MeasureMode::kDefinite, tall_height, MeasureMode::kDefinite});
+  ASSERT_NE(taller, nullptr);
+  EXPECT_EQ(taller->GetLineMetrics().size(), 2u);
+  EXPECT_TRUE(taller->DidExceedMaxLines());
+
+  text_shadow_node_->SetAttribute(
+      "overflow-y", clay::Value(static_cast<int>(ClayOverflowType::kVisible)));
+  auto* visible = MeasureParagraph(
+      render,
+      {70.f, MeasureMode::kDefinite, short_height, MeasureMode::kDefinite});
+  ASSERT_NE(visible, nullptr);
+  EXPECT_GT(visible->GetLineMetrics().size(), 2u);
+  EXPECT_FALSE(visible->DidExceedMaxLines());
+}
+
+TEST_F_UI(TextTest, OverflowResetsToConfiguredTextDefault) {
+  page_->SetDefaultTextOverflow(false);
+  auto text = std::make_unique<TextView>(1, page_.get());
+  EXPECT_EQ(text->GetOverflow(), CSSProperty::OVERFLOW_HIDDEN);
+
+  text->SetAttribute("overflow",
+                     clay::Value(static_cast<int>(ClayOverflowType::kVisible)));
+  EXPECT_EQ(text->GetOverflow(), CSSProperty::OVERFLOW_XY);
+
+  text->SetAttribute("overflow", clay::Value());
+  EXPECT_EQ(text->GetOverflow(), CSSProperty::OVERFLOW_HIDDEN);
+}
 
 TEST_F_UI(TextTest, EffectAlignResolvesLogicalAlignmentByDirection) {
   TextRender text_render(text_shadow_node_.get());
@@ -481,8 +542,26 @@ TEST_F_UI(TextTest, GetTextInfoHonorsDefaultAndExplicitMaxLine) {
     return result.GetMap().at("content").GetArray().size();
   };
 
-  EXPECT_EQ(get_content(std::nullopt), 1u);
+  if constexpr (lynx::IsIOS()) {
+    EXPECT_GT(get_content(std::nullopt), 3u);
+  } else {
+    EXPECT_EQ(get_content(std::nullopt), 1u);
+  }
   EXPECT_EQ(get_content(3.0), 3u);
+}
+
+TEST_F_UI(TextTest, GetTextInfoReturnsCompleteUnicodeCharacters) {
+  const auto text = lynx::base::U16StringToU8(u"caf\u00E9 \U0001F642");
+  clay::Value::Map params;
+  params.emplace("fontSize", clay::Value("18px"));
+  params.emplace("maxWidth", clay::Value("320px"));
+
+  auto result =
+      TextRender::GetTextInfo(text.c_str(), clay::Value(std::move(params)));
+  const auto& lines = result.GetMap().at("content").GetArray();
+
+  ASSERT_EQ(lines.size(), 1u);
+  EXPECT_EQ(lines.front().GetString(), text);
 }
 
 TEST_F_UI(TextTest, MeasureTextWrapsContentAtWidth) {

@@ -13,12 +13,14 @@
 
 #include "base/include/auto_reset.h"
 #include "base/include/float_comparison.h"
+#include "base/include/platform_types.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_size.h"
 #include "clay/gfx/scroll_direction.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/component/component_constants.h"
 #include "clay/ui/component/keywords.h"
+#include "clay/ui/component/nested_scroll/nested_scroll_manager.h"
 #include "clay/ui/component/scroll_view.h"
 #include "clay/ui/component/view_callback/list_container_event_callback_manager.h"
 #include "clay/ui/lynx_module/type_utils.h"
@@ -253,6 +255,9 @@ void ListContainerView::ScrollToPosition(
     align_to_int = 2;
   }
   if (delegate_) {
+    if constexpr (lynx::IsIOS()) {
+      nested_scroll_manager()->StopFling(this);
+    }
     delegate_->OnScrollToPosition(position, offset, align_to_int, smooth);
   }
   if (callback) {
@@ -264,9 +269,19 @@ void ListContainerView::UpdateContentOffsetForListContainer(
     float content_size, float target_content_offset_x,
     float target_content_offset_y) {
   lynx::base::AutoReset<bool> resetter(&should_block_did_scroll_, true);
+  const bool horizontal_rtl = lynx::IsIOS() && CanScrollX() && IsRtlDirection();
+  const float old_max_offset =
+      horizontal_rtl ? GetRenderScroll()->MaxScrollWidth() : 0.f;
+  const float old_scroll_x = scroll_offset_.x();
   SetMaxContent(content_size);
   if (CanScrollY()) {
     OnScrollUpdate(scroll_offset_.y() + target_content_offset_y);
+  } else if (horizontal_rtl) {
+    // The core list's delta is measured from logical start. Keep that
+    // coordinate stable when changes in content size move the right edge.
+    const float logical_offset = old_max_offset - old_scroll_x;
+    OnScrollUpdate(GetRenderScroll()->MaxScrollWidth() - logical_offset -
+                   target_content_offset_x);
   } else {
     OnScrollUpdate(scroll_offset_.x() + target_content_offset_x);
   }
@@ -277,7 +292,7 @@ void ListContainerView::UpdateScrollInfo(bool smooth, float estimated_offset,
   scrolling_estimated_offset_ = estimated_offset;
   if (!scrolling) {
     ScrollTo(smooth, estimated_offset);
-    if (smooth) {
+    if (!lynx::IsIOS() && smooth) {
       SetScrollStatus(Scrollable::ScrollStatus::kAnimating);
     }
   }
@@ -733,12 +748,20 @@ void ListContainerView::SetMaxContent(float value) {
   }
 }
 
+void ListContainerView::UpdateScrollOffsetForRTL() {
+  if constexpr (!lynx::IsIOS()) {
+    ScrollView::UpdateScrollOffsetForRTL();
+  }
+}
+
 void ListContainerView::HandleEvent(const PointerEvent& event) {
-  if (snap_factor_ >= 0 &&
-      (IsTouchLikePointerDevice(event.device) ||
-       event.device == PointerEvent::DeviceType::kMouse ||
-       event.device == PointerEvent::DeviceType::kTrackpad)) {
-    DetectSnapScroll(event.type);
+  if constexpr (!lynx::IsIOS()) {
+    if (snap_factor_ >= 0 &&
+        (IsTouchLikePointerDevice(event.device) ||
+         event.device == PointerEvent::DeviceType::kMouse ||
+         event.device == PointerEvent::DeviceType::kTrackpad)) {
+      DetectSnapScroll(event.type);
+    }
   }
   ScrollView::HandleEvent(event);
 }
@@ -758,7 +781,9 @@ void ListContainerView::OnScrollStatusChange(ScrollStatus old_status) {
       SetScrollState(ListScrollState::kSettling);
       break;
     case Scrollable::ScrollStatus::kDragging:
-      last_scroll_offset_for_snap_ = scroll_offset_;
+      if constexpr (!lynx::IsIOS()) {
+        last_scroll_offset_for_snap_ = scroll_offset_;
+      }
       SetScrollState(ListScrollState::kDragging);
       break;
     case Scrollable::ScrollStatus::kIdle:
@@ -794,15 +819,19 @@ void ListContainerView::SetScrollState(ListScrollState state) {
 void ListContainerView::DidScroll() {
   ScrollView::DidScroll();
   if (!should_block_did_scroll_ && delegate_) {
-    delegate_->OnScrollByListContainer(scroll_offset_.x(), scroll_offset_.y(),
-                                       scroll_offset_.x(), scroll_offset_.y());
+    const float offset_x =
+        lynx::IsIOS() && CanScrollX() && IsRtlDirection()
+            ? GetRenderScroll()->MaxScrollWidth() - scroll_offset_.x()
+            : scroll_offset_.x();
+    delegate_->OnScrollByListContainer(offset_x, scroll_offset_.y(), offset_x,
+                                       scroll_offset_.y());
     UpdateStickyStarts(scroll_offset_.x(), scroll_offset_.y());
     UpdateStickyEnds(scroll_offset_.x(), scroll_offset_.y());
   }
 }
 
 void ListContainerView::OnScrollUpdate(float offset) {
-  if (status_ == Scrollable::ScrollStatus::kDragging) {
+  if (!lynx::IsIOS() && status_ == Scrollable::ScrollStatus::kDragging) {
     last_scroll_offset_for_snap_ = scroll_offset_;
   }
   if (is_scroll_animating_ && !should_block_did_scroll_) {
@@ -867,70 +896,53 @@ clay::Value::Array ListContainerView::GetVisibleCells() {
 }
 
 void ListContainerView::DetectSnapScroll(PointerEvent::EventType type) {
-  if (snap_factor_ >= 0) {
-    switch (type) {
-      case PointerEvent::EventType::kDownEvent:
-      case PointerEvent::EventType::kMoveEvent:
-      case PointerEvent::EventType::kPanZoomUpdateEvent:
-        last_scroll_offset_for_snap_ = scroll_offset_;
-        break;
-      case PointerEvent::EventType::kUpEvent:
-      case PointerEvent::EventType::kPanZoomEndEvent: {
-        bool is_vertical = CanScrollY();
-        bool forward = false;
-        if (is_vertical) {
-          if (last_scroll_offset_for_snap_.y() == scroll_offset_.y() &&
-              scroll_offset_.y() == 0) {
-            forward = false;
-          } else {
-            forward = scroll_offset_.y() >= last_scroll_offset_for_snap_.y();
-          }
-        } else {
-          if (last_scroll_offset_for_snap_.x() == scroll_offset_.x() &&
-              scroll_offset_.x() == 0) {
-            forward = false;
-          } else {
-            forward = scroll_offset_.x() >= last_scroll_offset_for_snap_.x();
-          }
-        }
+  switch (type) {
+    case PointerEvent::EventType::kDownEvent:
+    case PointerEvent::EventType::kMoveEvent:
+    case PointerEvent::EventType::kPanZoomUpdateEvent:
+      last_scroll_offset_for_snap_ = scroll_offset_;
+      break;
+    case PointerEvent::EventType::kUpEvent:
+    case PointerEvent::EventType::kPanZoomEndEvent: {
+      const bool vertical = CanScrollY();
+      const float previous = vertical ? last_scroll_offset_for_snap_.y()
+                                      : last_scroll_offset_for_snap_.x();
+      const float current = vertical ? scroll_offset_.y() : scroll_offset_.x();
+      SnapToItem(current > previous || (current == previous && current != 0),
+                 current != previous);
+      break;
+    }
+    default:
+      break;
+  }
+}
 
-        bool has_velocity =
-            is_vertical
-                ? last_scroll_offset_for_snap_.y() != scroll_offset_.y()
-                : last_scroll_offset_for_snap_.x() != scroll_offset_.x();
+bool ListContainerView::HandleDragEnd(float velocity) {
+  return snap_factor_ >= 0 && SnapToItem(velocity >= 0, velocity != 0);
+}
 
-        auto scroll_target = CalcSnapScroll(forward, has_velocity);
-        int32_t scroll_position = std::get<0>(scroll_target);
-        if (scroll_position != -1) {
-          float target_x = std::get<1>(scroll_target);
-          float target_y = std::get<2>(scroll_target);
-
-          float target_offset = is_vertical ? target_y : target_x;
-
-          // ScrollTo expects an absolute content offset.
-          // However, we must ensure we don't scroll beyond bounds (though
-          // ScrollTo handles some clamping, explicit safety is better).
-          // And importantly, ensure we are not already there to avoid
-          // unnecessary calls/animations.
-          ScrollTo(true, target_offset);
-        }
-
-        if (page_view_) {
-          clay::Value::Map dict;
-          dict["position"] = clay::Value(scroll_position);
-          dict["currentScrollLeft"] = clay::Value(scroll_offset_.x());
-          dict["currentScrollTop"] = clay::Value(scroll_offset_.y());
-          dict["targetScrollLeft"] = clay::Value(std::get<1>(scroll_target));
-          dict["targetScrollTop"] = clay::Value(std::get<2>(scroll_target));
-          page_view_->SendCustomEvent(GetCallbackId(), "snap", std::move(dict));
-        }
-      } break;
-      case PointerEvent::EventType::kCancel:
-        break;
-      default:
-        break;
+bool ListContainerView::SnapToItem(bool forward, bool has_velocity) {
+  const auto [position, target_x, target_y] =
+      CalcSnapScroll(forward, has_velocity);
+  if (position != -1) {
+    const float target_offset = CanScrollY() ? target_y : target_x;
+    if constexpr (lynx::IsIOS()) {
+      UpdateScrollInfo(/*smooth=*/true, target_offset, /*scrolling=*/false);
+    } else {
+      ScrollTo(/*smooth=*/true, target_offset);
     }
   }
+
+  if (page_view_) {
+    clay::Value::Map detail;
+    detail["position"] = clay::Value(position);
+    detail["currentScrollLeft"] = clay::Value(scroll_offset_.x());
+    detail["currentScrollTop"] = clay::Value(scroll_offset_.y());
+    detail["targetScrollLeft"] = clay::Value(target_x);
+    detail["targetScrollTop"] = clay::Value(target_y);
+    page_view_->SendCustomEvent(GetCallbackId(), "snap", std::move(detail));
+  }
+  return position != -1;
 }
 
 std::tuple<int32_t, float, float> ListContainerView::CalcSnapScroll(

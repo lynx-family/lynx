@@ -39,6 +39,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
   ~TextView() override;
 
   void SetAttribute(const char* attr, const clay::Value& value) override;
+  ClayOverflowType DefaultOverflowForStyle() const override;
   void ClearInlineIndexes();
   void PushInlineImageIndex(int id, int placeholder_id);
   void PushInlineViewIndex(int id, int placeholder_id);

@@ -42,6 +42,7 @@ class LayoutContextClay : public LayoutCtxPlatformImpl,
   void UpdateLayoutNode(int id, PropBundle* painting_data) override;
   void OnLayoutBefore(int tag) override;
   void ScheduleLayout() override;
+  void SetPageConfig(const PageConfig& config) override;
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override;
   void InsertLayoutNode(int parent, int child, int index) override;
   void RemoveLayoutNode(int parent, int child, int index) override;

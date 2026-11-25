@@ -285,6 +285,10 @@ class ViewContext : public std::enable_shared_from_this<ViewContext> {
   void SetEventDelegate(EventDelegate* delegate);
   void SetUIComponentDelegate(UIComponentDelegate* delegate);
   void SetLayoutDelegate(LayoutDelegate* delegate);
+  void ConfigureTextLayout(bool overflow_visible, bool legacy_layout) {
+    shadow_node_owner_->SetDefaultTextOverflow(overflow_visible);
+    shadow_node_owner_->SetLegacyTextLayout(legacy_layout);
+  }
   LayoutDelegate* GetLayoutDelegate() const;
 
   void SetPipelineTimingDelegate(

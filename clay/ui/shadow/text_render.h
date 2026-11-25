@@ -39,7 +39,8 @@ class TextRender {
                ShadowLayoutContextMeasure* context);
   void BuildTextLayout(const MeasureConstraint& constraint,
                        LayoutContext* context);
-  std::unique_ptr<txt::Paragraph> LayoutParagraph(double layout_width);
+  std::unique_ptr<txt::Paragraph> LayoutParagraph(
+      double layout_width, std::optional<size_t> max_lines = std::nullopt);
 
   void SetUpdateFlag(TextUpdateFlag flag) { update_flag_ = flag; }
 
@@ -109,6 +110,7 @@ class TextRender {
 
   TextShadowNode* measure_node_;
   float prev_layout_width_ = std::numeric_limits<float>::quiet_NaN();
+  std::optional<float> prev_ellipsis_height_;
   TextUpdateFlag update_flag_ = TextUpdateFlag::kUpdateFlagNone;
   int measured_width_;
   int measured_height_;

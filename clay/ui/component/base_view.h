@@ -202,6 +202,9 @@ class BaseView : public TypeIdentifiable<BaseView>,
   float Opacity();
   void SetOverflowWithMask(uint8_t mask, int overflow);
   virtual void SetOverflow(int overflow);
+  virtual ClayOverflowType DefaultOverflowForStyle() const {
+    return ClayOverflowType::kVisible;
+  }
   int GetOverflow() { return overflow_; }
   virtual void SetBorder(const BordersData& data);
   void OnBorderChanged(const BordersData& data);

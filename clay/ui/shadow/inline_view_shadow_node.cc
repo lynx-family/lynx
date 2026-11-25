@@ -35,9 +35,15 @@ void InlineViewShadowNode::TextLayout(LayoutContext* context) {
       vertical_align->type == kVerticalAlignBaseline &&
       measured_baseline_ > 0.f;
   const auto baseline = use_measured_baseline ? measured_baseline_ : Height();
-  txt::PlaceholderRun placeholder(
-      Width(), Height(), txt::PlaceholderAlignment::kBaseline,
-      txt::TextBaseline::kAlphabetic, baseline + baseline_offset_);
+  // In the legacy iOS layout, inline views without an authored alignment
+  // start at the line's origin.
+  const auto alignment =
+      owner_ && owner_->UsesLegacyTextLayout() && !vertical_align
+          ? txt::PlaceholderAlignment::kTop
+          : txt::PlaceholderAlignment::kBaseline;
+  txt::PlaceholderRun placeholder(Width(), Height(), alignment,
+                                  txt::TextBaseline::kAlphabetic,
+                                  baseline + baseline_offset_);
   auto* text_context = static_cast<LayoutContextText*>(context);
   start_glyph_ = text_context->TextSizeIncludingPlaceholders();
   end_glyph_ = start_glyph_ + 1;

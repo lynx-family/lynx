@@ -279,6 +279,7 @@ domain
 duration
 dynamic-resource
 enable-drag
+enable-footer-rebound
 enable-lazy-rendering
 enable-loadmore
 enable-refresh
@@ -388,3 +389,5 @@ video-model
 video-tag
 volume
 ComponentID
+enable-scroll-monitor
+fading-edge-length
