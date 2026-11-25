@@ -344,6 +344,7 @@ enum class KeywordID {
   kObjectFit,
   kObjectfit,
   kOnlyLocal,
+  kOptimizeLoadKey,
   kOverlayId,
   kPageChangeAnimation,
   kPageMargin,
