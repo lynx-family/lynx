@@ -672,6 +672,7 @@ jobs:
           export LANG=en_US.UTF-8
           BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
           BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle exec pod install
+          rm -rf $GITHUB_WORKSPACE/lynx/*
           xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build
 
   ios-e2e-test:
