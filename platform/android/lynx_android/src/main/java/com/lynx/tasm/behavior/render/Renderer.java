@@ -33,6 +33,7 @@ public class Renderer {
 
   private final Rect mLynxFrame = new Rect();
   private final Point mRenderOffset = new Point();
+  private boolean mHasLynxFrame;
   private final int mSign;
   private final PlatformRendererContext mPlatformRendererContext;
   private DisplayListApplier mDisplayListApplier = null;
@@ -52,6 +53,7 @@ public class Renderer {
   private int mOpacityLayerSaveCount;
 
   public void setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy) {
+    mHasLynxFrame = true;
     mLynxFrame.set(l + dx, t + dy, r + dx, b + dy);
     mRenderOffset.set(dx, dy);
     if (mRenderHost == null) {
@@ -69,6 +71,10 @@ public class Renderer {
       }
       mRenderHost.applyRendererClipBounds(false, null);
     }
+  }
+
+  boolean hasLynxFrame() {
+    return mHasLynxFrame;
   }
 
   public void publishScrollOffset(float x, float y) {

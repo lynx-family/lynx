@@ -5954,7 +5954,7 @@ bool Element::CanBeLayoutOnly() const {
 void Element::MarkLayoutDirtyLite() {
   if (!is_virtual_) {
     EnsureSLNode();
-    sl_node_->MarkDirtyAndRequestLayout();
+    sl_node_->MarkDirty();
   } else {
     // A custom virtual node needs its own layout-before callback even though
     // the request is scheduled through its layout ancestor.
@@ -5965,6 +5965,26 @@ void Element::MarkLayoutDirtyLite() {
     while (parent) {
       if (!parent->is_virtual_) {
         parent->MarkLayoutDirtyLite();
+        break;
+      }
+      parent = parent->render_parent_;
+    }
+  }
+}
+
+void Element::MarkLayoutDirtyAndRequestLayout(bool force) {
+  if (!EnableLayoutInElementMode()) {
+    MarkLayoutDirty();
+    return;
+  }
+  if (!is_virtual_) {
+    EnsureSLNode();
+    sl_node_->MarkDirtyAndRequestLayout(force);
+  } else {
+    auto *parent = render_parent_;
+    while (parent) {
+      if (!parent->is_virtual_) {
+        parent->MarkLayoutDirtyAndRequestLayout(force);
         break;
       }
       parent = parent->render_parent_;

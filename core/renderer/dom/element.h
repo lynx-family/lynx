@@ -1016,6 +1016,8 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkLayoutDirtyLite();
 
+  virtual void MarkLayoutDirtyAndRequestLayout(bool force = false);
+
   // Dirty flag primitives
   int32_t dirty() const { return dirty_; }
 
