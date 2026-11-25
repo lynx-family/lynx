@@ -5,11 +5,14 @@
 #include <memory>
 
 #include "clay/gfx/geometry/float_point.h"
+#include "clay/ui/component/view.h"
+#include "clay/ui/compositing/pending_offset_layer.h"
 #include "clay/ui/rendering/render_box.h"
 #include "clay/ui/rendering/render_image.h"
 #include "clay/ui/rendering/render_object.h"
 #include "clay/ui/rendering/renderer.h"
 #include "clay/ui/rendering/text/render_text.h"
+#include "clay/ui/testing/ui_test.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -74,6 +77,49 @@ class RenderObjectTest : public ::testing::Test {
 
   std::vector<std::unique_ptr<MockRenderObject>> nodeList;
 };
+
+class RenderObjectLayerOffsetTest : public UITest {};
+
+TEST_F_UI(RenderObjectLayerOffsetTest,
+          DecorationChangesUpdateCompositedLayerOffset) {
+  auto* view = new View(42, page_.get());
+  view->SetBound(30, 20, 100, 100);
+  view->SetRepaintBoundary(true);
+  page_->AddChild(view);
+
+  auto* render_object = view->render_object();
+  auto* renderer = render_object->GetRenderer();
+  ASSERT_NE(renderer, nullptr);
+  const auto expect_layer_offset = [&](const char* update, FloatPoint offset) {
+    SCOPED_TRACE(update);
+    renderer->Paint();
+    const auto* layer =
+        static_cast<const PendingOffsetLayer*>(render_object->GetLayer());
+    ASSERT_NE(layer, nullptr);
+    EXPECT_EQ(layer->Offset(), offset);
+  };
+
+  expect_layer_offset("initial", FloatPoint(30, 20));
+
+  Shadow shadow = {false, 0.f, 1.f, 4.f, 0.f, Color::kBlack()};
+  render_object->SetShadow(shadow);
+  expect_layer_offset("append shadow", FloatPoint(0, 0));
+  render_object->SetShadows({});
+  expect_layer_offset("clear shadows", FloatPoint(30, 20));
+
+  view->SetOutlineWidth(4);
+  expect_layer_offset("add outline", FloatPoint(26, 16));
+  view->SetOutlineWidth(2);
+  expect_layer_offset("resize outline", FloatPoint(28, 18));
+  view->SetOutlineWidth(0);
+  expect_layer_offset("clear outline", FloatPoint(30, 20));
+
+  page_->SetDefaultFocusRingEnabled(true);
+  view->SetHasDefaultFocusRing(true);
+  expect_layer_offset("show focus ring", FloatPoint(20, 10));
+  view->SetHasDefaultFocusRing(false);
+  expect_layer_offset("hide focus ring", FloatPoint(30, 20));
+}
 
 TEST_F(RenderObjectTest, TreeTraversal) {
   EXPECT_EQ(nodeList[0]->PreviousInPreOrder(), nullptr);
