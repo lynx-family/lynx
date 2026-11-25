@@ -478,10 +478,18 @@ public class LynxViewShellActivity extends AppCompatActivity {
     extraTimingInfo.mPrepareTemplateStart = System.currentTimeMillis();
 
     mLynxView = lynxView;
+    TransferChatHost chatHost =
+        queryMap.getBoolean("transfer_chat", false) ? new TransferChatHost(this, lynxView) : null;
     renderLynxViewWithUrl(lynxView, url);
-    mLynxContainer.addView(lynxView,
-        new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
-            queryMap.getInt("height", ViewGroup.LayoutParams.MATCH_PARENT)));
+    if (chatHost != null) {
+      mLynxContainer.addView(chatHost,
+          new FrameLayout.LayoutParams(
+              ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    } else {
+      mLynxContainer.addView(lynxView,
+          new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
+              queryMap.getInt("height", ViewGroup.LayoutParams.MATCH_PARENT)));
+    }
     mLoadingView.bringToFront();
   }
 
