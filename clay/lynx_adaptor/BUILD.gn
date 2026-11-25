@@ -41,6 +41,7 @@ source_set("lynx_adaptor") {
     "ui_delegate_clay.h",
     "value_converter.cc",
     "value_converter.h",
+    "video_engine_tag_priority.h",
   ]
   sources += rebase_path(clay_native_module_sources, "", "native_module")
 

@@ -6,10 +6,12 @@
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/shell/common/engine.h"
 #include "clay/shell/common/services/platform_const_service.h"
 #include "clay/shell/common/services/raster_frame_service.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
@@ -54,6 +56,7 @@ void UIFrameService::SetVsyncSourceActive(bool active) {
 }
 
 void UIFrameService::OnFirstMeaningfulLayout() {
+  TRACE_EVENT_INSTANT("clay", CLAY_STARTUP_FIRST_MEANINGFUL_LAYOUT);
   raster_frame_service_->puppet_.Act(
       [](auto& impl) { impl.SetMeaningfulLayout(true); });
 
