@@ -17,7 +17,6 @@ AnimationTransaction::AnimationTransaction(
     : id_(id),
       state_(TransactionState::kHasPreChildrenSnapshot),
       pre_targets_(std::move(pre_targets)),
-      recorder_(std::make_unique<ItemAnimationRecorder>()),
       item_animator_(std::move(item_animator)) {}
 
 AnimationTransaction::~AnimationTransaction() = default;

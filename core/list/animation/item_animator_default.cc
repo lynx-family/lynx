@@ -30,7 +30,7 @@ bool ItemAnimatorDefault::AnimateRemoveImpl(
   if (!weak_target) {
     return false;
   }
-  pending_removals_.emplace_back(RemoveInfo{
+  pending_removals_.emplace_back(PendingAnimationInfo{
       .target = std::move(weak_target), .pre_layout_info = pre_layout_info});
   return true;
 }
@@ -44,7 +44,7 @@ bool ItemAnimatorDefault::AnimateAddImpl(
   if (!weak_target) {
     return false;
   }
-  pending_adds_.emplace_back(AddInfo{
+  pending_adds_.emplace_back(PendingAnimationInfo{
       .target = std::move(weak_target),
       .post_layout_info = post_layout_info,
   });
@@ -61,7 +61,7 @@ bool ItemAnimatorDefault::AnimateMoveImpl(
   if (!weak_target) {
     return false;
   }
-  pending_moves_.emplace_back(MoveInfo{
+  pending_moves_.emplace_back(PendingAnimationInfo{
       .target = std::move(weak_target),
       .pre_layout_info = pre_layout_info,
       .post_layout_info = post_layout_info,
@@ -86,10 +86,10 @@ void ItemAnimatorDefault::RunPendingAnimations() {
     return;
   }
 
-  std::vector<RemoveInfo> pending_removals;
-  std::vector<AddInfo> pending_adds;
-  std::vector<MoveInfo> pending_moves;
-  std::vector<ChangeInfo> pending_changes;
+  std::vector<PendingAnimationInfo> pending_removals;
+  std::vector<PendingAnimationInfo> pending_adds;
+  std::vector<PendingAnimationInfo> pending_moves;
+  std::vector<PendingAnimationInfo> pending_changes;
   pending_removals.swap(pending_removals_);
   pending_adds.swap(pending_adds_);
   pending_moves.swap(pending_moves_);
@@ -118,16 +118,16 @@ void ItemAnimatorDefault::RunPendingAnimations() {
     // batch-completion notification until every pending item has been given a
     // chance to start.
     in_starting_animations_ = true;
-    for (const RemoveInfo& info : pending_removals) {
+    for (const PendingAnimationInfo& info : pending_removals) {
       StartRemoveAnimation(info, 0);
     }
-    for (const MoveInfo& info : pending_moves) {
+    for (const PendingAnimationInfo& info : pending_moves) {
       StartMoveAnimation(info, move_change_delay);
     }
-    for (const ChangeInfo& info : pending_changes) {
+    for (const PendingAnimationInfo& info : pending_changes) {
       StartChangeAnimation(info, move_change_delay);
     }
-    for (const AddInfo& info : pending_adds) {
+    for (const PendingAnimationInfo& info : pending_adds) {
       StartAddAnimation(info, add_delay);
     }
     in_starting_animations_ = false;
@@ -194,21 +194,16 @@ void ItemAnimatorDefault::CancelAnimations(bool destroy) {
     if (destroy) {
       for (auto& [target_key, running_animation] : running_animations) {
         if (running_animation.animator) {
-          running_animation.animator->RegisterCustomCallback(
-              [](float progress) {});
-
+          running_animation.animator->RegisterCustomCallback({});
           running_animation.animator->RegisterEventCallback(
-              []() {}, ::lynx::animation::basic::Animation::EventType::Start);
-
+              {}, ::lynx::animation::basic::Animation::EventType::Start);
           running_animation.animator->RegisterEventCallback(
-              []() {}, ::lynx::animation::basic::Animation::EventType::End);
-
+              {}, ::lynx::animation::basic::Animation::EventType::End);
           running_animation.animator->RegisterEventCallback(
-              []() {}, ::lynx::animation::basic::Animation::EventType::Cancel);
+              {}, ::lynx::animation::basic::Animation::EventType::Cancel);
           running_animation.animator->DestroyAnimation();
         }
       }
-
     } else {
       for (auto& [target_key, running_animation] : running_animations) {
         if (running_animation.animator) {
@@ -242,240 +237,125 @@ void ItemAnimatorDefault::CancelAnimations(bool destroy) {
  * individually. With zero duration, the dummy frame evaluates the final state
  * directly and may complete the animation inside Start().
  */
-void ItemAnimatorDefault::StartRemoveAnimation(const RemoveInfo& info,
+void ItemAnimatorDefault::StartRemoveAnimation(const PendingAnimationInfo& info,
                                                int32_t delay_ms) {
-  AnimationTarget* target = info.target.get();
-  if (!target) {
-    return;
-  }
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "ItemAnimatorDefault::StartRemoveAnimation");
-
-  starlight::AnimationData animation_data;
-  animation_data.duration = std::max<int32_t>(0, remove_duration_ms());
-  animation_data.delay = std::max<int32_t>(0, delay_ms);
-  animation_data.fill_mode = starlight::AnimationFillModeType::kForwards;
-  animation_data.timing_func.timing_func =
-      starlight::TimingFunctionType::kEaseInEaseOut;
-  auto animator = CreateBasicAnimator(std::move(animation_data));
-
-  const AnimationTargetKey target_key =
-      reinterpret_cast<AnimationTargetKey>(target);
-  const AnimationId animation_id = ++next_animation_id_;
-  fml::WeakPtr<ItemAnimatorDefault> weak_self = WeakFromThis();
-
-  animator->RegisterCustomCallback(
-      [weak_self, target_key, animation_id](float progress) {
-        ItemAnimatorDefault* self = weak_self.get();
-        if (self) {
-          RunningAnimation* running_animation =
-              self->FindRunningAnimation(target_key, animation_id);
-          AnimationTarget* target = nullptr;
-          if (running_animation && (target = running_animation->target.get())) {
-            self->ApplyRemoveFrame(target, progress);
-            // TODO: send custom event.
-          }
-        }
-      });
-
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        ItemAnimatorDefault* self = weak_self.get();
-        if (self) {
-          RunningAnimation* running_animation =
-              self->FindRunningAnimation(target_key, animation_id);
-          AnimationTarget* target = nullptr;
-          if (running_animation && (target = running_animation->target.get())) {
-            // TODO: send start event.
-          }
-        }
+  StartAnimation(
+      RunningAnimation{
+          .type = ItemAnimationType::kDisappearance,
+          .target = info.target,
+          .pre_layout_info = info.pre_layout_info,
       },
-      ::lynx::animation::basic::Animation::EventType::Start);
-
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        if (ItemAnimatorDefault* self = weak_self.get()) {
-          self->FinishRunningAnimation(target_key, animation_id, false);
-        }
-      },
-      ::lynx::animation::basic::Animation::EventType::End);
-
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        if (ItemAnimatorDefault* self = weak_self.get()) {
-          self->FinishRunningAnimation(target_key, animation_id, true);
-        }
-      },
-      ::lynx::animation::basic::Animation::EventType::Cancel);
-
-  running_animations_.insert_or_assign(
-      target_key, RunningAnimation{
-                      .animation_id = animation_id,
-                      .type = ItemAnimationType::kDisappearance,
-                      .target = info.target,
-                      .pre_layout_info = info.pre_layout_info,
-                      .animator = animator,
-                  });
-
-  ApplyRemoveFrame(target, 0.f);
-  animator->Start();
+      remove_duration_ms(), delay_ms);
 }
 
-void ItemAnimatorDefault::StartAddAnimation(const AddInfo& info,
+void ItemAnimatorDefault::StartAddAnimation(const PendingAnimationInfo& info,
                                             int32_t delay_ms) {
-  AnimationTarget* target = info.target.get();
-  if (!target) {
-    return;
-  }
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "ItemAnimatorDefault::StartAddAnimation");
-
-  starlight::AnimationData animation_data;
-  animation_data.duration = std::max<int32_t>(0, add_duration_ms());
-  animation_data.delay = std::max<int32_t>(0, delay_ms);
-  animation_data.fill_mode = starlight::AnimationFillModeType::kForwards;
-  animation_data.timing_func.timing_func =
-      starlight::TimingFunctionType::kEaseInEaseOut;
-  auto animator = CreateBasicAnimator(std::move(animation_data));
-
-  const AnimationTargetKey target_key =
-      reinterpret_cast<AnimationTargetKey>(target);
-  const AnimationId animation_id = ++next_animation_id_;
-  fml::WeakPtr<ItemAnimatorDefault> weak_self = WeakFromThis();
-
-  animator->RegisterCustomCallback(
-      [weak_self, target_key, animation_id](float progress) {
-        ItemAnimatorDefault* self = weak_self.get();
-        if (self) {
-          RunningAnimation* running_animation =
-              self->FindRunningAnimation(target_key, animation_id);
-          AnimationTarget* target = nullptr;
-          if (running_animation && (target = running_animation->target.get())) {
-            self->ApplyAddFrame(target, progress);
-            // TODO: send custom event.
-          }
-        }
-      });
-
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        ItemAnimatorDefault* self = weak_self.get();
-        if (self) {
-          RunningAnimation* running_animation =
-              self->FindRunningAnimation(target_key, animation_id);
-          AnimationTarget* target = nullptr;
-          if (running_animation && (target = running_animation->target.get())) {
-            // TODO: send start event.
-          }
-        }
+  StartAnimation(
+      RunningAnimation{
+          .type = ItemAnimationType::kAppearance,
+          .target = info.target,
+          .post_layout_info = info.post_layout_info,
       },
-      ::lynx::animation::basic::Animation::EventType::Start);
-
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        if (ItemAnimatorDefault* self = weak_self.get()) {
-          self->FinishRunningAnimation(target_key, animation_id, false);
-        }
-      },
-      ::lynx::animation::basic::Animation::EventType::End);
-
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        if (ItemAnimatorDefault* self = weak_self.get()) {
-          self->FinishRunningAnimation(target_key, animation_id, true);
-        }
-      },
-      ::lynx::animation::basic::Animation::EventType::Cancel);
-
-  running_animations_.insert_or_assign(
-      target_key, RunningAnimation{
-                      .animation_id = animation_id,
-                      .type = ItemAnimationType::kAppearance,
-                      .target = info.target,
-                      .post_layout_info = info.post_layout_info,
-                      .animator = animator,
-                  });
-
-  ApplyAddFrame(target, 0.f);
-  animator->Start();
+      add_duration_ms(), delay_ms);
 }
 
-void ItemAnimatorDefault::StartMoveAnimation(const MoveInfo& info,
+void ItemAnimatorDefault::StartMoveAnimation(const PendingAnimationInfo& info,
                                              int32_t delay_ms) {
-  AnimationTarget* target = info.target.get();
+  StartAnimation(
+      RunningAnimation{
+          .type = ItemAnimationType::kPersistence,
+          .target = info.target,
+          .pre_layout_info = info.pre_layout_info,
+          .post_layout_info = info.post_layout_info,
+      },
+      move_duration_ms(), delay_ms);
+}
+
+void ItemAnimatorDefault::StartAnimation(RunningAnimation animation,
+                                         int32_t duration_ms,
+                                         int32_t delay_ms) {
+  AnimationTarget* target = animation.target.get();
   if (!target) {
     return;
   }
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "ItemAnimatorDefault::StartMoveAnimation");
-
+  // create BasicAnimator.
   starlight::AnimationData animation_data;
-  animation_data.duration = std::max<int32_t>(0, move_duration_ms());
+  animation_data.duration = std::max<int32_t>(0, duration_ms);
   animation_data.delay = std::max<int32_t>(0, delay_ms);
   animation_data.fill_mode = starlight::AnimationFillModeType::kForwards;
   animation_data.timing_func.timing_func =
       starlight::TimingFunctionType::kEaseInEaseOut;
-  auto animator = CreateBasicAnimator(std::move(animation_data));
+  auto basic_animator = CreateBasicAnimator(std::move(animation_data));
 
   const AnimationTargetKey target_key =
       reinterpret_cast<AnimationTargetKey>(target);
   const AnimationId animation_id = ++next_animation_id_;
   fml::WeakPtr<ItemAnimatorDefault> weak_self = WeakFromThis();
+  using EventType = ::lynx::animation::basic::Animation::EventType;
 
-  animator->RegisterCustomCallback(
+  // custom callback
+  basic_animator->RegisterCustomCallback(
       [weak_self, target_key, animation_id](float progress) {
-        ItemAnimatorDefault* self = weak_self.get();
-        if (self) {
+        if (ItemAnimatorDefault* self = weak_self.get()) {
           RunningAnimation* running_animation =
               self->FindRunningAnimation(target_key, animation_id);
-          AnimationTarget* target = nullptr;
-          if (running_animation && (target = running_animation->target.get())) {
-            self->ApplyMoveFrame(target, running_animation->pre_layout_info,
-                                 running_animation->post_layout_info, progress);
+          if (running_animation) {
+            self->ApplyAnimationFrame(*running_animation, progress);
             // TODO: send custom event.
           }
         }
       });
 
-  animator->RegisterEventCallback(
-      [weak_self, target_key, animation_id]() {
-        ItemAnimatorDefault* self = weak_self.get();
-        if (self) {
-          RunningAnimation* running_animation =
-              self->FindRunningAnimation(target_key, animation_id);
-          AnimationTarget* target = nullptr;
-          if (running_animation && (target = running_animation->target.get())) {
-            // TODO: send start event.
-          }
-        }
-      },
-      ::lynx::animation::basic::Animation::EventType::Start);
-
-  animator->RegisterEventCallback(
+  // end callback
+  basic_animator->RegisterEventCallback(
       [weak_self, target_key, animation_id]() {
         if (ItemAnimatorDefault* self = weak_self.get()) {
           self->FinishRunningAnimation(target_key, animation_id, false);
         }
       },
-      ::lynx::animation::basic::Animation::EventType::End);
+      EventType::End);
 
-  animator->RegisterEventCallback(
+  // cancel callback
+  basic_animator->RegisterEventCallback(
       [weak_self, target_key, animation_id]() {
         if (ItemAnimatorDefault* self = weak_self.get()) {
           self->FinishRunningAnimation(target_key, animation_id, true);
         }
       },
-      ::lynx::animation::basic::Animation::EventType::Cancel);
+      EventType::Cancel);
 
-  running_animations_.insert_or_assign(
-      target_key, RunningAnimation{
-                      .animation_id = animation_id,
-                      .type = ItemAnimationType::kPersistence,
-                      .target = info.target,
-                      .pre_layout_info = info.pre_layout_info,
-                      .post_layout_info = info.post_layout_info,
-                      .animator = animator,
-                  });
+  // Register the record before Start(), which can invoke callbacks and finish
+  // a zero-duration animation synchronously. The local animator keeps it alive
+  // even if a synchronous callback removes the running record.
+  animation.animation_id = animation_id;
+  animation.animator = basic_animator;
+  auto result =
+      running_animations_.insert_or_assign(target_key, std::move(animation));
 
-  ApplyMoveFrame(target, info.pre_layout_info, info.post_layout_info, 0.f);
-  animator->Start();
+  ApplyAnimationFrame(result.first->second, 0.f);
+  basic_animator->Start();
+}
+
+void ItemAnimatorDefault::ApplyAnimationFrame(const RunningAnimation& animation,
+                                              float progress) {
+  AnimationTarget* target = animation.target.get();
+  if (target) {
+    switch (animation.type) {
+      case ItemAnimationType::kDisappearance:
+        ApplyRemoveFrame(target, progress);
+        break;
+      case ItemAnimationType::kAppearance:
+        ApplyAddFrame(target, progress);
+        break;
+      case ItemAnimationType::kPersistence:
+        ApplyMoveFrame(target, animation.pre_layout_info,
+                       animation.post_layout_info, progress);
+        break;
+      case ItemAnimationType::kChange:
+        // TODO: impl change animation
+        break;
+    }
+  }
 }
 
 void ItemAnimatorDefault::ApplyRemoveFrame(AnimationTarget* target,
@@ -568,16 +448,16 @@ void ItemAnimatorDefault::CancelPendingAnimations() {
       target->FinishAnimation();
     }
   };
-  for (const RemoveInfo& info : pending_removals_) {
+  for (const PendingAnimationInfo& info : pending_removals_) {
     cancel_pending_animation(info.target);
   }
-  for (const AddInfo& info : pending_adds_) {
+  for (const PendingAnimationInfo& info : pending_adds_) {
     cancel_pending_animation(info.target);
   }
-  for (const MoveInfo& info : pending_moves_) {
+  for (const PendingAnimationInfo& info : pending_moves_) {
     cancel_pending_animation(info.target);
   }
-  for (const ChangeInfo& info : pending_changes_) {
+  for (const PendingAnimationInfo& info : pending_changes_) {
     cancel_pending_animation(info.target);
   }
   pending_removals_.clear();
