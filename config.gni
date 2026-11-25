@@ -63,6 +63,9 @@ declare_args() {
   # enable_inspector_test corresponds the macro of INSPECTOR_TEST
   enable_inspector_test = false
 
+  # in some situation we don't want to build logbox, we can disable this flag
+  enable_logbox = true
+
   # disable primjs symbol hidden
   disable_primjs_symbol_visibility_hidden = false
 
