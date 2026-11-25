@@ -31,9 +31,17 @@
     @android.support.annotation.Keep <fields>;
     @android.support.annotation.Keep <methods>;
 }
+-keepclassmembers class * {
+    @android.support.annotation.Keep <fields>;
+    @android.support.annotation.Keep <methods>;
+}
 -dontwarn androidx.annotation.Keep
 -keep @androidx.annotation.Keep class **
 -keep @androidx.annotation.Keep class ** {
+    @androidx.annotation.Keep <fields>;
+    @androidx.annotation.Keep <methods>;
+}
+-keepclassmembers class * {
     @androidx.annotation.Keep <fields>;
     @androidx.annotation.Keep <methods>;
 }
