@@ -166,6 +166,9 @@ RasterStatus Rasterizer::DrawLastLayerTree() {
     raster_frame_service_->RequestRasterFrame();
   }
   raster_status = DrawToSurface(nullptr, *last_layer_tree_);
+  if (raster_status == RasterStatus::kSuccess) {
+    FireNextFrameCallbackIfPresent();
+  }
   return raster_status;
 }
 
@@ -315,6 +318,10 @@ RasterStatus Rasterizer::DoDraw(
   }
 #endif
 #endif
+
+  // Fire after the successfully rasterized tree becomes the retained tree so
+  // callbacks that take a screenshot observe the frame they waited for.
+  FireNextFrameCallbackIfPresent();
 
   return raster_status;
 }
@@ -516,8 +523,6 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       frame_timings_recorder->RecordRasterEnd(
           &compositor_context_->raster_cache());
     }
-
-    FireNextFrameCallbackIfPresent();
 
     if (unref_queue_) {
       unref_queue_->Drain();
