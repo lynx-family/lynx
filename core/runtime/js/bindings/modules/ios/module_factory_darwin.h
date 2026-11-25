@@ -38,6 +38,8 @@ class ModuleFactoryDarwin : public NativeModuleFactory {
   // register module class and param.
   void registerModule(Class<LynxModule> cls);
   void registerModule(Class<LynxModule> cls, id param);
+  void registerModule(NSString *name, Class<LynxModule> cls);
+  void registerModule(NSString *name, Class<LynxModule> cls, id param);
   void registerMethodAuth(LynxMethodBlock block);
   void registerExtraInfo(NSDictionary *extra);
   void registerMethodSession(LynxMethodSessionBlock block);

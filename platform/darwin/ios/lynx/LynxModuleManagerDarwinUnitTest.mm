@@ -13,12 +13,16 @@
 #import "LynxBackgroundRuntime+Internal.h"
 #import "LynxUnitTestUtils.h"
 
+#include "core/runtime/js/bindings/modules/ios/common_module_creator.h"
 #include "core/runtime/js/bindings/modules/ios/lynx_module_darwin.h"
 
 @interface LynxModuleMockGlobal : NSObject <LynxModule>
 @end
 
 @interface LynxModuleMockInstance : NSObject <LynxModule>
+@end
+
+@interface LynxModuleMockExplicitName : NSObject <LynxModule>
 @end
 
 @implementation LynxModuleMockGlobal
@@ -52,6 +56,12 @@
   return self;
 }
 
++ (NSDictionary<NSString *, NSString *> *)methodLookup {
+  return @{};
+}
+@end
+
+@implementation LynxModuleMockExplicitName
 + (NSDictionary<NSString *, NSString *> *)methodLookup {
   return @{};
 }
@@ -95,6 +105,19 @@ class ModuleFactoryDarwinTester : public lynx::runtime::js::ModuleFactoryDarwin 
   XCTAssertNotEqual(platform_module, nullptr);
 
   // TODO(huzhanbo.luc) Test ModuleManager overwriting behavior here later
+}
+
+- (void)testExplicitModuleNameRegistration {
+  auto factory = std::make_shared<ModuleFactoryDarwinTester>();
+  factory->Bind(std::make_unique<lynx::runtime::js::CommonModuleCreator>());
+  factory->registerModule(@"ExplicitModule", LynxModuleMockExplicitName.class);
+
+  std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+      std::make_shared<lynx::pub::LynxNativeModuleManager>();
+  native_module_manager->SetPlatformModuleFactory(factory);
+  native_module_manager->SetModuleDelegate(_mockDelegate);
+  auto platform_module = native_module_manager->GetModule("ExplicitModule");
+  XCTAssertNotEqual(platform_module, nullptr);
 }
 
 @end

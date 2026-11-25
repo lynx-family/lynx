@@ -9,6 +9,7 @@ import("../../../../core/Lynx.gni")
 
 # common_lynx_shared_sources
 common_lynx_shared_sources = [
+  "LynxAutolinkGeneratedLoader.m",
   "LynxBytecodeResponseBlock+Converter.h",
   "LynxBytecodeResponseBlock.mm",
   "LynxConfig.mm",

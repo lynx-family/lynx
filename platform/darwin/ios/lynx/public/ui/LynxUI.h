@@ -16,6 +16,10 @@
 #import <Lynx/LynxUITarget.h>
 #import <Lynx/UIScrollView+Nested.h>
 
+#if defined(__OBJC__) && !defined(LynxAutolinkUI)
+#define LynxAutolinkUI(name) class LynxAutolinkUIMarker;
+#endif
+
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxUI;

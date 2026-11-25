@@ -30,6 +30,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithProvider:(nullable id<LynxTemplateProvider>)provider;
 - (void)registerModule:(Class<LynxModule>)module;
 - (void)registerModule:(Class<LynxModule>)module param:(nullable id)param;
+- (void)registerModule:(Class<LynxModule>)module withName:(NSString *)name;
+- (void)registerModule:(Class<LynxModule>)module withName:(NSString *)name param:(nullable id)param;
 - (void)registerUI:(Class)ui withName:(NSString *)name;
 - (void)registerShadowNode:(Class)node withName:(NSString *)name;
 - (void)registerMethodAuth:(LynxMethodBlock)authBlock;

@@ -90,9 +90,12 @@ void LynxModuleDarwin::buildLookupMap(NSDictionary<NSString *, NSString *> *look
 }
 
 LynxModuleDarwin::LynxModuleDarwin(id<LynxModule> instance)
+    : LynxModuleDarwin(instance, [[instance class] name]) {}
+
+LynxModuleDarwin::LynxModuleDarwin(id<LynxModule> instance, NSString *moduleName)
     : LynxNativeModule(std::make_shared<pub::PubValueFactoryDarwin>()),
       instance_(instance),
-      module_name_(std::string([[[instance class] name] UTF8String])) {
+      module_name_(std::string([moduleName UTF8String])) {
   methodLookup = [[instance class] methodLookup];
   buildLookupMap(methodLookup);
   if ([[instance class] respondsToSelector:@selector(attributeLookup)]) {
