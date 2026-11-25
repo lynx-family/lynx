@@ -10,11 +10,13 @@
 #include <utility>
 
 #include "base/include/string/string_utils.h"
+#include "base/trace/native/trace_event.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/value_utils.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/intersection_observer.h"
 #include "clay/ui/component/page_view.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
@@ -133,6 +135,41 @@ void ExposeObserver::NotifyGlobalEvent(bool appear) {
 }
 
 void ExposeObserver::NotifyExposureEvent(bool appear) {
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, CLAY_EXPOSE_OBSERVER_NOTIFY_EXPOSURE_EVENT,
+      [this, appear](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name",
+                                           appear ? "exposure" : "disexposure");
+        ctx.event()->add_debug_annotations("renderer", "clay");
+        ctx.event()->add_debug_annotations(
+            "target",
+            std::to_string(attached_view_ ? attached_view_->GetCallbackId()
+                                          : -1));
+        ctx.event()->add_debug_annotations(
+            "has_exposure_id",
+            !expose_attrs_.exposure_id.empty() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "has_exposure_scene",
+            !expose_attrs_.exposure_scene.empty() ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "previous_state",
+            std::to_string(static_cast<uint32_t>(expose_attrs_.expose_state)));
+        ctx.event()->add_debug_annotations(
+            "next_state", std::to_string(static_cast<uint32_t>(
+                              appear ? ExposureState::kExposed
+                                     : ExposureState::kDisExposed)));
+        ctx.event()->add_debug_annotations(
+            "host_visible", exposure_host_visible_ ? "true" : "false");
+        ctx.event()->add_debug_annotations(
+            "send_custom",
+            expose_attrs_.exposure_should_notify_appear_ ||
+                    expose_attrs_.exposure_should_notify_disappear_
+                ? "true"
+                : "false");
+        ctx.event()->add_debug_annotations(
+            "send_global",
+            !expose_attrs_.exposure_id.empty() ? "true" : "false");
+      });
   if (expose_attrs_.exposure_should_notify_appear_ ||
       expose_attrs_.exposure_should_notify_disappear_) {
     NotifyAppearEvent(appear);
