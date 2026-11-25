@@ -28,7 +28,6 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
     int span_index_{list::kInvalidIndex};
     int item_index_{list::kInvalidIndex};
   };
-
   class LayoutState {
    public:
     LayoutState(int span_count, list::LayoutDirection layout_direction =
@@ -65,6 +64,7 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
     std::vector<float> end_lines{};
     std::vector<int> end_index{};
   };
+  using Span = std::vector<int>;
 
   StaggeredGridLayoutManager(ListContainerImpl* list_container_impl);
   ~StaggeredGridLayoutManager() override = default;
@@ -122,6 +122,10 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
       LayoutState& layout_state) const;
   SpanItemInfo GetMinEndSpanItemInfoForEndLines(
       LayoutState& layout_state) const;
+  void RetrieveStartAndEndItemOfAttachedSpans(
+      const std::vector<Span>& attached_spans,
+      std::vector<ItemHolder*>& start_item_holders,
+      std::vector<ItemHolder*>& end_item_holders) const;
 
  private:
   std::vector<std::vector<int>> column_indexes_{};
