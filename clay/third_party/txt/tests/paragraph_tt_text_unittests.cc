@@ -189,6 +189,55 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
   EXPECT_NEAR(actual_center_from_baseline, expected_center_from_baseline,
               0.01f);
 }
+
+TEST(ParagraphTTTextTest, MapsPlaceholderAlignmentsToExpectedMetrics) {
+  constexpr float kFontSize = 40.f;
+  constexpr float kPlaceholderHeight = 40.f;
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::Style style;
+  tttext::FontDescriptor font_descriptor;
+  font_descriptor.font_family_list_ = {kFixtureFontFamily};
+  font_descriptor.font_style_ = tttext::FontStyle::Bold();
+  style.SetFontDescriptor(font_descriptor);
+  style.SetTextSize(kFontSize);
+
+  const auto font_info = GetFixtureFontInfo(font_collection, style);
+  ASSERT_TRUE(font_info.has_value());
+  const float font_ascent = font_info->GetAscent();
+  const float font_descent = font_info->GetDescent();
+
+  struct AlignmentExpectation {
+    PlaceholderAlignment alignment;
+    float top;
+    float bottom;
+  };
+  const AlignmentExpectation expectations[] = {
+      {PlaceholderAlignment::kAboveBaseline, -kPlaceholderHeight, 0.f},
+      {PlaceholderAlignment::kBelowBaseline, 0.f, kPlaceholderHeight},
+      {PlaceholderAlignment::kTop, font_ascent, font_ascent + kPlaceholderHeight},
+      {PlaceholderAlignment::kBottom, font_descent - kPlaceholderHeight,
+       font_descent},
+  };
+
+  for (const auto& expectation : expectations) {
+    SCOPED_TRACE(static_cast<int>(expectation.alignment));
+    tttext::ParagraphStyle paragraph_style;
+    ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+    PlaceholderRun placeholder(20.f, kPlaceholderHeight, expectation.alignment,
+                               TextBaseline::kAlphabetic, 0.f);
+    paragraph.AddPlaceholder(style, placeholder, false);
+    paragraph.Layout(100.f);
+
+    const auto boxes = paragraph.GetRectsForPlaceholders();
+    ASSERT_EQ(boxes.size(), 1u);
+    const auto& rect = boxes.front().rect;
+    const float baseline = paragraph.GetAlphabeticBaseline();
+    EXPECT_NEAR(rect.Top() - baseline, expectation.top, 0.01f);
+    EXPECT_NEAR(rect.Bottom() - baseline, expectation.bottom, 0.01f);
+  }
+}
 #endif
 
 TEST(ParagraphTTTextTest, DefaultPlaceholderUsesAlphabeticBaseline) {
