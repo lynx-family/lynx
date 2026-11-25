@@ -2,7 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { LynxClearTimeout, LynxSetTimeout, CommonLynx } from '../common';
+import {
+  CommonLynx,
+  LynxClearTimeout,
+  LynxNapiLoader,
+  LynxSetTimeout,
+} from '../common';
 import { CommonPerformance } from '../common/performance';
 
 /**
@@ -20,6 +25,8 @@ export interface Lynx extends CommonLynx {
 
   // triggerLepusBridge: <Params = Record<string, unknown>>(methodName: string, methodDetail: Params, cb: (...args: unknown[]) => void) => void;
   // triggerLepusBridgeSync: <Ret = unknown, Params = Record<string, unknown>>(methodName: string, methodDetail: Params) => Ret;
+
+  getModuleLoader(): LynxNapiLoader;
 
   /**
    * Support from Lynx 3.0
