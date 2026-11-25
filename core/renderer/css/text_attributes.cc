@@ -17,6 +17,11 @@ void TextAttributes::Apply(const TextAttributes& rhs) {
   font_size = rhs.font_size;
   color = rhs.color;
   decoration_color = rhs.decoration_color;
+  text_decoration_color = rhs.text_decoration_color;
+  text_decoration_style = rhs.text_decoration_style;
+  text_decoration_thickness = rhs.text_decoration_thickness;
+  text_decoration_width = rhs.text_decoration_width;
+  text_decoration_gap = rhs.text_decoration_gap;
   text_gradient = rhs.text_gradient;
   white_space = rhs.white_space;
   text_overflow = rhs.text_overflow;

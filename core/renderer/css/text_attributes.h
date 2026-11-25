@@ -81,6 +81,9 @@ class TextAttributes {
   base::flex_optional<uint32_t> color;
   base::flex_optional<uint32_t> decoration_color;
   base::flex_optional<uint32_t> text_decoration_color;
+  base::flex_optional<float> text_decoration_thickness;
+  base::flex_optional<float> text_decoration_width;
+  base::flex_optional<float> text_decoration_gap;
   uint8_t text_decoration_style{
       DefaultComputedStyle::DEFAULT_TEXT_DECORATION_STYLE};
   // TODO(linxs) this type has changed.
@@ -114,22 +117,26 @@ class TextAttributes {
                  line_height_factor, enable_font_scaling, letter_spacing,
                  line_spacing, text_shadow, text_align, word_break,
                  underline_decoration, line_through_decoration,
-                 text_decoration_color, text_decoration_style, text_indent,
-                 is_auto_font_size, auto_font_size_min_size,
-                 auto_font_size_max_size, auto_font_size_step_granularity,
-                 auto_font_size_preset_sizes, hyphens, font_optical_sizing) ==
-        std::tie(
-            rhs.font_size, rhs.color, rhs.decoration_color, rhs.white_space,
-            rhs.text_overflow, rhs.font_weight, rhs.font_style, rhs.font_family,
-            rhs.computed_line_height, rhs.line_height_factor,
-            rhs.enable_font_scaling, rhs.letter_spacing, rhs.line_spacing,
-            rhs.text_shadow, rhs.text_align, rhs.word_break,
-            rhs.underline_decoration, rhs.line_through_decoration,
-            rhs.text_decoration_color, rhs.text_decoration_style,
-            rhs.text_indent, rhs.is_auto_font_size, rhs.auto_font_size_min_size,
-            rhs.auto_font_size_max_size, rhs.auto_font_size_step_granularity,
-            rhs.auto_font_size_preset_sizes, rhs.hyphens,
-            rhs.font_optical_sizing);
+                 text_decoration_color, text_decoration_style,
+                 text_decoration_thickness, text_decoration_width,
+                 text_decoration_gap, text_indent, is_auto_font_size,
+                 auto_font_size_min_size, auto_font_size_max_size,
+                 auto_font_size_step_granularity, auto_font_size_preset_sizes,
+                 hyphens, font_optical_sizing) ==
+        std::tie(rhs.font_size, rhs.color, rhs.decoration_color,
+                 rhs.white_space, rhs.text_overflow, rhs.font_weight,
+                 rhs.font_style, rhs.font_family, rhs.computed_line_height,
+                 rhs.line_height_factor, rhs.enable_font_scaling,
+                 rhs.letter_spacing, rhs.line_spacing, rhs.text_shadow,
+                 rhs.text_align, rhs.word_break, rhs.underline_decoration,
+                 rhs.line_through_decoration, rhs.text_decoration_color,
+                 rhs.text_decoration_style, rhs.text_decoration_thickness,
+                 rhs.text_decoration_width, rhs.text_decoration_gap,
+                 rhs.text_indent, rhs.is_auto_font_size,
+                 rhs.auto_font_size_min_size, rhs.auto_font_size_max_size,
+                 rhs.auto_font_size_step_granularity,
+                 rhs.auto_font_size_preset_sizes, rhs.hyphens,
+                 rhs.font_optical_sizing);
     if (!base_equal) {
       return false;
     }

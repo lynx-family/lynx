@@ -191,7 +191,7 @@ enum class TransformType : uint32_t {
   kMatrix3d = 1 << 16
 };
 
-enum class TextDecorationType : uint8_t {
+enum class TextDecorationType : uint32_t {
   // text-decoration-line
   kNone = 0,
   kUnderLine = 1 << 0,
@@ -204,6 +204,8 @@ enum class TextDecorationType : uint8_t {
   kWavy = 1 << 6,
   // No idea why the f the color enum is needed.
   kColor = 1 << 7,
+  // text-decoration-thickness
+  kThickness = 1 << 8,
 };
 
 enum class FontFaceSrcType : uint8_t {
