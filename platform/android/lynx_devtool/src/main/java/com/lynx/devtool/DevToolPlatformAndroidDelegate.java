@@ -25,6 +25,8 @@ import com.lynx.tasm.LynxView;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.PageReloadHelper;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.LynxUIOwner;
 import java.lang.ref.WeakReference;
@@ -247,9 +249,14 @@ public class DevToolPlatformAndroidDelegate {
       return;
     }
     if (mFacadePtr != 0) {
-      nativeSendPageScreencastFrameEvent(mFacadePtr, bitmap, metadata.mOffsetTop, pageScaleFactor,
-          metadata.mDeviceWidth, metadata.mDeviceHeight, metadata.mScrollOffsetX,
-          metadata.mScrollOffsetY, metadata.mTimestamp);
+      TraceEvent.beginSection(TraceEventDef.SCREENCAST_SEND);
+      try {
+        nativeSendPageScreencastFrameEvent(mFacadePtr, bitmap, metadata.mOffsetTop, pageScaleFactor,
+            metadata.mDeviceWidth, metadata.mDeviceHeight, metadata.mScrollOffsetX,
+            metadata.mScrollOffsetY, metadata.mTimestamp);
+      } finally {
+        TraceEvent.endSection(TraceEventDef.SCREENCAST_SEND);
+      }
     }
   }
 
