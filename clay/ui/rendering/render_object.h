@@ -245,11 +245,8 @@ class RenderObject : public AbstractNode {
   void SetOutline(const OutlineData& outline_data);
   bool HasOutline() const { return outline_.has_value(); }
   const OutlineData& Outline() const { return *outline_; }
-  OutlineData& MutableOutline() {
-    if (!outline_.has_value()) {
-      outline_ = std::make_optional<OutlineData>(OutlineData());
-    }
-    return *outline_;
+  OutlineData OutlineOrDefault() const {
+    return outline_.value_or(OutlineData());
   }
 
   bool IsPainting() const { return painting_; }
@@ -540,6 +537,7 @@ class RenderObject : public AbstractNode {
   };
 
   FloatPoint PaintOffsetEx() const;
+  void MarkNeedsPaintAfterDecorationChange(const FloatPoint& previous_offset);
 
   bool WasRepaintBoundary();
 
