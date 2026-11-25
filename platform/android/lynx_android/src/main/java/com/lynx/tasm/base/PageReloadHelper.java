@@ -236,6 +236,10 @@ public class PageReloadHelper {
       url = "";
     }
 
+    if (templateData != null) {
+      templateData = templateData.deepClone();
+    }
+
     if (templateBin != null) {
       lynxView.renderTemplateWithBaseUrl(templateBin, mInitTemplateData, url);
     } else if (templateBundle != null) {
