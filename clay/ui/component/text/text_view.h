@@ -169,7 +169,8 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
                               const FloatPoint& point_by_page,
                               FloatPoint* relative_position,
                               int platform_try_hit_id = -1);
-  bool ClickOnText(size_t glyph_index, const FloatPoint& point_by_paragraph,
+  bool ClickOnText(txt::Paragraph::PositionWithAffinity text_pos,
+                   const FloatPoint& point_by_paragraph,
                    txt::Paragraph* paragraph);
   bool is_text_selection_ = false;
 #if defined(OS_WIN) || defined(OS_OSX)
