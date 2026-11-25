@@ -296,6 +296,40 @@ TEST_F(ProcessRuntimeTest, ViewCreatedReplaysViewsOncePerSubscription) {
 }
 
 TEST_F(ProcessRuntimeTest,
+       ViewCreatedBroadcastsToMultipleSubscribersAndIsolatesErrors) {
+  RegisterView(1, "https://example.com/card-one");
+  InitializeWithInterceptor();
+  ASSERT_EQ(Value(Domain::kUI, R"(
+    globalThis.events = [];
+    interceptor.on('view.created', view => {
+      events.push('sub1:' + view.viewId);
+      if (view.viewId === '1') throw new Error('sub1 boom');
+    });
+    interceptor.on('view.created', {priority: 10}, view => {
+      events.push('prio10:' + view.viewId);
+    });
+    interceptor.on('view.created', {viewId: '2'}, view => {
+      events.push('scoped2:' + view.viewId);
+    });
+    0)"),
+            "0");
+  // Drain initial replays for View 1 before creating View 2.
+  OnRunner(runners_.ui, [] {});
+  RegisterView(2, "https://example.com/card-two");
+  // Late subscriber replays existing Views without re-delivering to earlier
+  // subscribers.
+  ASSERT_EQ(Value(Domain::kUI, R"(
+    interceptor.on('view.created', {urlIncludes: 'card-two'}, view => {
+      events.push('lateUrl:' + view.viewId);
+    });
+    0)"),
+            "0");
+  EXPECT_EQ(
+      Value(Domain::kUI, "events"),
+      R"(["sub1:1","prio10:1","prio10:2","sub1:2","scoped2:2","lateUrl:2"])");
+}
+
+TEST_F(ProcessRuntimeTest,
        LynxViewProxiesAreCachedPerContextAndPassedToDecisions) {
   RegisterView(1, "https://example.com/a");
   InitializeWithInterceptor();
