@@ -853,25 +853,25 @@ void BaseView::SetOutline(const OutlineData& outline) {
 }
 
 void BaseView::SetOutlineStyle(const BorderStyleType style) {
-  auto& outline = render_object()->MutableOutline();
+  auto outline = render_object()->OutlineOrDefault();
   outline.style_ = style;
   render_object()->SetOutline(outline);
 }
 
 void BaseView::SetOutlineWidth(int width) {
-  auto& outline = render_object()->MutableOutline();
+  auto outline = render_object()->OutlineOrDefault();
   outline.width_ = width;
   render_object()->SetOutline(outline);
 }
 
 void BaseView::SetOutlineOffset(int offset) {
-  auto& outline = render_object()->MutableOutline();
+  auto outline = render_object()->OutlineOrDefault();
   outline.offset_ = offset;
   render_object()->SetOutline(outline);
 }
 
 void BaseView::SetOutlineColor(unsigned int color) {
-  auto& outline = render_object()->MutableOutline();
+  auto outline = render_object()->OutlineOrDefault();
   outline.color_ = color;
   render_object()->SetOutline(outline);
 }
