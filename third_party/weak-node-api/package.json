@@ -5,6 +5,6 @@
     "clean": "rm -rf generated headers prebuilt node_modules pnpm-lock.yaml"
   },
   "dependencies": {
-    "@lynx-js/weak-node-api": "0.0.4"
+    "@lynx-js/weak-node-api": "0.0.6"
   }
 }
