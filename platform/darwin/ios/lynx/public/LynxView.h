@@ -28,6 +28,8 @@
 #import <Lynx/LynxViewClientV2.h>
 #import <Lynx/LynxViewEnum.h>
 
+#import <Lynx/LynxTransferredView.h>
+
 @class LynxTemplateRender;
 @class LynxContext;
 @class LynxElement;
@@ -332,6 +334,13 @@
 - (void)restartAnimation;
 
 #pragma mark - Transfer
+
+/** Create a mountable container on the main thread after the template has loaded. */
+- (nonnull LynxTransferredView*)loadTransfer:(nonnull NSString*)componentName
+                                initialProps:(nonnull NSDictionary*)initialProps;
+- (nonnull LynxTransferredView*)loadTransfer:(nonnull NSString*)componentName
+                                initialProps:(nonnull NSDictionary*)initialProps
+                                      client:(nullable id<LynxTransferClient>)client;
 
 /**
  * Experimental API; may change in future releases. Call on the main thread.

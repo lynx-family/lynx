@@ -3,9 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxTransferManager.h"
+#import "LynxTransferredView+Internal.h"
 
 #import <Lynx/LynxTransferListener.h>
 #import <Lynx/LynxTransferWrapperView.h>
+
+static NSString* const kLynxManagedTransferIdPrefix = @"__lynx_sdk_transfer_";
 
 @interface LynxTransferRecord : NSObject
 
@@ -21,6 +24,8 @@
 
 @interface LynxTransferManager ()
 
+@property(nonatomic, strong) NSMutableDictionary<NSString*, LynxTransferredView*>* managed;
+
 @property(nonatomic, strong) NSMutableOrderedSet<id<LynxTransferListener>>* transferListeners;
 @property(nonatomic, strong) NSMutableDictionary<NSString*, LynxTransferRecord*>* activeTransfers;
 @property(nonatomic, strong) NSMutableDictionary<NSString*, LynxTransferRecord*>* pendingTransfers;
@@ -35,8 +40,28 @@
     _transferListeners = [NSMutableOrderedSet orderedSet];
     _activeTransfers = [NSMutableDictionary dictionary];
     _pendingTransfers = [NSMutableDictionary dictionary];
+    _managed = [NSMutableDictionary dictionary];
   }
   return self;
+}
+
+- (LynxTransferredView*)loadTransfer:(NSString*)componentName
+                        initialProps:(NSDictionary*)props
+                              client:(id<LynxTransferClient>)client
+                            dispatch:(void (^)(NSString*, NSDictionary*))dispatch {
+  NSString* transferId =
+      [kLynxManagedTransferIdPrefix stringByAppendingString:NSUUID.UUID.UUIDString];
+  __weak LynxTransferManager* weakSelf = self;
+  LynxTransferredView* card =
+      [[LynxTransferredView alloc] initWithId:transferId
+                                       client:client
+                                     dispatch:dispatch
+                                   unregister:^{
+                                     [weakSelf.managed removeObjectForKey:transferId];
+                                   }];
+  self.managed[transferId] = card;
+  [card startComponent:componentName initialProps:props];
+  return card;
 }
 
 - (void)registerTransferListener:(id<LynxTransferListener>)listener {
@@ -79,14 +104,19 @@
   }
 
   NSString* key = [self transferKeyForView:view];
+  [self.activeTransfers removeObjectForKey:key];
+  [self.pendingTransfers removeObjectForKey:key];
+  [view removeFromSuperview];
+  if ([transferId hasPrefix:kLynxManagedTransferIdPrefix]) {
+    [self.managed[transferId] bindContent:view];
+    return;
+  }
   LynxTransferRecord* record = [LynxTransferRecord new];
   record.transferId = transferId;
   record.view = view;
   record.dataset = dataset;
 
-  [self.activeTransfers removeObjectForKey:key];
   self.pendingTransfers[key] = record;
-  [view removeFromSuperview];
 
   NSArray<id<LynxTransferListener>>* listeners = self.transferListeners.array;
   for (id<LynxTransferListener> listener in listeners) {
@@ -120,6 +150,10 @@
 }
 
 - (void)dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView*)view {
+  if ([view.superview isKindOfClass:LynxTransferredView.class]) {
+    [view.superview invalidateIntrinsicContentSize];
+    return;
+  }
   LynxTransferRecord* record = self.activeTransfers[[self transferKeyForView:view]];
   if (record.listener != nil && [self.transferListeners containsObject:record.listener] &&
       [record.listener respondsToSelector:@selector(transferViewDidChangeIntrinsicContentSize:)]) {
@@ -128,6 +162,11 @@
 }
 
 - (void)dispatchTransferRemove:(NSString*)transferId view:(UIView*)view {
+  if ([transferId hasPrefix:kLynxManagedTransferIdPrefix]) {
+    LynxTransferredView* card = self.managed[transferId];
+    [card detachContent:view];
+    return;
+  }
   if (view == nil) {
     return;
   }
@@ -144,6 +183,9 @@
 }
 
 - (void)clearTransfers {
+  for (LynxTransferredView* card in self.managed.allValues) {
+    [card dispose:LynxTransferReleaseReasonOwnerDestroy];
+  }
   NSMutableArray<LynxTransferRecord*>* records =
       [NSMutableArray arrayWithArray:self.activeTransfers.allValues];
   [records addObjectsFromArray:self.pendingTransfers.allValues];

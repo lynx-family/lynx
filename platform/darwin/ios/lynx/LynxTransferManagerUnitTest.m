@@ -64,6 +64,45 @@
 
 @implementation LynxTransferManagerUnitTest
 
+- (void)testReleasedTransferIgnoresLateContentAndLeavesSiblingUsable {
+  LynxTransferManager* manager = [LynxTransferManager new];
+  NSMutableArray* types = [NSMutableArray array];
+  NSMutableArray* ids = [NSMutableArray array];
+  void (^dispatch)(NSString*, NSDictionary*) = ^(NSString* type, NSDictionary* data) {
+    [types addObject:type];
+    [ids addObject:data[@"transferId"]];
+  };
+  LynxTransferredView* a = [manager loadTransfer:@"Card"
+                                    initialProps:@{}
+                                          client:nil
+                                        dispatch:dispatch];
+  LynxTransferredView* b = [manager loadTransfer:@"Card"
+                                    initialProps:@{}
+                                          client:nil
+                                        dispatch:dispatch];
+  XCTAssertNotEqualObjects(ids[0], ids[1]);
+  [a clearForDestroy];
+  [a clearForDestroy];
+  UIView* late = [UIView new];
+  [manager dispatchTransferCreate:ids[0] view:late dataset:@{}];
+  XCTAssertNil(late.superview);
+  UIView* live = [UIView new];
+  [manager dispatchTransferCreate:ids[1] view:live dataset:@{}];
+  XCTAssertEqual(live.superview, b);
+  [a reload:@{}];
+  [b updateProps:@{}];
+  [b reload:@{}];
+  [manager clearTransfers];
+  [b clearForDestroy];
+  XCTAssertNil(live.superview);
+  XCTAssertEqualObjects(types, (@[
+                          @"__CreateTransfer", @"__CreateTransfer", @"__DestroyTransfer",
+                          @"__UpdateTransfer", @"__ReloadTransfer"
+                        ]));
+  XCTAssertEqualObjects(ids[2], ids[0]);
+  XCTAssertEqualObjects(ids[3], ids[1]);
+}
+
 - (void)testDatasetLifecycleNotifiesOwner {
   LynxTransferManager* manager = [LynxTransferManager new];
   LynxTransferTestListener* owner = [LynxTransferTestListener new];

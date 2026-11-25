@@ -166,6 +166,28 @@
   _templateRender = nil;
 }
 
+- (LynxTransferredView*)loadTransfer:(NSString*)componentName
+                        initialProps:(NSDictionary*)initialProps {
+  return [self loadTransfer:componentName initialProps:initialProps client:nil];
+}
+
+- (LynxTransferredView*)loadTransfer:(NSString*)componentName
+                        initialProps:(NSDictionary*)initialProps
+                              client:(id<LynxTransferClient>)client {
+  NSAssert(NSThread.isMainThread, @"Transfer requires the main thread");
+  if (!self.transferManager || !_templateRender.transferReady) {
+    [NSException raise:NSInternalInconsistencyException
+                format:@"loadTransfer requires a loaded template"];
+  }
+  __weak LynxTemplateRender* render = _templateRender;
+  return [self.transferManager loadTransfer:componentName
+                               initialProps:initialProps
+                                     client:client
+                                   dispatch:^(NSString* type, NSDictionary* data) {
+                                     [render dispatchTransferEvent:type data:data];
+                                   }];
+}
+
 - (void)registerTransferListener:(nonnull id<LynxTransferListener>)listener {
   [self.transferManager registerTransferListener:listener];
 }

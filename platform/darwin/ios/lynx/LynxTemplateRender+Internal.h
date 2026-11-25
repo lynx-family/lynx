@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxTemplateRender ()
 
+@property(nonatomic, assign, readonly) BOOL transferReady;
+- (void)dispatchTransferEvent:(NSString *)type data:(NSDictionary *)data;
+
 /**
  * used by FrameView
  */
