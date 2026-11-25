@@ -120,6 +120,9 @@ void PictureRasterCacheItem::PrerollSetup(PrerollContext* context,
   auto frame_size = context->compositor_state
                         ? context->compositor_state->GetFrameSize()
                         : skity::Vec2{1e9, 1e9};
+  if (context->paints_into_platform_view_slice) {
+    return;
+  }
   // If there is a deferred decoding image, skip raster cache.
   if (!IsPictureWorthRasterizing(
           picture_,

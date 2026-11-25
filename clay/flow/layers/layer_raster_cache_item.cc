@@ -29,6 +29,9 @@ LayerRasterCacheItem::LayerRasterCacheItem(Layer* layer,
 void LayerRasterCacheItem::PrerollSetup(PrerollContext* context,
                                         const skity::Matrix& matrix) {
   cache_state_ = CacheState::kNone;
+  if (context->paints_into_platform_view_slice) {
+    return;
+  }
   if (context->raster_cache && context->raster_cached_entries) {
     context->raster_cached_entries->push_back(this);
     child_items_ = context->raster_cached_entries->size();
