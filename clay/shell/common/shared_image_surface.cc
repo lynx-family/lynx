@@ -124,6 +124,7 @@ std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireFrame(
   ClaySharedImageRepresentationConfig config{};
   config.struct_size = sizeof(config);
 #if OS_ANDROID
+  [[maybe_unused]] constexpr auto submit_gl_writes = &glFlush;
   constexpr auto type = BackingType::kAHardwareBuffer;
   constexpr auto format = PixelFormat::kRGBA8888;
   GLint limit = 0;
@@ -132,6 +133,7 @@ std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireFrame(
   config.type = kClaySharedImageRepresentationTypeGL;
   config.gl_config.struct_size = sizeof(config.gl_config);
 #elif (OS_MAC || OS_IOS)
+  [[maybe_unused]] constexpr void (*submit_gl_writes)() = nullptr;
   constexpr auto type = BackingType::kIOSurface;
   constexpr auto format = PixelFormat::kNative8888;
   config.type = kClaySharedImageRepresentationTypeMetal;
@@ -176,6 +178,10 @@ std::unique_ptr<SurfaceFrame> SharedImageSurface::AcquireFrame(
 #ifdef ENABLE_SKITY
         CANVAS_FLUSH(canvas);
         frame.GetSurface()->Flush();
+        if constexpr (submit_gl_writes != nullptr) {
+          // Submit the GL writes before the compositor imports the buffer.
+          submit_gl_writes();
+        }
 #else
         frame.GetSurface()->flushAndSubmit();
 #endif
