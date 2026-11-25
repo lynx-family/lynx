@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
+#include "core/shell/common/shell_trace_event_def.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -67,10 +69,23 @@ void LynxEngineProxyImpl::SendCustomEvent(const std::string& name, int32_t tag,
         "nullptr");
     return;
   }
+  const int32_t instance_id = engine_actor_->GetInstanceId();
+  const uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SEND_CUSTOM_EVENT_TO_ENGINE,
+              [name, tag, instance_id,
+               trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("event_name", name);
+                ctx.event()->add_debug_annotations("tag", std::to_string(tag));
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   auto params_value = pub::ValueUtils::ConvertValueToLepusValue(params);
-  engine_actor_->Act([name, tag, params_value, params_name](auto& engine) {
-    engine->SendCustomEvent(name, tag, params_value, params_name);
-  });
+  engine_actor_->Act(
+      [name, tag, params_value, params_name, trace_flow_id](auto& engine) {
+        engine->SendCustomEvent(name, tag, params_value, params_name,
+                                trace_flow_id);
+      });
 }
 
 void LynxEngineProxyImpl::SendGestureEvent(int tag, int gesture_id,

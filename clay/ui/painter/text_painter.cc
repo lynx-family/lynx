@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/gfx/geometry/float_rect.h"
 #include "clay/gfx/geometry/float_size.h"
@@ -20,6 +21,7 @@
 #include "clay/ui/common/editing_misc.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/painter/gradient_factory.h"
+#include "core/base/trace/trace_event_def.h"
 #include "skity/geometry/rect.hpp"
 #if defined(CLAY_ENABLE_SKSHAPER)
 #include "clay/third_party/txt/src/skia/paragraph_builder_skia.h"
@@ -206,6 +208,7 @@ TextRange TextPainter::GetLineRangeForPosition(size_t position) {
 
 void TextPainter::Paint(GraphicsContext* context, double x_offset,
                         double y_offset) {
+  TRACE_EVENT("clay", CLAY_TEXT_PAINTER_PAINT);
   UpdateGradientIfNeeded(context);
   if (paragraph_) {
 #ifndef ENABLE_SKITY

@@ -7,9 +7,11 @@
 #include <memory>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/clay_value.h"
 #include "clay/public/value.h"
+#include "core/base/trace/trace_event_def.h"
 
 #if OS_WIN
 #include <Windows.h>
@@ -406,8 +408,19 @@ void LynxEventDispatcher::OnSendCustomEvent(int view_id,
   if (!engine_proxy_) {
     return;
   }
-  auto params = lynx::ClayValue(clay::Value{std::move(args)});
-  engine_proxy_->SendCustomEvent(event_name, view_id, params, "detail");
+  TRACE_EVENT("clay", CLAY_DISPATCHER_SEND_CUSTOM_EVENT, "event_name",
+              event_name.c_str(), "view_id", view_id);
+  std::unique_ptr<lynx::ClayValue> params;
+  {
+    TRACE_EVENT("clay", CLAY_EVENT_DISPATCHER_CONVERT_CUSTOM_EVENT_PAYLOAD,
+                "event_name", event_name.c_str(), "view_id", view_id);
+    params = std::make_unique<lynx::ClayValue>(clay::Value{std::move(args)});
+  }
+  {
+    TRACE_EVENT("clay", CLAY_EVENT_DISPATCHER_DISPATCH_CUSTOM_EVENT_TO_ENGINE,
+                "event_name", event_name.c_str(), "view_id", view_id);
+    engine_proxy_->SendCustomEvent(event_name, view_id, *params, "detail");
+  }
 }
 
 void LynxEventDispatcher::OnSendGlobalEvent(const std::string& event_name,
@@ -415,16 +428,26 @@ void LynxEventDispatcher::OnSendGlobalEvent(const std::string& event_name,
   if (!runtime_proxy_) {
     return;
   }
-  clay::Value::Array array_wrapper(2);
-  array_wrapper[0] = clay::Value(event_name);
-  clay::Value::Array array_args(1);
-  array_args[0] = std::move(args);
-  array_wrapper[1] = clay::Value(std::move(array_args));
-
-  auto params = clay::Value(std::move(array_wrapper));
-  runtime_proxy_->CallJSFunction(
-      "GlobalEventEmitter", "emit",
-      std::make_unique<lynx::ClayValue>(std::move(params)));
+  TRACE_EVENT("clay", CLAY_DISPATCHER_SEND_GLOBAL_EVENT, "event_name",
+              event_name.c_str());
+  std::unique_ptr<lynx::ClayValue> params;
+  {
+    TRACE_EVENT("clay", CLAY_EVENT_DISPATCHER_CONVERT_GLOBAL_EVENT_PAYLOAD,
+                "event_name", event_name.c_str());
+    clay::Value::Array array_wrapper(2);
+    array_wrapper[0] = clay::Value(event_name);
+    clay::Value::Array array_args(1);
+    array_args[0] = std::move(args);
+    array_wrapper[1] = clay::Value(std::move(array_args));
+    params = std::make_unique<lynx::ClayValue>(
+        clay::Value(std::move(array_wrapper)));
+  }
+  {
+    TRACE_EVENT("clay", CLAY_EVENT_DISPATCHER_DISPATCH_GLOBAL_EVENT_TO_RUNTIME,
+                "event_name", event_name.c_str());
+    runtime_proxy_->CallJSFunction("GlobalEventEmitter", "emit",
+                                   std::move(params));
+  }
 }
 
 void LynxEventDispatcher::OnDrawEndEvent() {

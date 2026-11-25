@@ -267,6 +267,9 @@ void LayoutContextClay::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {
 
 LayoutResult LayoutContextClay::MeasureImpl(int sign, int width, int width_mode,
                                             int height, int height_mode) {
+  TRACE_EVENT("clay", CLAY_LAYOUT_CONTEXT_MEASURE_IMPL, "id", sign, "width",
+              width, "width_mode", width_mode, "height", height, "height_mode",
+              height_mode);
   float out_width = 0.f;
   float out_height = 0.f;
   float out_baseline = 0.f;
@@ -322,6 +325,9 @@ void LayoutContextClay::OnAlignNativeNode(int32_t id, float offset_top,
 
 ClayMeasureOutput LayoutContextClay::OnMeasureNativeNode(
     int32_t id, float width, int width_mode, float height, int height_mode) {
+  TRACE_EVENT("clay", CLAY_LAYOUT_CONTEXT_MEASURE_NATIVE_NODE, "id", id,
+              "width", width, "width_mode", width_mode, "height", height,
+              "height_mode", height_mode);
   auto size = layout_node_manager_->UpdateMeasureByPlatform(
       id, width, width_mode, height, height_mode, true);
   return {size.width_, size.height_, size.baseline_};

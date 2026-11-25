@@ -900,6 +900,10 @@ void LayoutContext::DispatchLayoutBeforeRecursively(LayoutNode* node) {
 }
 
 void LayoutContext::UpdateLayoutInfo(LayoutNode* node) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_CONTEXT_UPDATE_LAYOUT_INFO, "node_id",
+              node->id(), "tag", node->tag().c_str(), "is_custom",
+              node->is_custom(), "has_measure_func",
+              node->slnode()->GetSLMeasureFunc() != nullptr);
   // Faster than use YGTransferLayoutOutputsRecursive in YGJNI.cc by 0.5 times
   auto sl_node = node->slnode();
   if (!sl_node) return;

@@ -6,9 +6,11 @@
 
 #include <algorithm>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/ui/painter/painting_context.h"
 #include "clay/ui/rendering/render_object.h"
+#include "core/base/trace/trace_event_def.h"
 
 namespace clay {
 
@@ -72,31 +74,49 @@ void Renderer::Paint() {
     return;
   }
 
-  root_->ValidateForPaint(true);  // root is always visible
-  root_->WillPaint();
+  {
+    TRACE_EVENT("clay", CLAY_RENDERER_VALIDATE_ROOT_FOR_PAINT);
+    root_->ValidateForPaint(true);  // root is always visible
+  }
+  {
+    TRACE_EVENT("clay", CLAY_RENDERER_PREPARE_ROOT_FOR_PAINT);
+    root_->WillPaint();
+  }
   std::list<RenderObject*> dirty_nodes;
-  dirty_nodes.swap(nodes_needing_paint_);
-  nodes_needing_paint_.clear();
-  dirty_nodes.unique();
-  // Sort the dirty nodes in reverse order (deepest first).
-  dirty_nodes.sort([](RenderObject* node1, RenderObject* node2) {
-    return node1->Depth() > node2->Depth();
-  });
+  {
+    TRACE_EVENT("clay", CLAY_RENDERER_PREPARE_DIRTY_NODES,
+                "pending_dirty_node_count", nodes_needing_paint_.size());
+    dirty_nodes.swap(nodes_needing_paint_);
+    nodes_needing_paint_.clear();
+    dirty_nodes.unique();
+    // Sort the dirty nodes in reverse order (deepest first).
+    dirty_nodes.sort([](RenderObject* node1, RenderObject* node2) {
+      return node1->Depth() > node2->Depth();
+    });
+  }
 
-  for (auto* node : dirty_nodes) {
-    if (!node->IsRepaintBoundary()) {
-      FML_DLOG(ERROR) << "find dirty node: " << node->ID()
-                      << " which is not IsRepaintBoundary";
-      node->MarkNeedsPaint(true);
-      continue;
-    }
-    if (node->NeedsPaint() || node->NeedsEffect()) {
-      PaintingContext::RepaintCompositedChild(node, unref_queue_);
+  {
+    TRACE_EVENT("clay", CLAY_RENDERER_REPAINT_DIRTY_NODES, "dirty_node_count",
+                dirty_nodes.size());
+    for (auto* node : dirty_nodes) {
+      if (!node->IsRepaintBoundary()) {
+        FML_DLOG(ERROR) << "find dirty node: " << node->ID()
+                        << " which is not IsRepaintBoundary";
+        node->MarkNeedsPaint(true);
+        continue;
+      }
+      if (node->NeedsPaint() || node->NeedsEffect()) {
+        PaintingContext::RepaintCompositedChild(node, unref_queue_);
+      }
     }
   }
 
   // Append all layers of overlay children to root layer.
-  AddOverlayToRootLayer();
+  {
+    TRACE_EVENT("clay", CLAY_RENDERER_ATTACH_OVERLAY_LAYERS, "overlay_count",
+                overlay_children_.size());
+    AddOverlayToRootLayer();
+  }
 }
 
 void Renderer::RequestPaint() {
