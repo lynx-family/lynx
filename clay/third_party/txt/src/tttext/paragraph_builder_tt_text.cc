@@ -101,6 +101,13 @@ tttext::Style ParagraphBuilderTTText::ToTTStyle(const TextStyle& text_style) {
   tttext::Width descriptor_width = tttext::FontStyle::kNormal_Width;
   tttext::Slant descriptor_slant = tttext::FontStyle::kUpright_Slant;
   bool use_synthetic_italic = text_style.font_style != FontStyle::normal;
+#if defined(OS_LINUX) && defined(ENABLE_SKITY)
+  // Let TTText match italic fonts and synthesize italic only when needed.
+  if (use_synthetic_italic) {
+    descriptor_slant = tttext::FontStyle::kItalic_Slant;
+  }
+  use_synthetic_italic = false;
+#endif
 #if defined(ENABLE_SKITY)
   const auto font_variations = text_style.GetResolvedFontVariations();
   if (!font_variations.GetAxisValues().empty()) {
