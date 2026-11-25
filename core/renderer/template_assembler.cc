@@ -2164,6 +2164,29 @@ void TemplateAssembler::UpdateMetaData(
   bool global_props_changed = !global_props.IsNil();
   bool data_changed = template_data != nullptr;
 
+  // In fiber mode, when both data and globalProps are updated together,
+  // check if frontend registered __UpdateMetaData. If so, use the combined
+  // event to avoid triggering two separate renders (one for updateGlobalProps,
+  // one for updateData -> UpdateTemplate).
+  if (template_loaded_ && global_props_changed && data_changed &&
+      EnableFiberArch()) {
+    TemplateData data = ProcessTemplateData(template_data, false);
+
+    auto engine_context_proxy =
+        GetContextProxy(runtime::ContextProxy::Type::kEngine);
+    if (engine_context_proxy &&
+        engine_context_proxy->HasEventListener(kUpdateMetaData)) {
+      auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
+      if (context != nullptr) {
+        lepus::Value options = update_page_option.ToLepusValue();
+        DispatchEventFromEngineToCoreContext(context, kUpdateMetaData,
+                                             kUpdateMetaData, data.GetValue(),
+                                             global_props, options);
+      }
+      return;
+    }
+  }
+
   if (global_props_changed) {
     UpdateGlobalProps(global_props, !data_changed, pipeline_options);
   }
