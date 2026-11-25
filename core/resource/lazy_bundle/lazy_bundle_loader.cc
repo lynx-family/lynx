@@ -391,13 +391,13 @@ lepus::Value LazyBundleLoader::GetPerfInfo(const std::string& url) {
 }
 
 void LazyBundleLoader::InsertTemplateBundle(const std::string& url,
-                                            LynxTemplateBundle bundle) {
+                                            const LynxTemplateBundle& bundle) {
   LOGE("LazyBundleLoader::InsertTemplateBundle: " << url << "this: " << this);
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_LOADER_INSERT_BUNDLE, "url",
               url);
 
   std::unique_lock<std::mutex> lock(mutex_);
-  loaded_bundles_.emplace(url, bundle);
+  loaded_bundles_.try_emplace(url, bundle);
 }
 
 std::optional<LynxTemplateBundle> LazyBundleLoader::GetTemplateBundle(
