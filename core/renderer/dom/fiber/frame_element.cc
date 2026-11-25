@@ -122,13 +122,12 @@ bool FrameElement::DidBundleLoaded(
     } else {
       LOGE("load frame bundle failed:" << data->error_message);
     }
-
-    SendLoadEvent(data);
     // TODO(yangguangzhao.solace): remove this when unified pipeline is ready
     element_container()->Flush();
   } else {
     bundle_data_ = data;
   }
+  SendLoadEvent(data);
   return true;
 }
 
@@ -139,7 +138,6 @@ void FrameElement::FlushProps() {
     if (bundle_data_->bundle) {
       element_container()->SetFrameAppBundle(bundle_data_->bundle);
     }
-    SendLoadEvent(bundle_data_);
     bundle_data_ = nullptr;
   }
 }
@@ -165,10 +163,8 @@ void FrameElement::SendLoadEvent(
   frame_loaded_info->SetValue(BASE_STATIC_STRING(kFrameElement),
                               fml::RefPtr<FiberElement>(this));
 
-  if (auto* delegate = element_manager()->element_manager_delegate()) {
-    delegate->TriggerLepusGlobalEvent(
-        kFrameLoaded, lepus::Value(std::move(frame_loaded_info)));
-  }
+  element_manager()->TriggerLepusGlobalEvent(
+      kFrameLoaded, lepus::Value(std::move(frame_loaded_info)), true);
 }
 
 const std::string& FrameElement::GetSrc() const { return src_; }

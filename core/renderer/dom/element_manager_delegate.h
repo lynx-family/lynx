@@ -51,10 +51,6 @@ class ElementManagerDelegate {
   virtual void SendGlobalEvent(const std::string &event,
                                const lepus::Value &info) = 0;
 
-  // Call for sending Lepus global event.
-  virtual void TriggerLepusGlobalEvent(const std::string &event,
-                                       const lepus::Value &info) = 0;
-
   virtual void OnLayoutAfter(PipelineLayoutData &data) = 0;
 };
 

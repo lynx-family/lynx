@@ -430,12 +430,29 @@ void MockTasmDelegate::SendNativeCustomEvent(const std::string& name, int tag,
   ss_ << "SendNativeCustomEvent" << std::endl;
 }
 
+void MockTasmDelegate::TriggerLepusGlobalEvent(const std::string& name,
+                                               const lepus::Value& param_value,
+                                               bool is_async) {
+  ++trigger_lepus_global_event_count_;
+  last_triggered_lepus_global_event_name_ = name;
+  last_triggered_lepus_global_event_value_ = param_value;
+  last_triggered_lepus_global_event_async_ = is_async;
+  ss_ << "TriggerLepusGlobalEvent" << std::endl;
+}
+
 void MockTasmDelegate::ClearAnimationEvent() {
   animation_event_type_ = nullptr;
   animation_start_event_count_ = 0;
   animation_end_event_count_ = 0;
   animation_cancel_event_count_ = 0;
   animation_iteration_event_count_ = 0;
+}
+
+void MockTasmDelegate::ResetTriggeredLepusGlobalEvent() {
+  trigger_lepus_global_event_count_ = 0;
+  last_triggered_lepus_global_event_name_.clear();
+  last_triggered_lepus_global_event_value_ = lepus::Value();
+  last_triggered_lepus_global_event_async_ = false;
 }
 
 void MockTasmDelegate::RecycleTemplateBundle(

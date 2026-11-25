@@ -110,11 +110,27 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   virtual void SendNativeCustomEvent(const std::string& name, int tag,
                                      const lepus::Value& param_value,
                                      const std::string& param_name) override;
+  virtual void TriggerLepusGlobalEvent(const std::string& name,
+                                       const lepus::Value& param_value,
+                                       bool is_async) override;
 
   const char* GetAnimationEventType() { return animation_event_type_; }
   void ClearAnimationEvent();
   const lepus::Value& GetAnimationEventParams() {
     return animation_event_params_;
+  }
+  void ResetTriggeredLepusGlobalEvent();
+  int trigger_lepus_global_event_count() const {
+    return trigger_lepus_global_event_count_;
+  }
+  const std::string& last_triggered_lepus_global_event_name() const {
+    return last_triggered_lepus_global_event_name_;
+  }
+  const lepus::Value& last_triggered_lepus_global_event_value() const {
+    return last_triggered_lepus_global_event_value_;
+  }
+  bool last_triggered_lepus_global_event_async() const {
+    return last_triggered_lepus_global_event_async_;
   }
 
   // LynxEngine::Delegate
@@ -299,6 +315,10 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   size_t animation_end_event_count_{0};
   size_t animation_cancel_event_count_{0};
   size_t animation_iteration_event_count_{0};
+  int trigger_lepus_global_event_count_{0};
+  std::string last_triggered_lepus_global_event_name_;
+  lepus::Value last_triggered_lepus_global_event_value_;
+  bool last_triggered_lepus_global_event_async_{false};
 
   // for recycle template bundle
   tasm::LynxTemplateBundle bundle_;
