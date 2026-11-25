@@ -1,1 +1,1 @@
-plugins = ["NativeUT", "AndroidUT"]
+plugins = ["NativeUT", "AndroidUT", "CoverageChecker"]
