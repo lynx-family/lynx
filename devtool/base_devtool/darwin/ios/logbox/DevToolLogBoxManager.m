@@ -191,17 +191,17 @@ static int const kMaxBriefMsgSize = 50;
   NSDictionary* dic = [NSJSONSerialization JSONObjectWithData:data options:0 error:&parseError];
   if (parseError) {
     NSLog(@"An error occurred when parse json: %@", [parseError localizedDescription]);
-  } else {
+  } else if ([dic isKindOfClass:[NSDictionary class]]) {
     id rawError;
     id errorStr = [dic objectForKey:@"error"];
     if (!errorStr) {
       NSLog(@"Cannot find 'error' field in json");
     } else if ([errorStr isKindOfClass:[NSString class]]) {
-      NSDictionary* errorDic =
+      id errorDic =
           [NSJSONSerialization JSONObjectWithData:[errorStr dataUsingEncoding:NSUTF8StringEncoding]
                                           options:0
                                             error:&parseError];
-      if (errorDic && !parseError) {
+      if (!parseError && [errorDic isKindOfClass:[NSDictionary class]]) {
         rawError = [errorDic objectForKey:@"rawError"];
       } else {
         briefMessage = errorStr;
@@ -210,7 +210,10 @@ static int const kMaxBriefMsgSize = 50;
       rawError = [errorStr objectForKey:@"rawError"];
     }
     if (rawError && [rawError isKindOfClass:[NSDictionary class]]) {
-      briefMessage = [rawError objectForKey:@"message"];
+      id rawMessage = [rawError objectForKey:@"message"];
+      if ([rawMessage isKindOfClass:[NSString class]]) {
+        briefMessage = rawMessage;
+      }
     }
   }
   if (!briefMessage) {
