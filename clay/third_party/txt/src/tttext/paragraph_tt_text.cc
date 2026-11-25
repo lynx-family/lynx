@@ -6,6 +6,7 @@
 
 #include <textra/layout_drawer.h>
 #include <textra/layout_region.h>
+#include <textra/platform_helper.h>
 #include <textra/text_layout.h>
 #include <textra/text_line.h>
 #include <algorithm>
@@ -292,10 +293,13 @@ void ParagraphTTText::Layout(double width) {
 #if defined(ENABLE_SKITY)
   auto i_font_collection =
       font_collection_->GetIFontCollection(variation_font_manager_);
-  tttext::TextLayout layout(&i_font_collection, tttext::kSelfRendering);
+  tttext::TextLayout layout(&i_font_collection,
+                            tttext::PlatformHelper::GetSelfRenderingBackend(
+                                tttext::RenderingBackend::kSkity));
 #else
   auto i_font_collection = font_collection_->CreateTTFontCollection();
-  tttext::TextLayout layout(i_font_collection.get(), tttext::kSelfRendering);
+  tttext::TextLayout layout(i_font_collection.get(),
+                            tttext::RenderingBackend::kSkia);
 #endif
   auto& paragraph_style = paragraph_->GetParagraphStyle();
   auto halign = paragraph_style.GetHorizontalAlign();
