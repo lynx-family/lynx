@@ -86,6 +86,16 @@ std::optional<tttext::FontInfo> GetFixtureFontInfo(
   return typefaces.front()->GetFontInfo(style.GetTextSize());
 }
 
+tttext::Style MakeFixtureStyle(float text_size) {
+  tttext::Style style;
+  tttext::FontDescriptor font_descriptor;
+  font_descriptor.font_family_list_ = {kFixtureFontFamily};
+  font_descriptor.font_style_ = tttext::FontStyle::Bold();
+  style.SetFontDescriptor(font_descriptor);
+  style.SetTextSize(text_size);
+  return style;
+}
+
 }  // namespace
 #endif
 
@@ -188,6 +198,232 @@ TEST(ParagraphTTTextTest, MiddleUsesResolvedFontMetrics) {
       (rect.Top() + rect.Bottom()) / 2.f - paragraph.GetAlphabeticBaseline();
   EXPECT_NEAR(actual_center_from_baseline, expected_center_from_baseline,
               0.01f);
+}
+
+TEST(ParagraphTTTextTest, NormalAndTightRectsShareParagraphCoordinates) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  constexpr float kFontSize = 40.f;
+  tttext::Style style;
+  tttext::FontDescriptor font_descriptor;
+  font_descriptor.font_family_list_ = {kFixtureFontFamily};
+  font_descriptor.font_style_ = tttext::FontStyle::Bold();
+  style.SetFontDescriptor(font_descriptor);
+  style.SetTextSize(kFontSize);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+  paragraph.AddTextRun(style, std::u16string(u"Hello"));
+  paragraph.Layout(1024);
+
+  ASSERT_EQ(paragraph.region_->GetLineCount(), 1u);
+  auto* line = paragraph.region_->GetLine(0);
+  const uint32_t start = line->GetStartCharPos();
+  const uint32_t end = line->GetEndCharPos();
+  const float baseline = line->GetLineBaseLine();
+
+  float normal[4] = {0};
+  line->GetBoundingRectByCharRange(normal, start, end);
+  float tight[4] = {0};
+  line->GetTightBoundingRectByCharRange(tight, start, end);
+
+  const auto normal_boxes = paragraph.GetRectsForRange(
+      start, end, Paragraph::RectHeightStyle::kMax,
+      Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(normal_boxes.size(), 1u);
+  EXPECT_FLOAT_EQ(normal_boxes[0].rect.Left(), normal[0]);
+  EXPECT_FLOAT_EQ(normal_boxes[0].rect.Top(), normal[1]);
+  EXPECT_FLOAT_EQ(normal_boxes[0].rect.Right(), normal[0] + normal[2]);
+  EXPECT_FLOAT_EQ(normal_boxes[0].rect.Bottom(), normal[1] + normal[3]);
+
+  const auto tight_boxes = paragraph.GetRectsForRange(
+      start, end, Paragraph::RectHeightStyle::kTight,
+      Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(tight_boxes.size(), 1u);
+  EXPECT_FLOAT_EQ(tight_boxes[0].rect.Left(), tight[0]);
+  EXPECT_FLOAT_EQ(tight_boxes[0].rect.Right(), tight[2]);
+  EXPECT_FLOAT_EQ(tight_boxes[0].rect.Top(), baseline + tight[1]);
+  EXPECT_FLOAT_EQ(tight_boxes[0].rect.Bottom(), baseline + tight[3]);
+
+  // Tight glyph bounds stay inside the normal line-metric bounds.
+  EXPECT_GE(tight_boxes[0].rect.Top(), normal_boxes[0].rect.Top() - 0.01f);
+  EXPECT_LE(tight_boxes[0].rect.Bottom(),
+            normal_boxes[0].rect.Bottom() + 0.01f);
+  EXPECT_GE(tight_boxes[0].rect.Left(), normal_boxes[0].rect.Left() - 0.01f);
+  EXPECT_LE(tight_boxes[0].rect.Right(), normal_boxes[0].rect.Right() + 0.01f);
+}
+
+// Multi-line range: one box per overlapping line, all Y coordinates are
+// paragraph-absolute (line baseline based), and the second line sits below
+// the first.
+TEST(ParagraphTTTextTest, MultiLineRangeRectsShareParagraphCoordinates) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+  auto style28 = MakeFixtureStyle(28.f);
+  paragraph.AddTextRun(style28, std::u16string(u"First"));
+  paragraph.AddTextRun(style28, std::u16string(u"\nSecond"));
+  paragraph.Layout(300.f);
+
+  const auto& metrics = paragraph.GetLineMetrics();
+  ASSERT_EQ(metrics.size(), 2u);
+
+  const size_t total = paragraph.GetTextSize();
+  const auto normal = paragraph.GetRectsForRange(
+      0, total, Paragraph::RectHeightStyle::kMax,
+      Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(normal.size(), 2u);
+  const auto tight = paragraph.GetRectsForRange(
+      0, total, Paragraph::RectHeightStyle::kTight,
+      Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(tight.size(), 2u);
+
+  for (size_t k = 0; k < 2u; ++k) {
+    // Normal line bounds are paragraph-absolute: top = baseline - ascent,
+    // bottom = baseline + descent.
+    EXPECT_NEAR(normal[k].rect.Top(),
+                static_cast<float>(metrics[k].baseline - metrics[k].ascent),
+                0.5f);
+    EXPECT_NEAR(normal[k].rect.Bottom(),
+                static_cast<float>(metrics[k].baseline + metrics[k].descent),
+                0.5f);
+    EXPECT_GE(tight[k].rect.Top(), normal[k].rect.Top() - 0.01f);
+    EXPECT_LE(tight[k].rect.Bottom(), normal[k].rect.Bottom() + 0.01f);
+  }
+  EXPECT_GE(normal[1].rect.Top(), normal[0].rect.Bottom() - 0.01f);
+}
+
+// Mixed run sizes on one line still return one line box per style; tight
+// glyph bounds stay inside the normal line-metric bounds.
+TEST(ParagraphTTTextTest, MixedRunSizesReturnPerRunBounds) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+  auto style20 = MakeFixtureStyle(20.f);
+  auto style40 = MakeFixtureStyle(40.f);
+  paragraph.AddTextRun(style20, std::u16string(u"Hi"));
+  paragraph.AddTextRun(style40, std::u16string(u"World"));
+  paragraph.Layout(1024);
+
+  const size_t total = paragraph.GetTextSize();
+  ASSERT_EQ(total, 7u);
+
+  const auto normal = paragraph.GetRectsForRange(
+      0, total, Paragraph::RectHeightStyle::kMax,
+      Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(normal.size(), 1u);
+  const auto tight = paragraph.GetRectsForRange(
+      0, total, Paragraph::RectHeightStyle::kTight,
+      Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(tight.size(), 1u);
+  EXPECT_GT(normal[0].rect.Bottom(), normal[0].rect.Top());
+  EXPECT_GE(tight[0].rect.Top(), normal[0].rect.Top() - 0.01f);
+  EXPECT_LE(tight[0].rect.Bottom(), normal[0].rect.Bottom() + 0.01f);
+
+  // Second (larger) run range returns a valid, non-empty box.
+  const auto second_run = paragraph.GetRectsForRange(
+      2, total, Paragraph::RectHeightStyle::kMax,
+      Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(second_run.size(), 1u);
+  EXPECT_GT(second_run[0].rect.Bottom(), second_run[0].rect.Top());
+}
+
+// Limited-support contract: the pinned dependency has one combined tight
+// API, so a hybrid tight/normal style falls back to normal line-metric
+// bounds instead of mixing a tight axis with a normal axis.
+TEST(ParagraphTTTextTest, HybridTightStylesFallBackToNormalBounds) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+  auto style40 = MakeFixtureStyle(40.f);
+  paragraph.AddTextRun(style40, std::u16string(u"Hello"));
+  paragraph.Layout(1024);
+
+  const auto normal = paragraph.GetRectsForRange(
+      0, 5, Paragraph::RectHeightStyle::kMax, Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(normal.size(), 1u);
+
+  const auto tight_height_only = paragraph.GetRectsForRange(
+      0, 5, Paragraph::RectHeightStyle::kTight,
+      Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(tight_height_only.size(), 1u);
+  const auto tight_width_only = paragraph.GetRectsForRange(
+      0, 5, Paragraph::RectHeightStyle::kMax,
+      Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(tight_width_only.size(), 1u);
+
+  for (const auto* hybrid : {&tight_height_only[0], &tight_width_only[0]}) {
+    EXPECT_FLOAT_EQ(hybrid->rect.Left(), normal[0].rect.Left());
+    EXPECT_FLOAT_EQ(hybrid->rect.Top(), normal[0].rect.Top());
+    EXPECT_FLOAT_EQ(hybrid->rect.Right(), normal[0].rect.Right());
+    EXPECT_FLOAT_EQ(hybrid->rect.Bottom(), normal[0].rect.Bottom());
+  }
+
+  // The combined tight path still produces a no-taller glyph box when both
+  // axes request tight bounds.
+  const auto tight = paragraph.GetRectsForRange(
+      0, 5, Paragraph::RectHeightStyle::kTight,
+      Paragraph::RectWidthStyle::kTight);
+  ASSERT_EQ(tight.size(), 1u);
+  EXPECT_LE(tight[0].rect.Bottom() - tight[0].rect.Top(),
+            normal[0].rect.Bottom() - normal[0].rect.Top() + 0.02f);
+}
+
+// A range spanning an inline placeholder is reported through normal line
+// bounds; the placeholder itself is still returned by GetRectsForPlaceholders.
+TEST(ParagraphTTTextTest, RangeAcrossPlaceholderUsesLineNormalBounds) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+  auto style = MakeFixtureStyle(40.f);
+  paragraph.AddTextRun(style, std::u16string(u"A"));
+  PlaceholderRun placeholder(20.f, 40.f, PlaceholderAlignment::kMiddle,
+                             TextBaseline::kAlphabetic, 0.f);
+  paragraph.AddPlaceholder(style, placeholder, false);
+  paragraph.AddTextRun(style, std::u16string(u"B"));
+  paragraph.Layout(100.f);
+
+  EXPECT_EQ(paragraph.GetTextSize(), 3u);
+  const auto placeholders = paragraph.GetRectsForPlaceholders();
+  ASSERT_EQ(placeholders.size(), 1u);
+
+  const auto normal = paragraph.GetRectsForRange(
+      0, 3, Paragraph::RectHeightStyle::kMax, Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(normal.size(), 1u);
+  EXPECT_GT(normal[0].rect.Bottom(), normal[0].rect.Top());
+  EXPECT_LE(normal[0].rect.Top(), placeholders[0].rect.Top() + 0.01f);
+  EXPECT_GE(normal[0].rect.Bottom(), placeholders[0].rect.Bottom() - 0.01f);
+}
+
+// Range rects and hit-testing share the same paragraph coordinate space: a
+// point inside a range box maps back into that range.
+TEST(ParagraphTTTextTest, HitTestCoordinateMatchesRangeRect) {
+  auto font_collection = CreateFixtureFontCollection();
+  ASSERT_NE(font_collection, nullptr);
+
+  tttext::ParagraphStyle paragraph_style;
+  ParagraphTTText paragraph(font_collection, paragraph_style, nullptr);
+  auto style40 = MakeFixtureStyle(40.f);
+  paragraph.AddTextRun(style40, std::u16string(u"Hello"));
+  paragraph.Layout(1024);
+
+  const auto boxes = paragraph.GetRectsForRange(
+      0, 5, Paragraph::RectHeightStyle::kMax, Paragraph::RectWidthStyle::kMax);
+  ASSERT_EQ(boxes.size(), 1u);
+  const float cx = (boxes[0].rect.Left() + boxes[0].rect.Right()) / 2.f;
+  const float cy = (boxes[0].rect.Top() + boxes[0].rect.Bottom()) / 2.f;
+  const auto position = paragraph.GetGlyphPositionAtCoordinate(cx, cy);
+  EXPECT_GE(position.position, 0u);
+  EXPECT_LE(position.position, 5u);
 }
 #endif
 

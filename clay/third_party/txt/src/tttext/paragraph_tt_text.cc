@@ -418,6 +418,16 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
   std::vector<TextBox> result;
   start = index_mapper_.ToTTTextPosition(start);
   end = index_mapper_.ToTTTextRangeEnd(end);
+  // Contract: the pinned textra dependency exposes one combined tight bounds
+  // API. It is used only when BOTH the height and width styles are kTight.
+  // Any hybrid (tight on one axis, normal/max on the other) falls back to the
+  // line-metric normal bounds; a mixed tight-height/normal-width glyph-level
+  // bound is not supported here. Per-run/per-char Bidi direction is still
+  // returned as the paragraph default; see the TT-10 dependency note.
+  // Paragraph baseline-offset inclusion in bounds is owned by the textlayout
+  // dependency and is not re-implemented in this adapter.
+  const bool tight = rect_height_style == RectHeightStyle::kTight &&
+                     rect_width_style == RectWidthStyle::kTight;
   for (uint32_t k = 0; k < region_->GetLineCount(); k++) {
     auto* text_line = region_->GetLine(k);
     size_t start_index = text_line->GetStartCharPos();
@@ -430,12 +440,26 @@ std::vector<Paragraph::TextBox> ParagraphTTText::GetRectsForRange(
     if (end_index <= start)
       continue;
 
+    const size_t range_start = std::max(start, start_index);
+    const size_t range_end = std::min(end, end_index);
     float rect[4] = {0};
-    text_line->GetBoundingRectByCharRange(rect, std::max(start, start_index),
-                                          std::min(end, end_index));
-    result.push_back(
-        TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
-                TextDirection::ltr));
+    if (tight) {
+      // Returns [left, ascent, right, descent], with ascent/descent relative
+      // to the line baseline. Convert to paragraph-absolute LTRB using the
+      // line baseline: top = baseline + ascent, bottom = baseline + descent.
+      text_line->GetTightBoundingRectByCharRange(rect, range_start, range_end);
+      const float baseline = text_line->GetLineBaseLine();
+      result.emplace_back(
+          TextBox(skity::Rect::MakeLTRB(rect[0], baseline + rect[1], rect[2],
+                                        baseline + rect[3]),
+                  TextDirection::ltr));
+    } else {
+      // Normal bounds are already returned as line-absolute LTWH.
+      text_line->GetBoundingRectByCharRange(rect, range_start, range_end);
+      result.emplace_back(
+          TextBox(skity::Rect::MakeXYWH(rect[0], rect[1], rect[2], rect[3]),
+                  TextDirection::ltr));
+    }
   }
   return result;
 }
