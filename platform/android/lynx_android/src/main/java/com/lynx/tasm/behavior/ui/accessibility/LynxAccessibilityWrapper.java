@@ -33,6 +33,7 @@ import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxAccessibilityNodeProvider;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.text.FlattenUIText;
 import com.lynx.tasm.behavior.ui.text.IUIText;
@@ -516,6 +517,26 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
 
   public LynxAccessibilityHelper getLynxAccessibilityHelper() {
     return mHelper;
+  }
+
+  /**
+   * Notify the screen reader that a switch or checkbox was checked or unchecked, so it speaks the
+   * new state while the element has focus. The checked content change exists from Android 16
+   * (API 36); before it, the new state is read when the focus comes back.
+   */
+  public void notifyAccessibilityCheckedChanged(final LynxBaseUI ui) {
+    if (!enableHelper() || Build.VERSION.SDK_INT < 36 || !(ui instanceof LynxUI)) {
+      return;
+    }
+    final String roleDescription = ui.getAccessibilityRoleDescription();
+    if (!"switch".equals(roleDescription) && !"checkbox".equals(roleDescription)) {
+      return;
+    }
+    final View view = ((LynxUI<?>) ui).getView();
+    if (view != null && view.isAttachedToWindow() && view.getParent() != null) {
+      // 8192 means AccessibilityEvent.CONTENT_CHANGE_TYPE_CHECKED.
+      view.getParent().notifySubtreeAccessibilityStateChanged(view, view, 8192);
+    }
   }
 
   private UIBody getUIBody() {

@@ -386,6 +386,11 @@ public abstract class LynxBaseUI
   protected boolean mConsumeHoverEvent = false;
   private LynxAccessibilityHelper.LynxAccessibilityTraits mAccessibilityTraits =
       LynxAccessibilityHelper.LynxAccessibilityTraits.NONE;
+  // The states in accessibility-traits, as in "button,selected".
+  private boolean mAccessibilityTraitsSelected = false;
+  private boolean mAccessibilityTraitsDisabled = false;
+  // Whether "selected" came or went since the props were last applied.
+  private boolean mAccessibilityTraitsSelectedChanged = false;
 
   private String mAccessibilityRoleDescription;
 
@@ -890,6 +895,10 @@ public abstract class LynxBaseUI
     LynxAccessibilityWrapper wrapper = mContext.getLynxAccessibilityWrapper();
     if (wrapper != null) {
       wrapper.handleMutationStyleUpdate(this, props);
+      if (mAccessibilityTraitsSelectedChanged) {
+        mAccessibilityTraitsSelectedChanged = false;
+        wrapper.notifyAccessibilityCheckedChanged(this);
+      }
     }
     if (props != null && !props.isEmpty()) {
       if (props.hasKey(PropsConstants.BACKGROUND_IMAGE) && mLynxBackground != null) {
@@ -2216,17 +2225,33 @@ public abstract class LynxBaseUI
 
   @LynxProp(name = PropsConstants.ACCESSIBILITY_TRAITS)
   public void setAccessibilityTraits(@Nullable Dynamic value) {
-    if (value != null) {
-      ReadableType type = value.getType();
-      if (type == ReadableType.String) {
-        mAccessibilityTraits =
-            LynxAccessibilityHelper.LynxAccessibilityTraits.fromValue(value.asString());
+    // A removed or non-string value clears the role and the states.
+    final boolean wasSelected = mAccessibilityTraitsSelected;
+    mAccessibilityTraits = LynxAccessibilityHelper.LynxAccessibilityTraits.NONE;
+    mAccessibilityTraitsSelected = false;
+    mAccessibilityTraitsDisabled = false;
+    if (value != null && value.getType() == ReadableType.String) {
+      // A comma list, as on iOS: the first value Android knows is the role, the rest are states.
+      for (String trait : value.asString().split(",")) {
+        String name = trait.trim();
+        if ("selected".equalsIgnoreCase(name)) {
+          mAccessibilityTraitsSelected = true;
+        } else if ("disabled".equalsIgnoreCase(name)) {
+          mAccessibilityTraitsDisabled = true;
+        } else if (mAccessibilityTraits == LynxAccessibilityHelper.LynxAccessibilityTraits.NONE) {
+          mAccessibilityTraits = LynxAccessibilityHelper.LynxAccessibilityTraits.fromValue(name);
+        }
       }
+    }
+    if (wasSelected != mAccessibilityTraitsSelected) {
+      mAccessibilityTraitsSelectedChanged = true;
     }
   }
 
   @LynxProp(name = PropsConstants.ACCESSIBILITY_ROLE_DESCRIPTION)
   public void setAccessibilityRoleDescription(@Nullable Dynamic value) {
+    // A removed attribute arrives as null and clears the role description.
+    mAccessibilityRoleDescription = null;
     if (value != null) {
       ReadableType type = value.getType();
       if (type == ReadableType.String) {
@@ -2237,6 +2262,8 @@ public abstract class LynxBaseUI
 
   @LynxProp(name = PropsConstants.ACCESSIBILITY_STATUS)
   public void setAccessibilityStatus(@Nullable Dynamic value) {
+    // A removed attribute arrives as null and clears the status.
+    mAccessibilityStatus = null;
     if (value != null) {
       ReadableType type = value.getType();
       if (type == ReadableType.String) {
@@ -2246,8 +2273,12 @@ public abstract class LynxBaseUI
   }
 
   @LynxProp(name = PropsConstants.ACCESSIBILITY_ACTIONS)
-  public void setAccessibilityActions(ReadableArray array) {
-    mAccessibilityActions = array.asArrayList();
+  public void setAccessibilityActions(@Nullable ReadableArray array) {
+    // A removed attribute arrives as null and clears the actions.
+    mAccessibilityActions = null;
+    if (array != null) {
+      mAccessibilityActions = array.asArrayList();
+    }
   }
 
   @LynxUIMethod
@@ -2355,6 +2386,14 @@ public abstract class LynxBaseUI
 
   public LynxAccessibilityHelper.LynxAccessibilityTraits getAccessibilityTraits() {
     return mAccessibilityTraits;
+  }
+
+  public boolean getAccessibilityTraitsSelected() {
+    return mAccessibilityTraitsSelected;
+  }
+
+  public boolean getAccessibilityTraitsDisabled() {
+    return mAccessibilityTraitsDisabled;
   }
 
   public String getAccessibilityRoleDescription() {
