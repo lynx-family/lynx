@@ -110,6 +110,10 @@ void ContainerLayer::DiffChildren(DiffContext* context,
 }
 
 void ContainerLayer::Add(std::shared_ptr<Layer> layer) {
+  if (!layer || layer.get() == this) {
+    FML_LOG(ERROR) << "ContainerLayer::Add rejected a null or self child.";
+    return;
+  }
   layers_.emplace_back(std::move(layer));
 }
 

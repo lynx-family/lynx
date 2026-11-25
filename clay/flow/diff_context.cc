@@ -57,7 +57,8 @@ DiffContext::State::State()
       rect_index_(0),
       has_filter_bounds_adjustment(false),
       has_drawable_image(false),
-      has_animation(false) {}
+      has_animation(false),
+      has_deferred_image(false) {}
 
 void DiffContext::PushTransform(const skity::Matrix& transform) {
   state_.transform.PreConcat(transform);
