@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "clay/public/value.h"
 #include "clay/ui/component/base_view.h"
 #include "clay/ui/component/expose_manager/expose_observer.h"
@@ -34,6 +35,9 @@ double Area(const BaseView* view) {
 }  // namespace
 
 void IntersectionObserverManager::StopExposure(bool send_event) {
+  TRACE_EVENT("clay", CLAY_INTERSECTION_OBSERVER_MANAGER_STOP_EXPOSURE,
+              "send_event", send_event, "observer_count",
+              expose_observers_map_.size());
   // Do not return only because exposure is already stopped. stop(false) keeps
   // an active exposure open, so a later stop(true) must still be allowed to
   // close it.
@@ -51,6 +55,8 @@ void IntersectionObserverManager::StopExposure(bool send_event) {
 }
 
 void IntersectionObserverManager::ResumeExposure() {
+  TRACE_EVENT("clay", CLAY_INTERSECTION_OBSERVER_MANAGER_RESUME_EXPOSURE,
+              "observer_count", expose_observers_map_.size());
   // Native resumeExposure does not return early based on the previous stopped
   // state and re-adds exposure detection to the run loop. Keep forwarding it
   // and coalesce the actual check at BeginFrame below.
@@ -197,6 +203,8 @@ void IntersectionObserverManager::NotifyObservers() {
     return;
   }
 
+  TRACE_EVENT("clay", CLAY_INTERSECTION_OBSERVER_MANAGER_NOTIFY_EXPOSURES,
+              "observer_count", expose_observers_map_.size());
   auto now = fml::TimePoint::Now().ToEpochDelta().ToMicroseconds();
   const int64_t elapsed_us = now - last_expose_time_;
   if (last_expose_time_ == -1 || elapsed_us >= expose_min_time_gap_us_) {
@@ -436,6 +444,10 @@ bool IntersectionObserverManager::TryReconcileLargeExposureTargetAfterLayout(
 
 void IntersectionObserverManager::NotifyExposures(
     void (IntersectionObserver::*ptr)(), BaseView* view) {
+  TRACE_EVENT("clay",
+              CLAY_INTERSECTION_OBSERVER_MANAGER_VISIT_EXPOSURE_OBSERVERS,
+              "observer_count", expose_observers_map_.size(), "target_view_id",
+              view ? view->id() : -1);
   for (auto& it : expose_observers_map_) {
     if (view == nullptr || (it.second->GetAttachedView() == view)) {
       (it.second.get()->*ptr)();
