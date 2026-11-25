@@ -24,6 +24,7 @@ class ClayHeadlessRendererHostGL final : public ClayHeadlessRendererGL {
                              const ClayOpenGLRendererConfig& renderer_config);
 
   GPUSurfaceGLDelegate::GLProcResolver GetGLProcResolver() const override;
+  GLFBOInfo GLContextFBO(GLFrameInfo frame_info) const override;
 
   bool MakeCurrent() override;
   bool ClearCurrent() override;

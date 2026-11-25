@@ -10,11 +10,13 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "base/trace/native/trace_event.h"
 #include "build/build_config.h"
+#include "clay/gfx/rendering_backend.h"
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
@@ -23,6 +25,10 @@
 #ifndef ENABLE_SKITY
 #include "third_party/skia/include/core/SkImageInfo.h"
 #endif
+
+namespace skity {
+class GPUContext;
+}  // namespace skity
 
 namespace clay {
 
@@ -75,6 +81,12 @@ constexpr GLenum GL_FLOAT = 0x1406;
 constexpr GLenum GL_TRIANGLES = 0x0004;
 
 constexpr GLenum GL_FRAMEBUFFER = 0x8D40;
+constexpr GLenum GL_DRAW_FRAMEBUFFER = 0x8CA9;
+constexpr GLenum GL_STENCIL_ATTACHMENT = 0x8D20;
+constexpr GLenum GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE = 0x8CD0;
+constexpr GLenum GL_FRAMEBUFFER_COMPLETE = 0x8CD5;
+constexpr GLenum GL_RENDERBUFFER = 0x8D41;
+constexpr GLenum GL_TEXTURE = 0x1702;
 constexpr GLenum GL_ARRAY_BUFFER = 0x8892;
 constexpr GLenum GL_STATIC_DRAW = 0x88E4;
 
@@ -134,6 +146,57 @@ template <typename Fn>
 Fn ResolveGLFunction(const GPUSurfaceGLDelegate::GLProcResolver& resolver,
                      const char* name) {
   return reinterpret_cast<Fn>(resolver(name));
+}
+
+template <typename Result, typename... Args>
+#ifdef _WIN32
+using GLProc = Result(__stdcall*)(Args...);
+#else
+using GLProc = Result (*)(Args...);
+#endif
+
+bool HasUsableStencilAttachment(
+    const GPUSurfaceGLDelegate::GLProcResolver& resolver, GLuint fbo) {
+  const auto get_integer = ResolveGLFunction<GLProc<void, GLenum, GLint*>>(
+      resolver, "glGetIntegerv");
+  const auto get_attachment =
+      ResolveGLFunction<GLProc<void, GLenum, GLenum, GLenum, GLint*>>(
+          resolver, "glGetFramebufferAttachmentParameteriv");
+  const auto check_status = ResolveGLFunction<GLProc<GLenum, GLenum>>(
+      resolver, "glCheckFramebufferStatus");
+  const auto bind_framebuffer = ResolveGLFunction<GLProc<void, GLenum, GLuint>>(
+      resolver, "glBindFramebuffer");
+  if (!get_integer || !get_attachment || !check_status || !bind_framebuffer) {
+    return false;
+  }
+
+  GLint previous_fbo = 0;
+  get_integer(GL_FRAMEBUFFER_BINDING, &previous_fbo);
+  const bool needs_bind = static_cast<GLuint>(previous_fbo) != fbo;
+  GLint bound_fbo = previous_fbo;
+  if (needs_bind) {
+    const auto is_framebuffer = ResolveGLFunction<GLProc<GLboolean, GLuint>>(
+        resolver, "glIsFramebuffer");
+    if (!is_framebuffer || !is_framebuffer(fbo)) {
+      return false;
+    }
+    // Skity uses OpenGL 3.3 or OpenGL ES 3.0. Preserve the read binding.
+    bind_framebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    get_integer(GL_FRAMEBUFFER_BINDING, &bound_fbo);
+  }
+
+  GLint attachment_type = 0;
+  if (static_cast<GLuint>(bound_fbo) == fbo) {
+    get_attachment(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT,
+                   GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &attachment_type);
+  }
+  const bool has_stencil =
+      (attachment_type == GL_RENDERBUFFER || attachment_type == GL_TEXTURE) &&
+      check_status(GL_DRAW_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+  if (needs_bind) {
+    bind_framebuffer(GL_DRAW_FRAMEBUFFER, static_cast<GLuint>(previous_fbo));
+  }
+  return has_stencil;
 }
 
 constexpr char kCpuBlitVertexShaderSource[] = R"(
@@ -852,6 +915,17 @@ bool ClayHeadlessRendererHostGL::Present() {
 
 int64_t ClayHeadlessRendererHostGL::FBO(const ClayFrameInfo& frame_info) {
   return config_.fbo_callback(engine_->UserData(), &frame_info);
+}
+
+GLFBOInfo ClayHeadlessRendererHostGL::GLContextFBO(
+    GLFrameInfo frame_info) const {
+  auto info = ClayHeadlessRendererGL::GLContextFBO(frame_info);
+  if (std::is_same_v<GrContext, skity::GPUContext> && info.fbo_id > 0 &&
+      config_.gl_proc_resolver) {
+    info.has_depth_stencil_attachment = HasUsableStencilAttachment(
+        GetGLProcResolver(), static_cast<GLuint>(info.fbo_id));
+  }
+  return info;
 }
 
 void* ClayHeadlessRendererHostGL::ResolveProc(const char* name) {
