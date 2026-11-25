@@ -71,6 +71,7 @@ class TextView : public WithTypeInfo<TextView, BaseTextView>,
 
   void ResetGestureRecognizers();
   void ClearGestureRecognizers();
+  void UpdateTextSelectionGestureRecognizers();
 
   void FocusHasChanged(bool focused, bool is_leaf) override;
   bool OnScrollToVisible() override { return false; }
