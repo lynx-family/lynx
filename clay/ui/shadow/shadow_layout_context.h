@@ -18,9 +18,9 @@ class ShadowLayoutContextMeasure : public LayoutContext {
   float layout_width_ = 0.f;
 
   // Indicate the intrinsic width after layout using |layout_width_|.
-  int measured_width_ = 0;
+  float measured_width_ = 0.f;
   // Indicate the height after layout using |layout_width_|.
-  int measured_height_ = 0;
+  float measured_height_ = 0.f;
 };
 
 class PreShadowLayoutContextText : public PreLayoutContext {
