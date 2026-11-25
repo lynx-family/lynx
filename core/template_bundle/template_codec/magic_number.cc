@@ -13,5 +13,9 @@ const uint32_t kLepusBinaryMagic = 0xdd737199;
 const uint32_t kTasmSsrSuffixMagic = 0xa8432251;
 const uint32_t kLepusBinaryVersion = 1;
 
+bool IsBinaryMagic(uint32_t magic) {
+  return magic == kQuickBinaryMagic || magic == kLepusBinaryMagic;
+}
+
 }  // namespace template_codec
 }  // namespace lynx
