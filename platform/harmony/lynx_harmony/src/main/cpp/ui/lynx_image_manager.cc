@@ -16,6 +16,7 @@
 #include "base/include/value/table.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/parser/css_string_parser.h"
+#include "core/renderer/dom/lynx_get_ui_result.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/image_service.h"
@@ -299,6 +300,32 @@ void LynxImageManager::Draw(OH_Drawing_Canvas* canvas) {
   if (drawable_ != nullptr && canvas != nullptr) {
     drawable_->Render(canvas);
   }
+}
+
+bool LynxImageManager::InvokeUIMethod(
+    const std::string& method,
+    base::MoveOnlyClosure<void, int32_t, const lepus::Value&>& callback) {
+  if (method != "startAnimate" && method != "pauseAnimation" &&
+      method != "resumeAnimation" && method != "stopAnimation") {
+    return false;
+  }
+  if (!drawable_ || !drawable_->IsAnimate()) {
+    callback(LynxGetUIResult::PARAM_INVALID,
+             lepus::Value("Image is not animated or has not loaded."));
+    return true;
+  }
+  if (method == "pauseAnimation") {
+    drawable_->PauseAnimation();
+  } else if (method == "stopAnimation") {
+    drawable_->StopAnimation();
+  } else {
+    if (method == "startAnimate") {
+      drawable_->StopAnimation();
+    }
+    drawable_->StartAnimation();
+  }
+  callback(LynxGetUIResult::SUCCESS, lepus::Value(""));
+  return true;
 }
 
 uint32_t LynxImageManager::GetImageWidth() const {

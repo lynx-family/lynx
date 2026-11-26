@@ -373,7 +373,7 @@ void ImageDrawable::StopAnimation() {
   if (!IsAnimImage()) {
     return;
   }
-  if (!is_running_) {
+  if (!is_running_ && !is_paused_) {
     return;
   }
   is_running_ = false;

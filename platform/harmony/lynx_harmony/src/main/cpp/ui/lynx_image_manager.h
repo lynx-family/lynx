@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/closure.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/image_drawable.h"
 
@@ -37,6 +38,10 @@ class LynxImageManager final
   void SetTarget(const std::weak_ptr<UIBase>& target);
   void UpdateBounds(float width, float height, float scale_density);
   void Draw(OH_Drawing_Canvas* canvas);
+  int32_t GetSign() const { return sign_; }
+  bool InvokeUIMethod(
+      const std::string& method,
+      base::MoveOnlyClosure<void, int32_t, const lepus::Value&>& callback);
   uint32_t GetImageWidth() const;
   uint32_t GetImageHeight() const;
   void onAnimationStart() override;

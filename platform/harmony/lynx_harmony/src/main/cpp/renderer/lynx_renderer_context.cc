@@ -42,6 +42,9 @@ void LynxRendererContext::CreateImageManager(int32_t id, const std::string& src,
 
   image_manager->UpdatePaintInfo(paint_info);
   image_managers_[image_key] = image_manager;
+  if (!paint_info.is_background) {
+    image_method_targets_[id] = image_manager;
+  }
   image_manager->RequestImage(id, src, width, height, event_mask);
 }
 
@@ -51,7 +54,22 @@ std::shared_ptr<LynxImageManager> LynxRendererContext::GetImageManager(
   return it == image_managers_.end() ? nullptr : it->second;
 }
 
+std::shared_ptr<LynxImageManager> LynxRendererContext::GetImageManagerForSign(
+    int32_t sign) const {
+  auto it = image_method_targets_.find(sign);
+  return it == image_method_targets_.end() ? nullptr : it->second.lock();
+}
+
 void LynxRendererContext::DestroyImageManager(int32_t image_key) {
+  auto manager = GetImageManager(image_key);
+  if (manager) {
+    auto target = image_method_targets_.find(manager->GetSign());
+    // An old request must not remove the target for a newer image source.
+    if (target != image_method_targets_.end() &&
+        target->second.lock() == manager) {
+      image_method_targets_.erase(target);
+    }
+  }
   image_managers_.erase(image_key);
 }
 
