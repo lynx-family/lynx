@@ -49,7 +49,7 @@ class TemplateBinaryReader : public LynxBinaryReader,
   // lazy reader delegate;
   bool DecodeCSSFragmentByIdInRender(int32_t fragment_id) override;
   std::shared_ptr<ElementTemplateInfo> DecodeElementTemplateInRender(
-      const std::string& key) override;
+      const std::string& key, const StringListVec& string_list) override;
   const std::shared_ptr<ParsedStyles>& GetParsedStylesInRender(
       const std::string& key) override;
   bool DecodeContextBundleInRender(const std::string& key) override;

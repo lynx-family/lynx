@@ -171,7 +171,20 @@ struct StringKeyRouter {
 
 struct OrderedStringKeyRouter {
   uint32_t descriptor_offset_ = 0;
-  base::LinkedHashMap<std::string, uint32_t> start_offsets_;
+  std::unordered_map<std::string, uint32_t> start_offsets_;
+  std::vector<std::string> ordered_keys_;
+
+  void Reserve(size_t size) {
+    start_offsets_.reserve(size);
+    ordered_keys_.reserve(size);
+  }
+
+  void InsertOrAssign(std::string key, uint32_t offset) {
+    auto [iter, inserted] = start_offsets_.insert_or_assign(key, offset);
+    if (inserted) {
+      ordered_keys_.emplace_back(std::move(key));
+    }
+  }
 };
 
 typedef Range AirParsedStylesRange;

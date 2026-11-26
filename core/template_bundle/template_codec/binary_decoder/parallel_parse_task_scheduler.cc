@@ -42,7 +42,7 @@ bool ParallelParseTaskScheduler::ParallelParseElementTemplate(
     OrderedStringKeyRouter* router, ElementBinaryReader* reader) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PARALLEL_READER_PARSE_ELEMENT_TEMPLATE);
 
-  if (router->start_offsets_.empty()) {
+  if (router->ordered_keys_.empty()) {
     return true;
   }
 
@@ -53,15 +53,16 @@ bool ParallelParseTaskScheduler::ParallelParseElementTemplate(
         base::Vector<base::OnceTaskRefptr<
             std::pair<std::shared_ptr<ElementTemplateInfo>, lepus::Value>>>
             task_vec;
-        for (const auto& pair : router->start_offsets_) {
+        for (const auto& key : router->ordered_keys_) {
           TRACE_EVENT(LYNX_TRACE_CATEGORY, PARALLEL_READER_GENERATE_PARSE_TASK);
-          auto start = router->descriptor_offset_ + pair.second;
+          auto start =
+              router->descriptor_offset_ + router->start_offsets_.at(key);
           auto sub_reader = reader->DeriveElementBinaryReader();
           std::promise<ElementTemplateResult> promise;
           std::future<ElementTemplateResult> future = promise.get_future();
           auto task_info_ptr =
               fml::MakeRefCounted<base::OnceTask<ElementTemplateResult>>(
-                  [sub_reader = std::move(sub_reader), start, key = pair.first,
+                  [sub_reader = std::move(sub_reader), start, key,
                    promise = std::move(promise)]() mutable {
                     TRACE_EVENT(
                         LYNX_TRACE_CATEGORY, PARALLEL_READER_RUN_PARSE_TASK,
@@ -77,7 +78,7 @@ bool ParallelParseTaskScheduler::ParallelParseElementTemplate(
                     return;
                   },
                   std::move(future));
-          element_template_parse_task_map_[pair.first] = task_info_ptr;
+          element_template_parse_task_map_[key] = task_info_ptr;
           base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
               [task_info_ptr]() { task_info_ptr->Run(); },
               base::ConcurrentTaskType::HIGH_PRIORITY);

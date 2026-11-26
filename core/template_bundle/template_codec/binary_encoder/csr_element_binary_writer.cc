@@ -105,8 +105,7 @@ void CSRElementBinaryWriter::EncodeTemplatesBody(
   // 2. Encode Element Template
   for (auto& pair : templates->GetObject()) {
     // Record start offset to router
-    router.start_offsets_.emplace_or_assign(pair.name.GetString(),
-                                            start_offset);
+    router.InsertOrAssign(pair.name.GetString(), start_offset);
 
     if (pair.value.IsArray()) {
       // Encode Template array
@@ -264,13 +263,13 @@ void CSRElementBinaryWriter::EncodeStringKeyRouter(
 void CSRElementBinaryWriter::EncodeOrderedStringKeyRouter(
     tasm::OrderedStringKeyRouter& router) {
   size_t start = Offset();
-  WriteCompactU32(router.start_offsets_.size());
+  WriteCompactU32(router.ordered_keys_.size());
 
-  for (const auto& [key, offset] : router.start_offsets_) {
+  for (const auto& key : router.ordered_keys_) {
     // key
     EncodeUtf8Str(key.c_str(), key.length());
     // offset
-    WriteCompactU32(offset);
+    WriteCompactU32(router.start_offsets_.at(key));
   }
   size_t end = Offset();
 

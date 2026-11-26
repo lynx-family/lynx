@@ -35,6 +35,9 @@ class LynxBinaryBaseCSSReader : public lepus::BaseBinaryReader,
  public:
   LynxBinaryBaseCSSReader(std::unique_ptr<lepus::InputStream> stream)
       : lepus::BaseBinaryReader(std::move(stream)){};
+  LynxBinaryBaseCSSReader(std::unique_ptr<lepus::InputStream> stream,
+                          tasm::StringListVec string_list)
+      : lepus::BaseBinaryReader(std::move(stream), std::move(string_list)) {}
 
   ~LynxBinaryBaseCSSReader() override = default;
 

@@ -60,7 +60,7 @@ class LynxBinaryLazyReaderDelegate : public LynxBinaryRecyclerDelegate {
 
   // element template
   virtual std::shared_ptr<ElementTemplateInfo> DecodeElementTemplateInRender(
-      const std::string& key) = 0;
+      const std::string& key, const StringListVec& string_list) = 0;
 
   // parsed styles
   virtual const std::shared_ptr<ParsedStyles>& GetParsedStylesInRender(
