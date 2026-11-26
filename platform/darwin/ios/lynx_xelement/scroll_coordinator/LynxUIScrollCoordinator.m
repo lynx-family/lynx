@@ -665,20 +665,18 @@ typedef NS_ENUM(NSInteger, LynxUIScrollCoordinatorHeaderOverSlot) {
     [array addObject:self.toolbar];
   }
 
-  if (self.headerSlotOverflowHitTest) {
-    if (self.headerOverSlot == LynxUIScrollCoordinatorHeaderOverSlotHeaderAtTop) {
-      [array addObject:self.header];
-      [array addObject:self.slot];
-    } else if (self.headerOverSlot == LynxUIScrollCoordinatorHeaderOverSlotSlotAtTop) {
-      [array addObject:self.slot];
-      [array addObject:self.header];
-    } else {
-      [array addObject:self.header];
-      [array addObject:self.slot];
-    }
-  } else {
-    [array addObject:self.header];
-    [array addObject:self.slot];
+  LynxUI *firstChild = self.header;
+  LynxUI *secondChild = self.slot;
+  if (self.headerSlotOverflowHitTest &&
+      self.headerOverSlot == LynxUIScrollCoordinatorHeaderOverSlotSlotAtTop) {
+    firstChild = self.slot;
+    secondChild = self.header;
+  }
+  if (firstChild) {
+    [array addObject:firstChild];
+  }
+  if (secondChild) {
+    [array addObject:secondChild];
   }
 
   for (LynxUI *child in array) {
