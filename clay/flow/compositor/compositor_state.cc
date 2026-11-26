@@ -15,6 +15,22 @@ CompositorState::CompositorState(skity::Vec2 frame_size)
 
 CompositorState::~CompositorState() {}
 
+std::unique_ptr<CompositorState> CompositorState::CloneForPresentation() {
+  auto state = std::make_unique<CompositorState>(frame_size_);
+  for (const auto& entry : slices_) {
+    entry.second->end_recording();
+  }
+  state->slices_ = slices_;
+  state->has_finished_slices_ = true;
+  state->display_scene_ = display_scene_;
+  state->composition_order_ = composition_order_;
+  for (const auto& entry : view_params_) {
+    state->view_params_[entry.first] =
+        std::make_unique<EmbeddedViewParams>(*entry.second);
+  }
+  return state;
+}
+
 void CompositorState::PrerollCompositeEmbeddedView(
     int view_id, std::unique_ptr<EmbeddedViewParams> params) {
   TRACE_EVENT("clay", "CompositorState::PrerollCompositeEmbeddedView");
@@ -24,11 +40,11 @@ void CompositorState::PrerollCompositeEmbeddedView(
           ? params->finalBoundingRect()
           : skity::Rect::MakeWH(frame_size_.x, frame_size_.y);
 
-  std::unique_ptr<EmbedderViewSlice> view;
+  std::shared_ptr<EmbedderViewSlice> view;
 #ifndef ENABLE_SKITY
-  view = std::make_unique<SkPictureEmbedderViewSlice>(view_bounds);
+  view = std::make_shared<SkPictureEmbedderViewSlice>(view_bounds);
 #else
-  view = std::make_unique<SkityPictureEmbedderViewSlice>(view_bounds);
+  view = std::make_shared<SkityPictureEmbedderViewSlice>(view_bounds);
 #endif  // ENABLE_SKITY
   composition_order_.push_back(view_id);
   slices_.insert_or_assign(view_id, std::move(view));

@@ -18,6 +18,8 @@ source_set("flow") {
     "animation/scroll_offset_animation.h",
     "compositor/compositor_state.cc",
     "compositor/compositor_state.h",
+    "compositor/display_scene.cc",
+    "compositor/display_scene.h",
     "compositor_context.cc",
     "compositor_context.h",
     "diff_context.cc",

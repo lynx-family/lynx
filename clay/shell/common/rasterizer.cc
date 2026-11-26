@@ -20,9 +20,7 @@
 #include "base/include/fml/time/time_point.h"
 #include "clay/common/graphics/persistent_cache.h"
 #include "clay/common/service/service_manager.h"
-#if defined(OS_ANDROID) || defined(OS_IOS)
 #include "clay/common/trail_settings.h"
-#endif
 #include "clay/flow/compositor/compositor_state.h"
 #include "clay/flow/compositor_context.h"
 #include "clay/flow/frame_timings.h"
@@ -84,13 +82,16 @@ void Rasterizer::Setup(std::unique_ptr<Surface> surface) {
   if (display_compositor_) {
     Teardown();
   }
-  if (platform_const_service_->IsDisplayCompositorEnabled() &&
-      SharedImageSurface::IsSupported(surface.get())) {
+  const bool use_shared_image = SharedImageSurface::IsSupported(surface.get());
+  if (platform_const_service_->IsDisplayCompositorEnabled() && surface &&
+      (use_shared_image || !surface->GetContext())) {
     display_compositor_ = std::make_unique<DisplayCompositor>(
         std::move(surface), compositor_service_);
     surface_ = std::make_unique<SharedImageSurface>(
         display_compositor_->surface(),
-        GetRasterCacheSampleCount(platform_const_service_->GetSettings()));
+        GetRasterCacheSampleCount(platform_const_service_->GetSettings()), true,
+        use_shared_image ? SharedImageSurface::Storage::kSharedImage
+                         : SharedImageSurface::Storage::kSnapshot);
   } else {
     surface_ = std::move(surface);
   }
@@ -121,6 +122,7 @@ void Rasterizer::Teardown() {
         }
       }
     }
+    if (display_compositor_) display_compositor_->Clear();
     surface_.reset();
   }
   display_compositor_.reset();
@@ -170,6 +172,40 @@ clay::LayerTree* Rasterizer::GetLastLayerTree() {
   return last_layer_tree_.get();
 }
 
+bool Rasterizer::CanPresentImage(int64_t image_id) const {
+  return display_compositor_ && display_compositor_->CanPresentImage(image_id);
+}
+
+void Rasterizer::ClearDisplay() {
+  if (display_compositor_) {
+    auto current = display_compositor_->surface()->MakeRenderContextCurrent();
+    display_compositor_->Clear();
+  }
+}
+
+bool Rasterizer::DrawDisplay(fml::TimePoint presentation_time) {
+  if (!display_compositor_ || !next_frame_snapshot_callbacks_.empty()) {
+    return false;
+  }
+  TRACE_EVENT("clay", "Rasterizer::DrawDisplay");
+  bool presented = false;
+  auto present = [&] {
+    SurfaceFrame::SubmitInfo info;
+    if (presentation_time > fml::TimePoint::Now()) {
+      info.presentation_time = presentation_time;
+    }
+    presented = display_compositor_->Present(info);
+  };
+  if (surface_->AllowsDrawingWhenGpuDisabled()) {
+    present();
+  } else {
+    platform_const_service_->GetIsGPUDisabledSyncSwitch()->Execute(
+        fml::SyncSwitch::Handlers().SetIfTrue([] {}).SetIfFalse(present));
+  }
+  if (presented) FireNextFrameCallbackIfPresent();
+  return presented;
+}
+
 RasterStatus Rasterizer::DrawLastLayerTree() {
   if (!last_layer_tree_ || !surface_) {
     return RasterStatus::kFailed;
@@ -198,6 +234,10 @@ RasterStatus Rasterizer::Draw(std::shared_ptr<LayerTree> layer_tree,
                  ->SelectTaskRunner<clay::Owner::kRaster>()
                  ->RunsTasksOnCurrentThread());
 
+  // Retained texture or animation updates can redraw the already committed
+  // tree while a screenshot is waiting for a new commit.
+  const bool notify_snapshots =
+      !display_compositor_ || layer_tree != last_layer_tree_;
   RasterStatus raster_status = RasterStatus::kFailed;
   if (discard_callback(*layer_tree.get())) {
     raster_status = RasterStatus::kDiscarded;
@@ -205,7 +245,7 @@ RasterStatus Rasterizer::Draw(std::shared_ptr<LayerTree> layer_tree,
     raster_status = DoDraw(std::move(recorder), std::move(layer_tree));
   }
 
-  if (raster_status == RasterStatus::kSuccess) {
+  if (raster_status == RasterStatus::kSuccess && notify_snapshots) {
     FireNextFrameSnapshotCallbackIfPresent();
   }
   return raster_status;
@@ -377,6 +417,12 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     FrameTimingsRecorder* frame_timings_recorder, clay::LayerTree& layer_tree) {
   FML_DCHECK(surface_);
 
+  const bool draw_directly = display_compositor_ && last_layer_tree_ &&
+                             last_layer_tree_.get() != &layer_tree;
+  auto* draw_surface =
+      draw_directly ? display_compositor_->surface() : surface_.get();
+  const bool use_display_compositor = display_compositor_ && !draw_directly;
+
   if (frame_timings_recorder) {
     frame_timings_recorder->RecordFrameTime(FrameTimingKey::kDoDrawStart);
     compositor_context_->ui_time().SetLapTime(
@@ -390,7 +436,7 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       frame_timings_recorder->RecordFrameTime(
           FrameTimingKey::kAcquireFrameStart);
     }
-    frame = surface_->AcquireFrame(layer_tree.frame_size());
+    frame = draw_surface->AcquireFrame(layer_tree.frame_size());
     if (frame_timings_recorder) {
       frame_timings_recorder->RecordFrameTime(FrameTimingKey::kAcquireFrameEnd);
     }
@@ -403,6 +449,7 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   }
   auto compositor_state =
       std::make_unique<CompositorState>(layer_tree.frame_size());
+  if (use_display_compositor) compositor_state->SetRecordDisplayScene(true);
 
   if (frame_timings_recorder) {
     instrumentation_service_.Act(
@@ -416,11 +463,11 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   }
 
   auto compositor_frame = compositor_context_->AcquireFrame(
-      surface_->GetContext(),             // skia GrContext
-      frame->GetCanvas(),                 // root surface canvas
-      compositor_state.get(),             // compositor state
-      surface_->GetRootTransformation(),  // root surface transformation
-      frame_timings_recorder != nullptr,  // instrumentation enabled
+      draw_surface->GetContext(),             // skia GrContext
+      frame->GetCanvas(),                     // root surface canvas
+      compositor_state.get(),                 // compositor state
+      draw_surface->GetRootTransformation(),  // root surface transformation
+      frame_timings_recorder != nullptr,      // instrumentation enabled
       frame->framebuffer_info()
           .supports_readback,  // surface supports pixel reads
       GetRasterCacheSampleCount(platform_const_service_->GetSettings()));
@@ -436,7 +483,10 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
     std::unique_ptr<FrameDamage> damage;
     if (frame->framebuffer_info().supports_partial_repaint) {
       damage = std::make_unique<FrameDamage>();
-      if (frame->framebuffer_info().existing_damage) {
+      if (frame->framebuffer_info().existing_damage &&
+          (!display_compositor_ ||
+           (last_layer_tree_ &&
+            !last_layer_tree_->paint_region_map().empty()))) {
         damage->SetPreviousLayerTree(last_layer_tree_.get());
         damage->AddAdditionalDamage(*frame->framebuffer_info().existing_damage);
         damage->SetClipAlignment(
@@ -458,7 +508,7 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
       ignore_raster_cache = true;
     } else {
       ignore_raster_cache =
-          last_memory_strategy_ || !surface_->EnableRasterCache() ||
+          last_memory_strategy_ || !draw_surface->EnableRasterCache() ||
           (render_settings_ && render_settings_->IgnoreRasterCache());
     }
 
@@ -522,19 +572,28 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
         frame_timings_recorder->RecordFrameTime(
             FrameTimingKey::kSubmitFrameStart);
       }
-      if (display_compositor_) {
-        const bool rasterized = frame->Submit();
+      if (use_display_compositor) {
+        const bool rasterized =
+            compositor_state->GetDisplayScene() || frame->Submit();
         auto* raster_surface = static_cast<SharedImageSurface*>(surface_.get());
-        if (!rasterized || !display_compositor_->Present(
-                               raster_surface->backing(), submit_info,
-                               std::move(compositor_state))) {
+        if (!rasterized ||
+            !display_compositor_->Present(
+                raster_surface->backing(), submit_info,
+                std::move(compositor_state), raster_surface->image())) {
           compositor_context_->raster_cache().EndFrame();
           return RasterStatus::kFailed;
         }
+        // A shared-image raster does not update the direct surface's damage.
+        layer_tree.paint_region_map().clear();
       } else {
-        compositor_service_->SubmitFrame(surface_->GetContextPtr(),
-                                         std::move(frame),
-                                         std::move(compositor_state));
+        if (draw_directly) display_compositor_->Clear();
+        const bool submitted = compositor_service_->SubmitFrame(
+            draw_surface->GetContextPtr(), std::move(frame),
+            std::move(compositor_state));
+        if (draw_directly && !submitted) {
+          compositor_context_->raster_cache().EndFrame();
+          return RasterStatus::kFailed;
+        }
       }
       if (frame_timings_recorder) {
         frame_timings_recorder->RecordFrameTime(
@@ -595,6 +654,21 @@ RasterStatus Rasterizer::DrawToSurfaceUnsafe(
   }
 
   return RasterStatus::kFailed;
+}
+
+ScreenshotData Rasterizer::ScreenshotDisplayScene(uint32_t background_color) {
+  if (!display_compositor_) return {};
+  ScreenshotData result;
+  auto capture = [&] {
+    result = display_compositor_->Screenshot(background_color);
+  };
+  if (surface_->AllowsDrawingWhenGpuDisabled()) {
+    capture();
+  } else {
+    platform_const_service_->GetIsGPUDisabledSyncSwitch()->Execute(
+        fml::SyncSwitch::Handlers().SetIfFalse(capture));
+  }
+  return result;
 }
 
 ScreenshotData Rasterizer::ScreenshotLastLayerTree(

@@ -346,6 +346,7 @@ class EmbedderViewSlice {
   virtual clay::GrCanvas* canvas() = 0;
   virtual void render_into(clay::GrCanvas* canvas) = 0;
   virtual void end_recording() = 0;
+  virtual bool can_rasterize() const { return false; }
   virtual std::list<skity::Rect> searchNonOverlappingDrawnRects(
       const skity::Rect& query) const = 0;
 };
@@ -358,6 +359,7 @@ class SkPictureEmbedderViewSlice : public EmbedderViewSlice {
 
   SkCanvas* canvas() override;
   void end_recording() override;
+  bool can_rasterize() const override;
   std::list<skity::Rect> searchNonOverlappingDrawnRects(
       const skity::Rect& query) const override;
   void render_into(SkCanvas* canvas) override;
@@ -375,6 +377,7 @@ class SkityPictureEmbedderViewSlice : public EmbedderViewSlice {
 
   skity::Canvas* canvas() override;
   void end_recording() override;
+  bool can_rasterize() const override;
   std::list<skity::Rect> searchNonOverlappingDrawnRects(
       const skity::Rect& query) const override;
   void render_into(skity::Canvas* canvas) override;

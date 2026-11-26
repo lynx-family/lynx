@@ -85,26 +85,43 @@ void ShaderMaskLayer::Paint(PaintContext& context) const {
     }
   }
   mutator.saveLayer(paint_bounds());
-  PaintChildren(context);
-  clay::GrPaint paint;
-  PAINT_SET_BLEND_MODE(paint, blend_mode_);
-  if (!is_picture_mask_) {
-    auto shader_rect =
-        skity::Rect::MakeWH(mask_rect_.Width(), mask_rect_.Height());
-    if (color_source_) {
-      PAINT_SET_SHADER(paint, color_source_->gr_object());
-    }
-    CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
-    CANVAS_DRAW_RECT(context.canvas, shader_rect, paint);
-  } else if (picture_) {
-    CANVAS_SAVELAYER(context.canvas, mask_rect_, paint);
-    CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
+  auto draw_mask = [this](PaintContext& context, const GrPaint* blend_paint) {
+    GrPaint paint = blend_paint ? *blend_paint : GrPaint();
+    if (!is_picture_mask_) {
+      auto shader_rect =
+          skity::Rect::MakeWH(mask_rect_.Width(), mask_rect_.Height());
+      if (color_source_) {
+        PAINT_SET_SHADER(paint, color_source_->gr_object());
+      }
+      CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
+      CANVAS_DRAW_RECT(context.canvas, shader_rect, paint);
+    } else if (picture_) {
+      if (blend_paint) {
+        CANVAS_SAVELAYER(context.canvas, mask_rect_, paint);
+      } else {
+        CANVAS_SAVE(context.canvas);
+      }
+      CANVAS_TRANSLATE(context.canvas, mask_rect_.Left(), mask_rect_.Top());
 #ifndef ENABLE_SKITY
-    context.canvas->drawPicture(picture_->picture()->raw());
+      context.canvas->drawPicture(picture_->picture()->raw());
 #else
-    picture_->picture()->raw()->Draw(context.canvas);
+      picture_->picture()->raw()->Draw(context.canvas);
 #endif
-    CANVAS_RESTORE(context.canvas);
+      CANVAS_RESTORE(context.canvas);
+    }
+  };
+  if (context.display_scene) {
+    context.PaintWithState(
+        paint_bounds(), LayerStateStack::kCallerCanApplyAnything,
+        [this, &draw_mask](PaintContext& context) {
+          PaintChildren(context);
+          context.PaintWithBlend(mask_rect_, blend_mode_, draw_mask);
+        });
+  } else {
+    PaintChildren(context);
+    GrPaint paint;
+    PAINT_SET_BLEND_MODE(paint, blend_mode_);
+    draw_mask(context, &paint);
   }
 }
 

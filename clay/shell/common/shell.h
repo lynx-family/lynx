@@ -252,6 +252,8 @@ class Shell final : public PlatformView::Delegate,
   ScreenshotData ScreenshotSync(ScreenshotData::ScreenshotType type,
                                 uint32_t background_color);
 
+  ScreenshotData ScreenshotDisplaySceneSync(uint32_t background_color);
+
   void ScreenshotAsync(ScreenshotData::ScreenshotType type,
                        uint32_t background_color,
                        std::function<void(ScreenshotData)> callback);

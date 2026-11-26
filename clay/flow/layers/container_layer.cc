@@ -256,20 +256,26 @@ void ContainerLayer::PaintChildren(PaintContext& context) const {
   // layer calls PaintChildren(), though, it may have modified the
   // PaintContext so the test doesn't work in this "context".
 
-  // Apply any outstanding state that the children cannot individually
-  // and collectively handle.
-  auto restore = context.state_stack.applyState(
-      child_paint_bounds(), children_renderable_state_flags());
-
-  // Intentionally not tracing here as there should be no self-time
-  // and the trace event on this common function has a small overhead.
-  for (auto& layer : layers_) {
-    if (layer->needs_painting(context)) {
-      if (context.only_draw_punch_hole && !layer->subtree_has_punch_hole()) {
-        continue;
+  auto paint_children = [this](PaintContext& context) {
+    // Intentionally not tracing here as there should be no self-time and
+    // the trace event on this common function has a small overhead.
+    for (auto& layer : layers_) {
+      if (layer->needs_painting(context)) {
+        if (context.only_draw_punch_hole && !layer->subtree_has_punch_hole()) {
+          continue;
+        }
+        layer->Paint(context);
       }
-      layer->Paint(context);
     }
+  };
+  // Apply outstanding state that the children cannot handle.
+  if (context.display_scene) {
+    context.PaintWithState(child_paint_bounds(),
+                           children_renderable_state_flags(), paint_children);
+  } else {
+    auto restore = context.state_stack.applyState(
+        child_paint_bounds(), children_renderable_state_flags());
+    paint_children(context);
   }
 }
 

@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "clay/common/graphics/drawable_image.h"
+#include "clay/flow/compositor/display_scene.h"
 #include "clay/gfx/pixel_helper.h"
 #include "clay/gfx/rendering_backend.h"
 
@@ -68,6 +69,10 @@ void DrawableImageLayer::Preroll(PrerollContext* context) {
 }
 
 void DrawableImageLayer::Paint(PaintContext& context) const {
+  if (context.display_scene) {
+    context.display_scene->RecordImage(*this, context);
+    return;
+  }
   TRACE_EVENT("clay", "DrawableImageLayer::Paint");
   FML_DCHECK(needs_painting(context));
 
@@ -104,6 +109,33 @@ void DrawableImageLayer::Paint(PaintContext& context) const {
       converter.ConvertTo<clay::kPixelTypePhysical>(paint_bounds().Right()),
       converter.ConvertTo<clay::kPixelTypePhysical>(paint_bounds().Bottom()));
   image->Paint(ctx, physical_bounds, freeze_, ToSk(sampling_), fit_mode_);
+}
+
+DrawableImageLayer::DisplayPaint DrawableImageLayer::CaptureDisplayPaint(
+    PaintContext& context) const {
+  auto state = context.state_stack.CaptureTransformAndClip();
+  GrPaint paint;
+  clay::Paint clay_paint;
+  context.state_stack.fill(paint);
+  context.state_stack.fill(clay_paint);
+  auto converter = PixelConverter(context.frame_device_pixel_ratio);
+  auto scale = converter.GetPixelRatio<kPixelTypePhysical, kPixelTypeClay>();
+  auto bounds = skity::Rect(
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Left()),
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Top()),
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Right()),
+      converter.ConvertTo<kPixelTypePhysical>(paint_bounds().Bottom()));
+  return [registry = context.drawable_image_registry, state, paint, clay_paint,
+          scale, bounds, id = image_id_, freeze = freeze_, sampling = sampling_,
+          fit = fit_mode_](GrCanvas* canvas, GrContext* gpu) {
+    auto image = registry ? registry->GetDrawableImage(id) : nullptr;
+    if (!image) return;
+    GrAutoCanvasRestore restore(canvas, true);
+    state(canvas);
+    CANVAS_SCALE(canvas, scale, scale);
+    DrawableImage::PaintContext ctx{canvas, gpu, &paint, &clay_paint};
+    image->Paint(ctx, bounds, freeze, ToSk(sampling), fit);
+  };
 }
 
 }  // namespace clay

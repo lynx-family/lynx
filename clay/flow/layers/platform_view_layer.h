@@ -16,6 +16,7 @@ namespace clay {
 
 class PlatformViewLayer : public Layer {
  public:
+  bool SupportsDisplayScene() const override { return true; }
   PlatformViewLayer(const skity::Vec2& offset, const skity::Vec2& size,
                     int64_t view_id);
 

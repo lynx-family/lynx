@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_set>
@@ -120,6 +121,8 @@ struct PrerollContext {
   uint64_t retained_preroll_generation = 0;
 };
 
+class DisplayScene;
+
 struct PaintContext {
   // When splitting the scene into multiple canvases (e.g when embedding
   // a platform view on iOS) during the paint traversal we apply any state
@@ -149,6 +152,15 @@ struct PaintContext {
   std::shared_ptr<DrawableImageRegistry> drawable_image_registry;
   const RasterCache* raster_cache;
   const float frame_device_pixel_ratio = 1.0f;
+
+  // Apply inherited state and preserve complete effect inputs when recording.
+  void PaintWithState(const skity::Rect& bounds, int can_apply_flags,
+                      const std::function<void(PaintContext&)>& paint);
+  void PaintWithBlend(
+      const skity::Rect& bounds, BlendMode blend,
+      const std::function<void(PaintContext&, const GrPaint*)>& paint);
+
+  DisplayScene* display_scene = nullptr;
 
   bool only_draw_punch_hole = false;
 
@@ -328,6 +340,8 @@ class Layer {
     return nullptr;
   }
   virtual const testing::MockLayer* as_mock_layer() const { return nullptr; }
+
+  virtual bool SupportsDisplayScene() const { return false; }
 
   virtual bool IsContainer() const { return false; }
 #ifndef NDEBUG

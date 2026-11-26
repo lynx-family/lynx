@@ -102,7 +102,8 @@ bool CompositorService::SubmitFrame(
 
   std::vector<OverlayData> overlay_render_requests = SliceViews(
       background_frame->GetCanvas(), compositor_state->GetCompositionOrder(),
-      compositor_state->GetSlices(), compositor_state->GetViewParams());
+      compositor_state->GetSlices(), compositor_state->GetViewParams(),
+      compositor_state->HasFinishedSlices());
 
   // Prepare the background first since it owns the current surface.
   auto background_submit =

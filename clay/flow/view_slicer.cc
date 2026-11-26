@@ -18,10 +18,11 @@ namespace clay {
 std::vector<OverlayData> SliceViews(
     clay::GrCanvas* background_canvas,
     const std::vector<int64_t>& composition_order,
-    const std::unordered_map<int64_t, std::unique_ptr<EmbedderViewSlice>>&
+    const std::unordered_map<int64_t, std::shared_ptr<EmbedderViewSlice>>&
         slices,
     const std::unordered_map<int64_t, std::unique_ptr<EmbeddedViewParams>>&
-        view_params) {
+        view_params,
+    bool replay_finished_slices) {
   TRACE_EVENT("clay", "SliceViews");
   std::vector<OverlayData> overlay_layers;
   int64_t overlay_id = 0;
@@ -36,10 +37,9 @@ std::vector<OverlayData> SliceViews(
   for (size_t i = 0; i < current_frame_view_count; i++) {
     int64_t view_id = composition_order[i];
     EmbedderViewSlice* slice = slices.at(view_id).get();
-    if (slice->canvas() == nullptr) {
+    if (!replay_finished_slices && !slice->canvas()) {
       continue;
     }
-
     slice->end_recording();
 
     EmbeddedViewParams* params = nullptr;

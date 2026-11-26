@@ -8,6 +8,7 @@
 #include "clay/flow/layers/layer_state_stack.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "clay/flow/layers/layer.h"
 #include "clay/flow/matrix_clip_tracker.h"
@@ -277,15 +278,27 @@ class SaveEntry : public LayerStateStack::StateEntry {
 class SaveLayerEntry : public LayerStateStack::StateEntry {
  public:
   SaveLayerEntry(const skity::Rect& bounds, clay::BlendMode blend_mode,
-                 const LayerStateStack::RenderingAttributes& prev)
-      : bounds_(bounds), blend_mode_(blend_mode), old_attributes_(prev) {}
+                 const LayerStateStack::RenderingAttributes& prev,
+                 bool display_group = false)
+      : bounds_(bounds),
+        blend_mode_(blend_mode),
+        old_attributes_(prev),
+        display_group_(display_group) {}
 
   void apply(LayerStateStack* stack) const override {
-    stack->delegate_->saveLayer(bounds_, stack->outstanding_, blend_mode_,
-                                nullptr);
+    if (display_group_) {
+      stack->delegate_->save();
+    } else {
+      stack->delegate_->saveLayer(bounds_, stack->outstanding_, blend_mode_,
+                                  nullptr);
+    }
     stack->outstanding_ = {};
   }
   void restore(LayerStateStack* stack) const override {
+    if (display_group_) --stack->recorded_save_layer_depth_;
+    if (display_group_ && stack->save_layer_handler_) {
+      stack->save_layer_handler_(nullptr, nullptr, nullptr);
+    }
     if (stack->checkerboard_func_) {
       (*stack->checkerboard_func_)(stack->canvas_delegate(), bounds_);
     }
@@ -297,6 +310,7 @@ class SaveLayerEntry : public LayerStateStack::StateEntry {
   const skity::Rect bounds_;
   const clay::BlendMode blend_mode_;
   const LayerStateStack::RenderingAttributes old_attributes_;
+  const bool display_group_;
 
   BASE_DISALLOW_COPY_ASSIGN_AND_MOVE(SaveLayerEntry);
 };
@@ -400,11 +414,17 @@ class BackdropFilterEntry : public SaveLayerEntry {
   BackdropFilterEntry(const skity::Rect& bounds,
                       const std::shared_ptr<const clay::ImageFilter>& filter,
                       clay::BlendMode blend_mode,
-                      const LayerStateStack::RenderingAttributes& prev)
-      : SaveLayerEntry(bounds, blend_mode, prev), filter_(filter) {}
+                      const LayerStateStack::RenderingAttributes& prev,
+                      bool display_group = false)
+      : SaveLayerEntry(bounds, blend_mode, prev, display_group),
+        filter_(filter) {}
   ~BackdropFilterEntry() override = default;
 
   void apply(LayerStateStack* stack) const override {
+    if (display_group_) {
+      SaveLayerEntry::apply(stack);
+      return;
+    }
     stack->delegate_->saveLayer(bounds_, stack->outstanding_, blend_mode_,
                                 filter_.get());
     stack->outstanding_ = {};
@@ -431,6 +451,9 @@ class TranslateEntry : public LayerStateStack::StateEntry {
  public:
   TranslateEntry(float tx, float ty) : tx_(tx), ty_(ty) {}
 
+  std::shared_ptr<const StateEntry> CopyTransformAndClip() const override {
+    return std::make_shared<TranslateEntry>(tx_, ty_);
+  }
   void apply(LayerStateStack* stack) const override {
     stack->delegate_->translate(tx_, ty_);
   }
@@ -449,6 +472,9 @@ class TransformM44Entry : public LayerStateStack::StateEntry {
  public:
   explicit TransformM44Entry(const skity::Matrix& m44) : m44_(m44) {}
 
+  std::shared_ptr<const StateEntry> CopyTransformAndClip() const override {
+    return std::make_shared<TransformM44Entry>(m44_);
+  }
   void apply(LayerStateStack* stack) const override {
     stack->delegate_->transform(m44_);
   }
@@ -466,6 +492,9 @@ class IntegralTransformEntry : public LayerStateStack::StateEntry {
  public:
   IntegralTransformEntry() = default;
 
+  std::shared_ptr<const StateEntry> CopyTransformAndClip() const override {
+    return std::make_shared<IntegralTransformEntry>();
+  }
   void apply(LayerStateStack* stack) const override {
     stack->delegate_->integralTransform();
   }
@@ -479,6 +508,9 @@ class ClipRectEntry : public LayerStateStack::StateEntry {
   ClipRectEntry(const skity::Rect& clip_rect, bool is_aa)
       : clip_rect_(clip_rect), is_aa_(is_aa) {}
 
+  std::shared_ptr<const StateEntry> CopyTransformAndClip() const override {
+    return std::make_shared<ClipRectEntry>(clip_rect_, is_aa_);
+  }
   void apply(LayerStateStack* stack) const override {
     stack->delegate_->clipRect(clip_rect_, clay::GrClipOp::kIntersect, is_aa_);
   }
@@ -498,6 +530,9 @@ class ClipRRectEntry : public LayerStateStack::StateEntry {
   ClipRRectEntry(const skity::RRect& clip_rrect, bool is_aa)
       : clip_rrect_(clip_rrect), is_aa_(is_aa) {}
 
+  std::shared_ptr<const StateEntry> CopyTransformAndClip() const override {
+    return std::make_shared<ClipRRectEntry>(clip_rrect_, is_aa_);
+  }
   void apply(LayerStateStack* stack) const override {
     stack->delegate_->clipRRect(clip_rrect_, clay::GrClipOp::kIntersect,
                                 is_aa_);
@@ -520,6 +555,9 @@ class ClipPathEntry : public LayerStateStack::StateEntry {
 
   ~ClipPathEntry() override = default;
 
+  std::shared_ptr<const StateEntry> CopyTransformAndClip() const override {
+    return std::make_shared<ClipPathEntry>(clip_path_, is_aa_);
+  }
   void apply(LayerStateStack* stack) const override {
     stack->delegate_->clipPath(clip_path_, clay::GrClipOp::kIntersect, is_aa_);
   }
@@ -681,6 +719,22 @@ void LayerStateStack::clear_delegate() {
   delegate_ = DummyDelegate::GetInstance();
 }
 
+std::function<void(GrCanvas*)> LayerStateStack::CaptureTransformAndClip()
+    const {
+  std::vector<std::shared_ptr<const StateEntry>> entries;
+  entries.reserve(state_stack_.size());
+  for (const auto& entry : state_stack_) {
+    if (auto copy = entry->CopyTransformAndClip()) {
+      entries.push_back(std::move(copy));
+    }
+  }
+  return [entries = std::move(entries)](GrCanvas* canvas) {
+    LayerStateStack replay;
+    replay.set_delegate(canvas);
+    for (const auto& entry : entries) entry->apply(&replay);
+  };
+}
+
 void LayerStateStack::set_delegate(clay::GrCanvas* canvas) {
   if (delegate_) {
     if (canvas == delegate_->canvas()) {
@@ -766,8 +820,15 @@ void LayerStateStack::push_backdrop(
     const skity::Rect& bounds,
     const std::shared_ptr<const clay::ImageFilter>& filter,
     clay::BlendMode blend_mode) {
+  if (save_layer_handler_) {
+    GrPaint paint;
+    outstanding_.fill(paint, blend_mode);
+    save_layer_handler_(&bounds, &paint, filter);
+    ++recorded_save_layer_depth_;
+  }
   state_stack_.emplace_back(std::make_unique<BackdropFilterEntry>(
-      bounds, filter, blend_mode, outstanding_));
+      bounds, filter, blend_mode, outstanding_,
+      static_cast<bool>(save_layer_handler_)));
   apply_last_entry();
 }
 
@@ -823,8 +884,15 @@ void LayerStateStack::do_save() {
 }
 
 void LayerStateStack::save_layer(const skity::Rect& bounds) {
+  if (save_layer_handler_) {
+    GrPaint paint;
+    outstanding_.fill(paint);
+    save_layer_handler_(&bounds, &paint, nullptr);
+    ++recorded_save_layer_depth_;
+  }
   state_stack_.emplace_back(std::make_unique<SaveLayerEntry>(
-      bounds, clay::BlendMode::kSrcOver, outstanding_));
+      bounds, clay::BlendMode::kSrcOver, outstanding_,
+      static_cast<bool>(save_layer_handler_)));
   apply_last_entry();
 }
 

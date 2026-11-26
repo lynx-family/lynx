@@ -39,6 +39,7 @@ class RasterFrameService
   // invalidation; other compositors retain their normal notifications.
   void RequestRasterFrameForSyncDraw();
   void RequestRasterFrame();
+  void RequestDisplayFrame(int64_t image_id);
   void RequestUIFrame(bool inside_ui_frame = false);
 
   // Called after a new page's UI reset. Keep in-flight scheduler callbacks
@@ -77,6 +78,8 @@ class RasterFrameService
   void NotifyUploadTaskRegistered();
 
  private:
+  bool UsesDisplayCompositor() const;
+
   friend class RasterFrameServiceTestPeer;
 
   void ScheduledFrameDeadline(fml::TimeDelta delay);
@@ -108,6 +111,7 @@ class RasterFrameService
   bool using_sync_compositor_ = false;
   bool using_host_driven_windowless_draw_ = false;
   bool inside_sync_draw_ = false;
+  bool needs_raster_ = true;
 
   clay::Puppet<clay::Owner::kRaster, UIFrameService> ui_frame_service_;
   bool force_begin_frame_ = false;

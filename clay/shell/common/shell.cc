@@ -1127,12 +1127,13 @@ void Shell::RegisterDrawableImage(
         raster_runner->PostTask([weak_drawable_image, service_manager]() {
           if (auto image = weak_drawable_image.lock()) {
             image->MarkNewFrameAvailable();
-            // Request a new frame from Rasterizer directly.
+            // Recompose a retained scene when only an external image changed.
             clay::Puppet<clay::Owner::kRaster, RasterFrameService>
                 raster_frame_service =
                     service_manager->GetService<RasterFrameService>();
-            raster_frame_service.Act(
-                [](auto& impl) { impl.RequestRasterFrame(); });
+            raster_frame_service.Act([id = image->Id()](auto& impl) {
+              impl.RequestDisplayFrame(id);
+            });
           }
         });
 
@@ -1232,6 +1233,22 @@ Shell::GetResourceLoaderIntercept() {
   return nullptr;
 }
 
+ScreenshotData Shell::ScreenshotDisplaySceneSync(uint32_t background_color) {
+  Puppet<Owner::kPlatform, PlatformConstService> platform =
+      service_manager_->GetService<PlatformConstService>();
+  if (!platform->IsDisplayCompositorEnabled()) {
+    return {};
+  }
+  return rasterizer_service_
+      .ActWithPromise([background_color](auto& service) {
+        auto* rasterizer = service.GetRasterizer();
+        return rasterizer ? rasterizer->ScreenshotDisplayScene(background_color)
+                          : ScreenshotData{};
+      })
+      .get()
+      .value_or(ScreenshotData{});
+}
+
 ScreenshotData Shell::ScreenshotSync(
     ScreenshotData::ScreenshotType screenshot_type, uint32_t background_color) {
   TRACE_EVENT("clay", "Shell::ScreenshotSync");
@@ -1270,22 +1287,24 @@ ScreenshotData Shell::ScreenshotSync(
           state->promise.set_value(std::move(result));
         };
 
-        if (rasterizer) {
+        std::optional<uint64_t> snapshot_callback_id;
+        if (rasterizer && rasterizer->UsesDisplayCompositor()) {
+          snapshot_callback_id =
+              rasterizer->AddNextFrameSnapshotCallback(on_next_frame);
+        } else if (rasterizer) {
           rasterizer->AddNextFrameCallback(on_next_frame);
         }
 
         raster_task_runner->PostDelayedTask(
-            [state, weak_rasterizer, screenshot_type,
-             background_color]() mutable {
-              if (state->done.exchange(true)) {
-                return;
+            [snapshot_callback_id, weak_rasterizer,
+             on_next_frame = std::move(on_next_frame)]() mutable {
+              if (snapshot_callback_id && weak_rasterizer) {
+                // The timeout completes and removes the pending snapshot.
+                weak_rasterizer->CompleteNextFrameSnapshotCallback(
+                    *snapshot_callback_id);
+              } else {
+                on_next_frame();
               }
-              ScreenshotData result;
-              if (weak_rasterizer) {
-                result = weak_rasterizer->ScreenshotLastLayerTree(
-                    screenshot_type, false, background_color);
-              }
-              state->promise.set_value(std::move(result));
             },
             fml::TimeDelta::FromMilliseconds(kScreenshotTimeoutMs));
 

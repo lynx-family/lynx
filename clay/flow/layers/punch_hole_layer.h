@@ -14,6 +14,8 @@ class PunchHoleLayer : public Layer {
  public:
   explicit PunchHoleLayer(const skity::Rect& punch_hole);
 
+  bool SupportsDisplayScene() const override { return true; }
+
   bool IsReplacing(DiffContext* context, const Layer* layer) const override {
     return layer->as_punch_hole_layer() != nullptr;
   }

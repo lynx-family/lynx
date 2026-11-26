@@ -111,19 +111,43 @@ bool RasterFrameService::DemandDrawHw() {
 }
 
 void RasterFrameService::RequestRasterFrameForSyncDraw() {
-  if (!using_host_driven_windowless_draw_) {
+  if (!using_host_driven_windowless_draw_ && !UsesDisplayCompositor()) {
     RequestRasterFrame();
     return;
   }
   scheduler_->SetNeedsRasterBeginFrame();
+  if (!using_host_driven_windowless_draw_) {
+    RequestFrameSignal();
+  }
+}
+
+bool RasterFrameService::UsesDisplayCompositor() const {
+  return rasterizer_ && rasterizer_->UsesDisplayCompositor();
+}
+
+void RasterFrameService::RequestDisplayFrame(int64_t image_id) {
+  if (!UsesDisplayCompositor()) {
+    RequestRasterFrame();
+    return;
+  }
+  if (!rasterizer_->CanPresentImage(image_id)) {
+    needs_raster_ = true;
+  }
+  scheduler_->SetNeedsRasterBeginFrame();
+  RequestFrameSignal();
 }
 
 void RasterFrameService::RequestRasterFrame() {
+  if (UsesDisplayCompositor()) needs_raster_ = true;
   scheduler_->SetNeedsRasterBeginFrame();
   RequestFrameSignal();
 }
 
 void RasterFrameService::InvalidateRetainedFrames() {
+  if (UsesDisplayCompositor()) {
+    needs_raster_ = true;
+    rasterizer_->ClearDisplay();
+  }
   committing_tree_matches_page_ = false;
   pending_tree_matches_page_ = false;
   active_tree_matches_page_ = false;
@@ -187,6 +211,7 @@ void RasterFrameService::Commit(
       TRACE_EVENT("clay", "RasterFrameService::ForceDrawLayerTree");
       // Activate the layer tree and then notify scheduler to perform raster
       // immediately for force draw.
+      if (UsesDisplayCompositor()) needs_raster_ = true;
       active_layer_tree_ = std::move(layer_tree);
       active_tree_matches_page_ = true;
       active_recorder_ = std::move(recorder);
@@ -232,6 +257,7 @@ void RasterFrameService::ForceCommit(
     }
   });
   // Force draw the layer_tree.
+  if (UsesDisplayCompositor()) needs_raster_ = true;
   active_layer_tree_ = std::move(layer_tree);
   active_tree_matches_page_ = true;
   active_recorder_ = std::move(recorder);
@@ -356,6 +382,7 @@ void RasterFrameService::ScheduledActionActivePendingTree() {
       // During a host draw the scheduler consumes the tree in this call.
       RequestFrameSignal();
     }
+    if (UsesDisplayCompositor()) needs_raster_ = true;
     active_layer_tree_ = std::move(pending_layer_tree_);
     active_tree_matches_page_ = pending_tree_matches_page_;
     active_recorder_ = std::move(pending_recorder_);
@@ -399,7 +426,17 @@ void RasterFrameService::ScheduledActionDraw() {
   TRACE_EVENT_WITH_FRAME_NUMBER(recorder, "clay",
                                 "RasterFrameService::DrawLayerTree");
   if (active_tree_matches_page_) {
-    rasterizer_->Draw(active_layer_tree_, std::move(recorder));
+    const bool use_display_compositor = UsesDisplayCompositor();
+    // Clear before drawing so animation callbacks can request the next raster.
+    const bool presented =
+        use_display_compositor && !std::exchange(needs_raster_, false) &&
+        rasterizer_->DrawDisplay(recorder->GetVsyncTargetTime());
+    if (!presented &&
+        rasterizer_->Draw(active_layer_tree_, std::move(recorder)) !=
+            RasterStatus::kSuccess &&
+        use_display_compositor) {
+      needs_raster_ = true;
+    }
   }
   scheduler_->NotifyActiveTreeHasBeenDrawn();
 }
@@ -435,6 +472,7 @@ void RasterFrameService::PrepareForRecycle(
 }
 
 void RasterFrameService::CleanForRecycle() {
+  if (UsesDisplayCompositor()) rasterizer_->ClearDisplay();
   if (raster_frame_deadline_timer_ &&
       !raster_frame_deadline_timer_->Stopped()) {
     raster_frame_deadline_timer_->Stop();
@@ -456,6 +494,7 @@ void RasterFrameService::CleanForRecycle() {
 }
 
 void RasterFrameService::StopSchedulerAndCleanLayerTree() {
+  if (UsesDisplayCompositor()) needs_raster_ = true;
   scheduler_->Reset();
   scheduler_->Stop();
   active_layer_tree_.reset();

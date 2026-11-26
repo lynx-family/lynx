@@ -163,6 +163,10 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   ///             timing statistics.
   ///
   RasterStatus DrawLastLayerTree();
+  bool CanPresentImage(int64_t image_id) const;
+  bool UsesDisplayCompositor() const { return display_compositor_ != nullptr; }
+  bool DrawDisplay(fml::TimePoint presentation_time);
+  void ClearDisplay();
 
   std::shared_ptr<DrawableImageRegistry> GetDrawableImageRegistry();
 
@@ -224,6 +228,8 @@ class Rasterizer final : public Stopwatch::RefreshRateUpdater,
   ScreenshotData ScreenshotLastLayerTree(
       ScreenshotData::ScreenshotType type, bool base64_encode,
       uint32_t background_color = Color::kTransparent().Value());
+
+  ScreenshotData ScreenshotDisplayScene(uint32_t background_color);
 
   //----------------------------------------------------------------------------
   /// @brief      Sets a callback that will be executed when the next layer tree

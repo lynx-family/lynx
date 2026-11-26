@@ -9,7 +9,9 @@
 #define CLAY_FLOW_LAYERS_LAYER_STATE_STACK_H_
 
 #include <algorithm>
+#include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "clay/flow/embedded_views.h"
@@ -144,11 +146,26 @@ class LayerStateStack {
   // by this LayerStateStack in the order encountered.
   void fill(MutatorsStack* mutators);
 
+  // Capture immutable transform/clip entries, including clip antialiasing and
+  // integral transforms. Group effects are replayed separately by DisplayScene.
+  std::function<void(GrCanvas*)> CaptureTransformAndClip() const;
+
   // Sets up a checkerboard function that will be used to checkerboard the
   // contents of any saveLayer executed by the state stack.
   CheckerboardFunc checkerboard_func() const { return checkerboard_func_; }
   void set_checkerboard_func(CheckerboardFunc checkerboard_func) {
     checkerboard_func_ = checkerboard_func;
+  }
+
+  using SaveLayerHandler =
+      std::function<void(const skity::Rect*, const GrPaint*,
+                         const std::shared_ptr<const ImageFilter>&)>;
+  void set_save_layer_handler(SaveLayerHandler handler) {
+    save_layer_handler_ = std::move(handler);
+  }
+
+  bool has_recorded_save_layer() const {
+    return recorded_save_layer_depth_ != 0;
   }
 
   class AutoRestore {
@@ -427,6 +444,9 @@ class LayerStateStack {
     virtual void reapply(LayerStateStack* stack) const { apply(stack); }
     virtual void restore(LayerStateStack* stack) const {}
     virtual void update_mutators(MutatorsStack* mutators_stack) const {}
+    virtual std::shared_ptr<const StateEntry> CopyTransformAndClip() const {
+      return nullptr;
+    }
 
    protected:
     StateEntry() = default;
@@ -500,6 +520,8 @@ class LayerStateStack {
 
   std::shared_ptr<Delegate> delegate_;
   RenderingAttributes outstanding_;
+  SaveLayerHandler save_layer_handler_;
+  size_t recorded_save_layer_depth_ = 0;
   CheckerboardFunc checkerboard_func_ = nullptr;
 
   friend class SaveLayerEntry;

@@ -10,6 +10,8 @@
 #include <memory>
 #include <utility>
 
+#include "clay/flow/compositor/display_scene.h"
+
 namespace clay {
 
 PlatformViewLayer::PlatformViewLayer(const skity::Vec2& offset,
@@ -63,6 +65,10 @@ void PlatformViewLayer::Paint(PaintContext& context) const {
     return;
   }
 
+  if (context.display_scene) {
+    context.display_scene->SwitchToView(context, view_id_);
+    return;
+  }
   clay::GrCanvas* canvas =
       context.compositor_state->CompositeEmbeddedView(view_id_);
   context.canvas = canvas;

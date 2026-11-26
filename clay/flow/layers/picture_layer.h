@@ -26,6 +26,7 @@ class Layer;
 
 class PictureLayer : public Layer {
  public:
+  bool SupportsDisplayScene() const override { return true; }
 #ifndef ENABLE_SKITY
   PictureLayer(const skity::Vec2& offset,
                clay::GPUObject<clay::PictureSkia> picture, bool is_complex,

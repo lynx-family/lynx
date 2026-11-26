@@ -14,9 +14,9 @@
 namespace clay {
 
 class SharedImageBacking;
+struct ScreenshotData;
 
-// Runs on the raster task runner, sharing its graphics context. The output
-// surface and platform presentation remain owned by the display stage.
+// Composes retained frames on the raster thread using the output surface.
 class DisplayCompositor {
  public:
   DisplayCompositor(
@@ -28,11 +28,29 @@ class DisplayCompositor {
 
   bool Present(const fml::RefPtr<SharedImageBacking>& backing,
                const SurfaceFrame::SubmitInfo& submit_info,
-               std::unique_ptr<CompositorState> compositor_state);
+               std::unique_ptr<CompositorState> compositor_state,
+               GrImagePtr image = nullptr);
+
+  // Present the retained scene without traversing the LayerTree. The caller
+  // supplies timing for this display frame rather than reusing raster timing.
+  bool Present(const SurfaceFrame::SubmitInfo& submit_info);
+
+  // Read pixels from the retained scene without publishing a display frame.
+  ScreenshotData Screenshot(uint32_t background_color);
+
+  // Call with the render context current when invalidating a page or surface.
+  void Clear();
+  bool CanPresentImage(int64_t image_id) const;
 
  private:
+  bool PresentCurrent(const SurfaceFrame::SubmitInfo& submit_info);
+
   std::unique_ptr<Surface> surface_;
   Puppet<Owner::kRaster, CompositorService> compositor_service_;
+  fml::RefPtr<SharedImageBacking> backing_;
+  GrImagePtr image_;
+  std::unique_ptr<CompositorState> compositor_state_;
+  skity::Matrix root_transform_;
 };
 
 }  // namespace clay
