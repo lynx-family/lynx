@@ -15,6 +15,9 @@
 #include "base/include/fml/time/time_point.h"
 #include "build/build_config.h"
 #include "clay/fml/logging.h"
+#if defined(OS_LINUX)
+#include "clay/shell/common/services/error_reporting_service.h"
+#endif
 #include "clay/shell/common/services/sync_compositor_service.h"
 #include "clay/shell/common/switches.h"
 #include "clay/shell/platform/embedder/embedder_engine.h"
@@ -220,6 +223,12 @@ bool ClayHeadlessEngine::RunEngine(
     FML_LOG(ERROR) << "HeadlessEngineRun Failure!";
     return false;
   }
+
+#if defined(OS_LINUX)
+  // Register before surface initialization so early failures can be retained.
+  engine_->GetServiceManager()->RegisterService<ErrorReportingService>(
+      std::make_shared<ErrorReportingService>());
+#endif
 
   // Step 1: Launch the shell.
   if (!engine_->LaunchShell()) {

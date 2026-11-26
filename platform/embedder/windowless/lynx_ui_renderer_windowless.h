@@ -53,6 +53,9 @@ class LynxUIRendererWindowless : public LynxUIRenderer,
 
   void RegisterIMEHandler(void* handler, void* opaque) override {}
 
+  void AddClient(LynxViewClients* client) override;
+  void PrepareForDestroy() override;
+
   /* headless delegate */
   const char* GetClipboardData() const override;
   void SetClipboardData(const char* data) override;

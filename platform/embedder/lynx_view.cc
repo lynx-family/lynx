@@ -591,6 +591,7 @@ LYNX_EXTERN_C void lynx_view_register_ime_handler(lynx_view_t* view,
 }
 
 LYNX_EXTERN_C void lynx_view_release(lynx_view_t* view) {
+  view->lynx_ui_renderer->PrepareForDestroy();
   view->user_data = nullptr;
 #if ENABLE_NAPI_BINDING
   // Detach napi modules.

@@ -179,7 +179,8 @@ LYNX_CAPI_EXPORT void lynx_view_register_ime_handler(lynx_view_t* view,
                                                      void* opaque);
 
 // Users should call lynx_view_release() to release the LynxView when it is no
-// longer needed.
+// longer needed. Do not call from a view client callback; schedule release on
+// the host UI thread after the callback and its enclosing API call return.
 LYNX_CAPI_EXPORT void lynx_view_release(lynx_view_t* view);
 
 // Callback type for event simulation (devtool).

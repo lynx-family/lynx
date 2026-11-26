@@ -161,6 +161,15 @@ source_set("common") {
     "../../ui",
   ]
 
+  # Error reporting to the host is currently only required on Linux.
+  if (is_linux) {
+    sources += [
+      "services/error_reporting_service.cc",
+      "services/error_reporting_service.h",
+    ]
+    deps += [ "../../../core/build:build" ]
+  }
+
   if (is_mac || is_ios) {
     deps += [ ":shared_image_surface_metal" ]
   }

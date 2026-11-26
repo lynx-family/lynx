@@ -6653,6 +6653,7 @@ public enum LynxEnvKey {
   public FOUNDATION_EXPORT NSInteger const EBLynxComponentList EBLynxComponentList;
   public FOUNDATION_EXPORT NSInteger const EBLynxComponentImage EBLynxComponentImage;
   public FOUNDATION_EXPORT NSInteger const EBLynxComponentCustom EBLynxComponentCustom;
+  public FOUNDATION_EXPORT NSInteger const EBLynxRendererSurface EBLynxRendererSurface;
   public FOUNDATION_EXPORT NSInteger const EBLynxExceptionPlatform EBLynxExceptionPlatform;
   public FOUNDATION_EXPORT NSInteger const EBLynxExceptionJNI EBLynxExceptionJNI;
 
@@ -6794,6 +6795,7 @@ public enum ELynxConsumer {
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentListInvalidMethodArg ECLynxComponentListInvalidMethodArg;
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentImageUnsupportedProp ECLynxComponentImageUnsupportedProp;
   public FOUNDATION_EXPORT NSInteger const ECLynxComponentCustom ECLynxComponentCustom;
+  public FOUNDATION_EXPORT NSInteger const ECLynxRendererSurfaceInitializationFailed ECLynxRendererSurfaceInitializationFailed;
   public FOUNDATION_EXPORT NSInteger const ECLynxExceptionPlatform ECLynxExceptionPlatform;
   public FOUNDATION_EXPORT NSInteger const ECLynxExceptionJNI ECLynxExceptionJNI;
 

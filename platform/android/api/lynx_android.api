@@ -5703,6 +5703,7 @@ public class com::lynx::tasm::LynxErrorBehavior :  {
   public final int com.lynx.tasm.LynxErrorBehavior.EB_COMPONENT_LIST EB_COMPONENT_LIST;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_COMPONENT_IMAGE EB_COMPONENT_IMAGE;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_COMPONENT_CUSTOM EB_COMPONENT_CUSTOM;
+  public final int com.lynx.tasm.LynxErrorBehavior.EB_RENDERER_SURFACE EB_RENDERER_SURFACE;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_EXCEPTION_PLATFORM EB_EXCEPTION_PLATFORM;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_EXCEPTION_JNI EB_EXCEPTION_JNI;
 }
@@ -7177,6 +7178,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_LIST_INVALID_METHOD_ARG E_COMPONENT_LIST_INVALID_METHOD_ARG;
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_IMAGE_UNSUPPORTED_PROP E_COMPONENT_IMAGE_UNSUPPORTED_PROP;
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_CUSTOM E_COMPONENT_CUSTOM;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_RENDERER_SURFACE_INITIALIZATION_FAILED E_RENDERER_SURFACE_INITIALIZATION_FAILED;
   public final int com.lynx.tasm.LynxSubErrorCode.E_EXCEPTION_PLATFORM E_EXCEPTION_PLATFORM;
   public final int com.lynx.tasm.LynxSubErrorCode.E_EXCEPTION_JNI E_EXCEPTION_JNI;
 }

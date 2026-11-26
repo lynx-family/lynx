@@ -30,6 +30,9 @@
 #include "clay/shell/common/default_font_manager_initializer.h"
 #endif
 #include "clay/shell/common/services/animation_event_service_impl.h"
+#if defined(OS_LINUX)
+#include "clay/shell/common/services/error_reporting_service.h"
+#endif
 #include "clay/shell/common/services/sync_compositor_service.h"
 #include "clay/ui/common/frame_timing_collector.h"
 #include "clay/ui/common/isolate.h"
@@ -67,6 +70,9 @@
 #include "base/include/fml/task_runner.h"
 #include "clay/net/loader/resource_loader_intercept.h"
 #include "clay/ui/platform/keyboard_types.h"
+#if defined(OS_LINUX)
+#include "core/build/gen/lynx_sub_error_code.h"
+#endif
 
 namespace clay {
 
@@ -743,12 +749,20 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
         [waiting_for_first_frame = waiting_for_first_frame_](auto&) {
           waiting_for_first_frame->store(true);
         });
-    fml::TaskRunner::RunNowOrPostTask(task_runners_.GetUITaskRunner(),
-                                      [engine = engine_->GetWeakPtr()] {
-                                        if (engine) {
-                                          engine->OnOutputSurfaceCreateFailed();
-                                        }
-                                      });
+    fml::TaskRunner::RunNowOrPostTask(
+        task_runners_.GetUITaskRunner(), [engine = engine_->GetWeakPtr()] {
+          if (engine) {
+            engine->OnOutputSurfaceCreateFailed();
+#if defined(OS_LINUX)
+            ErrorReportingService::ReportError(
+                *engine->GetServiceManager(),
+                lynx::base::LynxError(
+                    lynx::error::E_RENDERER_SURFACE_INITIALIZATION_FAILED,
+                    std::string("Failed to initialize the rendering surface."),
+                    "", lynx::base::LynxErrorLevel::Fatal));
+#endif
+          }
+        });
     return;
   }
   FML_DCHECK(is_setup_);
@@ -784,6 +798,14 @@ void Shell::SetupOutputSurface(bool reuse_existing_surface) {
           engine->OnOutputSurfaceCreated();
         } else {
           engine->OnOutputSurfaceCreateFailed();
+#if defined(OS_LINUX)
+          ErrorReportingService::ReportError(
+              *engine->GetServiceManager(),
+              lynx::base::LynxError(
+                  lynx::error::E_RENDERER_SURFACE_INITIALIZATION_FAILED,
+                  std::string("Failed to initialize the rendering surface."),
+                  "", lynx::base::LynxErrorLevel::Fatal));
+#endif
         }
       }
     });

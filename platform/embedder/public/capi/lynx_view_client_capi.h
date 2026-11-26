@@ -33,6 +33,8 @@ typedef void (*on_destroy)(lynx_view_client_t* client);
 // Note: The callback is in an asynchronous thread.
 typedef void (*on_runtime_ready)(lynx_view_client_t* client);
 // Error received.
+// Do not release the view or client inside this callback. Schedule cleanup on
+// the host UI thread after the callback and its enclosing API call return.
 typedef void (*on_received_error)(lynx_view_client_t* client, int error_code,
                                   const char* message);
 struct lynx_value;
@@ -64,6 +66,8 @@ typedef struct lynx_error_t {
 } lynx_error_t;
 
 // Business errors, excluding LogBox-only notifications.
+// Do not release the view or client inside this callback. Schedule cleanup on
+// the host UI thread after the callback and its enclosing API call return.
 // Platforms assemble diagnostic text and inject their current template URL.
 // All pointers, including strings and consumers, expire when the callback
 // returns. Copy their contents before returning. custom_info can instead be

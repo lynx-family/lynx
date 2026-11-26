@@ -697,6 +697,22 @@ sections:
           - name: Default
             low-code: 0
             description: 'An error occurs in an customized element.'
+  - name: Renderer
+    description: 'Rendering infrastructure errors'
+    high-code: 23
+    behaviors:
+      - name: Surface
+        description: 'Rendering surface errors'
+        mid-code: 1
+        codes:
+          - name: InitializationFailed
+            low-code: 1
+            level: fatal
+            description: 'Failed to initialize or recreate the Clay rendering surface, preventing rendering output.'
+            fix-suggestion: 'Check the rendering backend and native surface configuration, and inspect initialization logs for the underlying failure.'
+            consumers:
+              - client
+              - lynx
   - name: Exception
     description: 'Exceptions that is difficult to classify'
     high-code: 99
