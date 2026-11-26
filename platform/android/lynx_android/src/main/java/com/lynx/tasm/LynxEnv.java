@@ -1573,6 +1573,10 @@ public class LynxEnv {
     return mEnableDataListFix;
   }
 
+  boolean enableUpdateGlobalPropsOnUiThread() {
+    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_UPDATE_GLOBAL_PROPS_ON_UI_THREAD, true);
+  }
+
   // FSP related getter methods
   public boolean enableFSP() {
     return mEnableFSP;
