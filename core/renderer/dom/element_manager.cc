@@ -2097,12 +2097,8 @@ void ElementManager::OnPatchFinishForFiber(
 bool ElementManager::ResolveSubtree(Element *root) {
   base::AutoReset<bool> layout_request(&need_layout_, need_layout_);
   FirePostMTSRenderTasks();
-  // FlushActionsAsRoot() already walks through dirty ancestors. Select that
-  // root here so callers that intentionally resolve a nested subtree do not
-  // report a wrong-parent warning before performing the same flush.
-  while (root->parent() && root->parent()->dirty()) {
-    root = root->parent();
-  }
+  // A PageElement flushes its own subtree even when its parent is dirty.
+  // Let the selected element decide whether to walk up to an ancestor.
   root->FlushActionsAsRoot();
   return need_layout_;
 }
