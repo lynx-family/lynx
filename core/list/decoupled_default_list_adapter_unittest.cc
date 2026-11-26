@@ -2,11 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <array>
+
 #define private public
 #define protected public
 
 #include "core/list/decoupled_default_list_adapter.h"
-
 #include "core/list/decoupled_list_container_impl.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "testing/fiber_data_source.h"
@@ -179,6 +180,77 @@ TEST_F(DefaultListAdapterTest, OnFinishBindItemHolder) {
   EXPECT_TRUE(list_adapter_->IsFinishedBinding(item_holder));
   EXPECT_FALSE(list_adapter_->IsDirty(item_holder));
   EXPECT_TRUE(list_adapter_->GetItemElementDelegate(item_holder) != nullptr);
+  list_container_impl_->StopInterceptListElementUpdated();
+}
+
+TEST_F(DefaultListAdapterTest, RecycleRemovedHolderAfterLateFiberBind) {
+  mock_list_element_->is_fiber_arch_ = true;
+  auto apply_diff = [this](const testing::FiberDataSource& data) {
+    LIST_CONTAINER_DEFINE_PROP_LEPUS_VALUE(FiberUpdateListInfo,
+                                           lepus::Value(data.Resolve()));
+    list_container_impl_->ResolveAttribute(*key, value);
+    list_container_impl_->PropsUpdateFinish();
+  };
+  apply_diff(
+      {.insert_action_ = {.insert_ops_ = {{0, "A"}, {1, "B"}, {2, "C"}}}});
+
+  // Drive the completion and recycle steps independently of automatic layout.
+  list_container_impl_->StartInterceptListElementUpdated();
+  std::array<std::shared_ptr<tasm::PipelineOptions>, 3> binds;
+  // 1. Start rendering all three items.
+  for (int i = 0; i < 3; ++i) {
+    auto* holder = list_adapter_->GetItemHolderForIndex(i);
+    ASSERT_NE(holder, nullptr);
+    EXPECT_CALL(*mock_list_element_, ComponentAtIndex(i, _, _))
+        .WillOnce(Return(true));
+    ASSERT_TRUE(list_adapter_->BindItemHolder(holder, i));
+    binds[i] = std::make_shared<tasm::PipelineOptions>();
+    binds[i]->operation_id = holder->operation_id();
+    mock_list_element_->AddListItemElement(
+        holder->item_key(), std::make_unique<MockListItemElement>(i + 2));
+  }
+  // 2. Complete binding for the first two items while C is still pending.
+  for (int i = 0; i < 2; ++i) {
+    auto* holder = list_adapter_->GetItemHolderForIndex(i);
+    list_adapter_->OnFinishBindItemHolder(
+        mock_list_element_->GetListItemElement(holder->item_key()), binds[i]);
+  }
+  auto* children = list_container_impl_->list_children_helper();
+  ASSERT_EQ(children->attached_children().size(), 2u);
+
+  auto old_holder = list_adapter_->GetItemHolderForIndex(2)->WeakFromThis();
+  auto* old_element = mock_list_element_->GetListItemElement("C");
+  ASSERT_NE(old_element, nullptr);
+  // 3. Replace A, B, and C with D, E, and F in the data update.
+  apply_diff({.insert_action_ = {.insert_ops_ = {{0, "D"}, {1, "E"}, {2, "F"}}},
+              .remove_action_ = {.remove_ops_ = {0, 1, 2}}});
+  auto* replacement = list_adapter_->GetItemHolderForIndex(2);
+  ASSERT_NE(replacement, nullptr);
+  ASSERT_EQ(replacement->item_key(), "F");
+  ASSERT_TRUE(children->attached_children().empty());
+  ASSERT_TRUE(children->attached_delegate_item_holder_map().empty());
+
+  // 4. Complete the pending bind for the removed item C.
+  list_adapter_->OnFinishBindItemHolder(old_element, binds[2]);
+  ASSERT_NE(old_holder.get(), nullptr);
+  ASSERT_TRUE(list_adapter_->IsRemoved(old_holder.get()));
+  ASSERT_THAT(children->attached_children(),
+              ::testing::ElementsAre(old_holder.get()));
+  ASSERT_THAT(
+      children->attached_delegate_item_holder_map(),
+      ::testing::ElementsAre(::testing::Pair(old_element, old_holder.get())));
+
+  // 5. Verify that each removed component is recycled exactly once.
+  for (const char* key : {"A", "B", "C"}) {
+    auto* element = mock_list_element_->GetListItemElement(key);
+    ASSERT_NE(element, nullptr);
+    EXPECT_CALL(*mock_list_element_, EnqueueComponent(element->GetImplId()))
+        .Times(1);
+  }
+  list_adapter_->RecycleRemovedItemHolders();
+  ASSERT_EQ(old_holder.get(), nullptr);
+  EXPECT_TRUE(children->attached_children().empty());
+  EXPECT_TRUE(children->attached_delegate_item_holder_map().empty());
   list_container_impl_->StopInterceptListElementUpdated();
 }
 
