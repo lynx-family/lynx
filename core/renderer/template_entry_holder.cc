@@ -73,6 +73,7 @@ void TemplateEntryHolder::ForEachEntry(
 
 void TemplateEntryHolder::InsertLynxTemplateBundle(
     const std::string& url, LynxTemplateBundle&& bundle) {
+  const LynxTemplateBundle* bundle_to_publish = &bundle;
   /**
    * Currently, preload_template_bundles_ is used to store preloaded template
    * entries which will eventually be loaded into template_entries_. So existing
@@ -81,15 +82,19 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
   if (template_entries_.find(url) == template_entries_.end()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_REGISTER_LAZY_BUNDLE,
                 "url", url);
-    preload_template_bundles_.try_emplace(url, bundle);
-    TryPostTemplateBundle(url, bundle);
+    const auto [entry, inserted] =
+        preload_template_bundles_.try_emplace(url, std::move(bundle));
+    if (inserted) {
+      bundle_to_publish = &entry->second;
+    }
+    TryPostTemplateBundle(url, *bundle_to_publish);
   }
 
   // TODO: It's reasonable that using component_loader as bundle_manager
   // so we need to insert pre registered bundle into bundle manager.
   // refactoring it later!
   if (component_loader_) {
-    component_loader_->InsertTemplateBundle(url, bundle);
+    component_loader_->InsertTemplateBundle(url, *bundle_to_publish);
   }
 }
 
