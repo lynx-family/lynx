@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.6.2
+
+- Add map camera and custom map marker props and UI methods on iOS, Android, and Harmony.
+
 ## 4.6.1
 
 - Add the `punctuation-trim-rule` attribute to `<text>` for configuring compression ratios per punctuation character.

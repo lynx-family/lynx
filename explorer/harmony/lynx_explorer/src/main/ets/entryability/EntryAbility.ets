@@ -7,6 +7,8 @@ import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import url from '@ohos.url';
+import { LynxXElementMapService } from '@lynx/xelement_map_interface';
+import { SystemMapProvider } from '@lynx/xelement_map_impl';
 import { LLog } from '@lynx/lynx';
 import { LynxInitProcessor } from '../common/LynxInitProcessor';
 import { Configuration } from '@ohos.app.ability.Configuration';
@@ -46,6 +48,7 @@ export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam) {
     this.updateInitialUrlStorage(want);
 
+    LynxXElementMapService.registerProvider(new SystemMapProvider());
     let initProcessor: LynxInitProcessor = new LynxInitProcessor(this.context);
 
     // Register services before initializing LynxEnv and preparing DevTool.

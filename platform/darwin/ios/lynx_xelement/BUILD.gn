@@ -64,6 +64,8 @@ podspec_target("XElement_podspec") {
     ":Video",
     ":ViewPager",
     ":WebView",
+    "map/MapImpl",
+    "map/MapInterface",
   ]
 }
 
@@ -375,6 +377,7 @@ subspec_target("Behavior") {
   dependency += [
     "XElement/BlurView",
     "XElement/Input",
+    "XElement/MapImpl",
     "XElement/Markdown",
     "XElement/Overlay",
     "XElement/ScrollCoordinator",

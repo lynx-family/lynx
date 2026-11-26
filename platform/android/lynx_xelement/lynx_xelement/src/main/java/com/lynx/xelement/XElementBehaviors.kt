@@ -45,6 +45,7 @@ class XElementBehaviors : BehaviorBundle {
       init {
         add("com.lynx.xelement")
         add("com.lynx.xelement.svg")
+        add("com.lynx.xelement.map")
       }
     }
   }

@@ -17,6 +17,7 @@ android {
 
     defaultConfig {
         applicationId "com.lynx.explorer"
+        manifestPlaceholders.googleMapsApiKey = project.findProperty("googleMapsApiKey") ?: System.getenv("GOOGLE_MAPS_API_KEY") ?: ""
         minSdkVersion 24
         targetSdkVersion 32
         versionCode 1
@@ -180,6 +181,8 @@ dependencies {
     implementation project(':LynxXElement:Refresh')
     implementation project(':LynxXElement:BlurView')
     implementation project(':LynxXElement:WebView')
+    implementation project(':LynxXElement:MapInterface')
+    implementation project(':LynxXElement:MapImpl')
     implementation project(':LynxXElement:Video')
     implementation project(':LynxXElement:AnimaX')
 

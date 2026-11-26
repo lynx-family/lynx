@@ -26,6 +26,7 @@ import {
   TemplateData
 } from '@lynx/lynx';
 import { UISVG } from '@lynx/xelement_svg';
+import { LynxUIMap, LynxUIMapMarker } from '@lynx/xelement_map_interface';
 import { UIWebView } from '@lynx/xelement_webview';
 import { UIVideo } from '@lynx/xelement_video';
 import Constants from '../common/constants';
@@ -80,6 +81,8 @@ struct Lynx {
   private extraTiming: LynxExtraTiming = new LynxExtraTiming();
   private behaviors: BehaviorRegistryMap = new Map([
     ['svg',  new Behavior(UISVG, undefined)],
+    ['map', new Behavior(LynxUIMap, undefined)],
+    ['map-marker', new Behavior(LynxUIMapMarker, undefined)],
     ['webview', new Behavior(UIWebView, undefined)],
     ['video', new Behavior(UIVideo, undefined)]]);
   private nodeAPIToken: LynxNodeAPIToken = new LynxNodeAPIToken();

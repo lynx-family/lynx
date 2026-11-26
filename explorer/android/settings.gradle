@@ -68,6 +68,10 @@ include ':LynxXElement:BlurView'
 project(":LynxXElement:BlurView").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_blur_view')
 include ':LynxXElement:WebView'
 project(":LynxXElement:WebView").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_webview')
+include ':LynxXElement:MapInterface'
+project(":LynxXElement:MapInterface").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_map_interface')
+include ':LynxXElement:MapImpl'
+project(":LynxXElement:MapImpl").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_map_impl')
 include ':LynxXElement:Video'
 project(":LynxXElement:Video").projectDir = new File(rootProject.projectDir, '../../platform/android/lynx_xelement/lynx_xelement_video')
 include ':LynxXElement:AnimaX'

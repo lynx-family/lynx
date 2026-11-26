@@ -172,6 +172,30 @@
       ]
     },
     {
+      "name": "xelement_map_interface",
+      "srcPath": "../../platform/harmony/lynx_xelement/map_interface",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "xelement_map_impl",
+      "srcPath": "../../platform/harmony/lynx_xelement/map_impl",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
       "name": "xelement_webview",
       "srcPath": "../../platform/harmony/lynx_xelement/webview",
       "targets": [
