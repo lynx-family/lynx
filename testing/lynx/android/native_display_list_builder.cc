@@ -3,24 +3,63 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <cstdint>
+#include <memory>
 #include <optional>
+#include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/platform/android/jni_convert_helper.h"
 #include "core/renderer/dom/fragment/display_list_builder.h"
 #include "core/renderer/starlight/style/borders_data.h"
+#include "core/renderer/ui_wrapper/painting/android/native_painting_context_android.h"
+#include "core/renderer/ui_wrapper/painting/android/path_android.h"
+#include "core/renderer/ui_wrapper/painting/android/platform_renderer_android.h"
 #include "core/renderer/ui_wrapper/painting/public/paint_image.h"
+#include "gfx/public/path_impl.h"
+#include "gfx/public/path_impl_factory.h"
 #include "testing/lynx/android/gen/NativeDisplayListBuilder_jni.h"
 
 namespace {
 
+class SourceOnlyPathImpl final : public lynx::gfx::PathImpl {
+ public:
+  explicit SourceOnlyPathImpl(lynx::gfx::PathSource source)
+      : PathImpl(std::move(source)) {}
+};
+
+class SourceOnlyPathImplFactory final : public lynx::gfx::PathImplFactory {
+ public:
+  std::unique_ptr<lynx::gfx::PathImpl> Create(
+      lynx::gfx::PathSource source) const override {
+    return std::make_unique<SourceOnlyPathImpl>(std::move(source));
+  }
+};
+
 class NativeDisplayListBuilderState {
  public:
+  std::shared_ptr<lynx::tasm::NativePaintingCtxAndroid> painting_context;
   lynx::tasm::DisplayListBuilder builder;
   std::optional<lynx::tasm::DisplayList> display_list;
+  lynx::fml::RefPtr<lynx::tasm::PlatformRendererAndroid> renderer;
+
+  const lynx::tasm::DisplayList& GetList() const {
+    return display_list ? *display_list : renderer->GetDisplayList();
+  }
 };
 
 NativeDisplayListBuilderState* State(jlong native_ptr) {
   return reinterpret_cast<NativeDisplayListBuilderState*>(native_ptr);
+}
+
+void RecordPath(NativeDisplayListBuilderState* state,
+                lynx::fml::RefPtr<lynx::gfx::Path> path, jint operation,
+                jint rule, jfloat x, jfloat y) {
+  const auto fill_rule = static_cast<lynx::gfx::PathFillRule>(rule);
+  if (operation == 0) {
+    state->builder.ClipPath(std::move(path), fill_rule, x, y);
+  } else {
+    state->builder.ClipPathProperty(std::move(path), fill_rule, x, y);
+  }
 }
 
 lynx::tasm::RoundedRectangle MakeRoundedRectangle(JNIEnv* env, jfloat x,
@@ -230,8 +269,7 @@ void Build(JNIEnv* /*env*/, jclass /*jcaller*/, jlong native_ptr) {
 }
 
 jobject GetItemsBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr) {
-  const lynx::tasm::DisplayList& display_list =
-      State(native_ptr)->display_list.value();
+  const lynx::tasm::DisplayList& display_list = State(native_ptr)->GetList();
   const uint8_t* data = display_list.GetContentItemsData();
   static uint8_t empty_buffer;
   return env->NewDirectByteBuffer(
@@ -240,8 +278,7 @@ jobject GetItemsBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr) {
 }
 
 jobject GetDataBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr) {
-  const lynx::tasm::DisplayList& display_list =
-      State(native_ptr)->display_list.value();
+  const lynx::tasm::DisplayList& display_list = State(native_ptr)->GetList();
   const uint8_t* data = display_list.GetContentData();
   if (data == nullptr) {
     return nullptr;
@@ -249,4 +286,112 @@ jobject GetDataBuffer(JNIEnv* env, jclass /*jcaller*/, jlong native_ptr) {
   return env->NewDirectByteBuffer(
       const_cast<uint8_t*>(data),
       static_cast<jlong>(display_list.GetContentDataSize()));
+}
+
+void RecordRectPath(JNIEnv* env, jclass, jlong native_ptr, jint operation,
+                    jfloat width, jfloat height, jfloatArray radii, jint rule,
+                    jfloat x, jfloat y) {
+  const auto& factory =
+      State(native_ptr)->painting_context->GetPathImplFactory();
+  lynx::fml::RefPtr<lynx::gfx::Path> path;
+  if (env->GetArrayLength(radii) == 8) {
+    float corners[8];
+    env->GetFloatArrayRegion(radii, 0, 8, corners);
+    path = lynx::gfx::Path::MakeRoundedRect(width, height, corners, factory);
+  } else {
+    path = lynx::gfx::Path::MakeRect(width, height, factory);
+  }
+  RecordPath(State(native_ptr), std::move(path), operation, rule, x, y);
+}
+
+void RecordSourceOnlyRectPath(JNIEnv*, jclass, jlong native_ptr, jint operation,
+                              jfloat width, jfloat height, jint rule, jfloat x,
+                              jfloat y) {
+  static const SourceOnlyPathImplFactory factory;
+  auto path = lynx::gfx::Path::MakeRect(width, height, factory);
+  RecordPath(State(native_ptr), std::move(path), operation, rule, x, y);
+}
+
+void RecordSvgPath(JNIEnv* env, jclass, jlong native_ptr, jint operation,
+                   jstring data, jfloat scale, jint rule, jfloat x, jfloat y) {
+  const auto& factory =
+      State(native_ptr)->painting_context->GetPathImplFactory();
+  const auto source =
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, data);
+  auto path = lynx::gfx::Path::MakeSvgPathData(source, scale, factory);
+  RecordPath(State(native_ptr), std::move(path), operation, rule, x, y);
+}
+
+void RecordCommandPath(JNIEnv*, jclass, jlong native_ptr, jint operation,
+                       jint rule, jfloat x, jfloat y) {
+  const auto& factory =
+      State(native_ptr)->painting_context->GetPathImplFactory();
+  lynx::gfx::PathBuilder builder;
+  builder.MoveTo(0, 0);
+  builder.LineTo(20, 0);
+  builder.QuadTo(30, 0, 30, 10);
+  builder.CubicTo(30, 20, 20, 30, 10, 30);
+  builder.LineTo(0, 30);
+  builder.Close();
+  builder.LineTo(5, 5);
+  builder.MoveTo(40, 40);
+  builder.LineTo(50, 40);
+  RecordPath(State(native_ptr), builder.Build(factory), operation, rule, x, y);
+}
+
+void ReusePath(JNIEnv*, jclass, jlong native_ptr, jlong source_ptr, jint index,
+               jint operation, jint rule, jfloat x, jfloat y) {
+  RecordPath(State(native_ptr),
+             lynx::fml::Ref(const_cast<lynx::gfx::Path*>(
+                 State(source_ptr)->GetList().GetPath(index))),
+             operation, rule, x, y);
+}
+
+jlong GetPathKey(JNIEnv*, jclass, jlong native_ptr, jint index) {
+  const auto& list = State(native_ptr)->GetList();
+  const auto* path =
+      index >= 0 && static_cast<size_t>(index) < list.GetPathCount()
+          ? list.GetPath(static_cast<size_t>(index))
+          : nullptr;
+  return path ? static_cast<jlong>(path->GetImpl().GetKey()) : 0;
+}
+
+jbyteArray GetPath(JNIEnv* env, jclass, jlong native_ptr, jint index) {
+  const auto& list = State(native_ptr)->GetList();
+  const auto* path =
+      index >= 0 && static_cast<size_t>(index) < list.GetPathCount()
+          ? list.GetPath(static_cast<size_t>(index))
+          : nullptr;
+  return lynx::tasm::PlatformRendererContext::ExportPath(env, path).Release();
+}
+
+void ClearOwnerClip(JNIEnv*, jclass, jlong native_ptr) {
+  State(native_ptr)->builder.ClipPathProperty(nullptr);
+}
+
+jlong CreateRendererContext(JNIEnv* env, jclass, jlong native_ptr,
+                            jobject context, jint id) {
+  auto* state = State(native_ptr);
+  auto* renderer_context =
+      new lynx::tasm::PlatformRendererContext(env, context);
+  state->painting_context =
+      std::make_shared<lynx::tasm::NativePaintingCtxAndroid>(env, nullptr, 0,
+                                                             renderer_context);
+  state->renderer = lynx::fml::AdoptRef(new lynx::tasm::PlatformRendererAndroid(
+      renderer_context, id, ::PlatformRendererType::kView, nullptr));
+  state->display_list.reset();
+  return reinterpret_cast<jlong>(renderer_context);
+}
+
+void UsePathContext(JNIEnv*, jclass, jlong native_ptr, jlong context_ptr) {
+  State(native_ptr)->painting_context = State(context_ptr)->painting_context;
+}
+
+void InstallIntoRenderer(JNIEnv*, jclass, jlong native_ptr,
+                         jlong renderer_ptr) {
+  auto* source = State(native_ptr);
+  State(renderer_ptr)
+      ->renderer->UpdateDisplayList(std::move(*source->display_list));
+  State(renderer_ptr)->display_list.reset();
+  source->display_list.reset();
 }

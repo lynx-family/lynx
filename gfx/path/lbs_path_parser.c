@@ -73,6 +73,13 @@ static bool LBSArgsAreFinite(const float args[], int count) {
   return true;
 }
 
+static bool LBSReadFlag(char** s, bool* flag) {
+  LBSSkipSep(s);
+  if (**s != '0' && **s != '1') return false;
+  *flag = *(*s)++ == '1';
+  return true;
+}
+
 void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
   if (!consumer) return;
   consumer->error = 1;
@@ -247,12 +254,10 @@ void LBSParsePathWithConsumer(const char* data, LBSPathConsumer* consumer) {
         case 'a':
         case 'A':
           if (LBSExtractPathArgs(&s, args, 3)) goto invalid;
-          LBSSkipSep(&s);
-          if (!*s) goto invalid;
-          bool largeArcFlag = *s++ == '1';
-          LBSSkipSep(&s);
-          if (!*s) goto invalid;
-          bool sweepArcFlag = *s++ == '1';
+          bool largeArcFlag, sweepArcFlag;
+          if (!LBSReadFlag(&s, &largeArcFlag) ||
+              !LBSReadFlag(&s, &sweepArcFlag))
+            goto invalid;
           if (LBSExtractPathArgs(&s, args + 3, 2)) goto invalid;
           if (cmd == 'a') {
             args[3] += currentPointX;

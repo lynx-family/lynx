@@ -19,6 +19,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.Layout;
 import android.text.Spanned;
+import android.util.SparseArray;
 import android.view.View;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.base.LLog;
@@ -56,6 +57,7 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int OP_BOX_SHADOW = 13;
   static final int OP_BACKGROUND_IMAGE = 14;
   static final int OP_RADIAL_GRADIENT = 15;
+  static final int OP_CLIP_PATH = 17;
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
   static final int SUBTREE_OP_FILTER = 2;
@@ -128,9 +130,16 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int BOX_SHADOW_COLOR_OFFSET = 12;
   static final int BOX_SHADOW_BLUR_RADIUS_OFFSET = 16;
   static final int BOX_SHADOW_CLIP_MODE_OFFSET = 20;
+  static final int PATH_INDEX_OFFSET = 4;
+  static final int PATH_FILL_RULE_OFFSET = 8;
+  static final int CLIP_PATH_X_OFFSET = 12;
+  static final int CLIP_PATH_Y_OFFSET = 16;
 
   private ByteBuffer mItemsBuffer;
   private ByteBuffer mDataBuffer;
+  private static final Path INVALID_PATH = new Path();
+  private int mOwnerSign = -1;
+  private SparseArray<Path> mPaths;
   private TextMeasurer mTextMeasurer;
   private Paint mPaint;
 
@@ -175,6 +184,57 @@ public class DisplayListApplier implements Drawable.Callback {
     mItemIndex = 0;
     mFragmentDepth = 0;
     mRoundedRectangleArray.clear();
+  }
+
+  void setOwnerSign(int sign) {
+    mOwnerSign = sign;
+  }
+
+  private Path getPath(int index, int fillRule) {
+    if (index < 0 || index > (Integer.MAX_VALUE >> 1) || fillRule < 0 || fillRule > 1
+        || mContext == null) {
+      return null;
+    }
+    int sign = mOwnerSign;
+    if (sign < 0) {
+      IRendererHost host = getRendererHost();
+      Renderer renderer = host != null ? host.getRenderer() : null;
+      if (renderer != null) {
+        sign = renderer.getSign();
+        mOwnerSign = sign;
+      }
+    }
+    if (sign < 0) {
+      return null;
+    }
+    int slot = (index << 1) | fillRule;
+    if (mPaths != null) {
+      Path cached = mPaths.get(slot);
+      if (cached != null) {
+        return cached == INVALID_PATH ? null : cached;
+      }
+    }
+    Path resolved = mContext.getPath(sign, index, fillRule);
+    if (mPaths == null) {
+      mPaths = new SparseArray<>();
+    }
+    mPaths.put(slot, resolved != null ? resolved : INVALID_PATH);
+    return resolved;
+  }
+
+  static void clipPath(Canvas canvas, Path path, float x, float y) {
+    if (path == null) {
+      canvas.clipRect(0, 0, 0, 0);
+      return;
+    }
+    if (x == 0f && y == 0f) {
+      canvas.clipPath(path);
+      return;
+    }
+    // Undo only the placement transform; retain the clip until its scope ends.
+    canvas.translate(x, y);
+    canvas.clipPath(path);
+    canvas.translate(-x, -y);
   }
 
   public void drawTillNextView(Canvas canvas) {
@@ -653,6 +713,15 @@ public class DisplayListApplier implements Drawable.Callback {
               canvas.drawRect(roundedRectangle.getRectF(), mPaint);
             }
           }
+          break;
+        }
+
+        case OP_CLIP_PATH: {
+          clipPath(canvas,
+              getPath(getIntAt(itemByteOffset + PATH_INDEX_OFFSET),
+                  getIntAt(itemByteOffset + PATH_FILL_RULE_OFFSET)),
+              getFloatAt(itemByteOffset + CLIP_PATH_X_OFFSET),
+              getFloatAt(itemByteOffset + CLIP_PATH_Y_OFFSET));
           break;
         }
 
@@ -1168,6 +1237,7 @@ public class DisplayListApplier implements Drawable.Callback {
   public void setBuffer(ByteBuffer itemsBuffer, ByteBuffer dataBuffer) {
     mItemsBuffer = itemsBuffer;
     mDataBuffer = dataBuffer;
+    mPaths = null;
     mRootShadowBounds = null;
     reset();
   }

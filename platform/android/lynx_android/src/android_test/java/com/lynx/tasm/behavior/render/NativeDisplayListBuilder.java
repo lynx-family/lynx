@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.render;
 
+import android.graphics.Path;
 import java.nio.ByteBuffer;
 
 /**
@@ -12,10 +13,15 @@ import java.nio.ByteBuffer;
  * tests do not duplicate the native {@code DisplayListItem} ABI.
  */
 final class NativeDisplayListBuilder implements AutoCloseable {
+  static final int PATH_CLIP = 0;
+  static final int PATH_OWNER_CLIP = 1;
   private static boolean sRegistered;
 
   private long mNativePtr;
+  private PlatformRendererContext mContext;
   private boolean mBuilt;
+  private boolean mTransferred;
+  private boolean mRendererState;
 
   static synchronized void ensureRegistered() {
     if (!sRegistered) {
@@ -148,6 +154,93 @@ final class NativeDisplayListBuilder implements AutoCloseable {
     return PlatformRendererContext.makeReadOnlyDisplayListBuffer(nativeGetDataBuffer(mNativePtr));
   }
 
+  NativeDisplayListBuilder rectPath(
+      int operation, float width, float height, int rule, float x, float y, float... radii) {
+    ensureMutable();
+    validateRadii(radii);
+    nativeRecordRectPath(mNativePtr, operation, width, height, radii, rule, x, y);
+    return this;
+  }
+
+  NativeDisplayListBuilder sourceOnlyRectPath(
+      int operation, float width, float height, int rule, float x, float y) {
+    ensureMutable();
+    nativeRecordSourceOnlyRectPath(mNativePtr, operation, width, height, rule, x, y);
+    return this;
+  }
+
+  NativeDisplayListBuilder svgPath(
+      int operation, String data, float scale, int rule, float x, float y) {
+    ensureMutable();
+    nativeRecordSvgPath(mNativePtr, operation, data, scale, rule, x, y);
+    return this;
+  }
+
+  NativeDisplayListBuilder commandPath(int operation, int rule, float x, float y) {
+    ensureMutable();
+    nativeRecordCommandPath(mNativePtr, operation, rule, x, y);
+    return this;
+  }
+
+  NativeDisplayListBuilder reusePath(
+      NativeDisplayListBuilder source, int index, int operation, int rule, float x, float y) {
+    ensureMutable();
+    source.ensureBuilt();
+    nativeReusePath(mNativePtr, source.mNativePtr, index, operation, rule, x, y);
+    return this;
+  }
+
+  NativeDisplayListBuilder clearOwnerClip() {
+    ensureMutable();
+    nativeClearOwnerClip(mNativePtr);
+    return this;
+  }
+
+  long getPathKey(int index) {
+    ensureBuilt();
+    return nativeGetPathKey(mNativePtr, index);
+  }
+
+  byte[] getPathBytes(int index) {
+    ensureBuilt();
+    return nativeGetPath(mNativePtr, index);
+  }
+
+  Path getPathObject(int index, int rule) {
+    ensureBuilt();
+    long key = getPathKey(index);
+    return mContext.getOrBuildPath(key, rule, new PlatformRendererContext.PathBytesLoader() {
+      @Override
+      byte[] load() {
+        return getPathBytes(index);
+      }
+    });
+  }
+
+  long createRendererContext(PlatformRendererContext context, int id) {
+    ensureOpen();
+    mContext = context;
+    long result = nativeCreateRendererContext(mNativePtr, context, id);
+    mRendererState = true;
+    mBuilt = true;
+    return result;
+  }
+
+  NativeDisplayListBuilder usePathContext(NativeDisplayListBuilder context) {
+    ensureMutable();
+    context.ensureOpen();
+    mContext = context.mContext;
+    nativeUsePathContext(mNativePtr, context.mNativePtr);
+    return this;
+  }
+
+  void installIntoRenderer(NativeDisplayListBuilder rendererState) {
+    ensureBuilt();
+    rendererState.ensureOpen();
+    nativeInstallIntoRenderer(mNativePtr, rendererState.mNativePtr);
+    mTransferred = true;
+  }
+
   @Override
   public void close() {
     if (mNativePtr != 0) {
@@ -165,6 +258,9 @@ final class NativeDisplayListBuilder implements AutoCloseable {
 
   private void ensureBuilt() {
     ensureOpen();
+    if (mTransferred && !mRendererState) {
+      throw new IllegalStateException("The display list has been transferred to its renderer.");
+    }
     if (!mBuilt) {
       nativeBuild(mNativePtr);
       mBuilt = true;
@@ -212,4 +308,21 @@ final class NativeDisplayListBuilder implements AutoCloseable {
   private static native void nativeBuild(long nativePtr);
   private static native ByteBuffer nativeGetItemsBuffer(long nativePtr);
   private static native ByteBuffer nativeGetDataBuffer(long nativePtr);
+  private static native void nativeRecordRectPath(long nativePtr, int operation, float width,
+      float height, float[] radii, int rule, float x, float y);
+  private static native void nativeRecordSourceOnlyRectPath(
+      long nativePtr, int operation, float width, float height, int rule, float x, float y);
+  private static native void nativeRecordSvgPath(
+      long nativePtr, int operation, String data, float scale, int rule, float x, float y);
+  private static native void nativeRecordCommandPath(
+      long nativePtr, int operation, int rule, float x, float y);
+  private static native void nativeReusePath(
+      long nativePtr, long sourcePtr, int index, int operation, int rule, float x, float y);
+  private static native void nativeClearOwnerClip(long nativePtr);
+  private static native long nativeGetPathKey(long nativePtr, int index);
+  private static native byte[] nativeGetPath(long nativePtr, int index);
+  private static native long nativeCreateRendererContext(
+      long nativePtr, PlatformRendererContext context, int id);
+  private static native void nativeUsePathContext(long nativePtr, long contextPtr);
+  private static native void nativeInstallIntoRenderer(long nativePtr, long rendererPtr);
 }

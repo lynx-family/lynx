@@ -11,12 +11,11 @@
 
 namespace lynx::tasm {
 
-// Source-only backend skeleton; native access belongs to a later consumer
-// slice.
 class PathAndroid final : public gfx::PathImpl {
  public:
   explicit PathAndroid(gfx::PathSource source);
   ~PathAndroid() override;
+  BackendKind GetBackendKind() const override { return BackendKind::kAndroid; }
 };
 
 class PathAndroidFactory final : public gfx::PathImplFactory {
