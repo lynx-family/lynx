@@ -7,6 +7,23 @@
 
 #import <Lynx/LynxEnv.h>
 #import <LynxEnv+Internal.h>
+#import "LynxAnimationUtils+Private.h"
+
+void LynxApplyHighFrameRateHint(CAAnimation* animation, BOOL enabled) {
+  if (!enabled) {
+    return;
+  }
+  if (@available(iOS 15.0, tvOS 15.0, *)) {
+    CAFrameRateRange range = CAFrameRateRangeMake(120, 120, 120);
+    animation.preferredFrameRateRange = range;
+    // Give the animations inside the group the same hint before it is added to the layer.
+    if ([animation isKindOfClass:[CAAnimationGroup class]]) {
+      for (CAAnimation* child in ((CAAnimationGroup*)animation).animations) {
+        child.preferredFrameRateRange = range;
+      }
+    }
+  }
+}
 
 @implementation LynxAnimationUtils
 

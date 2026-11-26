@@ -299,6 +299,7 @@ static id<LynxServiceTextProtocol> getTextService() {
   LynxUIContext *uiContext = _uiOwner.uiContext;
   LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
   [uiContext setUIConfig:configAdapter];
+  uiContext.prefersHighFrameRateForPlatformAnimations = pageConfig->GetPreferredFps() == "high";
   uiContext.enableIntersectionObserverInitialRatioCompatibility =
       pageConfig->GetEnableIntersectionObserverInitialRatioCompatibility();
 

@@ -19,6 +19,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) BOOL enableIntersectionObserverInitialRatioCompatibility;
 @property(nonatomic, strong, readwrite) LynxScrollFluency *fluencyInnerListener;
 
+/** @cond */
+@property(atomic, assign) BOOL prefersHighFrameRateForPlatformAnimations;
+// cspell:ignore endcond
+/** @endcond */
+
 - (void)updateScreenMetrics:(LynxScreenMetrics *)screenMetrics;
 - (void)updateViewportMetrics:(nullable LynxViewportMetrics *)viewportMetrics;
 - (void)updateScreenSize:(CGSize)screenSize;
