@@ -113,7 +113,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     // FIXME(zhouzhitao): remove this config in the next version(remove in 3.9)
     FIX_NEW_FIXED_REMOVAL_BUG,
     FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
-    FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT,
     FIX_HARMONY_FIBER_DESTROY_TARGET_ONLY,
     FIX_FILTER_DYNAMIC_UPDATE_BUG,
     ENABLE_CSS_INLINE_VARIABLES,
@@ -320,8 +319,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_NEW_FIXED_REMOVAL_BUG, "fix_new_fixed_removal_bug"},
             {Key::FIX_OLD_FIXED_INSERT_SELF_USE_RENDER_PARENT,
              "fix_old_fixed_insert_self_use_render_parent"},
-            {Key::FIX_FIBER_REINSERT_DETACH_FROM_OLD_RENDER_PARENT,
-             "fix_fiber_reinsert_detach_from_old_render_parent"},
             // NOLINT(harmony-trail-key): Settings-only configuration.
             {Key::FIX_HARMONY_FIBER_DESTROY_TARGET_ONLY,
              "fix_harmony_fiber_destroy_target_only"},
@@ -520,7 +517,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixListWithSyncFlush();
   bool FixResetNativeUpdateDataOrderForLoad();
   bool FixOldFixedInsertSelfUseRenderParent();
-  bool FixFiberReinsertDetachFromOldRenderParent();
   bool FixHarmonyFiberDestroyTargetOnly();
   bool EnableAnimationForwardUpdatePreservation();
   bool EnableNewStylingPipeline();
