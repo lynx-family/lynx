@@ -58,6 +58,7 @@ enum TextPropertyKeyID {
   kTextPropLineHeightAlignment = 26,
   kTextPropLineHeightTrim = 27,
   kTextPropLineHeightMode = 28,
+  kTextPropFontFeatureSettings = 29,
 
   // attributes
   kTextPropTextMaxLine = 99,
@@ -162,6 +163,7 @@ static const uint8_t kUtf8ToUtf16Units[256] = {
   V(FontWeight, 1)                        \
   V(FontStyle, 1)                         \
   V(FontFamily, 1)                        \
+  V(FontFeatureSettings, 1)               \
   V(FontVariationSettings, 1)             \
   V(LineHeight, 1)                        \
   V(LetterSpacing, 1)                     \
