@@ -10,6 +10,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/lynx_image_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -219,6 +220,10 @@ void NativePaintingCtxPlatformHarmonyRef::InvokePlatformViewUIMethod(
         auto invoke_callback = std::move(callback);
         invoke_callback(code, PubLepusValue(data));
       };
+  auto image_manager = renderer_context->GetImageManagerForSign(id);
+  if (image_manager && image_manager->InvokeUIMethod(method, cb)) {
+    return;
+  }
   ui_owner->InvokeUIMethod(id, method, params, std::move(cb));
 }
 
