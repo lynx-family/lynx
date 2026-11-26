@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/debug/lynx_error.h"
 #include "platform/embedder/core/lynx_template_renderer.h"
 #include "platform/embedder/lynx_view_client_priv.h"
 
@@ -70,6 +71,8 @@ class LynxViewClients : public TemplateRendererClient {
                      int64_t frame_finish_time_in_ns);
 
  private:
+  bool has_registered_client_ = false;
+  std::vector<base::LynxError> pending_errors_;
   lynx_view_t* lynx_view_;
   std::list<lynx_view_client_t*> clients_;
 };
