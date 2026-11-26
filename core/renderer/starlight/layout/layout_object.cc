@@ -572,6 +572,17 @@ bool LayoutObject::FetchEarlyReturnResultForMeasure(
   const auto cache = cache_manager_.FindAvailableCacheEntry(constraints, *this);
 
   if (cache.cache_) {
+    // A custom measurer can retain drawing data that depends on the width
+    // constraint even when its measured size fits both constraints. A
+    // speculative query may reuse that size, but final layout must refresh
+    // the content when the at-most width constraint changes.
+    if (!is_trying && measure_func_ &&
+        constraints[kHorizontal].Mode() == SLMeasureModeAtMost &&
+        !(cache.cache_->resolved_constraints_[kHorizontal] ==
+          constraints[kHorizontal])) {
+      return false;
+    }
+
     // Matching cache is found
 
     if (!is_trying &&

@@ -1003,6 +1003,62 @@ TEST_F(BoxLayoutAlgorithmTest, ComposeChildConstraintChangeKeepsParentCache) {
   ExpectRange(measurement.ranges.back(), 0, 100, 0, 80);
 }
 
+TEST_F(BoxLayoutAlgorithmTest,
+       FinalCustomMeasureUsesTheFinalHorizontalConstraint) {
+  NativeMeasurement measurement;
+  measurement.preferred = FloatSize(221, 33, 0);
+  auto* child = CreateNativeChild(&measurement);
+  const Constraints indefinite;
+  const Constraints at_most{OneSideConstraint::AtMost(712),
+                            OneSideConstraint::Indefinite()};
+
+  const auto initial = child->UpdateMeasureByPlatform(indefinite, true);
+  ASSERT_EQ(1u, measurement.ranges.size());
+  EXPECT_EQ(SLMeasureModeIndefinite,
+            measurement.ranges.back()[kHorizontal].Mode());
+
+  // A speculative size query can reuse the intrinsic measurement, but the
+  // final measurement must also update constraint-dependent drawing state.
+  const auto speculative = child->UpdateMeasureByPlatform(at_most, false);
+  EXPECT_EQ(1u, measurement.ranges.size());
+  const auto final = child->UpdateMeasureByPlatform(at_most, true);
+  ASSERT_EQ(2u, measurement.ranges.size());
+  EXPECT_TRUE(measurement.phases.back());
+  EXPECT_EQ(SLMeasureModeAtMost, measurement.ranges.back()[kHorizontal].Mode());
+  EXPECT_FLOAT_EQ(712, measurement.ranges.back()[kHorizontal].Size());
+  EXPECT_FLOAT_EQ(initial.width_, speculative.width_);
+  EXPECT_FLOAT_EQ(initial.width_, final.width_);
+  EXPECT_FLOAT_EQ(initial.height_, final.height_);
+
+  child->UpdateMeasureByPlatform(at_most, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+}
+
+TEST_F(BoxLayoutAlgorithmTest, FinalCustomMeasureUsesTheChangedAtMostWidth) {
+  NativeMeasurement measurement;
+  measurement.preferred = FloatSize(221, 33, 0);
+  auto* child = CreateNativeChild(&measurement);
+  const Constraints wide{OneSideConstraint::AtMost(712),
+                         OneSideConstraint::Indefinite()};
+  const Constraints narrow{OneSideConstraint::AtMost(711),
+                           OneSideConstraint::Indefinite()};
+
+  const auto initial = child->UpdateMeasureByPlatform(wide, true);
+  ASSERT_EQ(1u, measurement.ranges.size());
+  // The result size can stay equal while text centering changes with width.
+  child->UpdateMeasureByPlatform(narrow, false);
+  EXPECT_EQ(1u, measurement.ranges.size());
+  const auto final = child->UpdateMeasureByPlatform(narrow, true);
+  ASSERT_EQ(2u, measurement.ranges.size());
+  EXPECT_TRUE(measurement.phases.back());
+  EXPECT_FLOAT_EQ(711, measurement.ranges.back()[kHorizontal].Size());
+  EXPECT_FLOAT_EQ(initial.width_, final.width_);
+  EXPECT_FLOAT_EQ(initial.height_, final.height_);
+
+  child->UpdateMeasureByPlatform(narrow, true);
+  EXPECT_EQ(2u, measurement.ranges.size());
+}
+
 TEST_F(BoxLayoutAlgorithmTest, CssRepeatedDirtyKeepsMeasurementCache) {
   NativeMeasurement measurement;
   auto* child = CreateNativeChild(&measurement);
