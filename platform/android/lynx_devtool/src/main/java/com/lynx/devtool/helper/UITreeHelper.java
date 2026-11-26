@@ -252,7 +252,13 @@ public class UITreeHelper {
       LLog.e(TAG, "getAllDeclaredFieldForCurrentClass: currentClass is null");
       return;
     }
-    Field[] fields = currentClass.getDeclaredFields();
+    Field[] fields;
+    try {
+      fields = currentClass.getDeclaredFields();
+    } catch (NoClassDefFoundError e) {
+      LLog.e(TAG, "Failed to inspect fields of " + currentClass.getName() + ": " + e);
+      return;
+    }
     for (Field field : fields) {
       try {
         field.setAccessible(true);
