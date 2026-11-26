@@ -60,6 +60,7 @@ class ParagraphBuilderTTText : public ParagraphBuilder {
   std::vector<tttext::Style> run_style_stack_;
   std::unique_ptr<ParagraphTTText> paragraph_;
   tttext::ParagraphStyle paragraph_style_;
+  Hyphens hyphens_ = Hyphens::kUnspecified;
 };
 }  // namespace txt
 #endif  // CLAY_THIRD_PARTY_TXT_SRC_TTTEXT_PARAGRAPH_BUILDER_TT_TEXT_H_

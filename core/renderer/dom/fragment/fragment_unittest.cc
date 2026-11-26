@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "base/include/fml/message_loop.h"
+#include "base/include/platform/operating_system.h"
 #include "base/include/vector.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/css_string_parser.h"
@@ -7415,7 +7416,7 @@ TEST_F(FragmentTest, ImageRequestAttributesReloadOnlyWhenChanged) {
     SCOPED_TRACE(key);
     element->SetAttributeInternal(key, value);
     fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
-    if constexpr (GetOSType() == OSType::kIOS) {
+    if constexpr (base::GetOSType() == base::OSType::kIOS) {
       ++requests;
     }
     EXPECT_EQ(context.created_images_.size(), requests);
@@ -7424,7 +7425,7 @@ TEST_F(FragmentTest, ImageRequestAttributesReloadOnlyWhenChanged) {
     EXPECT_EQ(context.created_images_.size(), requests);
   }
   const auto& info = static_cast<ImageElement*>(element.get())->paint_info();
-  if constexpr (GetOSType() == OSType::kIOS) {
+  if constexpr (base::GetOSType() == base::OSType::kIOS) {
     EXPECT_TRUE(info.downsampling);
     EXPECT_EQ(info.request_priority, "high");
     EXPECT_EQ(info.prefetch_width, "120px");
@@ -7435,7 +7436,7 @@ TEST_F(FragmentTest, ImageRequestAttributesReloadOnlyWhenChanged) {
   for (const auto& [key, value] : attributes) {
     element->ResetAttribute(base::String(key));
     fragment.behavior_->OnUpdateLayout(fragment.LayoutResult());
-    if constexpr (GetOSType() == OSType::kIOS) {
+    if constexpr (base::GetOSType() == base::OSType::kIOS) {
       ++requests;
     }
     EXPECT_EQ(context.created_images_.size(), requests);

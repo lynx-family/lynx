@@ -388,3 +388,5 @@ video-model
 video-tag
 volume
 ComponentID
+fading-edge-length
+hyphens

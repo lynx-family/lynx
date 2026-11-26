@@ -17,7 +17,7 @@ class BounceView : public WithTypeInfo<BounceView, BaseView> {
 
   Direction GetDirection() const { return direction_; }
 
-  void SetBounceDirection(Direction direction) { direction_ = direction; }
+  void SetBounceDirection(Direction direction);
 
   void SetAttribute(const char* attr, const clay::Value& value) override;
 
