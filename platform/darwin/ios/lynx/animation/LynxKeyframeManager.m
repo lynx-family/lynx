@@ -8,6 +8,7 @@
 #import <Lynx/LynxUI.h>
 
 #import <Lynx/LynxPlatformAnimation.h>
+#import "LynxKeyframeAnimator+Private.h"
 
 @implementation LynxKeyframeManager {
   // Legacy platform path: animation props select CSS keyframes parsed on iOS;
@@ -58,6 +59,13 @@
   }];
 }
 
+- (void)updatePlatformUIKitOpacityEligibility {
+  BOOL allowed = _platformAnimators.count == 1 && _infos.count == 0 && _animators.count == 0;
+  for (LynxKeyframeAnimator* animator in _platformAnimators.allValues) {
+    animator.allowsUIKitOpacity = allowed;
+  }
+}
+
 - (void)applyAnimationInfo:(LynxAnimationInfo*)info
          keyframesProvider:(LynxTypedKeyframesProvider)provider
             reuseKeyframes:(BOOL)reuseKeyframes
@@ -87,6 +95,7 @@
     [_platformAnimators removeObjectForKey:key];
     [_platformAnimationOrder removeObject:key];
     _platformGenerations[key] = @(generation);
+    [self updatePlatformUIKitOpacityEligibility];
     return;
   }
   if (currentGeneration != nil && generation == currentGeneration.unsignedIntValue) {
@@ -97,6 +106,10 @@
     animator.autoResumeAnimation = _autoResumeAnimation;
     _platformAnimators[key] = animator;
   }
+  if (_animators.count == 1) {
+    _animators.allValues.firstObject.allowsUIKitOpacity = NO;
+  }
+  [self updatePlatformUIKitOpacityEligibility];
   _platformGenerations[key] = @(generation);
   [_platformAnimationOrder removeObject:key];
   [_platformAnimationOrder addObject:key];
@@ -115,6 +128,7 @@
   _infos = @[ info ];
 }
 - (void)notifyAnimationUpdated {
+  [self updatePlatformUIKitOpacityEligibility];
   for (NSNumber* key in [_platformAnimationOrder copy]) {
     [_platformAnimators[key] reapply];
   }
@@ -152,7 +166,9 @@
     if (info == nil || info.name == nil || [info.name isEqualToString:@""]) {
       continue;
     }
-    [animators[info.name] apply:info];
+    LynxKeyframeAnimator* animator = animators[info.name];
+    animator.allowsUIKitOpacity = _infos.count == 1 && _platformAnimators.count == 0;
+    [animator apply:info];
   }
 
   _animators = animators;
@@ -167,6 +183,27 @@
 - (void)notifyPropertyUpdated:(NSString*)name value:(id)value {
   [self forEachAnimator:^(LynxKeyframeAnimator* animator) {
     [animator notifyPropertyUpdated:name value:value];
+  }];
+}
+
+- (NSNumber*)currentUIKitOpacity {
+  if (_animators.count == 1) {
+    return [_animators.allValues.firstObject currentUIKitOpacity];
+  }
+  return _platformAnimators.count == 1
+             ? [_platformAnimators.allValues.firstObject currentUIKitOpacity]
+             : nil;
+}
+
+- (void)cancelUIKitOpacityAnimation {
+  [self forEachAnimator:^(LynxKeyframeAnimator* animator) {
+    [animator cancelUIKitOpacityAnimation];
+  }];
+}
+
+- (void)notifyTransitionUpdated {
+  [self forEachAnimator:^(LynxKeyframeAnimator* animator) {
+    [animator notifyTransitionUpdated];
   }];
 }
 

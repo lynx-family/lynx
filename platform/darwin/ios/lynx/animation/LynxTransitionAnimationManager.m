@@ -19,6 +19,20 @@
 static const NSString* const kTransitionEventStart = @"transitionstart";
 static const NSString* const kTransitionEventEnd = @"transitionend";
 
+@interface LynxUIKitTransition : NSObject
+@property(nonatomic, strong) UIViewPropertyAnimator* animator;
+@property(nonatomic, strong) LynxAnimationDelegate* animationDelegate;
+@property(nonatomic, strong) NSValue* startValue;
+@end
+
+@implementation LynxUIKitTransition
+@end
+
+static BOOL IsPlanarTranslation(CATransform3D transform) {
+  return CATransform3DEqualToTransform(
+      transform, CATransform3DMakeTranslation(transform.m41, transform.m42, 0));
+}
+
 enum {
   kOpacityTransitionSlot,
   kTransformTransitionSlot,
@@ -124,6 +138,7 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 @interface LynxTransitionAnimationManager () {
   LynxRoutedTransition* _routedTransitions[kRoutedTransitionCount];
   NSMutableDictionary<NSNumber*, CAAnimation*>* _transitionAnimations;
+  NSMutableDictionary<NSNumber*, LynxUIKitTransition*>* _uikitTransitions;
 }
 @property(nonatomic, weak, readonly) LynxUI* ui;
 @property(nonatomic, readonly, nullable)
@@ -140,6 +155,7 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 - (void)prepareTransitionAnimation:(CAAnimation*)animation
                         withConfig:(LynxAnimationInfo*)config
                           forLayer:(CALayer*)layer;
+- (BOOL)canUseUIKitForTransition:(LynxAnimationInfo*)info;
 - (void)enqueueTransitionAnimation:(CAAnimation*)animation withConfig:(LynxAnimationInfo*)config;
 - (LynxAnimationDelegate*)createTransitionDelegate:(LynxAnimationInfo*)info
                                          animation:(CAAnimation*)transition;
@@ -394,11 +410,26 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
   return YES;
 }
 
-- (void)removeLegacyTransformTransition {
+- (NSValue*)removeLegacyTransformTransition {
   LynxRoutedTransition* transition = _routedTransitions[kTransformTransitionSlot];
-  if (!transition || !transition->_startValue) {
-    [self removeTransitionAnimation:TRANSITION_TRANSFORM];
+  if (transition && transition->_startValue) {
+    return nil;
   }
+  LynxUIKitTransition* previous = _uikitTransitions[@(TRANSITION_TRANSFORM)];
+  CALayer* presentation = previous ? _ui.view.layer.presentationLayer : nil;
+  NSValue* sample =
+      presentation ? [NSValue valueWithCATransform3D:presentation.transform] : previous.startValue;
+  [self removeTransitionAnimation:TRANSITION_TRANSFORM];
+  return sample;
+}
+
+- (NSNumber*)currentUIKitOpacity {
+  LynxUIKitTransition* transition = _uikitTransitions[@(OPACITY)];
+  if (!transition) {
+    return nil;
+  }
+  CALayer* presentation = _ui.view.layer.presentationLayer;
+  return presentation ? @(presentation.opacity) : (NSNumber*)transition.startValue;
 }
 
 - (BOOL)maybeUpdateFrameWithTransitionAnimation:(CGRect)newFrame
@@ -772,13 +803,19 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
   if (!config) {
     return;
   }
-  config.completeBlock = block;
-  CGFloat rawOpacity;
-  if (_ui.backgroundManager.opacityView) {
-    rawOpacity = _ui.backgroundManager.opacityView.layer.presentationLayer.opacity;
-  } else {
-    rawOpacity = _ui.view.layer.presentationLayer.opacity;
+  CALayer* layer = _ui.backgroundManager.opacityView.layer ?: _ui.view.layer;
+  CALayer* presentation = layer.presentationLayer;
+  CGFloat rawOpacity = presentation.opacity;
+  NSNumber* previousOpacity = [self currentUIKitOpacity];
+  if (previousOpacity || [self canUseUIKitForTransition:config]) {
+    rawOpacity =
+        previousOpacity ? previousOpacity.doubleValue : (presentation ? rawOpacity : layer.opacity);
+    [self removeTransitionAnimation:OPACITY];
+    if (_transitionInfos[@(OPACITY)] != config || _transitionDelegates[@(OPACITY)]) {
+      return;
+    }
   }
+  config.completeBlock = block;
   CABasicAnimation* animation =
       [LynxAnimationUtils createBasicAnimation:@"opacity"
                                           from:[NSNumber numberWithFloat:rawOpacity]
@@ -795,6 +832,20 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
                         transformWithoutRotateXY:(CATransform3D)newTransformWithoutRotateXY
                                         rotation:(LynxAnimationTransformRotation*)newRotation
                                         callback:(CompletionBlock)block {
+  [self performTransitionAnimationsWithTransform:newTransform
+                          transformWithoutRotate:newTransformWithoutRotate
+                        transformWithoutRotateXY:newTransformWithoutRotateXY
+                                        rotation:newRotation
+                             previousUIKitSample:nil
+                                        callback:block];
+}
+
+- (void)performTransitionAnimationsWithTransform:(CATransform3D)newTransform
+                          transformWithoutRotate:(CATransform3D)newTransformWithoutRotate
+                        transformWithoutRotateXY:(CATransform3D)newTransformWithoutRotateXY
+                                        rotation:(LynxAnimationTransformRotation*)newRotation
+                             previousUIKitSample:(NSValue*)previousUIKitSample
+                                        callback:(CompletionBlock)block {
   LynxAnimationInfo* config =
       [_transitionInfos objectForKey:[NSNumber numberWithUnsignedInteger:TRANSITION_TRANSFORM]];
   if (!config) {
@@ -807,6 +858,9 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
       ui.lastTransformWithoutRotate,
       ui.lastTransformWithoutRotateXY,
       {oldRotation.rotationX, oldRotation.rotationY, oldRotation.rotationZ}};
+  if (previousUIKitSample) {
+    from.withoutRotate = from.withoutRotateXY = previousUIKitSample.CATransform3DValue;
+  }
   LynxTransitionTransform to = {
       newTransformWithoutRotate,
       newTransformWithoutRotateXY,
@@ -815,6 +869,106 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 }
 
 #pragma mark - prepare && start transition
+
+- (BOOL)canUseUIKitForTransition:(LynxAnimationInfo*)info {
+  if (@available(iOS 15.4, tvOS 15.4, *)) {
+    LynxUI* ui = _ui;
+    // Hosts that opt in to ProMotion can use the frame rate hint on the existing CA path.
+    return (info.prop == OPACITY || info.prop == TRANSITION_TRANSFORM) && info.duration > 0 &&
+           info.delay == 0 && info.timingFunction &&
+           (info.prop != OPACITY || ![self hasTransition:TRANSITION_VISIBILITY]) &&
+           ui.context.prefersHighFrameRateForPlatformAnimations &&
+           ![[NSBundle.mainBundle
+               objectForInfoDictionaryKey:@"CADisableMinimumFrameDurationOnPhone"] boolValue] &&
+           ui.view.window.screen.maximumFramesPerSecond > 60 && !ui.animationManager &&
+           !ui.view.layer.mask && !ui.backgroundManager.opacityView &&
+           ui.backgroundManager.animationOptions == 0;
+  }
+  return NO;
+}
+
+- (BOOL)startUIKitTransition:(CAAnimation*)animation config:(LynxAnimationInfo*)info {
+  if (![self canUseUIKitForTransition:info]) {
+    return NO;
+  }
+  LynxUI* ui = _ui;
+  UIView* view = ui.view;
+  CABasicAnimation* basic;
+  void (^setValue)(NSValue*);
+  if (info.prop == OPACITY) {
+    basic = (CABasicAnimation*)animation;
+    setValue = ^(NSValue* value) {
+      view.alpha = [(NSNumber*)value doubleValue];
+    };
+  } else {
+    CAAnimationGroup* group = (CAAnimationGroup*)animation;
+    if (group.animations.count != 1 || ui.offsetPath || ui.sticky.count ||
+        [LynxTransformRaw hasPercent:ui.transformRaw]) {
+      return NO;
+    }
+    basic = (CABasicAnimation*)group.animations.firstObject;
+    if (!IsPlanarTranslation(view.layer.transform) ||
+        !IsPlanarTranslation([basic.fromValue CATransform3DValue]) ||
+        !IsPlanarTranslation([basic.toValue CATransform3DValue])) {
+      return NO;
+    }
+    setValue = ^(NSValue* value) {
+      CATransform3D transform = value.CATransform3DValue;
+      view.transform = CGAffineTransformMakeTranslation(transform.m41, transform.m42);
+    };
+  }
+
+  NSValue* startValue = basic.fromValue;
+  NSValue* targetValue = basic.toValue;
+  if ([startValue isEqual:targetValue]) {
+    return NO;
+  }
+  float first[2], second[2];
+  [info.timingFunction getControlPointAtIndex:1 values:first];
+  [info.timingFunction getControlPointAtIndex:2 values:second];
+  if (!(first[0] >= 0 && first[0] <= 1 && second[0] >= 0 && second[0] <= 1 && isfinite(first[1]) &&
+        isfinite(second[1]))) {
+    return NO;
+  }
+  UICubicTimingParameters* timing =
+      [[UICubicTimingParameters alloc] initWithControlPoint1:CGPointMake(first[0], first[1])
+                                               controlPoint2:CGPointMake(second[0], second[1])];
+  [UIView performWithoutAnimation:^{
+    setValue(startValue);
+  }];
+  LynxUIKitTransition* transition = [LynxUIKitTransition new];
+  transition.startValue = startValue;
+  transition.animationDelegate = (LynxAnimationDelegate*)animation.delegate;
+  transition.animator = [[UIViewPropertyAnimator alloc] initWithDuration:info.duration
+                                                        timingParameters:timing];
+  transition.animator.userInteractionEnabled = YES;
+  [transition.animator addAnimations:^{
+    setValue(targetValue);
+  }];
+
+  NSNumber* key = @(info.prop);
+  if (!_uikitTransitions) {
+    _uikitTransitions = [NSMutableDictionary new];
+  }
+  _uikitTransitions[key] = transition;
+  __weak LynxTransitionAnimationManager* weakSelf = self;
+  __weak LynxUIKitTransition* weakTransition = transition;
+  [transition.animator addCompletion:^(UIViewAnimatingPosition position) {
+    LynxTransitionAnimationManager* strongSelf = weakSelf;
+    LynxUIKitTransition* finished = weakTransition;
+    if (strongSelf && finished && strongSelf->_uikitTransitions[key] == finished) {
+      [strongSelf->_uikitTransitions removeObjectForKey:key];
+      [finished.animationDelegate animationDidStop:animation
+                                          finished:position == UIViewAnimatingPositionEnd];
+    }
+  }];
+  // UIKit has no start delegate. This path only handles transitions without a delay.
+  [transition.animationDelegate animationDidStart:animation];
+  if (_uikitTransitions[key] == transition) {
+    [transition.animator startAnimation];
+  }
+  return YES;
+}
 
 - (void)prepareTransitionAnimation:(CAAnimation*)animation
                         withConfig:(LynxAnimationInfo*)config
@@ -833,17 +987,25 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 }
 
 - (void)applyTransitionAnimation {
-  NSEnumerator* e = [_transitionAnimations keyEnumerator];
-  NSNumber* prop;
-  while ((prop = e.nextObject) != nil) {
-    // TODO: (liyanbo) refactor this.
+  NSDictionary<NSNumber*, CAAnimation*>* pending = [_transitionAnimations copy];
+  [_transitionAnimations removeAllObjects];
+  for (NSNumber* prop in pending) {
     LynxAnimationInfo* info = _transitionInfos[prop];
+    CAAnimation* animation = pending[prop];
+    if (!info || _transitionDelegates[prop] != animation.delegate) {
+      continue;
+    }
     // Remove old animations of info.prop on all layers firstly.
     [LynxAnimationUtils removeAnimation:_ui withName:[LynxConverter toLynxPropName:info.prop]];
+    if (_transitionDelegates[prop] != animation.delegate) {
+      continue;
+    }
+    if ([self startUIKitTransition:animation config:info]) {
+      continue;
+    }
     if (info.prop == TRANSITION_BACKGROUND_COLOR) {
       const BOOL isSimple =
           ((_ui.backgroundManager.animationOptions & LynxAnimOptHasBGComplex) == 0);
-      CAAnimation* animation = _transitionAnimations[prop];
       if (isSimple) {
         CALayer* targetLayer = _ui.backgroundManager.backgroundLayer;
         if (targetLayer) {
@@ -856,12 +1018,10 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
         [_ui.view.layer addAnimation:animation forKey:info.name];
       }
     } else if (info.prop == OPACITY && _ui.backgroundManager.overlapRendering) {
-      [LynxAnimationUtils attachOpacityTo:_ui
-                                animation:_transitionAnimations[prop]
-                                   forKey:info.name];
+      [LynxAnimationUtils attachOpacityTo:_ui animation:animation forKey:info.name];
 
     } else {
-      [LynxAnimationUtils attachTo:_ui animation:_transitionAnimations[prop] forKey:info.name];
+      [LynxAnimationUtils attachTo:_ui animation:animation forKey:info.name];
       if (info.prop == TRANSITION_TRANSFORM || (info.prop & TRANSITION_LAYOUT)) {
         [self autoAddAnimationForComplexBackgroundWithUI:_ui
                                                    frame:_latestFrame
@@ -870,7 +1030,6 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
       }
     }
   }
-  [_transitionAnimations removeAllObjects];
 }
 #pragma mark - utils
 
@@ -890,18 +1049,28 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
   _routedTransitions[kTransformTransitionSlot] = nil;
 }
 
+- (void)removeUIKitTransitions {
+  for (NSNumber* key in _uikitTransitions.allKeys) {
+    [self removeTransitionAnimation:key.unsignedIntegerValue];
+  }
+}
+
 - (void)removeTransitionAnimation:(LynxAnimationProp)prop {
   if ((prop == OPACITY || prop == TRANSITION_TRANSFORM) &&
       [self removePlatformTransition:_routedTransitions[RoutedTransitionSlot(prop)]]) {
     return;
   }
   NSNumber* key = [NSNumber numberWithUnsignedInteger:prop];
+  [_transitionAnimations removeObjectForKey:key];
   LynxAnimationDelegate* delegate = [_transitionDelegates objectForKey:key];
-  if (delegate) {
-    [delegate forceStop];
-    [_transitionDelegates removeObjectForKey:key];
+  [_transitionDelegates removeObjectForKey:key];
+  UIViewPropertyAnimator* animator = _uikitTransitions[key].animator;
+  [_uikitTransitions removeObjectForKey:key];
+  if (animator && animator.state == UIViewAnimatingStateActive) {
+    [animator stopAnimation:YES];
   }
   [LynxAnimationUtils removeAnimation:_ui withName:[LynxConverter toLynxPropName:prop]];
+  [delegate forceStop];
 }
 
 - (void)removeAllLayoutTransitionAnimation {
@@ -919,24 +1088,29 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
   const NSTimeInterval startElapsedTime = MIN(MAX(-info.delay, 0), duration);
   // A forced stop has no CAAnimation argument, so retain its scheduled begin time.
   const CFTimeInterval beginTime = transition.beginTime;
+  const LynxAnimationProp property = info.prop;
+  CompletionBlock completion = info.completeBlock;
+  info.completeBlock = nil;
   __weak LynxTransitionAnimationManager* weakSelf = self;
-  return [LynxAnimationDelegate
+  __block __weak LynxAnimationDelegate* registeredDelegate;
+  __block BOOL didStart = NO;
+  LynxAnimationDelegate* delegate = [LynxAnimationDelegate
       initWithDidStart:^(CAAnimation* animation) {
         __strong LynxTransitionAnimationManager* strongSelf = weakSelf;
-        if (!strongSelf) {
+        if (!strongSelf || strongSelf->_transitionDelegates[@(property)] != registeredDelegate) {
           return;
         }
 
         // Notify animation did start.
+        didStart = YES;
         [strongSelf.ui.context.observer notifyAnimationStart];
         // dispatch transition start event
-        [LynxAnimationDelegate
-            sendAnimationEvent:strongSelf.ui
-                     eventName:(NSString*)kTransitionEventStart
-                   eventParams:@{
-                     @"animation_type" : [LynxConverter toLynxPropName:info.prop],
-                     @"elapsedTime" : @(startElapsedTime)
-                   }];
+        [LynxAnimationDelegate sendAnimationEvent:strongSelf.ui
+                                        eventName:(NSString*)kTransitionEventStart
+                                      eventParams:@{
+                                        @"animation_type" : [LynxConverter toLynxPropName:property],
+                                        @"elapsedTime" : @(startElapsedTime)
+                                      }];
       }
       didStop:^(CAAnimation* animation, BOOL finished) {
         __strong LynxTransitionAnimationManager* strongSelf = weakSelf;
@@ -949,27 +1123,28 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
                                                                  fromLayer:nil];
           elapsedTime = MIN(MAX(localTime - beginTime, 0), duration);
         }
-        if (info.completeBlock) {
-          info.completeBlock(finished);
-          info.completeBlock = nil;
+        NSNumber* key = @(property);
+        if (strongSelf->_transitionDelegates[key] == registeredDelegate) {
+          [strongSelf->_transitionDelegates removeObjectForKey:key];
+        }
+        if (completion) {
+          completion(finished);
         }
 
-        // Notify animation did stop.
-        [strongSelf.ui.context.observer notifyAnimationEnd];
+        if (didStart) {
+          [strongSelf.ui.context.observer notifyAnimationEnd];
+        }
         // dispatch transition end event
-        [LynxAnimationDelegate
-            sendAnimationEvent:strongSelf.ui
-                     eventName:(NSString*)kTransitionEventEnd
-                   eventParams:@{
-                     @"animation_type" : [LynxConverter toLynxPropName:info.prop],
-                     @"elapsedTime" : @(elapsedTime),
-                     @"finished" : [NSNumber numberWithBool:finished]
-                   }];
-
-        // keep callback just exec once.
-        [strongSelf.transitionDelegates
-            removeObjectForKey:[NSNumber numberWithUnsignedInteger:info.prop]];
+        [LynxAnimationDelegate sendAnimationEvent:strongSelf.ui
+                                        eventName:(NSString*)kTransitionEventEnd
+                                      eventParams:@{
+                                        @"animation_type" : [LynxConverter toLynxPropName:property],
+                                        @"elapsedTime" : @(elapsedTime),
+                                        @"finished" : [NSNumber numberWithBool:finished]
+                                      }];
       }];
+  registeredDelegate = delegate;
+  return delegate;
 }
 
 - (void)setupTransitionAnimationForContents:(CABasicAnimation*)content

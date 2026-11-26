@@ -8,7 +8,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 /** @cond */
 @interface LynxTransitionAnimationManager ()
-- (void)removeLegacyTransformTransition;
+- (nullable NSValue*)removeLegacyTransformTransition;
+- (void)removeUIKitTransitions;
+- (nullable NSNumber*)currentUIKitOpacity;
+- (void)performTransitionAnimationsWithTransform:(CATransform3D)newTransform
+                          transformWithoutRotate:(CATransform3D)newTransformWithoutRotate
+                        transformWithoutRotateXY:(CATransform3D)newTransformWithoutRotateXY
+                                        rotation:(LynxAnimationTransformRotation*)newRotation
+                             previousUIKitSample:(nullable NSValue*)previousUIKitSample
+                                        callback:(CompletionBlock)block;
 - (void)cancelPlatformTransition:(uint64_t)animationID
                       generation:(uint32_t)generation __attribute__((objc_direct));
 // Endpoints are numbers for opacity and arrays of LynxTransformRaw for transform.

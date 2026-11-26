@@ -6,11 +6,13 @@
 #import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
+#import <Lynx/LynxKeyframeAnimator+Private.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIKitOpacityKeyframes.h>
 #import <Lynx/LynxUIView.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
@@ -30,6 +32,14 @@
 
 @interface LynxUIContext (NewStickyUnitTest)
 - (void)setEnableNewSticky:(BOOL)enable;
+@end
+
+@interface LynxTransitionAnimationManager (UIKitTransitionUnitTest)
+- (BOOL)canUseUIKitForTransition:(LynxAnimationInfo *)info;
+@end
+
+@interface LynxKeyframeAnimator (UIKitOpacityUnitTest)
+- (BOOL)meetsUIKitOpacityDisplayRequirements;
 @end
 
 @interface LynxUIUnitTest : XCTestCase
@@ -95,6 +105,172 @@
         XCTAssertTrue(CAFrameRateRangeIsEqualToRange(child.preferredFrameRateRange, expected));
       }
     }
+  }
+}
+
+- (void)testUIKitTranslateAndOpacityCanStopIndependently {
+  if (@available(iOS 15.4, tvOS 15.4, *)) {
+    UIWindow *window = [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 300, 300)];
+    UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    [window addSubview:view];
+    window.hidden = NO;
+    LynxUI *ui = [[LynxUI alloc] initWithView:view];
+    [ui setTransition:@[
+      @[ @(TRANSITION_TRANSFORM), @10000, @(LynxTimingFunctionLinear), @0, @0, @0, @0, @0, @0 ],
+      @[ @(OPACITY), @10000, @(LynxTimingFunctionLinear), @0, @0, @0, @0, @0, @0 ]
+    ]];
+    LynxTransitionAnimationManager *manager = [ui valueForKey:@"transitionAnimationManager"];
+    id mock = OCMPartialMock(manager);
+    OCMStub([mock canUseUIKitForTransition:[OCMArg any]]).andReturn(YES);
+
+    __block NSUInteger transformStops = 0;
+    __block NSUInteger opacityStops = 0;
+    CATransform3D target = CATransform3DMakeTranslation(80, 0, 0);
+    [manager performTransitionAnimationsWithTransform:target
+                               transformWithoutRotate:target
+                             transformWithoutRotateXY:target
+                                             rotation:[LynxAnimationTransformRotation new]
+                                             callback:^(BOOL finished) {
+                                               XCTAssertFalse(finished);
+                                               ++transformStops;
+                                             }];
+    [manager performTransitionAnimationsWithOpacity:0.4
+                                           callback:^(BOOL finished) {
+                                             XCTAssertFalse(finished);
+                                             ++opacityStops;
+                                           }];
+    [manager applyTransitionAnimation];
+    XCTAssertEqualWithAccuracy(view.transform.tx, 80, 0.001);
+    XCTAssertEqualWithAccuracy(view.alpha, 0.4, 0.001);
+
+    [manager removeTransitionAnimation:TRANSITION_TRANSFORM];
+    XCTAssertEqual(transformStops, 1u);
+    XCTAssertEqual(opacityStops, 0u);
+    [ui detachView];
+    XCTAssertNil(ui.view);
+    XCTAssertEqual(transformStops, 1u);
+    XCTAssertEqual(opacityStops, 1u);
+    [mock stopMocking];
+    window.hidden = YES;
+  }
+}
+
+- (void)testUIKitOpacityKeyframesKeepUnderlyingOpacityDuringDelay {
+  if (@available(iOS 15.4, tvOS 15.4, *)) {
+    __attribute__((objc_precise_lifetime)) UIWindow *window =
+        [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    UIView *view = [[UIView alloc] initWithFrame:window.bounds];
+    [window addSubview:view];
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    animation.values = @[ @0.2, @0.6, @0.9 ];
+    animation.keyTimes = @[ @0, @0.5, @1 ];
+    animation.duration = 10;
+    animation.beginTime = [view.layer convertTime:CACurrentMediaTime() fromLayer:nil] + 10;
+    animation.fillMode = kCAFillModeRemoved;
+    LynxUIKitOpacityKeyframes *playback = [[LynxUIKitOpacityKeyframes alloc]
+        initWithAnimation:animation
+                     view:view
+           activeDuration:10
+        underlyingOpacity:0.3
+               completion:^(BOOL finished) {
+                 XCTFail(@"Stopping a delayed animation must not call playback completion");
+               }];
+    [playback start];
+    XCTestExpectation *sample = [self expectationWithDescription:@"Sample delayed opacity"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      XCTAssertEqualWithAccuracy(view.alpha, 0.3, 0.001);
+      [playback setUnderlyingOpacity:0.4];
+      XCTAssertEqualWithAccuracy(view.alpha, 0.4, 0.001);
+      [playback stop];
+      [sample fulfill];
+    });
+    [self waitForExpectationsWithTimeout:2 handler:nil];
+  }
+}
+
+- (void)testUIKitOpacityKeyframesResumeIntoReverseSegment {
+  if (@available(iOS 15.4, tvOS 15.4, *)) {
+    __attribute__((objc_precise_lifetime)) UIWindow *window =
+        [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    UIView *view = [[UIView alloc] initWithFrame:window.bounds];
+    [window addSubview:view];
+    CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    animation.values = @[ @0.2, @0.6, @0.9 ];
+    animation.keyTimes = @[ @0, @0.5, @1 ];
+    animation.duration = 100;
+    animation.autoreverses = YES;
+    animation.beginTime = [view.layer convertTime:CACurrentMediaTime() fromLayer:nil] - 125;
+    LynxUIKitOpacityKeyframes *playback = [[LynxUIKitOpacityKeyframes alloc]
+        initWithAnimation:animation
+                     view:view
+           activeDuration:200
+        underlyingOpacity:1
+               completion:^(BOOL finished) {
+                 XCTFail(@"Stopping a partial iteration must not call playback completion");
+               }];
+    [playback start];
+    XCTestExpectation *sample = [self expectationWithDescription:@"Sample reverse opacity"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      // The next keyframe on the reverse leg is the 50% value.
+      XCTAssertEqualWithAccuracy(view.alpha, 0.6, 0.001);
+      [playback stop];
+      [sample fulfill];
+    });
+    [self waitForExpectationsWithTimeout:2 handler:nil];
+  }
+}
+
+- (void)testUIKitOpacityKeyframesPlayStateAndCancel {
+  if (@available(iOS 15.4, tvOS 15.4, *)) {
+    __attribute__((objc_precise_lifetime)) UIWindow *window =
+        [[UIWindow alloc] initWithFrame:CGRectMake(0, 0, 100, 100)];
+    UIView *view = [[UIView alloc] initWithFrame:window.bounds];
+    [window addSubview:view];
+    view.alpha = 0.3;
+    __attribute__((objc_precise_lifetime)) LynxUIContext *context = [LynxUIContext new];
+    LynxUI *ui = [[LynxUI alloc] initWithView:view];
+    ui.context = context;
+    LynxKeyframes *keyframes = [LynxKeyframes new];
+    keyframes.styles =
+        @{@"0" : @{@"opacity" : @0.2}, @"0.5" : @{@"opacity" : @0.9}, @"1" : @{@"opacity" : @0.4}};
+    id contextMock = OCMPartialMock(context);
+    OCMStub([contextMock keyframesDict]).andReturn(@{@"fade" : keyframes});
+    LynxKeyframeAnimator *animator = [[LynxKeyframeAnimator alloc] initWithUI:ui];
+    animator.allowsUIKitOpacity = YES;
+    id animatorMock = OCMPartialMock(animator);
+    OCMStub([animatorMock meetsUIKitOpacityDisplayRequirements]).andReturn(YES);
+    LynxAnimationInfo *running = [[LynxAnimationInfo alloc] initWithName:@"fade"];
+    running.duration = 10;
+    running.delay = 10;
+    running.iterationCount = 2;
+    running.fillMode = kCAFillModeRemoved;
+    running.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
+    running.playState = LynxAnimationPlayStateRunning;
+    LynxAnimationInfo *paused = [running copy];
+    paused.playState = LynxAnimationPlayStatePaused;
+    [animator apply:running];
+    XCTestExpectation *resumed = [self expectationWithDescription:@"Resume the delayed keyframes"];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      XCTAssertEqualWithAccuracy(animator.currentUIKitOpacity.doubleValue, 0.3, 0.001);
+      [animator apply:paused];
+      XCTAssertFalse(animator.isRunning);
+      XCTAssertNil(animator.currentUIKitOpacity);
+      [animator notifyPropertyUpdated:@"opacity" value:@0.45];
+      [animator apply:running];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        XCTAssertTrue(animator.isRunning);
+        XCTAssertEqualWithAccuracy(animator.currentUIKitOpacity.doubleValue, 0.45, 0.001);
+        [animator cancel];
+        XCTAssertFalse(animator.isRunning);
+        XCTAssertNil(animator.currentUIKitOpacity);
+        XCTAssertEqualWithAccuracy(view.alpha, 0.45, 0.001);
+        [animator destroy];
+        [resumed fulfill];
+      });
+    });
+    [self waitForExpectationsWithTimeout:2 handler:nil];
+    [animatorMock stopMocking];
+    [contextMock stopMocking];
   }
 }
 
