@@ -13,6 +13,7 @@
 #include <chrono>
 #include <map>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 #include "clay/fml/file.h"
@@ -21,9 +22,14 @@
 #include "clay/fml/platform/win/wstring_conversion.h"
 #include "clay/gfx/geometry/float_point.h"
 #include "clay/gfx/geometry/float_size.h"
+#include "clay/gfx/rendering_backend.h"
 #include "clay/shell/platform/windows/flutter_windows_engine.h"
 #include "clay/shell/platform/windows/flutter_windows_view.h"
 #include "clay/ui/platform/cursor_types.h"
+
+namespace skity {
+class Bitmap;
+}  // namespace skity
 
 // cspell:disable
 namespace clay {
@@ -367,16 +373,27 @@ void FlutterWindow::OnTextInputClientChange(int client_id) {
 bool FlutterWindow::OnBitmapSurfaceUpdated(const void* allocation,
                                            size_t row_bytes, size_t height) {
   HDC dc = ::GetDC(GetWindowHandle());
-  BITMAPINFO bmi = {};
-  bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmi.bmiHeader.biWidth = row_bytes / 4;
-  bmi.bmiHeader.biHeight = -height;
-  bmi.bmiHeader.biPlanes = 1;
-  bmi.bmiHeader.biBitCount = 32;
-  bmi.bmiHeader.biCompression = BI_RGB;
-  bmi.bmiHeader.biSizeImage = 0;
-  int ret = SetDIBitsToDevice(dc, 0, 0, row_bytes / 4, height, 0, 0, 0, height,
-                              allocation, &bmi, DIB_RGB_COLORS);
+  struct {
+    BITMAPINFOHEADER header;
+    DWORD color_masks[3];
+  } bmi = {};
+  bmi.header.biSize = sizeof(BITMAPINFOHEADER);
+  bmi.header.biWidth = row_bytes / 4;
+  bmi.header.biHeight = -height;
+  bmi.header.biPlanes = 1;
+  bmi.header.biBitCount = 32;
+  if constexpr (std::is_same_v<GrBitmap, skity::Bitmap>) {
+    // Skity's software backing store uses RGBA byte order.
+    bmi.header.biCompression = BI_BITFIELDS;
+    bmi.color_masks[0] = 0x000000FF;  // Red
+    bmi.color_masks[1] = 0x0000FF00;  // Green
+    bmi.color_masks[2] = 0x00FF0000;  // Blue
+  } else {
+    bmi.header.biCompression = BI_RGB;
+  }
+  int ret = SetDIBitsToDevice(
+      dc, 0, 0, row_bytes / 4, height, 0, 0, 0, height, allocation,
+      reinterpret_cast<const BITMAPINFO*>(&bmi), DIB_RGB_COLORS);
   ::ReleaseDC(GetWindowHandle(), dc);
   return ret != 0;
 }
