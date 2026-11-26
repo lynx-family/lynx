@@ -78,6 +78,16 @@ public class DeviceUtils {
     return sDefaultTypeface;
   }
 
+  /** Returns whether the Android-compatible system identifies itself as HarmonyOS. */
+  public static boolean isHarmonyOS() {
+    try {
+      Class<?> buildEx = Class.forName("com.huawei.system.BuildEx");
+      return "harmony".equals(buildEx.getMethod("getOsBrand").invoke(null));
+    } catch (Exception | LinkageError ignored) {
+      return false;
+    }
+  }
+
   public static boolean isHuaWei() {
     return "HUAWEI".equals(Build.MANUFACTURER);
   }
