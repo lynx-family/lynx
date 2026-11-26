@@ -35,6 +35,12 @@
 #import "LynxScrollViewContentScreenshotHelper.h"
 #import "LynxTraceEventDef.h"
 #import "LynxUI+Gesture.h"
+#import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
+
+@interface LynxScrollView (UnifiedGestureHandler)
+- (void)setNativeGestureRecognizerEnabled:(BOOL)enabled;
+@end
 
 const NSInteger kScrollEdgeThreshold = 1;
 const NSInteger kInvalidBounceDistance = -1;
@@ -140,6 +146,7 @@ static NSString *const kScrollReadyScrollToIndexKey = @"scroll-to-index";
 @implementation LynxUIScroller {
   BOOL _hasReachBottom;
   BOOL _hasReachTop;
+  BOOL _scrollDisabledByProps;
   CGFloat _preScrollTop;
   CGFloat _preScrollLeft;
   CADisplayLink *_displayLink;
@@ -658,6 +665,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
   if (requestReset) {
     value = YES;
   }
+  _scrollDisabledByProps = !value;
   self.view.scrollEnabled = value;
   if (!value) {
     self.view.panGestureRecognizer.state = UIGestureRecognizerStateCancelled;
@@ -681,8 +689,15 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 }
 
 - (void)enableIncreaseFrequencyIfNecessary {
-  if (((LynxScrollView *)self.view).gestureEnabled &&
-      ((LynxScrollView *)self.view).increaseFrequencyWithGesture) {
+  LynxScrollView *scrollView = (LynxScrollView *)self.view;
+  if (self.context.enableNewGesture && self.context.enableUnifiedGestureHandler) {
+    // Clearing a detector releases gesture ownership, but retains the page's scroll setting.
+    scrollView.scrollEnabled =
+        !_scrollDisabledByProps && (!scrollView.gestureEnabled || scrollView.gestureConsumer ||
+                                    scrollView.increaseFrequencyWithGesture);
+    return;
+  }
+  if (scrollView.gestureEnabled && scrollView.increaseFrequencyWithGesture) {
     // Allow native scroll make sure that the CPU frequency will be increased during scroll
     self.view.scrollEnabled = YES;
   } else {
@@ -2025,10 +2040,29 @@ LYNX_UI_METHOD(autoScroll) {
     return;
   }
   [super gestureDidSet];
-  ((LynxScrollView *)self.view).gestureEnabled = YES;
+
+  LynxScrollView *scrollView = (LynxScrollView *)self.view;
+  if (self.context.enableUnifiedGestureHandler) {
+    LynxUnifiedGestureArena *arena = self.context.uiOwner.unifiedGestureArena;
+    LynxUnifiedGestureRegistration registration = [arena registrationForDetectors:self.gestureMap];
+    scrollView.gestureEnabled = (registration & LynxUnifiedGestureRegistrationHasDetector) != 0;
+    BOOL hasNativeGesture = (registration & LynxUnifiedGestureRegistrationHasNativeDetector) != 0;
+    [scrollView setNativeGestureRecognizerEnabled:hasNativeGesture];
+    if (hasNativeGesture) {
+      if (!scrollView.gestureConsumer) {
+        scrollView.gestureConsumer = [[LynxGestureConsumer alloc] init];
+      }
+    } else {
+      scrollView.gestureConsumer = nil;
+    }
+    [self enableIncreaseFrequencyIfNecessary];
+    return;
+  }
+
+  scrollView.gestureEnabled = YES;
   [self enableIncreaseFrequencyIfNecessary];
   [self ensureGestureConsumer];
-  [self.view setupNativeGestureRecognizerIfNeeded:self.gestureMap];
+  [scrollView setupNativeGestureRecognizerIfNeeded:self.gestureMap];
 }
 
 - (void)ensureGestureConsumer {

@@ -6,6 +6,7 @@
 #define CORE_GESTURE_GESTURE_ARENA_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "core/gesture/gesture_arena_delegate.h"
@@ -31,6 +32,7 @@ class GestureArena {
   void RemoveMember(MemberId member_id);
   bool ContainsMember(MemberId member_id) const;
   bool ContainsGesture(MemberId member_id, uint32_t gesture_id) const;
+  std::optional<MemberId> GetFlingMemberId() const;
 
   void HandleInput(const InputEvent &event,
                    const std::vector<MemberId> &response_chain = {});

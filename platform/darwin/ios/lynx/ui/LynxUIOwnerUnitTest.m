@@ -13,9 +13,11 @@
 #import <Lynx/LynxWeakProxy.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
+#import "LynxUIContext+Internal.h"
 
 #import "LynxUI+Private.h"
 #import "LynxUIOwner+Private.h"
+#import "LynxUnifiedGestureArena.h"
 
 @interface LynxExternalMemoryRecordingContext : LynxContext
 @property(nonatomic) NSUInteger reportCount;
@@ -402,6 +404,31 @@
   XCTAssertEqual([[owner valueForKey:@"positionChangeListeners"] count], 0U);
   XCTAssertNil([owner valueForKey:@"positionChangeObserver"]);
   XCTAssertFalse([[owner valueForKey:@"positionChangeDispatchPending"] boolValue]);
+}
+
+- (void)testResetAllowsGestureHandlerImplementationReselectionForNextPage {
+  self.uiOwner =
+      [[LynxUIOwner alloc] initWithContainerView:nil
+                               componentRegistry:[LynxComponentScopeRegistry new]
+                                   screenMetrics:[LynxScreenMetrics getDefaultLynxScreenMetrics]];
+  LynxUIContext *uiContext = self.uiOwner.uiContext;
+
+  [uiContext setEnableUnifiedGestureHandler:YES];
+  [uiContext setEnableUnifiedGestureHandler:NO];
+  [self.uiOwner initNewGestureInUIThread:YES
+             enableUnifiedGestureHandler:uiContext.enableUnifiedGestureHandler];
+  XCTAssertTrue(uiContext.enableUnifiedGestureHandler);
+  XCTAssertNotNil(self.uiOwner.unifiedGestureArena);
+  XCTAssertNil(self.uiOwner.gestureArenaManager);
+
+  [self.uiOwner reset];
+  [uiContext setEnableUnifiedGestureHandler:NO];
+  [uiContext setEnableUnifiedGestureHandler:YES];
+  [self.uiOwner initNewGestureInUIThread:YES
+             enableUnifiedGestureHandler:uiContext.enableUnifiedGestureHandler];
+  XCTAssertFalse(uiContext.enableUnifiedGestureHandler);
+  XCTAssertNil(self.uiOwner.unifiedGestureArena);
+  XCTAssertNotNil(self.uiOwner.gestureArenaManager);
 }
 
 @end
