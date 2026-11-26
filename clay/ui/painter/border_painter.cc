@@ -454,7 +454,7 @@ void BorderPainter::PaintSide(GraphicsCanvas* context,
     return;
   }
 
-  GrPath path;
+  GrPathBuilder path;
   skity::RRect round_rect = outer_rounded_rect_;
   if (is_outline) {
     round_rect = outline_outer_rounded_rect_;
@@ -493,12 +493,13 @@ void BorderPainter::PaintSide(GraphicsCanvas* context,
       if (is_outline) {
         PaintOneBorderSide(context, side_rect, side,
                            outline_box_sides_[BorderSide::LEFT],
-                           outline_box_sides_[BorderSide::RIGHT], path,
-                           borders_data, is_outline);
+                           outline_box_sides_[BorderSide::RIGHT],
+                           DetachPath(path), borders_data, is_outline);
       } else {
-        PaintOneBorderSide(
-            context, side_rect, side, box_sides_[BorderSide::LEFT],
-            box_sides_[BorderSide::RIGHT], path, borders_data, is_outline);
+        PaintOneBorderSide(context, side_rect, side,
+                           box_sides_[BorderSide::LEFT],
+                           box_sides_[BorderSide::RIGHT], DetachPath(path),
+                           borders_data, is_outline);
       }
       break;
     }
@@ -514,12 +515,13 @@ void BorderPainter::PaintSide(GraphicsCanvas* context,
       if (is_outline) {
         PaintOneBorderSide(context, side_rect, side,
                            outline_box_sides_[BorderSide::LEFT],
-                           outline_box_sides_[BorderSide::RIGHT], path,
-                           borders_data, is_outline);
+                           outline_box_sides_[BorderSide::RIGHT],
+                           DetachPath(path), borders_data, is_outline);
       } else {
-        PaintOneBorderSide(
-            context, side_rect, side, box_sides_[BorderSide::LEFT],
-            box_sides_[BorderSide::RIGHT], path, borders_data, is_outline);
+        PaintOneBorderSide(context, side_rect, side,
+                           box_sides_[BorderSide::LEFT],
+                           box_sides_[BorderSide::RIGHT], DetachPath(path),
+                           borders_data, is_outline);
       }
       break;
     }
@@ -535,12 +537,13 @@ void BorderPainter::PaintSide(GraphicsCanvas* context,
       if (is_outline) {
         PaintOneBorderSide(context, side_rect, side,
                            outline_box_sides_[BorderSide::TOP],
-                           outline_box_sides_[BorderSide::BOTTOM], path,
-                           borders_data, is_outline);
+                           outline_box_sides_[BorderSide::BOTTOM],
+                           DetachPath(path), borders_data, is_outline);
       } else {
-        PaintOneBorderSide(
-            context, side_rect, side, box_sides_[BorderSide::TOP],
-            box_sides_[BorderSide::BOTTOM], path, borders_data, is_outline);
+        PaintOneBorderSide(context, side_rect, side,
+                           box_sides_[BorderSide::TOP],
+                           box_sides_[BorderSide::BOTTOM], DetachPath(path),
+                           borders_data, is_outline);
       }
       break;
     }
@@ -555,12 +558,13 @@ void BorderPainter::PaintSide(GraphicsCanvas* context,
       if (is_outline) {
         PaintOneBorderSide(context, side_rect, side,
                            outline_box_sides_[BorderSide::TOP],
-                           outline_box_sides_[BorderSide::BOTTOM], path,
-                           borders_data, is_outline);
+                           outline_box_sides_[BorderSide::BOTTOM],
+                           DetachPath(path), borders_data, is_outline);
       } else {
-        PaintOneBorderSide(
-            context, side_rect, side, box_sides_[BorderSide::TOP],
-            box_sides_[BorderSide::BOTTOM], path, borders_data, is_outline);
+        PaintOneBorderSide(context, side_rect, side,
+                           box_sides_[BorderSide::TOP],
+                           box_sides_[BorderSide::BOTTOM], DetachPath(path),
+                           borders_data, is_outline);
       }
       break;
     }

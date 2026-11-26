@@ -306,6 +306,7 @@ def run_cc_tests(build_dir, executable_filter, coverage, capture_core_dump):
       make_test('testing_unittests'),
       make_test('clay_unittests'),
       make_test('gfx_unittests'),
+      make_test('path_unittests'),
   ]
 
   if is_linux():

@@ -203,6 +203,7 @@ group("unittests") {
       "common:common_unittests",
       "flow:flow_unittests",
       "gfx:gfx_unittests",
+      "gfx:path_unittests",
       "memory:memory_unittests",
       "testing:testing_unittests",
       "third_party/txt:txt_unittests",

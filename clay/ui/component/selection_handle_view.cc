@@ -81,7 +81,7 @@ FloatSize SelectionHandleView::GetHandleSize(double text_line_height) {
 // Helper method to create path with an oval and a rectangle
 GrPath SelectionHandleView::CreateHandlePath(const FloatRect& oval_rect,
                                              const FloatRect& rect) {
-  GrPath path;
+  GrPathBuilder path;
 #ifdef ENABLE_SKITY
   path.AddOval(oval_rect);
   path.AddRect(rect);
@@ -91,7 +91,7 @@ GrPath SelectionHandleView::CreateHandlePath(const FloatRect& oval_rect,
   path.addRect(
       SkRect::MakeLTRB(rect.left(), rect.top(), rect.right(), rect.bottom()));
 #endif
-  return path;
+  return DetachPath(path);
 }
 
 void SelectionHandleView::BuildSelectionHandle(float line_height,
