@@ -27,6 +27,7 @@
 #import "LynxTemplateRender+Protected.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver.h"
+#import "LynxUnifiedGestureArena.h"
 
 #include "base/include/lynx_actor.h"
 #include "core/public/painting_ctx_platform_impl.h"
@@ -35,6 +36,10 @@
 #include "core/renderer/ui_wrapper/painting/platform_renderer_impl.h"
 #include "core/shell/lynx_engine.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+
+@interface LUIConfigAdapter (UnifiedGestureHandler)
+- (bool)enableUnifiedGestureHandler;
+@end
 
 typedef NS_ENUM(NSUInteger, BoxModelOffset) {
   PAD_LEFT = 0,
@@ -266,6 +271,10 @@ static id<LynxServiceTextProtocol> getTextService() {
 }
 
 - (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig {
+  LynxUIContext *uiContext = _uiOwner.uiContext;
+  LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
+  [uiContext setEnableUnifiedGestureHandler:configAdapter.enableUnifiedGestureHandler];
+
   // Since page config is a C++ class and Event Handler is a pure OC class, the set methods must be
   // called here.
   [_eventHandler setEnableSimultaneousTap:pageConfig->GetEnableSimultaneousTap()];
@@ -277,7 +286,8 @@ static id<LynxServiceTextProtocol> getTextService() {
   [_eventHandler.touchRecognizer
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();
-  [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()];
+  [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()
+         enableUnifiedGestureHandler:uiContext.enableUnifiedGestureHandler];
   // Enable support multi-finger events.
   [_eventHandler.touchRecognizer setEnableMultiTouch:pageConfig->GetEnableMultiTouch()];
   [_eventHandler.touchRecognizer
@@ -296,8 +306,6 @@ static id<LynxServiceTextProtocol> getTextService() {
       setEnableDisexposureWhenBackground:pageConfig->GetEnableDisexposureWhenBackground()];
 
   // Set config to LynxUIContext;
-  LynxUIContext *uiContext = _uiOwner.uiContext;
-  LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
   [uiContext setUIConfig:configAdapter];
   uiContext.prefersHighFrameRateForPlatformAnimations = pageConfig->GetPreferredFps() == "high";
   uiContext.enableIntersectionObserverInitialRatioCompatibility =

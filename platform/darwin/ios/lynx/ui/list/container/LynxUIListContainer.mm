@@ -27,6 +27,10 @@
 #import "core/public/list_container_proxy.h"
 #import "core/public/list_engine_proxy.h"
 
+@interface LynxUIScroller (ScrollEnabledProperty)
+- (void)applyScrollEnabledByProps:(BOOL)enabled;
+@end
+
 static const CGFloat kFadeInAnimationDefaultDuration = 0.1;
 static const CGFloat kLynxListAutomaticMaxFlingRatio = CGFLOAT_MAX;
 static const NSInteger kDefaultMaxSnapCount = 1;
@@ -459,7 +463,7 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   if (requestReset) {
     value = YES;
   }
-  ((LynxListContainerView *)self.view).scrollEnabled = value;
+  [self applyScrollEnabledByProps:value];
 }
 
 - (void)setScrollBarEnable:(BOOL)value requestReset:(BOOL)requestReset {
