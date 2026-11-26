@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 4.4.3
+
+- Add `<transfer-view>` typings with a required string `transfer-id` for Android and iOS.
+
 ## 4.4.2
 
 - Add `requestTimeoutMs` to `RequestInit.lynxExtension` for configuring the Fetch request timeout in milliseconds.

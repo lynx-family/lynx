@@ -270,6 +270,7 @@ public class LynxTemplateRender
 
   // Render phase of current LynxView with available value setup/update
   @NonNull private volatile String mRenderPhase = RENDER_PHASE_SETUP;
+  private volatile boolean mTransferReady;
 
   private AbsTemplateProvider mTemplateProvider;
 
@@ -905,6 +906,7 @@ public class LynxTemplateRender
   }
 
   private void reloadAndInit() {
+    mTransferReady = false;
     synchronized (this) {
       if (mHasDestroy) {
         return;
@@ -971,6 +973,10 @@ public class LynxTemplateRender
   }
 
   private void reloadAndInitUIThreadPart() {
+    LynxView lynxView = getLynxView();
+    if (lynxView != null) {
+      lynxView.clearTransferredViews();
+    }
     ILynxUIRenderer uiRenderer = lynxUIRenderer();
     if (uiRenderer != null) {
       uiRenderer.onReloadAndInitUIThreadPart();
@@ -2356,6 +2362,13 @@ public class LynxTemplateRender
       if (newGlobalProps != null) {
         globalProps = newGlobalProps;
       }
+      UIThreadUtils.runOnUiThreadSync(() -> {
+        mTransferReady = false;
+        LynxView lynxView = getLynxView();
+        if (lynxView != null) {
+          lynxView.clearTransferredViews();
+        }
+      });
       LynxViewClientV2.LynxPipelineInfo pipelineInfo = new LynxViewClientV2.LynxPipelineInfo(mUrl);
       pipelineInfo.addPipelineOrigin(
           LynxViewClientV2.LynxPipelineInfo.LynxPipelineOrigin.LYNX_RELOAD);
@@ -3280,6 +3293,10 @@ public class LynxTemplateRender
     if (mHasDestroy) {
       return;
     }
+    mTransferReady = false;
+    if (getLynxView() != null) {
+      getLynxView().clearTransferredViews();
+    }
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_FALLBACK_NEW_ENGINE);
     LLog.i(TAG, "call fallbackNewEngine enable_async:" + enable_async);
 
@@ -3457,6 +3474,7 @@ public class LynxTemplateRender
     @Override
     public void onLoaded(int templateSize) {
       LLog.i(TAG, "TASMCallback.onLoaded");
+      mTransferReady = true;
       HeroTransitionManager.inst().executeEnterAnim(mBodyView, null);
       if (mClient != null) {
         dispatchLoadSuccess(templateSize);
@@ -4585,6 +4603,20 @@ public class LynxTemplateRender
 
     nativeUpdateMetaData(
         mNativePtr, mNativeLifecycle, dataPtr, processorName, readOnly, data, globalPropsPtr);
+  }
+
+  boolean isTransferReady() {
+    return mTransferReady && !mHasDestroy && !mDestroying && mNativePtr != 0;
+  }
+
+  void dispatchTransferEvent(String type, JavaOnlyMap data) {
+    JavaOnlyMap event = new JavaOnlyMap();
+    event.putString("type", type);
+    event.putString("origin", "Native");
+    event.putString("target", "CoreContext");
+    event.putLong("timestamp", android.os.SystemClock.uptimeMillis());
+    event.putMap("data", data);
+    dispatchMessageEvent(event);
   }
 
   private void setThemeInternal(LynxTheme theme) {
