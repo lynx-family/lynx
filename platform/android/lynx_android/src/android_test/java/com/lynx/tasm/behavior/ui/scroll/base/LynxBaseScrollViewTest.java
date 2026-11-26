@@ -96,6 +96,13 @@ public class LynxBaseScrollViewTest {
   }
 
   @Test
+  public void testScrollWithoutDelegate() {
+    mScrollView.scrollToUnlimitedHorizontally(10);
+
+    assertEquals(10, mScrollView.getScrollOffsetHorizontally());
+  }
+
+  @Test
   public void testLayoutAndMeasure() {
     mScrollView.mIsVertical = true;
     mScrollView.mWidth = 100;

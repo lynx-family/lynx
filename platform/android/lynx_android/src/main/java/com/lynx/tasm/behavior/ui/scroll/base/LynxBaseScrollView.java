@@ -100,7 +100,9 @@ public class LynxBaseScrollView
   @Override
   protected void onScrollChanged(int l, int t, int oldl, int oldt) {
     super.onScrollChanged(l, t, oldl, oldt);
-    mScrollDelegate.scrollViewDidScroll(this);
+    if (mScrollDelegate != null) {
+      mScrollDelegate.scrollViewDidScroll(this);
+    }
   }
 
   /********* Internal end *********/
