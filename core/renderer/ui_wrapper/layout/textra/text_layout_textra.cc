@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/layout/textra/text_layout_textra.h"
 
 #include <algorithm>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -378,6 +379,34 @@ void TextLayoutTextra::ApplyTextStyle(Element* element,
           int font_style = static_cast<int>(text_attributes->font_style);
           paragraph_builder_->SetTextStyle(kTextPropFontStyle, &(font_style),
                                            sizeof(int));
+          break;
+        }
+        case kPropertyIDFontFeatureSettings: {
+          const auto& settings = text_attributes->font_feature_settings;
+          // A removed declaration inherits the current run style. An explicit
+          // normal has an empty array and clears the inherited features.
+          if (!settings) break;
+          std::vector<text::FontFeature> features;
+          features.reserve(settings->size() / 2);
+          for (size_t i = 0; i + 1 < settings->size(); i += 2) {
+            const auto& tag = settings->get(i).StdString();
+            const auto value = settings->get(i + 1).Int32();
+            if (tag.size() != 4 || value < 0) continue;
+            auto existing = std::find_if(
+                features.begin(), features.end(), [&](const auto& feature) {
+                  return std::memcmp(feature.tag, tag.data(), 4) == 0;
+                });
+            if (existing != features.end()) {
+              existing->value = value;
+            } else {
+              auto& feature = features.emplace_back();
+              std::memcpy(feature.tag, tag.data(), sizeof(feature.tag));
+              feature.value = value;
+            }
+          }
+          paragraph_builder_->SetTextStyle(
+              kTextPropFontFeatureSettings, features.data(),
+              features.size() * sizeof(text::FontFeature));
           break;
         }
         case kPropertyIDFontVariationSettings: {

@@ -4961,7 +4961,7 @@ bool ComputedCSSStyle::SetFontFeatureSettings(const tasm::CSSValue& value,
   auto old_value = text_attributes_->font_feature_settings;
   if (reset) {
     if (old_value) {
-      old_value = nullptr;
+      text_attributes_->font_feature_settings = nullptr;
       return true;
     }
     return false;
