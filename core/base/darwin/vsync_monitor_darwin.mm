@@ -10,7 +10,6 @@
 #include "base/include/no_destructor.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
-#include "core/renderer/utils/lynx_env.h"
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CADisplayLink.h>
