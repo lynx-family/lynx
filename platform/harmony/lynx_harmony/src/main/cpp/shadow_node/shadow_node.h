@@ -72,6 +72,7 @@ class LYNX_EXPORT ShadowNode : public fml::RefCountedThreadSafeStorage {
   void SetParent(ShadowNode* parent) {
     parent_sign_ = parent ? parent->Signature() : -1;
   }
+  int32_t ParentSign() const { return parent_sign_; }
   const std::vector<ShadowNode*>& GetChildren() const { return children_; }
   const std::string& GetIdSelector() const { return id_selector_; }
   float ScaleDensity() const;

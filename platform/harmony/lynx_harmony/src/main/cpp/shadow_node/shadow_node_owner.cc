@@ -242,17 +242,9 @@ void ShadowNodeOwner::DestroyNode(int sign) {
   }
 
   const auto& target = it->second;
-  for (auto& [id, node] : node_holder_) {
-    if (id == sign) {
-      continue;
-    }
-    node->RemoveChild(target.get());
+  if (auto* parent = FindShadowNodeBySign(target->ParentSign())) {
+    parent->RemoveChild(target.get());
   }
-
-  while (!target->GetChildren().empty()) {
-    target->RemoveChild(target->GetChildren().back());
-  }
-  target->SetParent(nullptr);
 
   DestroyNode(target);
   node_holder_.erase(it);
@@ -268,6 +260,10 @@ void ShadowNodeOwner::Destroy() {
 void ShadowNodeOwner::PrepareForDestroy() { destroyed_ = true; }
 
 void ShadowNodeOwner::DestroyNode(const fml::RefPtr<ShadowNode>& node) {
+  while (!node->GetChildren().empty()) {
+    node->RemoveChild(node->GetChildren().back());
+  }
+  node->SetParent(nullptr);
   node->MarkDestroyed();
   if (node->HasJSObject()) {
     context_->RunOnUIThread([node] { node->Destroy(); });
