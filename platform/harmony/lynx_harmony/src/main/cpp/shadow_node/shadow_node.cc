@@ -3,13 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node.h"
 
+#include <algorithm>
 #include <limits>
 #include <memory>
 #include <utility>
 
 #include "base/include/string/string_utils.h"
 #include "core/base/harmony/props_constant.h"
-#include "core/renderer/starlight/types/nlength.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node_owner.h"
 
@@ -59,9 +59,21 @@ void ShadowNode::AddChild(ShadowNode* child, int index) {
 }
 
 void ShadowNode::RemoveChild(ShadowNode* child) {
-  child->SetParent(nullptr);
-  children_.erase(std::remove(children_.begin(), children_.end(), child),
-                  children_.end());
+  if (children_.empty()) {
+    return;
+  }
+  if (children_.back() == child) {
+    children_.pop_back();
+  } else {
+    auto child_it = std::find(children_.begin(), children_.end(), child);
+    if (child_it == children_.end()) {
+      return;
+    }
+    children_.erase(child_it);
+  }
+  if (child->ParentSign() == Signature()) {
+    child->SetParent(nullptr);
+  }
 }
 
 void ShadowNode::AlignLayoutNode(float left, float top) const {
