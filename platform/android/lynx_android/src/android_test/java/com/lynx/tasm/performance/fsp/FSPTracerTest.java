@@ -9,7 +9,9 @@ import static org.mockito.Mockito.*;
 
 import android.graphics.Rect;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.base.CleanupReference;
 import com.lynx.tasm.performance.PerformanceController;
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Before;
@@ -66,6 +68,108 @@ public class FSPTracerTest {
         (AtomicBoolean) getField(FSPTracer.class, disabledTracer, "mIsRunning");
     assertFalse(isRunning.get());
     assertNull(getField(FSPTracer.class, disabledTracer, "mConfig"));
+  }
+
+  @Test
+  public void testStopAndCancelReleaseDispatcherAfterFSPDisabled() {
+    ensureNativeLibraryLoaded();
+    AtomicBoolean enabled = new AtomicBoolean(true);
+    when(mockPerfController.isFSPEnabled()).thenAnswer(invocation -> enabled.get());
+    config.snapshotIntervalMs = 1000;
+    config.hardTimeoutMs = 0;
+    int baseline = FSPReportDispatcherTestHelper.getActiveGlobalRefCount();
+
+    tracer.start(mockCaptureHandler);
+    assertEquals(baseline + 1, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    enabled.set(false);
+    tracer.stop();
+    assertEquals(baseline, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    assertFalse(isRunning(tracer));
+
+    enabled.set(true);
+    tracer.start(mockCaptureHandler);
+    assertEquals(baseline + 1, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    enabled.set(false);
+    tracer.cancelledByUserInteraction();
+    assertEquals(baseline, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    assertFalse(isRunning(tracer));
+  }
+
+  @Test
+  public void testScheduledCaptureReleasesDispatcherAfterFSPDisabled() throws Exception {
+    ensureNativeLibraryLoaded();
+    AtomicBoolean enabled = new AtomicBoolean(true);
+    when(mockPerfController.isFSPEnabled()).thenAnswer(invocation -> enabled.get());
+    config.snapshotIntervalMs = 20;
+    config.hardTimeoutMs = 0;
+    int baseline = FSPReportDispatcherTestHelper.getActiveGlobalRefCount();
+
+    tracer.start(mockCaptureHandler);
+    assertEquals(baseline + 1, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    enabled.set(false);
+
+    assertGlobalRefCountEventually(baseline);
+    assertFalse(isRunning(tracer));
+    verify(mockCaptureHandler, never()).capture();
+    verify(mockPerfController, never()).setFSPTimingInfo(anyLong(), anyMap());
+  }
+
+  @Test
+  public void testHardTimeoutReleasesDispatcherAfterFSPDisabled() throws Exception {
+    ensureNativeLibraryLoaded();
+    AtomicBoolean enabled = new AtomicBoolean(true);
+    when(mockPerfController.isFSPEnabled()).thenAnswer(invocation -> enabled.get());
+    config.snapshotIntervalMs = 0;
+    config.hardTimeoutMs = 20;
+    int baseline = FSPReportDispatcherTestHelper.getActiveGlobalRefCount();
+
+    tracer.start(mockCaptureHandler);
+    assertEquals(baseline + 1, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    enabled.set(false);
+
+    assertGlobalRefCountEventually(baseline);
+    assertFalse(isRunning(tracer));
+    verify(mockPerfController, never()).setFSPTimingInfo(anyLong(), anyMap());
+  }
+
+  @Test
+  public void testStartWithoutCaptureOrTimeoutDoesNotCreateDispatcher() {
+    ensureNativeLibraryLoaded();
+    config.snapshotIntervalMs = 0;
+    config.hardTimeoutMs = 0;
+    int baseline = FSPReportDispatcherTestHelper.getActiveGlobalRefCount();
+
+    tracer.start(mockCaptureHandler);
+
+    assertEquals(baseline, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    assertFalse(isRunning(tracer));
+  }
+
+  @Test
+  public void testCleanupReferenceReleasesDispatcherWithoutExplicitStop() throws Exception {
+    ensureNativeLibraryLoaded();
+    config.snapshotIntervalMs = 100000;
+    config.hardTimeoutMs = 0;
+    int baseline = FSPReportDispatcherTestHelper.getActiveGlobalRefCount();
+    tracer.start(mockCaptureHandler);
+    assertEquals(baseline + 1, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
+    CleanupReference cleanupReference =
+        (CleanupReference) getField(FSPTracer.class, tracer, "mCleanupReference");
+    WeakReference<FSPTracer> weakTracer = new WeakReference<>(tracer);
+
+    tracer = null;
+    Runtime.getRuntime().gc();
+
+    long deadlineNs = System.nanoTime() + 5_000_000_000L;
+    while ((!cleanupReference.hasCleanedUp() || weakTracer.get() != null
+               || FSPReportDispatcherTestHelper.getActiveGlobalRefCount() != baseline)
+        && System.nanoTime() < deadlineNs) {
+      Thread.sleep(10);
+      Runtime.getRuntime().gc();
+    }
+    assertNull(weakTracer.get());
+    assertTrue(cleanupReference.hasCleanedUp());
+    assertEquals(baseline, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
   }
 
   @Test
@@ -227,6 +331,24 @@ public class FSPTracerTest {
     snapshot.fillContentToSnapshot(true, new Rect(100, 100, 300, 600), timestampUs);
     snapshot.fillContentToSnapshot(true, new Rect(50, 50, 450, 900), timestampUs);
     return snapshot;
+  }
+
+  private void ensureNativeLibraryLoaded() {
+    assertTrue(LynxEnv.inst().initNativeLibraries(System::loadLibrary));
+  }
+
+  private boolean isRunning(FSPTracer fspTracer) {
+    AtomicBoolean isRunning = (AtomicBoolean) getField(FSPTracer.class, fspTracer, "mIsRunning");
+    return isRunning.get();
+  }
+
+  private void assertGlobalRefCountEventually(int expected) throws Exception {
+    long deadlineNs = System.nanoTime() + 5_000_000_000L;
+    while (FSPReportDispatcherTestHelper.getActiveGlobalRefCount() != expected
+        && System.nanoTime() < deadlineNs) {
+      Thread.sleep(10);
+    }
+    assertEquals(expected, FSPReportDispatcherTestHelper.getActiveGlobalRefCount());
   }
 
   private void setField(Class clazz, Object target, String fieldName, Object value) {
