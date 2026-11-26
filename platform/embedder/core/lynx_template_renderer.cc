@@ -6,6 +6,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/utils/base/event_converter.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/lepus/json_parser.h"
@@ -274,7 +275,12 @@ void LynxTemplateRenderer::LoadTemplate(
   if (template_verification_) {
     const char* error_msg = nullptr;
     if (!template_verification_(&source[0], source.size(), url, &error_msg)) {
-      LOGE("LynxTemplateRenderer LoadTemplate verification failed");
+      const std::string cause = error_msg && error_msg[0]
+                                    ? error_msg
+                                    : "Template verification failed.";
+      OnErrorOccurred(0, error::E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE,
+                      "Failed to verify template " + url + ": " + cause, "", {},
+                      false, cause);
       return;
     }
   }

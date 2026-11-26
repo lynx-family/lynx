@@ -23,6 +23,17 @@ LynxViewClients::LynxViewClients(lynx_view_t* lynx_view)
 void LynxViewClients::AddClient(lynx_view_client_t* client) {
   if (std::find(clients_.begin(), clients_.end(), client) == clients_.end()) {
     clients_.emplace_back(client);
+    has_registered_client_ = true;
+    if (!pending_errors_.empty()) {
+      std::vector<base::LynxError> pending_errors;
+      pending_errors.swap(pending_errors_);
+      for (const auto& error : pending_errors) {
+        OnErrorOccurred(static_cast<int>(error.error_level_), error.error_code_,
+                        error.error_message_, error.fix_suggestion_,
+                        error.custom_info_, error.is_logbox_only_,
+                        error.root_cause_);
+      }
+    }
   }
 }
 
@@ -82,6 +93,16 @@ void LynxViewClients::OnErrorOccurred(
     const std::string& fix_suggestion,
     const std::unordered_map<std::string, std::string>& custom_info,
     bool is_logbox_only, const std::string& root_cause) {
+  // Creation can fail before the host has a view to attach a client to.
+  // Retain errors in arrival order until the first client is registered.
+  if (!has_registered_client_) {
+    auto& error = pending_errors_.emplace_back(
+        error_code, message, fix_suggestion,
+        static_cast<base::LynxErrorLevel>(level), is_logbox_only);
+    error.custom_info_ = custom_info;
+    error.root_cause_ = root_cause;
+    return;
+  }
   std::optional<lepus::Value> custom_fields;
   std::shared_ptr<error::MetaData> metadata;
   std::vector<int32_t> consumers;
