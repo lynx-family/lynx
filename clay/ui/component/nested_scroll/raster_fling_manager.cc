@@ -38,6 +38,10 @@ bool RasterFlingManager::StartAnimation(NestedScrollable* scrollable,
   }
   RenderScroll* render_scroll =
       static_cast<RenderScroll*>(scrollable->render_object());
+  if (render_scroll->HasFadingEdge()) {
+    // The edge mask follows the scroll offset in the UI paint pass.
+    return false;
+  }
   if (!render_scroll->HasValidID()) {
     FML_DLOG(INFO) << "the target scrollable has no valid id.";
     return false;

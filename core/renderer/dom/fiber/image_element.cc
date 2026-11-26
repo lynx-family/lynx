@@ -26,7 +26,8 @@ constexpr char kImageSkipRedirection[] = "skip-redirection";
 constexpr char kImageAutoplay[] = "autoplay";
 constexpr char kImageLoopCount[] = "loop-count";
 // Only the iOS renderer consumes these request options.
-constexpr bool kSupportsRequestOptions = GetOSType() == OSType::kIOS;
+constexpr bool kSupportsRequestOptions =
+    base::GetOSType() == base::OSType::kIOS;
 constexpr char kImageDownsampling[] = "downsampling";
 constexpr char kImageRequestPriority[] = "request-priority";
 constexpr char kImagePrefetchWidth[] = "prefetch-width";
@@ -203,7 +204,7 @@ void ImageElement::ResetAttribute(const base::String& key) {
 }
 
 int32_t ImageElement::GetBuiltInNodeInfo() const {
-  return GetImageNodeInfo<GetOSType()>();
+  return GetImageNodeInfo<base::GetOSType()>();
 }
 
 void ImageElement::SetupFragmentBehavior(Fragment* fragment) {

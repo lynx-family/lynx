@@ -210,6 +210,7 @@ void Scrollable::SetScrollDirection(ScrollDirection direction) {
   if (scroll_direction_ != direction) {
     ResetScroll();
     scroll_direction_ = direction;
+    GetRenderScroll()->SetScrollDirection(direction);
     ResetGestureRecognizers();
   }
 }
