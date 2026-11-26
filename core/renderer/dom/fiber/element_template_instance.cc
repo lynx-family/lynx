@@ -976,16 +976,26 @@ void ElementTemplateInstance::MaterializeRoot() {
     return;
   }
 
-  if (create_element_tree_task_ == nullptr) {
+  GeneratedElementsResult generated;
+  if (create_element_tree_task_ != nullptr) {
+    create_element_tree_task_->Run();
+    generated = create_element_tree_task_->GetFuture().get();
+    create_element_tree_task_ = nullptr;
+  } else if (element_manager_->GetEnableParallelElement()) {
     EnsureCreateElementTreeTaskScheduled();
     if (create_element_tree_task_ == nullptr) {
       return;
     }
+    create_element_tree_task_->Run();
+    generated = create_element_tree_task_->GetFuture().get();
+    create_element_tree_task_ = nullptr;
+  } else {
+    if (entry_ == nullptr && tasm_ != nullptr) {
+      entry_ = tasm_->FindEntry(bundle_url_.str()).get();
+    }
+    generated = GeneratePreparedElementsResult(
+        entry_, template_key_, attribute_slots_, attribute_slots_generation_);
   }
-
-  create_element_tree_task_->Run();
-  auto generated = create_element_tree_task_->GetFuture().get();
-  create_element_tree_task_ = nullptr;
   if (generated.result_ == nullptr) {
     return;
   }
@@ -1054,7 +1064,11 @@ fml::RefPtr<Element> ElementTemplateInstance::GetRoot() {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  RequestMaterializationRecursively();
+  if (element_manager_->GetEnableParallelElement()) {
+    RequestMaterializationRecursively();
+  } else {
+    materialization_requested_ = true;
+  }
   MaterializeRoot();
 
   EXEC_EXPR_FOR_INSPECTOR(auto* manager = element_manager_;
@@ -1444,7 +1458,8 @@ void ElementTemplateInstance::InsertNodeIntoChildSlot(
   auto previous_slot_index = child_instance->logical_parent_slot_index_;
   auto insert_index =
       InsertLogicalChildIntoSlot(slot_index, child, ref_node, *child_instance);
-  if (materialization_requested_) {
+  if (materialization_requested_ &&
+      element_manager_->GetEnableParallelElement()) {
     child_instance->RequestMaterializationRecursively();
   }
 
