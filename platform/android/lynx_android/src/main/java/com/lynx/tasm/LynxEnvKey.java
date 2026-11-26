@@ -54,7 +54,9 @@ public enum LynxEnvKey {
   SETUP_CANVAS_SURFACE_EARLIER("setup_canvas_surface_earlier"),
   ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND(
       "enable_dismiss_text_selection_menu_on_background"),
-  ENABLE_FLATTEN_IMAGE_ATTACH_FIX("enable_flatten_image_attach_fix");
+  ENABLE_FLATTEN_IMAGE_ATTACH_FIX("enable_flatten_image_attach_fix"),
+  // cspell:words harmonyos
+  DISABLE_VIEW_BLUR_ON_ANDROID_10_HARMONY_OS("disable_view_blur_on_android_10_harmonyos");
 
   private final String description;
 
