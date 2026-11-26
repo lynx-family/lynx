@@ -124,6 +124,9 @@ std::unique_ptr<Engine> CreateEngine(
 // that cause shell initialization failures will still lead to some of their
 // settings being applied.
 void PerformInitializationTasks(Settings& settings) {  // NOLINT
+  // Linux shares the host's Lynx logger; creating a shell must not reset its
+  // process-wide threshold.
+#if !defined(OS_LINUX)
   {
     fml::LogSettings log_settings;
 #if defined(OS_WIN) || defined(OS_MAC)
@@ -134,6 +137,7 @@ void PerformInitializationTasks(Settings& settings) {  // NOLINT
 #endif
     fml::SetLogSettings(log_settings);
   }
+#endif
 
   static std::once_flag gShellSettingsInitialization = {};
   std::call_once(gShellSettingsInitialization, [&settings] {
