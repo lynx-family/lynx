@@ -278,6 +278,19 @@ importers:
       typescript: 5.8.3
       vitest: 2.1.9
 
+  platform/harmony/lynx_library_plugin:
+    specifiers:
+      '@types/node': 18.7.2
+      json5: ^2.2.3
+      typescript: 5.8.3
+      vitest: 2.1.9
+    dependencies:
+      json5: 2.2.3
+    devDependencies:
+      '@types/node': 18.7.2
+      typescript: 5.8.3
+      vitest: 2.1.9
+
   testing/integration_test/test_script:
     specifiers:
       appium: 2.11.2

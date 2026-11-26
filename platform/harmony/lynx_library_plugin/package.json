@@ -1,0 +1,35 @@
+{
+  "name": "@lynx/lynx-library-plugin",
+  "version": "0.0.0",
+  "description": "Harmony build integration for Lynx Autolink libraries",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "lynx-harmony-autolink": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "json5": "^2.2.3"
+  },
+  "devDependencies": {
+    "@types/node": "18.7.2",
+    "typescript": "5.8.3",
+    "vitest": "2.1.9"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
