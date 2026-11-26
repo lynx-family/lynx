@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.animax.monitor;
 
+import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import com.lynx.animax.listener.AnimaXErrorParam;
 import com.lynx.animax.service.IAnimaXMonitorService;
@@ -27,6 +28,23 @@ public class LynxAnimaXMonitorDefault implements IAnimaXMonitorService {
   @Override
   public void setCurrentUrl(String url) {
     mCurrentUrl = url;
+  }
+
+  @Keep
+  public boolean useResourceLoadReportingSetting() {
+    return true;
+  }
+
+  @Keep
+  public void reportResourceLoad(Map<String, Object> properties) {
+    LynxContext context = mContext.get();
+    if (context == null || !context.enableEventReporter()) {
+      return;
+    }
+    properties.put(
+        AnimaXMonitorUtil.KEY_PAGE_URL, AnimaXMonitorUtil.clearUrlQuery(context.getTemplateUrl()));
+    properties.put(AnimaXMonitorUtil.KEY_INTEGRATION_TYPE, INTEGRATION_TYPE_LYNX);
+    LynxEventReporter.onEvent("animax_resource_load", properties, context.getInstanceId());
   }
 
   @Override

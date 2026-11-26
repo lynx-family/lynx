@@ -5,6 +5,7 @@ package com.lynx.animax.ui;
 
 import static com.lynx.tasm.base.Assertions.assertNotNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -22,6 +23,24 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 public class LynxMonitorTest {
+  @Test
+  public void testResourceLoadReportingRespectsContextSetting() {
+    LynxContext context = mock(LynxContext.class);
+    LynxAnimaXMonitorDefault monitor = new LynxAnimaXMonitorDefault(context);
+    assertTrue(monitor.useResourceLoadReportingSetting());
+    Map<String, Object> properties = new HashMap<>();
+    monitor.reportResourceLoad(properties);
+    assertTrue(properties.isEmpty());
+    verify(context, never()).getInstanceId();
+
+    when(context.enableEventReporter()).thenReturn(true);
+    when(context.getTemplateUrl()).thenReturn("https://example.com/page?version=1");
+    monitor.reportResourceLoad(properties);
+    assertEquals("https://example.com/page", properties.get(AnimaXMonitorUtil.KEY_PAGE_URL));
+    assertEquals("lynx", properties.get(AnimaXMonitorUtil.KEY_INTEGRATION_TYPE));
+    verify(context).getInstanceId();
+  }
+
   @Test
   public void testReportError_ContextIsNull() {
     // Given a monitor with a null context
