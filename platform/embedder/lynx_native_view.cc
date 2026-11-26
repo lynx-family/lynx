@@ -9,7 +9,7 @@
 
 #include "build/build_config.h"
 #include "clay/lynx_adaptor/native_platform_view.h"
-#include "platform/embedder/public/capi/lynx_native_view_capi.h"
+#include "platform/embedder/lynx_native_view_priv.h"
 
 class LynxNativeViewPrivate : public clay::NativePlatformView {
  public:
@@ -287,6 +287,11 @@ LYNX_EXTERN_C lynx_surface_handle_t* lynx_native_view_acquire_surface(
   }
   auto handle = self->AcquireSurface(width, height);
   return reinterpret_cast<lynx_surface_handle_t*>(handle);
+}
+
+LYNX_EXTERN_C ClaySharedImageSinkRef
+lynx_native_view_get_shared_image_sink(lynx_native_view_t* view) {
+  return reinterpret_cast<LynxNativeViewPrivate*>(view)->GetSharedImageSink();
 }
 
 LYNX_EXTERN_C lynx_surface_handle_t*
