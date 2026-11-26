@@ -66,6 +66,17 @@ void GestureArenaAndroid::RemoveMember(MemberId member_id) {
 
 void GestureArenaAndroid::HandleInput(
     const InputEvent& event, const std::vector<MemberId>& response_chain) {
+  if (event.type == InputType::kDown) {
+    const auto fling_member = arena_.GetFlingMemberId();
+    if (fling_member && std::find(response_chain.begin(), response_chain.end(),
+                                  *fling_member) != response_chain.end()) {
+      JNIEnv* env = base::android::AttachCurrentThread();
+      base::android::ScopedLocalJavaRef<jobject> owner(owner_);
+      if (!owner.IsNull()) {
+        Java_GestureArenaManager_onFlingInterrupted(env, owner.Get());
+      }
+    }
+  }
   arena_.HandleInput(event, response_chain);
 }
 

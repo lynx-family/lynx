@@ -970,6 +970,14 @@ public class GestureArenaManager {
   }
 
   @CalledByNative
+  private void onFlingInterrupted() {
+    // A press that stops scrolling should not become a tap on release.
+    if (mUnifiedScroller != null && !mUnifiedScroller.isFinished()) {
+      mLynxContext.onGestureRecognized();
+    }
+  }
+
+  @CalledByNative
   private void stopFling() {
     stopUnifiedFling();
   }

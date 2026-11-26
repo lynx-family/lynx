@@ -36,6 +36,10 @@ bool GestureArena::ContainsGesture(MemberId member_id,
   return impl_->ContainsGesture(member_id, gesture_id);
 }
 
+std::optional<MemberId> GestureArena::GetFlingMemberId() const {
+  return impl_->GetFlingMemberId();
+}
+
 void GestureArena::HandleInput(const InputEvent &event,
                                const std::vector<MemberId> &response_chain) {
   impl_->HandleInput(event, response_chain);
