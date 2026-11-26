@@ -106,14 +106,11 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
                                         clipBox:(const RoundedRectangle &)clipBox
                                         repeatX:(int32_t)repeatX
                                         repeatY:(int32_t)repeatY;
-- (CALayer *)createRadialGradientLayerWithCenter:(CGPoint)center
-                                          radius:(CGPoint)radius
-                                          colors:(NSArray<NSNumber *> *)colors
-                                           stops:(NSArray<NSNumber *> *)stops
-                                       originBox:(const RoundedRectangle &)originBox
-                                         clipBox:(const RoundedRectangle &)clipBox
-                                         repeatX:(int32_t)repeatX
-                                         repeatY:(int32_t)repeatY;
+- (CALayer *)layerForGradientDrawable:(LynxBackgroundGradientDrawable *)drawable
+                            originBox:(const RoundedRectangle &)originBox
+                              clipBox:(const RoundedRectangle &)clipBox
+                              repeatX:(int32_t)repeatX
+                              repeatY:(int32_t)repeatY;
 - (LynxBorderRadii)borderRadiiWithRoundedRectangle:(const RoundedRectangle &)rect;
 - (void)applyRoundedMaskToLayer:(CALayer *)layer
                       maskFrame:(CGRect)maskFrame
@@ -759,9 +756,12 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         }
         break;
       }
+      case DisplayListOpType::kConicGradient:
       case DisplayListOpType::kRadialGradient: {
-        int32_t colorCount = item.payload.radial_gradient.color_count;
-        int32_t stopCount = item.payload.radial_gradient.stop_count;
+        bool conic = op == DisplayListOpType::kConicGradient;
+        const auto &g = conic ? item.payload.conic_gradient : item.payload.radial_gradient;
+        int32_t colorCount = g.color_count;
+        int32_t stopCount = g.stop_count;
         NSMutableArray<NSNumber *> *colors = [NSMutableArray arrayWithCapacity:colorCount];
         const uint32_t *colorData = reader_.Colors(item);
         for (int32_t i = 0; i < colorCount; ++i) {
@@ -773,25 +773,35 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           [stops addObject:@(stopData[i] * 100.0f)];
         }
 
-        int32_t originIndex = item.payload.radial_gradient.tiling_index;
-        int32_t clipIndex = item.payload.radial_gradient.clip_index;
+        int32_t originIndex = g.tiling_index;
+        int32_t clipIndex = g.clip_index;
         if (originIndex < 0 || static_cast<size_t>(originIndex) >= box_array_.size() ||
             clipIndex < 0 || static_cast<size_t>(clipIndex) >= box_array_.size()) {
           break;
         }
-        CGPoint center = CGPointMake(item.payload.radial_gradient.center_x,
-                                     item.payload.radial_gradient.center_y);
-        CGPoint radius = CGPointMake(item.payload.radial_gradient.radius_x,
-                                     item.payload.radial_gradient.radius_y);
-        CALayer *gradientLayer =
-            [self createRadialGradientLayerWithCenter:center
-                                               radius:radius
-                                               colors:colors
-                                                stops:stops
-                                            originBox:box_array_[originIndex]
-                                              clipBox:box_array_[clipIndex]
-                                              repeatX:item.payload.radial_gradient.repeat_x
-                                              repeatY:item.payload.radial_gradient.repeat_y];
+        LynxBackgroundGradientDrawable *drawable;
+        if (conic) {
+          NSArray *center = @[
+            @(g.center_x), @(LynxPlatformLengthUnitNumber), @(g.center_y),
+            @(LynxPlatformLengthUnitNumber)
+          ];
+          drawable = [[LynxBackgroundConicGradientDrawable alloc]
+              initWithArray:@[ @(g.angle), center, colors, stops ]];
+        } else {
+          NSArray *shape = @[
+            @(LynxRadialGradientShapeEllipse), @(LynxRadialGradientSizeLength),
+            @(LynxRadialCenterTypePX), @(g.center_x), @(LynxRadialCenterTypePX), @(g.center_y), @0,
+            @0, @0, @0, @(g.radius_x), @(LynxPlatformLengthUnitNumber), @(g.radius_y),
+            @(LynxPlatformLengthUnitNumber)
+          ];
+          drawable = [[LynxBackgroundRadialGradientDrawable alloc]
+              initWithArray:@[ shape, colors, stops ]];
+        }
+        CALayer *gradientLayer = [self layerForGradientDrawable:drawable
+                                                      originBox:box_array_[originIndex]
+                                                        clipBox:box_array_[clipIndex]
+                                                        repeatX:g.repeat_x
+                                                        repeatY:g.repeat_y];
         if (gradientLayer != nil) {
           [self insertLayer:gradientLayer forOp:op];
         }
@@ -1097,14 +1107,11 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   return layer;
 }
 
-- (CALayer *)createRadialGradientLayerWithCenter:(CGPoint)center
-                                          radius:(CGPoint)radius
-                                          colors:(NSArray<NSNumber *> *)colors
-                                           stops:(NSArray<NSNumber *> *)stops
-                                       originBox:(const RoundedRectangle &)originBox
-                                         clipBox:(const RoundedRectangle &)clipBox
-                                         repeatX:(int32_t)repeatX
-                                         repeatY:(int32_t)repeatY {
+- (CALayer *)layerForGradientDrawable:(LynxBackgroundGradientDrawable *)drawable
+                            originBox:(const RoundedRectangle &)originBox
+                              clipBox:(const RoundedRectangle &)clipBox
+                              repeatX:(int32_t)repeatX
+                              repeatY:(int32_t)repeatY {
   CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
   if (CGRectIsEmpty(clipRect)) {
     return nil;
@@ -1114,13 +1121,6 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   CGRect originRect = [self rectForRoundedRectangle:originBox applyingOffsets:YES];
   CGRect localPaintRect =
       CGRectOffset(originRect, -CGRectGetMinX(clipRect), -CGRectGetMinY(clipRect));
-  NSArray<NSNumber *> *shape = @[
-    @(LynxRadialGradientShapeEllipse), @(LynxRadialGradientSizeLength), @(LynxRadialCenterTypePX),
-    @(center.x), @(LynxRadialCenterTypePX), @(center.y), @0, @0, @0, @0, @(radius.x),
-    @(LynxPlatformLengthUnitNumber), @(radius.y), @(LynxPlatformLengthUnitNumber)
-  ];
-  LynxBackgroundRadialGradientDrawable *drawable =
-      [[LynxBackgroundRadialGradientDrawable alloc] initWithArray:@[ shape, colors, stops ]];
   drawable.repeatX = static_cast<LynxBackgroundRepeatType>(repeatX);
   drawable.repeatY = static_cast<LynxBackgroundRepeatType>(repeatY);
   [drawable prepareGradientWithBorderBox:localBorderRect
@@ -1225,7 +1225,7 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
 - (void)insertLayer:(CALayer *)layer forOp:(DisplayListOpType)op {
   if ([self shouldInsertAsHostDecorationForOp:op]) {
     if (op == DisplayListOpType::kBackgroundImage || op == DisplayListOpType::kLinearGradient ||
-        op == DisplayListOpType::kRadialGradient) {
+        op == DisplayListOpType::kRadialGradient || op == DisplayListOpType::kConicGradient) {
       // Share geometry only between consecutive backgrounds. A custom drawing
       // callback can interleave gradients and fills; reusing an earlier group
       // would move a later gradient below the intervening fill.
@@ -1279,7 +1279,8 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   }
   return op == DisplayListOpType::kFill || op == DisplayListOpType::kBorder ||
          op == DisplayListOpType::kBackgroundImage || op == DisplayListOpType::kLinearGradient ||
-         op == DisplayListOpType::kRadialGradient || op == DisplayListOpType::kBoxShadow;
+         op == DisplayListOpType::kRadialGradient || op == DisplayListOpType::kConicGradient ||
+         op == DisplayListOpType::kBoxShadow;
 }
 
 - (UIImageView *)createImageView {

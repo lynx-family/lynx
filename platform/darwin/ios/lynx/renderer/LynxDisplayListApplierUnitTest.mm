@@ -1028,6 +1028,31 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(((CAShapeLayer *)gradientLayer.mask).path != nil);
 }
 
+- (void)testConicGradientUsesTileCoordinatesAndClipsSeparately {
+  LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 80)];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                      andContext:nil];
+  DisplayList list;
+  AppendRecordBox(list, 0, 0, 120, 60);
+  float radii[] = {4, 4, 8, 8, 12, 12, 16, 16};
+  AppendRecordBox(list, 10, 12, 80, 40, true, radii);
+  list.AddConicGradient(30, 45, 90, {0xffff0000, 0xff0000ff}, {0, 1}, 0, 1,
+                        LynxBackgroundRepeatNoRepeat, LynxBackgroundRepeatNoRepeat);
+  [applier applyDisplayList:&list];
+
+  CALayer *clip = view.layer.sublayers.firstObject;
+  XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(10, 12, 80, 40)));
+  XCTAssertNotNil(clip.mask);
+  CAGradientLayer *paint = (CAGradientLayer *)clip.sublayers.firstObject.sublayers.firstObject;
+  if (@available(iOS 12.0, *)) {
+    XCTAssertEqualObjects(paint.type, kCAGradientLayerConic);
+  }
+  XCTAssertEqualWithAccuracy(paint.startPoint.x, 0.25, 0.001);
+  XCTAssertEqualWithAccuracy(paint.startPoint.y, 0.75, 0.001);
+  XCTAssertGreaterThan(paint.endPoint.x, paint.startPoint.x);
+  XCTAssertEqualWithAccuracy(paint.endPoint.y, paint.startPoint.y, 0.001);
+}
+
 - (void)testProcessContentOperationsWithRadialGradient {
   LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
   LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
