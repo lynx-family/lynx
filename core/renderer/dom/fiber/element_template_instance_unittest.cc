@@ -4501,6 +4501,58 @@ TEST_P(ElementTemplateInstanceTest,
   }
 }
 
+TEST_P(ElementTemplateInstanceTest,
+       DefaultMaterializationRunsSynchronouslyWithoutPostMTSTasks) {
+  auto page = fml::AdoptRef<ElementTemplateInstance>(
+      new ElementTemplateInstance(manager));
+  page->SetTASM(tasm.get());
+  page->SetTypedTag(base::String("page"));
+
+  auto parent = CreateCompiledSpreadInstance();
+  auto child = CreateCompiledSpreadInstance();
+  auto& parent_root_info =
+      tasm->template_entries_.at(DEFAULT_ENTRY_NAME)
+          ->template_bundle_.element_template_infos_.at("spread_template")
+          ->elements_[0];
+  ElementInfo slot_info;
+  slot_info.tag_enum_ = ElementBuiltInTagEnum::ELEMENT_SLOT;
+  slot_info.slot_index_ = 0;
+  parent_root_info.children_.emplace_back(std::move(slot_info));
+  auto parent_attrs = lepus::Dictionary::Create();
+  parent_attrs->SetValue("data-role", lepus::Value("parent"));
+  parent->SetAttributeSlot(0, lepus::Value(parent_attrs));
+  auto child_attrs = lepus::Dictionary::Create();
+  child_attrs->SetValue("data-role", lepus::Value("child"));
+  child->SetAttributeSlot(0, lepus::Value(child_attrs));
+
+  parent->InsertNodeIntoChildSlot(0, lepus::Value(child), lepus::Value());
+  page->InsertNodeIntoChildSlot(0, lepus::Value(parent), lepus::Value());
+
+  auto page_root = page->GetRoot();
+  ASSERT_NE(page_root, nullptr);
+
+  EXPECT_EQ(manager->pending_post_mts_render_tasks_, nullptr);
+  EXPECT_EQ(parent->create_element_tree_task_, nullptr);
+  EXPECT_EQ(child->create_element_tree_task_, nullptr);
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page_root.get());
+  ASSERT_NE(parent->PeekMaterializedRoot(), nullptr);
+  ASSERT_NE(child->PeekMaterializedRoot(), nullptr);
+  EXPECT_EQ(child->PeekMaterializedRoot()->parent(),
+            parent->PeekMaterializedRoot().get());
+  ASSERT_NE(DatasetValue(parent->PeekMaterializedRoot().get(), "role"),
+            nullptr);
+  EXPECT_EQ(
+      DatasetValue(parent->PeekMaterializedRoot().get(), "role")->StdString(),
+      "parent");
+  ASSERT_NE(DatasetValue(child->PeekMaterializedRoot().get(), "role"), nullptr);
+  EXPECT_EQ(
+      DatasetValue(child->PeekMaterializedRoot().get(), "role")->StdString(),
+      "child");
+  EXPECT_EQ(manager->pending_post_mts_render_tasks_, nullptr);
+}
+
 INSTANTIATE_TEST_SUITE_P(ElementTemplateInstanceTestModule,
                          ElementTemplateInstanceTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
