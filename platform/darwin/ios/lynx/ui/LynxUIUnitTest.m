@@ -2,9 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxAnimationTransformRotation.h>
 #import <Lynx/LynxBaseGestureHandler.h>
+#import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUIContext.h>
@@ -58,6 +61,41 @@
 
   XCTAssertTrue([ui isVisible]);
   OCMVerifyAll(ui);
+}
+
+- (void)testLegacyTransformTransitionInstallsFrameRateOnGroupAndChildren {
+  if (@available(iOS 15.0, tvOS 15.0, *)) {
+    __attribute__((objc_precise_lifetime)) LynxUIContext *context = [[LynxUIContext alloc] init];
+    LynxUI *ui = [[LynxUI alloc] initWithView:[UIView new]];
+    ui.context = context;
+    LynxTransitionAnimationManager *manager =
+        [[LynxTransitionAnimationManager alloc] initWithLynxUI:ui];
+    [manager assembleTransitions:@[
+      @[ @(TRANSITION_TRANSFORM), @10000, @(LynxTimingFunctionLinear), @0, @0, @0, @0, @0, @0 ]
+    ]];
+    CATransform3D target = CATransform3DMakeTranslation(80, 0, 0);
+    for (NSNumber *high in @[ @YES, @NO ]) {
+      context.prefersHighFrameRateForPlatformAnimations = high.boolValue;
+      [manager performTransitionAnimationsWithTransform:target
+                                 transformWithoutRotate:target
+                               transformWithoutRotateXY:target
+                                               rotation:[LynxAnimationTransformRotation new]
+                                               callback:^(BOOL finished){
+                                               }];
+      [manager applyTransitionAnimation];
+
+      CAAnimationGroup *group =
+          (CAAnimationGroup *)[ui.view.layer animationForKey:@"transition-transform"];
+      XCTAssertTrue([group isKindOfClass:[CAAnimationGroup class]]);
+      XCTAssertGreaterThan(group.animations.count, 0u);
+      CAFrameRateRange expected =
+          high.boolValue ? CAFrameRateRangeMake(120, 120, 120) : CAFrameRateRangeDefault;
+      XCTAssertTrue(CAFrameRateRangeIsEqualToRange(group.preferredFrameRateRange, expected));
+      for (CAAnimation *child in group.animations) {
+        XCTAssertTrue(CAFrameRateRangeIsEqualToRange(child.preferredFrameRateRange, expected));
+      }
+    }
+  }
 }
 
 - (void)testCopy {

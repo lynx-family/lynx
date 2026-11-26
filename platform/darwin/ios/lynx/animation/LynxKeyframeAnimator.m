@@ -9,12 +9,13 @@
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxKeyframeAnimator.h>
-#import <Lynx/LynxLog.h>
 #import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <mach/mach_time.h>
+#import "LynxAnimationUtils+Private.h"
 
 static const CFTimeInterval kTimeNotInit = 0;
 static const double kAnimationIterationCountInfinite = 1E9;
@@ -1231,6 +1232,7 @@ static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString*
     }
     animator.values = _keyframeParsedData.keyframeValues[key];
     animator.keyTimes = _keyframeParsedData.keyframeTimes[key];
+    LynxApplyHighFrameRateHint(animator, _ui.context.prefersHighFrameRateForPlatformAnimations);
     if (_platformAnimationGeneration != 0) {
       [animator setValue:@(_platformAnimationGeneration) forKey:kPlatformAnimationGenerationKey];
     }

@@ -185,6 +185,7 @@ subspec_target("lynx") {
     "animation/LynxAnimationDelegate.m",
     "animation/LynxAnimationInfo.m",
     "animation/LynxAnimationTransformRotation.m",
+    "animation/LynxAnimationUtils+Private.h",
     "animation/LynxAnimationUtils.m",
     "animation/LynxKeyframeAnimator.m",
     "animation/LynxKeyframeManager.m",

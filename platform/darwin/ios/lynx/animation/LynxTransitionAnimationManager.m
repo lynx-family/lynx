@@ -12,7 +12,9 @@
 #import <Lynx/LynxTransitionAnimationManager+Private.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIContext+Internal.h>
 #import <Lynx/LynxUIUnitUtils.h>
+#import "LynxAnimationUtils+Private.h"
 
 static const NSString* const kTransitionEventStart = @"transitionstart";
 static const NSString* const kTransitionEventEnd = @"transitionend";
@@ -135,6 +137,9 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 - (BOOL)isTransitionSize:(CGRect)oldFrame newFrame:(CGRect)newFrame;
 - (BOOL)isTransitionPosition:(CGRect)oldFrame newFrame:(CGRect)newFrame;
 - (BOOL)hasTransition:(LynxAnimationProp)prop;
+- (void)prepareTransitionAnimation:(CAAnimation*)animation
+                        withConfig:(LynxAnimationInfo*)config
+                          forLayer:(CALayer*)layer;
 - (void)enqueueTransitionAnimation:(CAAnimation*)animation withConfig:(LynxAnimationInfo*)config;
 - (LynxAnimationDelegate*)createTransitionDelegate:(LynxAnimationInfo*)info
                                          animation:(CAAnimation*)transition;
@@ -357,7 +362,7 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
   }
 
   animation.delegate = transition;
-  [LynxAnimationUtils applyAnimationProperties:animation withInfo:info forLayer:ui.view.layer];
+  [self prepareTransitionAnimation:animation withConfig:info forLayer:ui.view.layer];
   if (property == OPACITY && ui.backgroundManager.opacityView) {
     [LynxAnimationUtils attachOpacityTo:ui animation:animation forKey:name];
   } else {
@@ -811,8 +816,15 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
 
 #pragma mark - prepare && start transition
 
+- (void)prepareTransitionAnimation:(CAAnimation*)animation
+                        withConfig:(LynxAnimationInfo*)config
+                          forLayer:(CALayer*)layer {
+  [LynxAnimationUtils applyAnimationProperties:animation withInfo:config forLayer:layer];
+  LynxApplyHighFrameRateHint(animation, _ui.context.prefersHighFrameRateForPlatformAnimations);
+}
+
 - (void)enqueueTransitionAnimation:(CAAnimation*)animation withConfig:(LynxAnimationInfo*)config {
-  [LynxAnimationUtils applyAnimationProperties:animation withInfo:config forLayer:_ui.view.layer];
+  [self prepareTransitionAnimation:animation withConfig:config forLayer:_ui.view.layer];
   LynxAnimationDelegate* delegate = [self createTransitionDelegate:config animation:animation];
   animation.delegate = delegate;
   NSNumber* prop = @(config.prop);
@@ -964,7 +976,7 @@ static CAAnimationGroup* CreateTransformTransition(const LynxTransitionTransform
                                  withConfig:(LynxAnimationInfo*)config
                                    forLayer:(CALayer*)layer
                                    withProp:(LynxAnimationProp)prop {
-  [LynxAnimationUtils applyAnimationProperties:content withInfo:config forLayer:layer];
+  [self prepareTransitionAnimation:content withConfig:config forLayer:layer];
   NSString* animationName =
       [NSString stringWithFormat:@"%@%@", DUP_CONTENT_ANI_PREFIX, config.name];
   [layer addAnimation:content forKey:animationName];
