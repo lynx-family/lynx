@@ -11,11 +11,15 @@
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxPlatformAnimation.h>
 #import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxTransitionAnimationManager.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI+Private.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIContext+Internal.h>
 #import <mach/mach_time.h>
 #import "LynxAnimationUtils+Private.h"
+#import "LynxKeyframeAnimator+Private.h"
+#import "LynxUIKitOpacityKeyframes.h"
 
 static const CFTimeInterval kTimeNotInit = 0;
 static const double kAnimationIterationCountInfinite = 1E9;
@@ -92,6 +96,9 @@ static NSTimeInterval GetActiveDuration(LynxAnimationInfo* info) {
 - (void)sendEndEvent:(LynxAnimationInfo*)info finished:(BOOL)finished;
 - (void)apply:(LynxAnimationInfo*)info forceReapply:(BOOL)forceReapply;
 - (void)applyInstantAnimation:(LynxAnimationInfo*)info;
+- (void)stopUIKitOpacityAnimation;
+- (void)switchUIKitOpacityToCoreAnimation;
+- (void)attachCoreOpacityAnimation:(CAKeyframeAnimation*)animator name:(NSString*)name;
 + (nullable LynxKeyframeParsedData*)buildParsedTransformKeyframes:
                                         (NSArray<NSArray<LynxTransformRaw*>*>*)keyframes
                                                             times:(NSArray<NSNumber*>*)times
@@ -105,6 +112,7 @@ static NSTimeInterval GetActiveDuration(LynxAnimationInfo* info) {
   NSMutableDictionary<NSString*, CAKeyframeAnimation*>* _internalAnimators;
   PauseTimeHelper* _pauseTimeHelper;
   LynxAnimationDelegate* _delegate;
+  LynxUIKitOpacityKeyframes* _uikitOpacityAnimation;
   CADisplayLink* _displayLink;
   // Pair this executor's observer notifications independently of JS events.
   LynxGlobalObserver* _animationObserver;
@@ -127,6 +135,8 @@ static NSString* const kTransformRotationYStr = @"transform.rotation.y";
 static NSString* const kTransformRotationZStr = @"transform.rotation.z";
 static NSString* const kPlatformAnimationGenerationKey = @"lynxPlatformAnimationGeneration";
 static const CATransform3D kEmptyCATransform3D = {0};
+
+@synthesize allowsUIKitOpacity = _allowsUIKitOpacity;
 
 + (NSString*)kTransformStr {
   return kTransformStr;
@@ -254,6 +264,7 @@ static const CATransform3D kEmptyCATransform3D = {0};
 }
 
 - (void)dealloc {
+  [_uikitOpacityAnimation stop];
   [self stopObservingAnimation];
   if (_displayLink) {
     [_displayLink invalidate];
@@ -393,6 +404,55 @@ static const CATransform3D kEmptyCATransform3D = {0};
     if ([_propertyOriginValue objectForKey:kExtraBackgroundColorStr]) {
       _propertyOriginValue[kExtraBackgroundColorStr] = value;
     }
+  }
+  if ([name isEqualToString:kOpacityStr] && _uikitOpacityAnimation) {
+    [_uikitOpacityAnimation setUnderlyingOpacity:[value doubleValue]];
+  }
+}
+
+- (BOOL)hasConflictingOpacityTransition {
+  LynxTransitionAnimationManager* transition = [_ui transitionManagerCreatingIfNeeded:NO];
+  return [transition isTransitionOpacity:0 newOpacity:1] || [transition isTransitionVisibility:NO
+                                                                                      newState:YES];
+}
+
+- (void)notifyTransitionUpdated {
+  if (_uikitOpacityAnimation && [self hasConflictingOpacityTransition]) {
+    [self switchUIKitOpacityToCoreAnimation];
+  }
+}
+
+- (void)setAllowsUIKitOpacity:(BOOL)allowsUIKitOpacity {
+  _allowsUIKitOpacity = allowsUIKitOpacity;
+  if (!allowsUIKitOpacity) {
+    [self switchUIKitOpacityToCoreAnimation];
+  }
+}
+
+- (NSNumber*)currentUIKitOpacity {
+  return [_uikitOpacityAnimation currentOpacity];
+}
+
+- (void)cancelUIKitOpacityAnimation {
+  if (_uikitOpacityAnimation) {
+    [self cancel];
+  }
+}
+
+- (void)stopUIKitOpacityAnimation {
+  LynxUIKitOpacityKeyframes* animation = _uikitOpacityAnimation;
+  _uikitOpacityAnimation = nil;
+  [animation stop];
+}
+
+- (void)switchUIKitOpacityToCoreAnimation {
+  if (!_uikitOpacityAnimation) {
+    return;
+  }
+  [self stopUIKitOpacityAnimation];
+  [self restoreLayerStyles:_propertyOriginValue];
+  if (_state == LynxKFAnimatorStateRunning) {
+    [self attachCoreOpacityAnimation:_internalAnimators[kOpacityStr] name:_info.name];
   }
 }
 
@@ -619,6 +679,11 @@ static const CATransform3D kEmptyCATransform3D = {0};
                           : recordedTrans;
       styles[kTransformStr] = [NSValue valueWithCATransform3D:recordedTrans];
     } else if ([key isEqualToString:kOpacityStr]) {
+      NSNumber* uikitOpacity = [self currentUIKitOpacity];
+      if (uikitOpacity) {
+        styles[kOpacityStr] = uikitOpacity;
+        continue;
+      }
       // When presentationLayer is nil, it is very early stage. We should get opacity from keyframe
       // begin value rather than from layer.
       if (_ui.view.layer.presentationLayer == nil) {
@@ -714,6 +779,10 @@ static const CATransform3D kEmptyCATransform3D = {0};
   if (_platformPlayback != nil) {
     // Freeze at logical time, including a pause transferred from New Animator.
     // No presentation-layer snapshot from the previous executor is required.
+    if (_uikitOpacityAnimation) {
+      [self stopUIKitOpacityAnimation];
+      [self restoreLayerStyles:_propertyOriginValue];
+    }
     for (NSString* key in _internalAnimators) {
       CAKeyframeAnimation* animator = _internalAnimators[key];
       animator.speed = 0;
@@ -795,6 +864,10 @@ static const CATransform3D kEmptyCATransform3D = {0};
   }
   ++_instantAnimationRevision;
   _state = LynxKFAnimatorStateCanceled;
+  if (_uikitOpacityAnimation) {
+    [self stopUIKitOpacityAnimation];
+    [self restoreLayerStyles:_propertyOriginValue];
+  }
   [self stopObservingAnimation];
 }
 
@@ -1381,7 +1454,100 @@ static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString*
 - (void)addOpacityAnimationToLayer:(NSString*)key
                               name:(NSString*)name
                           animator:(CAKeyframeAnimation*)animator {
-  NSString* animationUniqueKey = [key stringByAppendingString:name];
+  if ([self startUIKitOpacityAnimation:animator name:name]) {
+    return;
+  }
+  [self attachCoreOpacityAnimation:animator name:name];
+}
+
+- (BOOL)meetsUIKitOpacityDisplayRequirements {
+  if (@available(iOS 15.4, tvOS 15.4, *)) {
+    LynxUI* ui = _ui;
+    return ui.context.prefersHighFrameRateForPlatformAnimations &&
+           ui.view.window.screen.maximumFramesPerSecond > 60 &&
+           ![[NSBundle.mainBundle
+               objectForInfoDictionaryKey:@"CADisableMinimumFrameDurationOnPhone"] boolValue];
+  }
+  return NO;
+}
+
+- (BOOL)startUIKitOpacityAnimation:(CAKeyframeAnimation*)animator name:(NSString*)name {
+  LynxUI* ui = _ui;
+  NSNumber* underlyingOpacity = _propertyOriginValue[kOpacityStr];
+  if (!_allowsUIKitOpacity || animator.speed != 1 ||
+      _keyframeParsedData.keyframeValues.count != 1 ||
+      ![underlyingOpacity isKindOfClass:[NSNumber class]] ||
+      ![self meetsUIKitOpacityDisplayRequirements] || ui.view.layer.mask ||
+      ui.backgroundManager.opacityView || ui.backgroundManager.animationOptions != 0 ||
+      !UIView.areAnimationsEnabled || [self hasConflictingOpacityTransition] ||
+      ![LynxUIKitOpacityKeyframes canAnimate:animator]) {
+    return NO;
+  }
+  NSTimeInterval activeDuration = animator.duration * animator.repeatCount;
+  if (animator.autoreverses) {
+    activeDuration *= 2;
+  }
+  if (animator.repeatCount >= (animator.autoreverses ? kAnimationIterationCountInfinite / 2
+                                                     : kAnimationIterationCountInfinite)) {
+    activeDuration = DBL_MAX;
+  }
+  CALayer* layer = ui.view.layer;
+  NSTimeInterval elapsed =
+      [layer convertTime:CACurrentMediaTime() fromLayer:nil] - animator.beginTime;
+  double layerRate = [layer convertTime:1 fromLayer:nil] - [layer convertTime:0 fromLayer:nil];
+  if (elapsed >= activeDuration || fabs(layerRate - 1) > 1e-6) {
+    return NO;
+  }
+  // A routed pause can leave a frozen CA effect on the opacity track.
+  NSString* animationKey = [kOpacityStr stringByAppendingString:name];
+  CAAnimation* attached = [layer animationForKey:animationKey];
+  if ([attached.delegate isKindOfClass:[LynxAnimationDelegate class]]) {
+    ((LynxAnimationDelegate*)attached.delegate).didStop = nil;
+  }
+  if (attached) {
+    [layer removeAnimationForKey:animationKey];
+  }
+  __weak LynxKeyframeAnimator* weakSelf = self;
+  __weak UIView* weakView = ui.view;
+  __block __weak LynxUIKitOpacityKeyframes* weakPlayback = nil;
+  LynxUIKitOpacityKeyframes* playback = [[LynxUIKitOpacityKeyframes alloc]
+      initWithAnimation:animator
+                   view:ui.view
+         activeDuration:activeDuration
+      underlyingOpacity:underlyingOpacity.doubleValue
+             completion:^(BOOL finished) {
+               LynxKeyframeAnimator* strongSelf = weakSelf;
+               LynxUIKitOpacityKeyframes* playback = weakPlayback;
+               if (strongSelf && playback && strongSelf->_uikitOpacityAnimation == playback &&
+                   strongSelf->_state == LynxKFAnimatorStateRunning) {
+                 [strongSelf stopUIKitOpacityAnimation];
+                 if (strongSelf.ui.view != weakView) {
+                   [strongSelf cancel];
+                   return;
+                 }
+                 if (strongSelf.platformPlayback &&
+                     !strongSelf.platformPlayback.isCurrentExecutor()) {
+                   return;
+                 }
+                 if (!finished) {
+                   [strongSelf restoreLayerStyles:strongSelf->_propertyOriginValue];
+                 }
+                 [animator.delegate animationDidStop:animator finished:finished];
+               }
+             }];
+  weakPlayback = playback;
+  playback.isCurrent = ^BOOL {
+    LynxKeyframeAnimator* strongSelf = weakSelf;
+    return strongSelf && weakView && strongSelf.ui.view == weakView &&
+           (strongSelf.platformPlayback == nil || strongSelf.platformPlayback.isCurrentExecutor());
+  };
+  _uikitOpacityAnimation = playback;
+  [playback start];
+  return YES;
+}
+
+- (void)attachCoreOpacityAnimation:(CAKeyframeAnimation*)animator name:(NSString*)name {
+  NSString* animationUniqueKey = [kOpacityStr stringByAppendingString:name];
   if (_ui.backgroundManager.opacityView) {
     // overlap rendering
     [_ui.backgroundManager.opacityView.layer addAnimation:animator forKey:animationUniqueKey];
@@ -1395,6 +1561,7 @@ static void AppendRotationKeyframe(LynxKeyframeParsedData* parsedData, NSString*
 }
 
 - (void)removeAllAnimationFromLayer:(LynxAnimationInfo*)info {
+  [self stopUIKitOpacityAnimation];
   if (info == nil) {
     return;
   }

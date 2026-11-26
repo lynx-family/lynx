@@ -22,6 +22,7 @@
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <Lynx/LynxGlobalObserver.h>
 #import <Lynx/LynxHeroTransition.h>
+#import <Lynx/LynxKeyframeAnimator+Private.h>
 #import <Lynx/LynxKeyframeAnimator.h>
 #import <Lynx/LynxLayoutAnimationManager.h>
 #import <Lynx/LynxMeaningfulContentSnapshot.h>
@@ -550,6 +551,8 @@ static int64_t LynxSaturatedAddMemoryUsageBytes(int64_t lhs, int64_t rhs) {
 
 - (void)onNodeRemoved {
   [super onNodeRemoved];
+  [_transitionAnimationManager removeUIKitTransitions];
+  [_animationManager cancelUIKitOpacityAnimation];
   if (self.context.enableNewSticky) {
     [self removeSelfFromStickyScrollerIfNeeded];
     [self.backgroundManager setPostTranslate:CGPointZero];
@@ -1962,7 +1965,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
 - (void)applyTransform {
   LYNX_ASSERT_ON_MAIN_THREAD;
   [self prepareLastInfo];
-  [_transitionAnimationManager removeLegacyTransformTransition];
+  NSValue* previousUIKitSample = [_transitionAnimationManager removeLegacyTransformTransition];
   if (_enableNewTransformOrigin) {
     [self applyTransformOrigin];
   }
@@ -2000,6 +2003,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
                           transformWithoutRotate:transformWithoutRotate
                         transformWithoutRotateXY:transformWithoutRotateXY
                                         rotation:newTransformRotation
+                             previousUIKitSample:previousUIKitSample
                                         callback:^(BOOL finished) {
                                           weakSelf.view.layer.transform = transform3D;
                                           weakSelf.backgroundManager.transform = transform3D;
@@ -2274,6 +2278,9 @@ LYNX_PROP_DEFINE("opacity", setOpacity, CGFloat) {
     if (nil != ui.animationManager) {
       [ui.animationManager notifyPropertyUpdated:[LynxKeyframeAnimator kOpacityStr]
                                            value:[NSNumber numberWithFloat:value]];
+      if ([ui.animationManager currentUIKitOpacity] != nil) {
+        return;
+      }
     }
 
     if (ui.transitionAnimationManager &&
@@ -3837,6 +3844,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
     return;
   }
   [_transitionAnimationManager assembleTransitions:value];
+  [_animationManager notifyTransitionUpdated];
 }
 
 - (NSDictionary*)buildLayoutChangeEventDetail {
@@ -4020,7 +4028,9 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   }
 
   // if view's alpha < 0.01, return NO
-  if (view.alpha < 0.01) {
+  NSNumber* currentOpacity =
+      [_transitionAnimationManager currentUIKitOpacity] ?: [_animationManager currentUIKitOpacity];
+  if ((currentOpacity ? currentOpacity.doubleValue : view.alpha) < 0.01) {
     return NO;
   }
 
@@ -4827,6 +4837,8 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
 }
 
 - (void)detachView {
+  [_transitionAnimationManager removeUIKitTransitions];
+  [_animationManager cancelUIKitOpacityAnimation];
   _view = nil;
 }
 
