@@ -13,10 +13,12 @@
 #include <string_view>
 #include <utility>
 
+#include "base/include/platform/operating_system.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
 #include "clay/fml/logging.h"
 #include "clay/third_party/txt/src/txt/paragraph.h"
+#include "clay/third_party/txt/src/txt/paragraph_style.h"
 #include "clay/ui/common/attribute_utils.h"
 #include "clay/ui/common/isolate.h"
 #include "clay/ui/component/base_view.h"
@@ -206,6 +208,17 @@ void BaseTextShadowNode::SetAttribute(KeywordID kw, const char* attr_c,
     case KeywordID::kWordBreak:
       SetWordBreak(static_cast<WordBreak>(utils::GetInt(value)));
       break;
+    case KeywordID::kHyphens: {
+      if constexpr (lynx::base::GetOSType() == lynx::base::OSType::kMacOS) {
+        EnsureDefaultStyle();
+        const auto hyphens = static_cast<txt::Hyphens>(utils::GetInt(value));
+        if (text_style_->hyphens != hyphens) {
+          text_style_->hyphens = hyphens;
+          MarkDirty();
+        }
+      }
+      break;
+    }
     case KeywordID::kWhiteSpace:
       SetWhiteSpaceType(static_cast<WhiteSpace>(utils::GetInt(value)));
       break;

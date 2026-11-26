@@ -2,11 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_DOM_FIBER_PLATFORM_TYPES_H_
-#define CORE_RENDERER_DOM_FIBER_PLATFORM_TYPES_H_
+#ifndef BASE_INCLUDE_PLATFORM_OPERATING_SYSTEM_H_
+#define BASE_INCLUDE_PLATFORM_OPERATING_SYSTEM_H_
+
+#include "build/build_config.h"
 
 namespace lynx {
-namespace tasm {
+namespace base {
 
 enum class OSType {
   kAndroid,
@@ -36,7 +38,7 @@ constexpr OSType GetOSType() {
 #endif
 }
 
-}  // namespace tasm
+}  // namespace base
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_DOM_FIBER_PLATFORM_TYPES_H_
+#endif  // BASE_INCLUDE_PLATFORM_OPERATING_SYSTEM_H_

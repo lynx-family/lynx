@@ -14,6 +14,7 @@
 #include "base/include/auto_reset.h"
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging.h"
+#include "base/include/platform/operating_system.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "build/build_config.h"
@@ -38,7 +39,6 @@
 #include "core/renderer/dom/fiber/modifier_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
 #include "core/renderer/dom/fiber/page_element.h"
-#include "core/renderer/dom/fiber/platform_types.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -228,7 +228,7 @@ ElementManager::ElementManager(
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();
   enable_pause_element_vsync_in_background_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::ENABLE_PAUSE_ELEMENT_VSYNC_IN_BACKGROUND,
-      GetOSType() != OSType::kHarmony);
+      base::GetOSType() != base::OSType::kHarmony);
   // Capture the routing policy once per page. Settings updates must not switch
   // execution backends for animations that are already running. When disabled,
   // the existing New Animator configuration continues to select the executor.
