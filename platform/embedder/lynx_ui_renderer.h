@@ -101,6 +101,11 @@ class LynxUIRenderer {
 
   virtual void AddClient(LynxViewClients* client) {}
 
+  // Called at the start of view release on the UI thread, while view-owned
+  // clients are still alive. Stops client notifications before teardown.
+  // Repeated calls must be safe.
+  virtual void PrepareForDestroy() {}
+
   // TODO: Add more methods.
 
  protected:

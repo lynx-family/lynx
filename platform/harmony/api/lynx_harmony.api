@@ -956,6 +956,7 @@ export class LynxSubErrorCode {
   public static readonly E_COMPONENT_LIST_INVALID_METHOD_ARG: number; = 220209
   public static readonly E_COMPONENT_IMAGE_UNSUPPORTED_PROP: number; = 220301
   public static readonly E_COMPONENT_CUSTOM: number; = 229800
+  public static readonly E_RENDERER_SURFACE_INITIALIZATION_FAILED: number; = 230101
   public static readonly E_EXCEPTION_PLATFORM: number; = 990100
   public static readonly E_EXCEPTION_JNI: number; = 990200
 }
@@ -1013,6 +1014,7 @@ export class LynxErrorBehavior {
   public static readonly EB_COMPONENT_LIST: number; = 2202
   public static readonly EB_COMPONENT_IMAGE: number; = 2203
   public static readonly EB_COMPONENT_CUSTOM: number; = 2298
+  public static readonly EB_RENDERER_SURFACE: number; = 2301
   public static readonly EB_EXCEPTION_PLATFORM: number; = 9901
   public static readonly EB_EXCEPTION_JNI: number; = 9902
 }

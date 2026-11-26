@@ -17,10 +17,14 @@
 #include "clay/lynx_adaptor/resource_loader_embedder.h"
 #include "clay/lynx_adaptor/vsync/vsync_monitor_adaptor.h"
 #include "clay/net/loader/resource_loader_creator_service.h"
+#if defined(OS_LINUX)
+#include "clay/shell/common/services/error_reporting_service.h"
+#endif
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/component/view_context.h"
 #include "clay/ui/event/key_codes.h"
 #include "core/base/threading/task_runner_manufactor.h"
+#include "platform/embedder/lynx_view_clients.h"
 #include "platform/embedder/public/capi/lynx_generic_resource_fetcher_capi.h"
 #include "platform/embedder/public/capi/lynx_memory_capi.h"
 
@@ -156,6 +160,42 @@ LynxUIRendererWindowless::~LynxUIRendererWindowless() {
   windowless_renderer_->run_task = nullptr;
   windowless_renderer_->send_pointer_event = nullptr;
   windowless_renderer_->send_key_event = nullptr;
+}
+
+void LynxUIRendererWindowless::PrepareForDestroy() {
+#if defined(OS_LINUX)
+  const auto& manager = headless_engine_->GetServiceManager();
+  if (!manager) {
+    return;
+  }
+  auto actor = manager->GetService<clay::ErrorReportingService>();
+  if (!actor) {
+    return;
+  }
+  clay::Puppet<clay::Owner::kUI, clay::ErrorReportingService> errors = actor;
+  // Close synchronously before the view-owned clients are destroyed.
+  errors->Close();
+#endif
+}
+
+void LynxUIRendererWindowless::AddClient(LynxViewClients* client) {
+#if defined(OS_LINUX)
+  const auto& manager = headless_engine_->GetServiceManager();
+  if (!manager) {
+    return;
+  }
+  auto actor = manager->GetService<clay::ErrorReportingService>();
+  if (!actor) {
+    return;
+  }
+  clay::Puppet<clay::Owner::kUI, clay::ErrorReportingService> errors = actor;
+  errors->SetErrorCallback([client](const base::LynxError& error) {
+    client->OnErrorOccurred(static_cast<int>(error.error_level_),
+                            error.error_code_, error.error_message_,
+                            error.fix_suggestion_, error.custom_info_,
+                            error.is_logbox_only_, error.root_cause_);
+  });
+#endif
 }
 
 bool LynxUIRendererWindowless::RunsTaskOnCurrentThread() const {
