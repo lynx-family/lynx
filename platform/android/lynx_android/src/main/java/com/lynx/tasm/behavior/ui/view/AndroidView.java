@@ -13,6 +13,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import com.lynx.tasm.LynxEnv;
+import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -26,6 +28,7 @@ import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaI
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.BlurUtils;
+import com.lynx.tasm.utils.DeviceUtils;
 import java.lang.ref.WeakReference;
 
 public class AndroidView extends ViewGroup
@@ -433,7 +436,21 @@ public class AndroidView extends ViewGroup
     mConsumeHoverEvent = consumeHoverEvent;
   }
 
+  private static class BlurSettings {
+    static final boolean DISABLE_VIEW_BLUR = Build.VERSION.SDK_INT == Build.VERSION_CODES.Q
+        && DeviceUtils.isHarmonyOS()
+        && LynxEnv.getBooleanFromExternalEnv(
+            LynxEnvKey.DISABLE_VIEW_BLUR_ON_ANDROID_10_HARMONY_OS, true);
+  }
+
   public void setBlur(float radius) {
+    // Pre-draw runs RenderScript blur synchronously on the UI thread. On Android 10 HarmonyOS
+    // it can block and cause an ANR, so return before storing the radius or registering the
+    // listener.
+    if (BlurSettings.DISABLE_VIEW_BLUR) {
+      return;
+    }
+
     if (radius < 0) {
       radius = 0;
     }

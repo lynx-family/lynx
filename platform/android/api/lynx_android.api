@@ -1545,6 +1545,7 @@ public class com::lynx::tasm::utils::DeviceUtils :  {
   public final int com.lynx.tasm.utils.DeviceUtils.DEFAULT_DEVICE_REFRESH_RATE DEFAULT_DEVICE_REFRESH_RATE;
   public static synchronized boolean com.lynx.tasm.utils.DeviceUtils.isMiui();
   public static synchronized Typeface com.lynx.tasm.utils.DeviceUtils.getDefaultTypeface();
+  public static boolean com.lynx.tasm.utils.DeviceUtils.isHarmonyOS();
   public static boolean com.lynx.tasm.utils.DeviceUtils.isHuaWei();
   public static boolean com.lynx.tasm.utils.DeviceUtils.isMeizu();
   public static boolean com.lynx.tasm.utils.DeviceUtils.isMeizu15();
@@ -5583,6 +5584,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.SETUP_CANVAS_SURFACE_EARLIER SETUP_CANVAS_SURFACE_EARLIER;
   public com.lynx.tasm.LynxEnvKey.ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND ENABLE_DISMISS_TEXT_SELECTION_MENU_ON_BACKGROUND;
   public com.lynx.tasm.LynxEnvKey.ENABLE_FLATTEN_IMAGE_ATTACH_FIX ENABLE_FLATTEN_IMAGE_ATTACH_FIX;
+  public com.lynx.tasm.LynxEnvKey.DISABLE_VIEW_BLUR_ON_ANDROID_10_HARMONY_OS DISABLE_VIEW_BLUR_ON_ANDROID_10_HARMONY_OS;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE SP_KEY_ENABLE_DEBUG_MODE;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_FORCE_DISABLE_QUICKJS_CACHE SP_KEY_FORCE_DISABLE_QUICKJS_CACHE;
