@@ -10,6 +10,10 @@
 #import <XElement/LynxAnimaXResourceFetcherLoader.h>
 #include "src/base/log/log.h"
 
+@interface AnimaXLoaderRequest (ResourceLoadReporting)
+- (NSMutableDictionary*)resourceLoadInfo;
+@end
+
 @interface LynxAnimaXResourceFetcherLoader ()
 @property(nonatomic, assign) BOOL useLegacyFetcher;
 @property(nonatomic, weak, nullable) id<LynxGenericResourceFetcher> genericFetcher;
@@ -124,7 +128,11 @@
     }
 
     // Try generic fetcher first
-    if ([self tryGenericFetcher:request_url completion:completion]) {
+    if ([self tryGenericFetcher:request_url
+                       loadInfo:[request respondsToSelector:@selector(resourceLoadInfo)]
+                                    ? request.resourceLoadInfo
+                                    : nil
+                     completion:completion]) {
       return;
     }
 
@@ -138,7 +146,9 @@
   completion(response);
 }
 
-- (BOOL)tryGenericFetcher:(NSURL*)requestUrl completion:(AnimaXLoaderCompletionHandler)completion {
+- (BOOL)tryGenericFetcher:(NSURL*)requestUrl
+                 loadInfo:(NSMutableDictionary*)loadInfo
+               completion:(AnimaXLoaderCompletionHandler)completion {
   // Check if generic fetcher is enabled from environment
   if (self.useLegacyFetcher) {
     return NO;
@@ -150,13 +160,16 @@
 
   LynxResourceRequest* request = [[LynxResourceRequest alloc] initWithUrl:requestUrl.absoluteString
                                                                      type:LynxResourceTypeLottie];
-
   [self.genericFetcher
       fetchResource:request
          onComplete:^(NSData* _Nullable data, NSError* _Nullable error) {
            if (error) {
              completion([AnimaXLoaderResponse responseWithError:error]);
            } else if (data) {
+             if (loadInfo && [request.requestParams isKindOfClass:NSDictionary.class]) {
+               id source = request.requestParams[@"animax_resource_load"];
+               if ([source isKindOfClass:NSString.class]) loadInfo[@"cache_source"] = source;
+             }
              completion([AnimaXLoaderResponse responseWithPayload:data]);
            } else {
              completion([AnimaXLoaderResponse responseWithErrorMessage:@"No data received"]);

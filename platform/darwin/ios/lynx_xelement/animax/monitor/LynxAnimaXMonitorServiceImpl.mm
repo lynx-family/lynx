@@ -74,4 +74,11 @@ static NSString *const AnimaXMonitorIntegrationTypeLynx = @"lynx";
   [self reportEvent:@(lynx::animax::kPerformanceEventName.c_str()) params:params];
 }
 
+- (void)reportResourceLoad:(NSDictionary<NSString *, NSObject *> *)params {
+  NSMutableDictionary *props = [params mutableCopy];
+  props[AnimaXMonitorPageUrl] = [AnimaXURLUtils clearUrlQuery:self.pageUrl];
+  props[AnimaXMonitorIntegrationType] = AnimaXMonitorIntegrationTypeLynx;
+  [LynxEventReporter onEvent:@"animax_resource_load" instanceId:self.instanceId props:props];
+}
+
 @end

@@ -104,6 +104,33 @@
   [self waitForExpectationsWithTimeout:5.0 handler:nil];
 }
 
+- (void)testGenericFetcherCanReturnCacheSourceForThisRequest {
+  AnimaXLoaderRequest *request =
+      [AnimaXLoaderRequest requestWithURL:@"https://example.org/animation"];
+  XCTSkipUnless([request respondsToSelector:NSSelectorFromString(@"setResourceLoadInfo:")],
+                @"Requires SDK resource diagnostics");
+  NSMutableDictionary *info = [@{@"request_id" : @"test-id"} mutableCopy];
+  [request setValue:info forKey:@"resourceLoadInfo"];
+  NSData *data = [@"{}" dataUsingEncoding:NSUTF8StringEncoding];
+  OCMStub([self.mockGenericFetcher
+      fetchResource:[OCMArg checkWithBlock:^BOOL(LynxResourceRequest *req) {
+        XCTAssertEqualObjects(req.url, request.url);
+        XCTAssertEqual(req.type, LynxResourceTypeLottie);
+        XCTAssertNil(req.requestParams);
+        req.requestParams = @{@"animax_resource_load" : @"offline"};
+        return YES;
+      }]
+         onComplete:([OCMArg invokeBlockWithArgs:data, [NSNull null], nil])]);
+  XCTestExpectation *done = [self expectationWithDescription:@"Resource completed"];
+  [self.loader handleRequest:request
+                  completion:^(AnimaXLoaderResponse *response) {
+                    XCTAssertEqualObjects(response.payload, data);
+                    XCTAssertEqualObjects(info[@"cache_source"], @"offline");
+                    [done fulfill];
+                  }];
+  [self waitForExpectationsWithTimeout:5 handler:nil];
+}
+
 - (void)testHandleRequestWithValidURL_ReturnFileNSURL {
   NSString *urlString = @"http://example.com/resource";
   NSURL *resultURL = [NSURL URLWithString:@"/tmp/user/a.json"];

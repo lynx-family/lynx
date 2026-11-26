@@ -38,6 +38,10 @@ static NSString *const DisplayModeImage = @"image";
 static NSString *const DisplayModeSurface = @"surface";
 static NSString *const DisplayModeAuto = @"auto";
 
+@interface AnimaXContext (ResourceLoadReporting)
+- (void)setEnableResourceLoadReporting:(BOOL)enabled;
+@end
+
 @interface LynxUIAnimaX () <LynxForegroundProtocol, AnimaXAnimationListener>
 
 @property(nonatomic, assign) BOOL ignoreLynxLifecycle;
@@ -568,6 +572,12 @@ LYNX_UI_METHOD(playSegment) {
       [LynxEnv stringValueToBool:[[LynxEnv sharedInstance]
                                      _stringFromExternalEnv:@"ANIMAX_ENABLE_DOWNSAMPLE_VIDEO"]
                     defaultValue:NO];
+  if ([animaxContext respondsToSelector:@selector(setEnableResourceLoadReporting:)]) {
+    animaxContext.enableResourceLoadReporting = [LynxEnv
+        stringValueToBool:[[LynxEnv sharedInstance]
+                              _stringFromExternalEnv:@"ANIMAX_ENABLE_RESOURCE_CACHE_REPORT"]
+             defaultValue:NO];
+  }
   self.animaxContext = animaxContext;
   LynxAnimaXContainerView *container = [[LynxAnimaXContainerView alloc] init];
   return container;

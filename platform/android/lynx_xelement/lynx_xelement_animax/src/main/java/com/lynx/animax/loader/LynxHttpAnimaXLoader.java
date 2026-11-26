@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.animax.loader;
 
+import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import com.lynx.animax.ability.BaseAbility;
 import com.lynx.animax.service.IAnimaXImageService;
@@ -19,6 +20,7 @@ import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import java.lang.ref.WeakReference;
+import java.util.Map;
 
 public class LynxHttpAnimaXLoader implements IAnimaXLoader {
   private static final String TAG = "LynxHttpAnimaXLoader";
@@ -41,13 +43,20 @@ public class LynxHttpAnimaXLoader implements IAnimaXLoader {
 
   @Override
   public void load(IAnimaXLoaderRequest request, IAnimaXLoaderCompletionHandler completionHandler) {
+    loadWithCacheSource(request, completionHandler, null);
+  }
+
+  @Keep
+  public void loadWithCacheSource(IAnimaXLoaderRequest request,
+      IAnimaXLoaderCompletionHandler completionHandler,
+      Map<AnimaXLoaderResponse<?>, String> sources) {
     // Handle image loading with image service if request contains image info
     if (handleImageRequest(request, completionHandler)) {
       return;
     }
 
     // Try to load resource with generic fetcher first (since Lynx 3.2)
-    if (tryLoadWithGenericFetcher(request, completionHandler)) {
+    if (tryLoadWithGenericFetcher(request, completionHandler, sources)) {
       return;
     }
 
@@ -87,8 +96,9 @@ public class LynxHttpAnimaXLoader implements IAnimaXLoader {
    * Try to load resource using generic fetcher
    * @return true if request was successfully initiated
    */
-  private boolean tryLoadWithGenericFetcher(
-      IAnimaXLoaderRequest request, IAnimaXLoaderCompletionHandler completionHandler) {
+  private boolean tryLoadWithGenericFetcher(IAnimaXLoaderRequest request,
+      IAnimaXLoaderCompletionHandler completionHandler,
+      Map<AnimaXLoaderResponse<?>, String> sources) {
     if (mUseLegacyFetcher) {
       return false;
     }
@@ -108,13 +118,29 @@ public class LynxHttpAnimaXLoader implements IAnimaXLoader {
 
     LynxResourceRequest lynxRequest = new LynxResourceRequest(
         request.getUri(), LynxResourceRequest.LynxResourceType.LynxResourceTypeLottie);
-
     fetcher.fetchResource(lynxRequest, new LynxResourceCallback<byte[]>() {
       @Override
       public void onResponse(LynxResourceResponse<byte[]> response) {
         byte[] rawData = response.getData();
         if (rawData != null && response.getState() == LynxResourceResponse.ResponseState.SUCCESS) {
-          completionHandler.onComplete(AnimaXLoaderResponse.createByteArrayResponse(rawData));
+          AnimaXLoaderResponse<byte[]> result =
+              AnimaXLoaderResponse.createByteArrayResponse(rawData);
+          if (sources != null) {
+            try {
+              Map<String, Object> params = lynxRequest.getParams();
+              Object source = params == null ? null : params.get("animax_resource_load");
+              if (source instanceof String)
+                sources.put(result, (String) source);
+            } catch (RuntimeException ignored) {
+              // Host diagnostics are optional.
+            }
+          }
+          try {
+            completionHandler.onComplete(result);
+          } finally {
+            if (sources != null)
+              sources.remove(result);
+          }
         } else {
           completionHandler.onComplete(
               AnimaXLoaderResponse.createErrorResponse(response.getError()));
