@@ -231,20 +231,34 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kFill: {
-        auto argb = item.payload.fill.color;
+        UIColor *color = [self colorFromARGB:item.payload.fill.color];
         auto clip_index = item.payload.fill.clip_index;
-
-        CGFloat a = ((argb >> 24) & 0xFF) / 255.0;
-        CGFloat r = ((argb >> 16) & 0xFF) / 255.0;
-        CGFloat g = ((argb >> 8) & 0xFF) / 255.0;
-        CGFloat b = (argb & 0xFF) / 255.0;
-
-        CALayer *layer = [[CALayer alloc] init];
-        layer.backgroundColor = [[UIColor alloc] initWithRed:r green:g blue:b alpha:a].CGColor;
-        [self applyRectToLayer:layer withBoxIndex:clip_index];
-        if (clip_index >= 0 && static_cast<size_t>(clip_index) < box_array_.size()) {
-          [self applyRoundedRect:box_array_[clip_index] toLayer:layer];
+        const auto *box = clip_index >= 0 && static_cast<size_t>(clip_index) < box_array_.size()
+                              ? &box_array_[clip_index]
+                              : nullptr;
+        CALayer *layer = nil;
+        if (box && box->HasRadius() && !box->IsUniformRadius()) {
+          CAShapeLayer *fill = [CAShapeLayer layer];
+          CGRect rect = CGRectMake(0, 0, box->GetWidth(), box->GetHeight());
+          CGPathRef path = [LynxBackgroundUtils
+              createBezierPathWithRoundedRect:rect
+                                  borderRadii:[self borderRadiiWithRoundedRectangle:*box]];
+          fill.path = path;
+          fill.fillColor = color.CGColor;
+          // A decoration can later receive new host bounds. Match the bounds clip of a
+          // background color even though a shape's path can extend beyond its bounds.
+          fill.masksToBounds = YES;
+          CGPathRelease(path);
+          layer = fill;
+        } else {
+          layer = [CALayer layer];
+          layer.backgroundColor = color.CGColor;
+          if (box && box->HasRadius()) {
+            layer.cornerRadius = box->GetRadiusXTopLeft();
+            layer.masksToBounds = YES;
+          }
         }
+        [self applyRectToLayer:layer withBoxIndex:clip_index];
         [self insertLayer:layer forOp:op];
         break;
       }
@@ -398,17 +412,24 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           break;
         }
 
-        const CGFloat scale = _view.window.screen.scale ?: _view.contentScaleFactor;
         const bool repeatX = background.repeat_x == LynxBackgroundRepeatRepeat;
         const bool repeatY = background.repeat_y == LynxBackgroundRepeatRepeat;
-        CAReplicatorLayer *horizontal = [CAReplicatorLayer layer];
-        CAReplicatorLayer *vertical = [CAReplicatorLayer layer];
-        horizontal.frame = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
-        vertical.frame = clipRect;
+        const bool repeats = repeatX || repeatY;
+        const CGFloat scale = repeats ? (_view.window.screen.scale ?: _view.contentScaleFactor) : 1;
+        CAReplicatorLayer *horizontal = repeats ? [CAReplicatorLayer layer] : nil;
+        CALayer *clipLayer = repeats ? [CAReplicatorLayer layer] : [CALayer layer];
+        clipLayer.frame = clipRect;
         CALayer *imageLayer = [CALayer layer];
+        if (repeats) {
+          horizontal.frame = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
+          [horizontal addSublayer:imageLayer];
+          [clipLayer addSublayer:horizontal];
+        } else {
+          [clipLayer addSublayer:imageLayer];
+        }
         __weak CALayer *weakImageLayer = imageLayer;
+        __weak CALayer *weakClipLayer = clipLayer;
         __weak CAReplicatorLayer *weakHorizontal = horizontal;
-        __weak CAReplicatorLayer *weakVertical = vertical;
         // Capture geometry by value; the display list may change before loading completes.
         const CGRect fallbackRect = CGRectMake(tilingBox.GetX(), tilingBox.GetY(),
                                                tilingBox.GetWidth(), tilingBox.GetHeight());
@@ -419,13 +440,12 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         const CGPoint position = CGPointMake(background.position_x, background.position_y);
         void (^updateGeometry)(CGSize) = ^(CGSize imageSize) {
           CALayer *target = weakImageLayer;
-          CAReplicatorLayer *horizontalLayer = weakHorizontal;
-          CAReplicatorLayer *verticalLayer = weakVertical;
-          if (!target || !horizontalLayer || !verticalLayer) {
+          CALayer *clip = weakClipLayer;
+          if (!target || !clip) {
             return;
           }
           if (needsIntrinsicSize && (imageSize.width <= 0 || imageSize.height <= 0)) {
-            verticalLayer.hidden = YES;
+            clip.hidden = YES;
             return;
           }
           CGFloat width = fallbackRect.size.width;
@@ -458,32 +478,36 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           CGPoint origin =
               CGPointMake(fallbackRect.origin.x + (fallbackRect.size.width - width) * position.x,
                           fallbackRect.origin.y + (fallbackRect.size.height - height) * position.y);
-          width = repeatX ? MAX(1, round(width * scale)) / scale : width;
-          height = repeatY ? MAX(1, round(height * scale)) / scale : height;
-          // Align in host drawing pixels, then convert to the clip's local coordinates.
-          auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
-            const CGFloat pixelSize = round(size * scale);
-            const CGFloat clipPixel = floor(clipStart * scale);
-            CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
-            if (phase < 0) {
-              phase += pixelSize;
-            }
-            return (clipPixel - phase) / scale - clipStart;
-          };
           CGFloat x = origin.x - clipOrigin.x;
           CGFloat y = origin.y - clipOrigin.y;
-          horizontalLayer.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
-          verticalLayer.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
-          if (repeatX) {
-            x = firstTile(origin.x + hostOffset.x, clipRect.origin.x, width);
-            horizontalLayer.instanceCount = ceil((clipRect.size.width - x) / width);
-          }
-          if (repeatY) {
-            y = firstTile(origin.y + hostOffset.y, clipRect.origin.y, height);
-            verticalLayer.instanceCount = ceil((clipRect.size.height - y) / height);
+          if (repeats) {
+            CAReplicatorLayer *horizontalLayer = weakHorizontal;
+            CAReplicatorLayer *verticalLayer = (CAReplicatorLayer *)clip;
+            width = repeatX ? MAX(1, round(width * scale)) / scale : width;
+            height = repeatY ? MAX(1, round(height * scale)) / scale : height;
+            // Align in host drawing pixels, then convert to the clip's local coordinates.
+            auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
+              const CGFloat pixelSize = round(size * scale);
+              const CGFloat clipPixel = floor(clipStart * scale);
+              CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
+              if (phase < 0) {
+                phase += pixelSize;
+              }
+              return (clipPixel - phase) / scale - clipStart;
+            };
+            horizontalLayer.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
+            verticalLayer.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
+            if (repeatX) {
+              x = firstTile(origin.x + hostOffset.x, clipRect.origin.x, width);
+              horizontalLayer.instanceCount = ceil((clipRect.size.width - x) / width);
+            }
+            if (repeatY) {
+              y = firstTile(origin.y + hostOffset.y, clipRect.origin.y, height);
+              verticalLayer.instanceCount = ceil((clipRect.size.height - y) / height);
+            }
           }
           target.frame = CGRectMake(x, y, width, height);
-          verticalLayer.hidden = NO;
+          clip.hidden = NO;
         };
         if (needsIntrinsicSize) {
           [imageManager setLayerTarget:imageLayer imageSizeDidChange:updateGeometry];
@@ -491,14 +515,11 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
           updateGeometry(CGSizeZero);
           [imageManager setLayerTarget:imageLayer];
         }
-        // Replicate one image target so asynchronous updates reach every tile.
-        [horizontal addSublayer:imageLayer];
-        [vertical addSublayer:horizontal];
         if (clipBox.HasRadius()) {
-          [self applyRoundedRect:clipBox toLayer:vertical];
+          [self applyRoundedRect:clipBox toLayer:clipLayer];
         }
-        vertical.masksToBounds = YES;
-        [self insertLayer:vertical forOp:op];
+        clipLayer.masksToBounds = YES;
+        [self insertLayer:clipLayer forOp:op];
         break;
       }
       case DisplayListOpType::kBorder: {

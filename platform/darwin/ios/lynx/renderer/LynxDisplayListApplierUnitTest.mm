@@ -1333,6 +1333,54 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqualWithAccuracy(view.layer.mask.frame.origin.y, 100.0f, 0.001f);
 }
 
+- (void)testNonUniformRoundedFillUsesOneLayerInPaintOrder {
+  LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+  [host createRendererWithSign:1 andContext:nil];
+  UIView *child = [[UIView alloc] initWithFrame:CGRectMake(10, 10, 20, 20)];
+  [host addSubview:child];
+  LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:host
+                                                                      andContext:nil];
+  DisplayList list;
+  float uniformRadii[] = {6, 6, 6, 6, 6, 6, 6, 6};
+  float nonUniformRadii[] = {12, 14, 0, 0, 4, 5, 2, 3};
+  AppendBegin(list, 1, kViewType, 0, 0, 100, 80);
+  AppendBegin(list, 2, kViewType, 10, 20, 40, 50);
+  AppendRecordBox(list, 2, 3, 40, 50, true, uniformRadii);
+  AppendRecordBox(list, 2, 3, 40, 50, true, nonUniformRadii);
+  AppendFill(list, 0xFF0000FF, 0);
+  AppendDrawView(list, 3);
+  AppendFill(list, 0x80FF0000, 1);
+  AppendEnd(list);
+  AppendEnd(list);
+  [applier applyDisplayList:&list];
+
+  NSArray<CALayer *> *layers = host.layer.sublayers;
+  XCTAssertEqual(layers.count, 3u);
+  if (layers.count != 3u) {
+    return;
+  }
+  XCTAssertEqual(layers[1], child.layer);
+  XCTAssertFalse([layers[0] isKindOfClass:CAShapeLayer.class]);
+  XCTAssertEqualWithAccuracy(layers[0].cornerRadius, 6, 0.001);
+  CALayer *lastLayer = layers.lastObject;
+  XCTAssertTrue([lastLayer isKindOfClass:CAShapeLayer.class]);
+  if (![lastLayer isKindOfClass:CAShapeLayer.class]) {
+    return;
+  }
+  CAShapeLayer *shape = (CAShapeLayer *)lastLayer;
+  XCTAssertTrue(CGRectEqualToRect(shape.frame, CGRectMake(12, 23, 40, 50)));
+  XCTAssertNil(shape.mask);
+  XCTAssertNotEqual(shape.path, nullptr);
+  XCTAssertFalse(CGPathContainsPoint(shape.path, nullptr, CGPointMake(1, 1), false));
+  XCTAssertTrue(CGPathContainsPoint(shape.path, nullptr, CGPointMake(39, 1), false));
+  XCTAssertTrue(CGPathContainsPoint(shape.path, nullptr, CGPointMake(20, 25), false));
+  XCTAssertEqualWithAccuracy(CGColorGetAlpha(shape.fillColor), 128.0 / 255, 0.001);
+
+  [applier reset];
+  XCTAssertNil(shape.superlayer);
+  XCTAssertEqualObjects(host.layer.sublayers, (@[ child.layer ]));
+}
+
 - (void)testCustomFillRetainsBoundsAfterHostPropertyUpdate {
   UIView *parent = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 200, 200)];
   LynxMockView *host = [[LynxMockView alloc] initWithFrame:CGRectMake(20, 30, 100, 80)];
@@ -1435,7 +1483,8 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(CGRectEqualToRect(background.sublayers[1].frame, CGRectMake(10, 10, 80, 60)));
   XCTAssertTrue(CGRectEqualToRect(background.sublayers[2].frame, CGRectMake(2, 3, 96, 74)));
   CALayer *clip = background.sublayers.firstObject;
-  XCTAssertTrue([clip isKindOfClass:CAReplicatorLayer.class]);
+  XCTAssertFalse([clip isKindOfClass:CAReplicatorLayer.class]);
+  XCTAssertEqual(clip.sublayers.count, 1u);
   XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(2, 3, 96, 74)));
   XCTAssertTrue(clip.masksToBounds);
   XCTAssertEqual(host.layer.sublayers.count, 0u);
@@ -1498,24 +1547,33 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
       list.AppendItem(item);
       [applier applyDisplayList:&list];
 
-      CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
-      CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+      CALayer *clip = view.layer.sublayers.firstObject;
       XCTAssertNotNil(target);
-      XCTAssertEqual(horizontal.sublayers.firstObject, target);
-      XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(2.25, 3.25, 88, 64)));
-      XCTAssertTrue(vertical.masksToBounds);
-      XCTAssertEqualWithAccuracy(vertical.cornerRadius, 6, 0.001);
+      XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(2.25, 3.25, 88, 64)));
+      XCTAssertTrue(clip.masksToBounds);
+      XCTAssertEqualWithAccuracy(clip.cornerRadius, 6, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.size.width, repeatX ? 15.5 : 15.3, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.size.height, repeatY ? 11.5 : 11.7, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.origin.x, repeatX ? -7.25 : 8.05, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.origin.y, repeatY ? -6.75 : -6.95, 0.001);
-      XCTAssertEqual(horizontal.instanceCount, repeatX ? 7 : 1);
-      XCTAssertEqual(vertical.instanceCount, repeatY ? 7 : 1);
-      XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, repeatX ? 15.5 : 15.3, 0.001);
-      XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, repeatY ? 11.5 : 11.7, 0.001);
+      if (repeatX || repeatY) {
+        CAReplicatorLayer *vertical = (CAReplicatorLayer *)clip;
+        CAReplicatorLayer *horizontal = (CAReplicatorLayer *)clip.sublayers.firstObject;
+        XCTAssertTrue([vertical isKindOfClass:CAReplicatorLayer.class]);
+        XCTAssertTrue([horizontal isKindOfClass:CAReplicatorLayer.class]);
+        XCTAssertEqual(horizontal.sublayers.firstObject, target);
+        XCTAssertEqual(horizontal.instanceCount, repeatX ? 7 : 1);
+        XCTAssertEqual(vertical.instanceCount, repeatY ? 7 : 1);
+        XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, repeatX ? 15.5 : 15.3, 0.001);
+        XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, repeatY ? 11.5 : 11.7, 0.001);
+      } else {
+        XCTAssertFalse([clip isKindOfClass:CAReplicatorLayer.class]);
+        XCTAssertEqual(clip.sublayers.count, 1u);
+        XCTAssertEqual(clip.sublayers.firstObject, target);
+      }
 
       [applier applyDisplayList:&list];
-      XCTAssertNil(vertical.superlayer);
+      XCTAssertNil(clip.superlayer);
       XCTAssertEqual(view.layer.sublayers.count, 1u);
       [applier reset];
       XCTAssertEqual(view.layer.sublayers.count, 0u);
@@ -1618,9 +1676,11 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     item.payload.background_image.repeat_y = LynxBackgroundRepeatNoRepeat;
     list.AppendItem(item);
     [applier applyDisplayList:&list];
-    CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
-    CALayer *target = vertical.sublayers.firstObject.sublayers.firstObject;
-    XCTAssertTrue(vertical.hidden);
+    CALayer *clip = view.layer.sublayers.firstObject;
+    CALayer *target = clip.sublayers.firstObject;
+    XCTAssertFalse([clip isKindOfClass:CAReplicatorLayer.class]);
+    XCTAssertNotNil(target);
+    XCTAssertTrue(clip.hidden);
 
     const CGSize imageSizes[] = {CGSizeMake(40, 20), CGSizeMake(20, 40)};
     const CGRect frames[] = {test.landscapeFrame, test.portraitFrame};
@@ -1632,20 +1692,20 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
       images[@(LynxImageRequestSrc)] = image;
       // Completion updates the existing layers without applying another display list.
       [manager applyImage:image withType:LynxImageRequestSrc];
-      XCTAssertEqual(view.layer.sublayers.firstObject, vertical);
-      XCTAssertFalse(vertical.hidden);
-      XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(2, 3, 140, 120)));
-      XCTAssertTrue(vertical.masksToBounds);
-      XCTAssertEqualWithAccuracy(vertical.cornerRadius, 6, 0.001);
+      XCTAssertEqual(view.layer.sublayers.firstObject, clip);
+      XCTAssertFalse(clip.hidden);
+      XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(2, 3, 140, 120)));
+      XCTAssertTrue(clip.masksToBounds);
+      XCTAssertEqualWithAccuracy(clip.cornerRadius, 6, 0.001);
       XCTAssertTrue(CGRectEqualToRect(target.frame, frames[index]));
     }
 
     [manager applyImage:nil withType:LynxImageRequestSrc];
-    XCTAssertTrue(vertical.hidden);
+    XCTAssertTrue(clip.hidden);
     [applier reset];
+    XCTAssertNil(clip.superlayer);
     [applier applyDisplayList:&list];
-    CALayer *cachedTarget =
-        view.layer.sublayers.firstObject.sublayers.firstObject.sublayers.firstObject;
+    CALayer *cachedTarget = view.layer.sublayers.firstObject.sublayers.firstObject;
     XCTAssertFalse(view.layer.sublayers.firstObject.hidden);
     XCTAssertTrue(CGRectEqualToRect(cachedTarget.frame, test.portraitFrame));
     [applier reset];
