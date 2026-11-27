@@ -8,6 +8,8 @@
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIUnitUtils.h>
 
+#include "core/renderer/ui_wrapper/painting/ios/rounded_rect_darwin.h"
+
 void LynxDrawBackgroundToImageContext(LynxBorderRadii cornerRadii, UIEdgeInsets borderInsets,
                                       CGColorRef backgroundColor, BOOL drawToEdge,
                                       NSArray* bgImageInfoArr, CGRect rect, CGContextRef ctx) {
@@ -80,21 +82,7 @@ void LynxDrawBorderToImageContext(LynxBorderStyles borderStyles, CGSize viewSize
 
 void LynxPathAddEllipticArc(CGMutablePathRef path, CGPoint origin, CGFloat width, CGFloat height,
                             CGFloat startAngle, CGFloat endAngle, BOOL clockwise) {
-  CGFloat xScale = 1, yScale = 1, radius = 0;
-  if (width != 0) {
-    xScale = 1;
-    yScale = height / width;
-    radius = width;
-  } else if (height != 0) {
-    xScale = width / height;
-    yScale = 1;
-    radius = height;
-  }
-
-  CGAffineTransform t = CGAffineTransformMakeTranslation(origin.x, origin.y);
-  t = CGAffineTransformScale(t, xScale, yScale);
-
-  CGPathAddArc(path, &t, 0, 0, radius, startAngle, endAngle, clockwise);
+  LynxCGPathAddEllipticArc(path, origin, width, height, startAngle, endAngle, clockwise);
 }
 
 void LynxPathAddRect(CGMutablePathRef path, CGRect bounds, bool reverse) {
@@ -116,21 +104,8 @@ void LynxPathAddRect(CGMutablePathRef path, CGRect bounds, bool reverse) {
 }
 
 void LynxPathAddRoundedRect(CGMutablePathRef path, CGRect bounds, LynxCornerInsets ci) {
-  const CGFloat minX = bounds.origin.x;
-  const CGFloat minY = bounds.origin.y;
-  const CGFloat maxX = minX + bounds.size.width;
-  const CGFloat maxY = minY + bounds.size.height;
-
-  CGPathMoveToPoint(path, nil, minX, minY + ci.topLeft.height);
-  LynxPathAddEllipticArc(path, (CGPoint){minX + ci.topLeft.width, minY + ci.topLeft.height},
-                         ci.topLeft.width, ci.topLeft.height, M_PI, 3 * M_PI_2, NO);
-  LynxPathAddEllipticArc(path, (CGPoint){maxX - ci.topRight.width, minY + ci.topRight.height},
-                         ci.topRight.width, ci.topRight.height, 3 * M_PI_2, 0, NO);
-  LynxPathAddEllipticArc(path, (CGPoint){maxX - ci.bottomRight.width, maxY - ci.bottomRight.height},
-                         ci.bottomRight.width, ci.bottomRight.height, 0, M_PI_2, NO);
-  LynxPathAddEllipticArc(path, (CGPoint){minX + ci.bottomLeft.width, maxY - ci.bottomLeft.height},
-                         ci.bottomLeft.width, ci.bottomLeft.height, M_PI_2, M_PI, NO);
-  CGPathCloseSubpath(path);
+  const CGSize radii[] = {ci.topLeft, ci.topRight, ci.bottomRight, ci.bottomLeft};
+  LynxCGPathAddRoundedRect(path, bounds, radii);
 }
 
 CGPathRef LynxPathCreateWithRoundedRect(CGRect bounds, LynxCornerInsets ci) {

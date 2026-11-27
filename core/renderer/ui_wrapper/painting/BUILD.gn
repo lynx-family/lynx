@@ -96,6 +96,7 @@ if (!enable_unittests) {
       "ios/platform_renderer_darwin_factory.mm",
       "ios/platform_renderer_root_darwin.h",
       "ios/platform_renderer_root_darwin.mm",
+      "ios/rounded_rect_darwin.h",
       "ios/ui_delegate_darwin.h",
       "ios/ui_delegate_darwin.mm",
     ]

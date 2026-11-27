@@ -39,6 +39,21 @@ typedef struct LBSPathConsumer {
   void (*ClosePath)(void* ctx);      // Function to handle 'Z' and 'z'
 } LBSPathConsumer;
 
+typedef struct LBSSvgArcSink {
+  void* ctx;
+  void (*LineTo)(void* ctx, double x, double y);
+  void (*CubicTo)(void* ctx, double c1x, double c1y, double c2x, double c2y,
+                  double x, double y);
+} LBSSvgArcSink;
+
+// Emits an SVG endpoint arc as cubic curves spanning at most 45 degrees each.
+// Coincident endpoints emit no segments. A zero radius emits a straight line.
+// Both callbacks must be provided. Invalid input returns false without output.
+GFX_EXPORT bool LBSAppendSvgArc(const LBSSvgArcSink* sink, float start_x,
+                                float start_y, float radius_x, float radius_y,
+                                float rotation, bool large, bool sweep,
+                                float end_x, float end_y);
+
 /**
  Parses the given data and processes it with the provided path consumer.
 
