@@ -4,6 +4,7 @@
 #ifndef CORE_RENDERER_CSS_NG_INVALIDATION_RULE_INVALIDATION_SET_H_
 #define CORE_RENDERER_CSS_NG_INVALIDATION_RULE_INVALIDATION_SET_H_
 
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -41,8 +42,6 @@ class RuleInvalidationSet {
 
   using InvalidationSetMap =
       std::unordered_map<std::string, InvalidationSetPtr>;
-  using PseudoTypeInvalidationSetMap =
-      std::unordered_map<LynxCSSSelector::PseudoType, InvalidationSetPtr>;
 
   void UpdateInvalidationSets(const LynxCSSSelector&, InvalidationSetFeature&,
                               PositionType);
@@ -68,19 +67,15 @@ class RuleInvalidationSet {
   static InvalidationSet& GetInvalidationSet(InvalidationSetMap&,
                                              const std::string& key,
                                              PositionType);
-  static InvalidationSet& GetInvalidationSet(PseudoTypeInvalidationSetMap&,
-                                             LynxCSSSelector::PseudoType key,
-                                             PositionType);
+  static size_t PseudoInvalidationIndex(LynxCSSSelector::PseudoType);
 
   static void CombineInvalidationSet(InvalidationSetMap&,
                                      const std::string& key, InvalidationSet*);
-  static void CombineInvalidationSet(PseudoTypeInvalidationSetMap&,
-                                     LynxCSSSelector::PseudoType key,
-                                     InvalidationSet*);
+  static void CombineInvalidationSet(InvalidationSetPtr&, InvalidationSet*);
 
   InvalidationSetMap class_invalidation_sets_;
   InvalidationSetMap id_invalidation_sets_;
-  PseudoTypeInvalidationSetMap pseudo_invalidation_sets_;
+  std::array<InvalidationSetPtr, 3> pseudo_invalidation_sets_;
 
   friend class RuleInvalidationSetTest;
 };

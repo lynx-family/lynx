@@ -101,9 +101,6 @@ class SharedCSSFragment : public CSSFragment {
   CSSParseToken* GetCSSStyle(const std::string& key) override;
   CSSParseToken* GetPseudoStyle(const std::string& key) override;
   CSSParseToken* GetCascadeStyle(const std::string& key) override;
-  CSSParseToken* GetIdStyle(const std::string& key) override;
-  CSSParseToken* GetTagStyle(const std::string& key) override;
-  CSSParseToken* GetUniversalStyle(const std::string& key) override;
 
   bool HasPseudoNotStyle() override { return has_pseudo_not_style_; }
   void InitPseudoNotStyle() override;
@@ -114,7 +111,7 @@ class SharedCSSFragment : public CSSFragment {
   void AddStyleRule(fml::RefPtr<css::StyleRule> rule,
                     css::CascadeLayer* layer = nullptr);
   void AddConditionRule(fml::RefPtr<css::ConditionRule> condition_rule);
-  bool HasIdSelector() override { return !id_map_.empty(); }
+  bool HasIdSelector() override { return has_id_selector_; }
 
   css::CascadeLayer* GetOrCreateRootLayer() {
     if (!root_layer_) {
@@ -138,6 +135,7 @@ class SharedCSSFragment : public CSSFragment {
   bool enable_css_invalidation_ = false;
   bool enable_css_rule_ = false;
   bool has_pseudo_not_style_ = false;
+  bool has_id_selector_ = false;
 
   std::vector<int32_t> dependent_ids_;
   CSSParserTokenMap css_;
@@ -149,9 +147,6 @@ class SharedCSSFragment : public CSSFragment {
   CSSParserTokenMap pseudo_map_;
   CSSParserTokenMap child_pseudo_map_;
   CSSParserTokenMap cascade_map_;
-  CSSParserTokenMap id_map_;
-  CSSParserTokenMap tag_map_;
-  CSSParserTokenMap universal_map_;
   std::unique_ptr<css::RuleSet> rule_set_;
   // Initialize the RuleInvalidationSet only when the CSS invalidation is
   // enabled

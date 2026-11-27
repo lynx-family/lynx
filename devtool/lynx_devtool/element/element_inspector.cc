@@ -405,48 +405,60 @@ void ResolveCSSVariablesForDevTool(
   }
 
   lynx::tasm::CustomPropertiesMap custom_properties;
-  std::function<void(const lynx::tasm::CSSValue&)> collect_dependencies;
-  collect_dependencies = [&](const lynx::tasm::CSSValue& css_value) {
-    lynx::tasm::CustomPropertiesMap empty_properties;
-    lynx::tasm::CSSValue::Substitution(
-        css_value, empty_properties, 10,
-        [&](const base::String& name, const base::String&) {
-          if (custom_properties.find(name) != custom_properties.end()) {
-            return;
-          }
-          auto raw_value =
-              GetCSSVariableValueForDevTool(holder, name, variable_snapshot);
-          if (raw_value.empty()) {
-            return;
-          }
-          lynx::tasm::CSSParserConfigs variable_configs;
-          lynx::tasm::CSSStringParser parser{
-              raw_value.c_str(), static_cast<uint32_t>(raw_value.length()),
-              variable_configs};
-          auto parsed_value = parser.ParseVariable();
-          if (!parser.HasMetVarToken()) {
-            parsed_value = lynx::tasm::CSSValue(
-                raw_value, lynx::tasm::CSSValuePattern::STRING,
-                lynx::tasm::CSSValueType::DEFAULT);
-          }
-          auto [it, inserted] =
-              custom_properties.insert_or_assign(name, std::move(parsed_value));
-          if (inserted && it->second.IsVariable()) {
-            collect_dependencies(it->second);
-          }
-        });
-  };
+  struct DependencyCollector {
+    AttributeHolder* holder;
+    const CSSVariableSnapshot* snapshot;
+    lynx::tasm::CustomPropertiesMap& properties;
+
+    void Collect(const lynx::tasm::CSSValue& value) {
+      // Keep the value alive when collecting dependencies grows the map.
+      const lynx::tasm::CSSValue stable_value(value);
+      lynx::tasm::CustomPropertiesMap empty_properties;
+      lynx::tasm::CSSValue::Substitution(
+          stable_value, empty_properties, 10,
+          {[](const base::String& name, const base::String&, void* data) {
+             static_cast<DependencyCollector*>(data)->CollectProperty(name);
+           },
+           this});
+    }
+
+    void CollectProperty(const base::String& name) {
+      if (properties.find(name) != properties.end()) {
+        return;
+      }
+      auto raw_value = GetCSSVariableValueForDevTool(holder, name, snapshot);
+      if (raw_value.empty()) {
+        return;
+      }
+      lynx::tasm::CSSParserConfigs configs;
+      lynx::tasm::CSSStringParser parser{
+          raw_value.c_str(), static_cast<uint32_t>(raw_value.length()),
+          configs};
+      auto parsed_value = parser.ParseVariable();
+      if (!parser.HasMetVarToken()) {
+        parsed_value =
+            lynx::tasm::CSSValue(raw_value, lynx::tasm::CSSValuePattern::STRING,
+                                 lynx::tasm::CSSValueType::DEFAULT);
+      }
+      auto [it, inserted] =
+          properties.insert_or_assign(name, std::move(parsed_value));
+      if (inserted && it->second.IsVariable()) {
+        Collect(it->second);
+      }
+    }
+  } collector{holder, variable_snapshot, custom_properties};
 
   for (const auto& [_, value] : styles) {
     if (value.IsVariable()) {
-      collect_dependencies(value);
+      collector.Collect(value);
     }
   }
 
-  auto record_dependency = [holder](const base::String& name,
-                                    const base::String& value) {
-    holder->AddCSSVariableRelated(name, value);
-  };
+  const lynx::tasm::CSSValue::HandleCustomPropertyFunc record_dependency{
+      [](const base::String& name, const base::String& value, void* data) {
+        static_cast<AttributeHolder*>(data)->AddCSSVariableRelated(name, value);
+      },
+      holder};
   lynx::tasm::CSSValue::SubstituteAll(custom_properties, 10, record_dependency);
   StyleMap resolved_styles;
   resolved_styles.reserve(styles.size());

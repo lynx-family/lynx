@@ -140,8 +140,7 @@ TEST(RuleSetTest, FindBestRuleSetAndAdd_TagAndAttr) {
 
   fragment.AddCSSRules("view[attr]");
   RuleSet& rule_set = fragment.GetRuleSet();
-  ASSERT_EQ(1u, rule_set.attr_rules("attr").size());
-  ASSERT_TRUE(rule_set.tag_rules("view").empty());
+  ASSERT_EQ(1u, rule_set.tag_rules("view").size());
 }
 
 TEST(RuleSetTest, FindBestRuleSetAndAdd_AttrAndClass) {
@@ -149,7 +148,6 @@ TEST(RuleSetTest, FindBestRuleSetAndAdd_AttrAndClass) {
 
   fragment.AddCSSRules("[attr].item");
   RuleSet& rule_set = fragment.GetRuleSet();
-  ASSERT_TRUE(rule_set.attr_rules("attr").empty());
   ASSERT_EQ(1u, rule_set.class_rules("item").size());
 }
 

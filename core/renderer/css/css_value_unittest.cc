@@ -690,11 +690,11 @@ TEST_F(CSSValueSubstitutionTest, SubstitutionConsumeProperty1) {
   CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
   CSSValue css_value = parser.ParseVariable();
 
-  CSSValue::HandleCustomPropertyFunc handle_func =
-      [&result_css_related_variables](const base::String& name,
-                                      const base::String& value) {
-        result_css_related_variables.insert_or_assign(name, value);
-      };
+  CSSValue::HandleCustomPropertyFunc handle_func{
+      [](const base::String& name, const base::String& value, void* data) {
+        static_cast<CSSVariableMap*>(data)->insert_or_assign(name, value);
+      },
+      &result_css_related_variables};
 
   std::string value_str =
       CSSValue::Substitution(css_value, custom_properties, 10, handle_func);
@@ -789,9 +789,10 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAllKeepsResolvedProperties) {
                                      CSSValue::MakePlainString("4px"));
 
   CSSValue::SubstituteAll(
-      custom_properties, 10, [](const base::String&, const base::String&) {
+      custom_properties, 10,
+      {[](const base::String&, const base::String&, void*) {
         ADD_FAILURE() << "Resolved values should not report dependencies again";
-      });
+      }});
 
   ASSERT_EQ(custom_properties.size(), 3U);
   EXPECT_EQ(custom_properties["--local"].AsStdString(), "4px");
@@ -842,10 +843,10 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAllPreservesTransitiveDependencies) {
   CSSVariableMap substitute_all_dependencies;
   CSSValue::SubstituteAll(
       custom_properties, 10,
-      [&substitute_all_dependencies](const base::String& name,
-                                     const base::String& value) {
-        substitute_all_dependencies.insert_or_assign(name, value);
-      });
+      {[](const base::String& name, const base::String& value, void* data) {
+         static_cast<CSSVariableMap*>(data)->insert_or_assign(name, value);
+       },
+       &substitute_all_dependencies});
 
   ASSERT_EQ(custom_properties["--b"].AsStdString(), "red");
   ASSERT_EQ(custom_properties["--c"].AsStdString(), "red");
@@ -860,10 +861,11 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAllPreservesTransitiveDependencies) {
   lepus::Value variable = lepus::Value("var(--c)");
   CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
   CSSValue value = parser.ParseVariable();
-  auto record_dependency = [&dependencies](const base::String& name,
-                                           const base::String& value) {
-    dependencies.insert_or_assign(name, value);
-  };
+  CSSValue::HandleCustomPropertyFunc record_dependency{
+      [](const base::String& name, const base::String& value, void* data) {
+        static_cast<CSSVariableMap*>(data)->insert_or_assign(name, value);
+      },
+      &dependencies};
 
   EXPECT_EQ(
       CSSValue::Substitution(value, custom_properties, 10, record_dependency),
@@ -1020,6 +1022,17 @@ TEST_F(CSSValueToVarReferenceTest, VariableWithSimpleFallback) {
   // Test that substitution works with simple fallback
   std::string result = CSSValue::Substitution(css_value, variables);
   EXPECT_EQ(result, "black");  // Should use the fallback value
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedEmptyValueKeepsEmpty) {
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--empty", CSSValue::MakePlainString(""));
+  lepus::Value variable("var(--empty, red)");
+  auto parser = CSSStringParser::FromLepusString(variable, configs_);
+  const auto value = parser.ParseVariable();
+
+  EXPECT_EQ(CSSValue::SubstitutionResolved(value, variables), "");
+  EXPECT_EQ(CSSValue::Substitution(value, variables), " red");
 }
 
 TEST_F(CSSValueSubstitutionTest, SubstitutionResolvedSimple) {

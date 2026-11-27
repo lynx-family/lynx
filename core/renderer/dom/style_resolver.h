@@ -185,19 +185,9 @@ class StyleResolver {
 
   void MergeToken(CSSParseToken* token);
 
-  void GetCSSByRule(CSSSheet::SheetType type, CSSFragment* style_sheet,
-                    AttributeHolder* node, const std::string& rule);
-
-  void ApplyCascadeStyles(CSSFragment* style_sheet, AttributeHolder* node,
-                          const std::string& rule);
-
   void ApplyCascadeStylesForFiber(CSSFragment* style_sheet, Element* node,
                                   const std::string& rule);
 
-  void MergeHigherCascadeStyles(const std::string& current_selector,
-                                const std::string& parent_selector,
-                                AttributeHolder* node,
-                                CSSFragment* style_sheet);
   void MergeHigherCascadeStylesForFiber(const std::string& current_selector,
                                         const std::string& parent_selector,
                                         AttributeHolder* node,
@@ -222,17 +212,6 @@ class StyleResolver {
                            CSSFragment* style_sheet, AttributeHolder* node);
 
   const tasm::CSSParserConfigs& GetCSSParserConfigs();
-
-  void ParsePlaceHolderTokens(PseudoPlaceHolderStyles& result,
-                              const StyleMap& map);
-
-  using InlineTokenVector = base::InlineVector<CSSParseToken*, 16>;
-
-  PseudoPlaceHolderStyles ParsePlaceHolderTokens(
-      const InlineTokenVector& tokens);
-
-  InlineTokenVector ParsePseudoCSSTokens(AttributeHolder* node,
-                                         const char* selector);
 
   void ResolvePseudoElement(PseudoState state, CSSFragment* fragment,
                             Element* element, const char* pseudo_selector);

@@ -37,9 +37,6 @@ class CSSFragmentDecorator : public CSSFragment {
   CSSParseToken* GetCSSStyle(const std::string& key) override;
   CSSParseToken* GetPseudoStyle(const std::string& key) override;
   CSSParseToken* GetCascadeStyle(const std::string& key) override;
-  CSSParseToken* GetIdStyle(const std::string& key) override;
-  CSSParseToken* GetTagStyle(const std::string& key) override;
-  CSSParseToken* GetUniversalStyle(const std::string& key) override;
 
   bool HasPseudoNotStyle() override;
   void InitPseudoNotStyle() override;
@@ -98,11 +95,11 @@ class CSSFragmentDecorator : public CSSFragment {
   bool HasIntrinsicStyleSheets() { return intrinsic_style_sheets_ != nullptr; }
 
  private:
-  template <typename Func>
-  void ForEachAdoptedFragment(Func&& func, bool reverse = false) const;
+  using AdoptedFragmentVisitor = bool (*)(CSSFragment&, void*);
+  void ForEachAdoptedFragment(AdoptedFragmentVisitor visitor, void* data,
+                              bool reverse = false) const;
 
-  template <typename Predicate>
-  bool HasInAdopted(Predicate pred);
+  bool HasInAdopted(bool (*predicate)(CSSFragment&));
 
   CSSFragment* intrinsic_style_sheets_ = nullptr;
   ElementManager* element_manager_ = nullptr;

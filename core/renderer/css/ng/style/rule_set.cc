@@ -145,8 +145,7 @@ void RuleSet::AddToRuleSet(
 }
 
 static void ExtractSelector(const LynxCSSSelector* selector, std::string& id,
-                            std::string& class_name, std::string& attr_name,
-                            std::string& attr_value, std::string& tag_name,
+                            std::string& class_name, std::string& tag_name,
                             LynxCSSSelector::PseudoType& pseudo_type) {
   switch (selector->Match()) {
     case LynxCSSSelector::kId:
@@ -173,16 +172,6 @@ static void ExtractSelector(const LynxCSSSelector* selector, std::string& id,
           break;
       }
       break;
-    case LynxCSSSelector::kAttributeExact:
-    case LynxCSSSelector::kAttributeSet:
-    case LynxCSSSelector::kAttributeHyphen:
-    case LynxCSSSelector::kAttributeList:
-    case LynxCSSSelector::kAttributeContain:
-    case LynxCSSSelector::kAttributeBegin:
-    case LynxCSSSelector::kAttributeEnd:
-      attr_name = selector->Attribute();
-      attr_value = selector->Value();
-      break;
     default:
       break;
   }
@@ -190,17 +179,14 @@ static void ExtractSelector(const LynxCSSSelector* selector, std::string& id,
 
 static const LynxCSSSelector* ExtractBestSelector(
     const LynxCSSSelector& selector, std::string& id, std::string& class_name,
-    std::string& attr_name, std::string& attr_value, std::string& tag_name,
-    LynxCSSSelector::PseudoType& pseudo_type) {
+    std::string& tag_name, LynxCSSSelector::PseudoType& pseudo_type) {
   const LynxCSSSelector* it = &selector;
   for (; it && it->Relation() == LynxCSSSelector::kSubSelector;
        it = it->TagHistory()) {
-    ExtractSelector(it, id, class_name, attr_name, attr_value, tag_name,
-                    pseudo_type);
+    ExtractSelector(it, id, class_name, tag_name, pseudo_type);
   }
   if (it) {
-    ExtractSelector(it, id, class_name, attr_name, attr_value, tag_name,
-                    pseudo_type);
+    ExtractSelector(it, id, class_name, tag_name, pseudo_type);
   }
   return it;
 }
@@ -209,13 +195,11 @@ bool RuleSet::AddToRuleSetInternal(const LynxCSSSelector& selector,
                                    const RuleData& rule_data) {
   std::string id;
   std::string class_name;
-  std::string attr_name;
-  std::string attr_value;
   std::string tag_name;
   LynxCSSSelector::PseudoType pseudo_type = LynxCSSSelector::kPseudoUnknown;
 
-  const LynxCSSSelector* best = ExtractBestSelector(
-      selector, id, class_name, attr_name, attr_value, tag_name, pseudo_type);
+  const LynxCSSSelector* best =
+      ExtractBestSelector(selector, id, class_name, tag_name, pseudo_type);
   if (best && best->Relation() == LynxCSSSelector::kDirectAdjacent) {
     has_adjacent_sibling_rules_ = true;
   }
@@ -228,11 +212,6 @@ bool RuleSet::AddToRuleSetInternal(const LynxCSSSelector& selector,
 
   if (!class_name.empty()) {
     AddToRuleSet(class_name, class_rules_, rule_data);
-    return true;
-  }
-
-  if (!attr_name.empty()) {
-    AddToRuleSet(attr_name, attr_rules_, rule_data);
     return true;
   }
 

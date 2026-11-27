@@ -313,11 +313,6 @@ inline constexpr const char* const CSS_PATCH_APPLY_PSEUDO_NOT_STYLE =
 inline constexpr const char* const
     CSS_PATCH_APPLY_PSEUDO_CLASS_CHILD_SELECTOR_STYLE =
         "CSSPatching::ApplyPseudoClassChildSelectorStyle";
-inline constexpr const char* const CSS_PATCH_GET_CSS_BY_RULE =
-    "CSSPatching::GetCSSByRule";
-inline constexpr const char* const CSS_PATCH_APPLY_CASCADE_STYLES =
-    "CSSPatching::ApplyCascadeStyles";
-
 /**
  * @trace_description: Create the initial computed style for an element.
  */

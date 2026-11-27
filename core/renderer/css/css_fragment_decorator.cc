@@ -29,18 +29,22 @@ CSSFragmentDecorator::CSSFragmentDecorator(CSSFragment* intrinsic_style_sheets,
 
 CSSFragmentDecorator::~CSSFragmentDecorator() = default;
 
-template <typename Func>
-void CSSFragmentDecorator::ForEachAdoptedFragment(Func&& func,
-                                                  bool reverse) const {
+void CSSFragmentDecorator::ForEachAdoptedFragment(
+    AdoptedFragmentVisitor visitor, void* data, bool reverse) const {
   if (element_manager_) {
+    struct Context {
+      AdoptedFragmentVisitor visitor;
+      void* data;
+    } context{visitor, data};
     element_manager_->ForEachAdoptedStyleSheet(
-        [&func](const auto& wrapper) {
+        [](const auto& wrapper, void* data) {
+          auto& context = *static_cast<Context*>(data);
           if (wrapper && wrapper->fragment_) {
-            return func(*wrapper->fragment_);
+            return context.visitor(*wrapper->fragment_, context.data);
           }
           return true;
         },
-        reverse);
+        &context, reverse);
   }
 }
 
@@ -225,9 +229,6 @@ void CSSFragmentDecorator::InitPseudoNotStyle() {
 
 GET_PARSER_TOKEN_STYLE(Pseudo)
 GET_PARSER_TOKEN_STYLE(Cascade)
-GET_PARSER_TOKEN_STYLE(Id)
-GET_PARSER_TOKEN_STYLE(Tag)
-GET_PARSER_TOKEN_STYLE(Universal)
 #undef GET_PARSER_TOKEN_STYLE
 
 bool CSSFragmentDecorator::enable_css_selector() {
@@ -244,17 +245,22 @@ bool CSSFragmentDecorator::enable_css_rule() {
   return intrinsic_style_sheets_ && intrinsic_style_sheets_->enable_css_rule();
 }
 
-template <typename Predicate>
-bool CSSFragmentDecorator::HasInAdopted(Predicate pred) {
-  bool found = false;
-  ForEachAdoptedFragment([&found, &pred](CSSFragment& fragment) {
-    if (fragment.enable_css_selector() && pred(fragment)) {
-      found = true;
-      return false;
-    }
-    return true;
-  });
-  return found;
+bool CSSFragmentDecorator::HasInAdopted(bool (*predicate)(CSSFragment&)) {
+  struct Context {
+    bool (*predicate)(CSSFragment&);
+    bool found = false;
+  } context{predicate};
+  ForEachAdoptedFragment(
+      [](CSSFragment& fragment, void* data) {
+        auto& context = *static_cast<Context*>(data);
+        if (fragment.enable_css_selector() && context.predicate(fragment)) {
+          context.found = true;
+          return false;
+        }
+        return true;
+      },
+      &context);
+  return context.found;
 }
 
 bool CSSFragmentDecorator::HasIntrinsicFontFacesResolved() const {
@@ -279,12 +285,14 @@ void CSSFragmentDecorator::MarkFontFacesResolved(bool resolved) {
                                                      resolved);
   }
   if (element_manager_) {
-    element_manager_->ForEachAdoptedStyleSheet([resolved](const auto& wrapper) {
-      if (wrapper) {
-        wrapper->MarkFontFacesResolved(resolved);
-      }
-      return true;
-    });
+    element_manager_->ForEachAdoptedStyleSheet(
+        [](const auto& wrapper, void* data) {
+          if (wrapper) {
+            wrapper->MarkFontFacesResolved(*static_cast<bool*>(data));
+          }
+          return true;
+        },
+        &resolved);
   }
 }
 
@@ -316,18 +324,22 @@ uint8_t CSSFragmentDecorator::GetFeatureFlags() {
 
 CSSKeyframesToken* CSSFragmentDecorator::GetKeyframesRule(
     const base::String& key) {
-  CSSKeyframesToken* result = nullptr;
+  struct Context {
+    const base::String& key;
+    CSSKeyframesToken* result = nullptr;
+  } context{key};
   ForEachAdoptedFragment(
-      [&result, &key](CSSFragment& fragment) {
-        if (auto* token = fragment.GetKeyframesRule(key)) {
-          result = token;
+      [](CSSFragment& fragment, void* data) {
+        auto& context = *static_cast<Context*>(data);
+        if (auto* token = fragment.GetKeyframesRule(context.key)) {
+          context.result = token;
           return false;
         }
         return true;
       },
-      true);
-  if (result) {
-    return result;
+      &context, true);
+  if (context.result) {
+    return context.result;
   }
   if (intrinsic_style_sheets_) {
     return intrinsic_style_sheets_->GetKeyframesRule(key);
@@ -343,11 +355,12 @@ void CSSFragmentDecorator::ForEachKeyframesMap(
   };
   Ctx ctx{visitor, cb_data};
   ForEachAdoptedFragment(
-      [&ctx](CSSFragment& fragment) {
+      [](CSSFragment& fragment, void* data) {
+        auto& ctx = *static_cast<Ctx*>(data);
         ctx.visitor(fragment.GetKeyframesRuleMap(), ctx.cb_data);
         return true;
       },
-      true);
+      &ctx, true);
   if (intrinsic_style_sheets_) {
     visitor(intrinsic_style_sheets_->GetKeyframesRuleMap(), cb_data);
   }
@@ -360,12 +373,15 @@ void CSSFragmentDecorator::ForEachUnresolvedFontFaceMap(
     void* cb_data;
   };
   Ctx ctx{visitor, cb_data};
-  ForEachAdoptedFragment([&ctx](CSSFragment& fragment) {
-    if (!fragment.HasFontFacesResolved()) {
-      ctx.visitor(fragment.GetFontFaceRuleMap(), ctx.cb_data);
-    }
-    return true;
-  });
+  ForEachAdoptedFragment(
+      [](CSSFragment& fragment, void* data) {
+        auto& ctx = *static_cast<Ctx*>(data);
+        if (!fragment.HasFontFacesResolved()) {
+          ctx.visitor(fragment.GetFontFaceRuleMap(), ctx.cb_data);
+        }
+        return true;
+      },
+      &ctx);
   // Use the per-LynxView ElementManager tracking when available, otherwise fall
   // back to this decorator's own flag. The intrinsic fragment may be shared
   // across LynxViews, so its own flag must not be used for the skip decision.
@@ -384,14 +400,17 @@ void CSSFragmentDecorator::ForEachRuleSet(ForEachRuleSetVisitor visitor,
     void* cb_data;
   };
   Ctx ctx{visitor, cb_data};
-  ForEachAdoptedFragment([&ctx](CSSFragment& fragment) {
-    if (fragment.enable_css_selector()) {
-      if (auto* rs = fragment.rule_set()) {
-        ctx.visitor(rs, ctx.cb_data);
-      }
-    }
-    return true;
-  });
+  ForEachAdoptedFragment(
+      [](CSSFragment& fragment, void* data) {
+        auto& ctx = *static_cast<Ctx*>(data);
+        if (fragment.enable_css_selector()) {
+          if (auto* rs = fragment.rule_set()) {
+            ctx.visitor(rs, ctx.cb_data);
+          }
+        }
+        return true;
+      },
+      &ctx);
 }
 
 std::shared_ptr<const css::CascadeLayerMap>
@@ -407,10 +426,17 @@ void CSSFragmentDecorator::CollectInvalidationSetsForId(
   if (intrinsic_style_sheets_) {
     intrinsic_style_sheets_->CollectInvalidationSetsForId(lists, id);
   }
-  ForEachAdoptedFragment([&lists, &id](CSSFragment& fragment) {
-    fragment.CollectInvalidationSetsForId(lists, id);
-    return true;
-  });
+  struct Context {
+    css::InvalidationLists& lists;
+    const std::string& key;
+  } context{lists, id};
+  ForEachAdoptedFragment(
+      [](CSSFragment& fragment, void* data) {
+        auto& context = *static_cast<Context*>(data);
+        fragment.CollectInvalidationSetsForId(context.lists, context.key);
+        return true;
+      },
+      &context);
 }
 
 void CSSFragmentDecorator::CollectInvalidationSetsForClass(
@@ -418,10 +444,17 @@ void CSSFragmentDecorator::CollectInvalidationSetsForClass(
   if (intrinsic_style_sheets_) {
     intrinsic_style_sheets_->CollectInvalidationSetsForClass(lists, class_name);
   }
-  ForEachAdoptedFragment([&lists, &class_name](CSSFragment& fragment) {
-    fragment.CollectInvalidationSetsForClass(lists, class_name);
-    return true;
-  });
+  struct Context {
+    css::InvalidationLists& lists;
+    const std::string& key;
+  } context{lists, class_name};
+  ForEachAdoptedFragment(
+      [](CSSFragment& fragment, void* data) {
+        auto& context = *static_cast<Context*>(data);
+        fragment.CollectInvalidationSetsForClass(context.lists, context.key);
+        return true;
+      },
+      &context);
 }
 
 void CSSFragmentDecorator::CollectInvalidationSetsForPseudoClass(
@@ -430,10 +463,18 @@ void CSSFragmentDecorator::CollectInvalidationSetsForPseudoClass(
     intrinsic_style_sheets_->CollectInvalidationSetsForPseudoClass(lists,
                                                                    pseudo);
   }
-  ForEachAdoptedFragment([&lists, pseudo](CSSFragment& fragment) {
-    fragment.CollectInvalidationSetsForPseudoClass(lists, pseudo);
-    return true;
-  });
+  struct Context {
+    css::InvalidationLists& lists;
+    css::LynxCSSSelector::PseudoType pseudo;
+  } context{lists, pseudo};
+  ForEachAdoptedFragment(
+      [](CSSFragment& fragment, void* data) {
+        auto& context = *static_cast<Context*>(data);
+        fragment.CollectInvalidationSetsForPseudoClass(context.lists,
+                                                       context.pseudo);
+        return true;
+      },
+      &context);
 }
 
 }  // namespace tasm

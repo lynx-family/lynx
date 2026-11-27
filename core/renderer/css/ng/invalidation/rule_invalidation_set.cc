@@ -51,11 +51,18 @@ InvalidationSet& RuleInvalidationSet::GetInvalidationSet(
   return GetInvalidationSet(position, invalidation_set);
 }
 
-InvalidationSet& RuleInvalidationSet::GetInvalidationSet(
-    PseudoTypeInvalidationSetMap& map, LynxCSSSelector::PseudoType key,
-    PositionType position) {
-  InvalidationSetPtr& invalidation_set = map[key];
-  return GetInvalidationSet(position, invalidation_set);
+size_t RuleInvalidationSet::PseudoInvalidationIndex(
+    LynxCSSSelector::PseudoType pseudo) {
+  switch (pseudo) {
+    case LynxCSSSelector::kPseudoHover:
+      return 0;
+    case LynxCSSSelector::kPseudoFocus:
+      return 1;
+    case LynxCSSSelector::kPseudoActive:
+      return 2;
+    default:
+      return 3;
+  }
 }
 
 // For example, '.a.b' will return '.a', '.a#b' will return '#b', 'div.a' will
@@ -91,8 +98,9 @@ InvalidationSet* RuleInvalidationSet::GetInvalidationSetForSimpleSelector(
       case LynxCSSSelector::kPseudoHover:
       case LynxCSSSelector::kPseudoFocus:
       case LynxCSSSelector::kPseudoActive:
-        return &GetInvalidationSet(pseudo_invalidation_sets_,
-                                   selector.GetPseudoType(), position);
+        return &GetInvalidationSet(
+            position, pseudo_invalidation_sets_[PseudoInvalidationIndex(
+                          selector.GetPseudoType())]);
       default:
         break;
     }
@@ -253,18 +261,12 @@ void RuleInvalidationSet::AddSelector(const LynxCSSSelector& selector) {
 void RuleInvalidationSet::CombineInvalidationSet(
     InvalidationSetMap& map, const std::string& key,
     InvalidationSet* invalidation_set) {
-  DCHECK(invalidation_set);
-  InvalidationSetPtr& value = map[key];
-  GetInvalidationSet(
-      invalidation_set->IsSelfInvalidationSet() ? kSubject : kAncestor, value)
-      .Combine(*invalidation_set);
+  CombineInvalidationSet(map[key], invalidation_set);
 }
 
 void RuleInvalidationSet::CombineInvalidationSet(
-    PseudoTypeInvalidationSetMap& map, LynxCSSSelector::PseudoType key,
-    InvalidationSet* invalidation_set) {
+    InvalidationSetPtr& value, InvalidationSet* invalidation_set) {
   DCHECK(invalidation_set);
-  InvalidationSetPtr& value = map[key];
   GetInvalidationSet(
       invalidation_set->IsSelfInvalidationSet() ? kSubject : kAncestor, value)
       .Combine(*invalidation_set);
@@ -277,16 +279,20 @@ void RuleInvalidationSet::Merge(const RuleInvalidationSet& other) {
   for (const auto& entry : other.id_invalidation_sets_)
     CombineInvalidationSet(id_invalidation_sets_, entry.first,
                            entry.second.get());
-  for (const auto& entry : other.pseudo_invalidation_sets_) {
-    auto key = static_cast<LynxCSSSelector::PseudoType>(entry.first);
-    CombineInvalidationSet(pseudo_invalidation_sets_, key, entry.second.get());
+  for (size_t i = 0; i < pseudo_invalidation_sets_.size(); ++i) {
+    if (other.pseudo_invalidation_sets_[i]) {
+      CombineInvalidationSet(pseudo_invalidation_sets_[i],
+                             other.pseudo_invalidation_sets_[i].get());
+    }
   }
 }
 
 void RuleInvalidationSet::Clear() {
   class_invalidation_sets_.clear();
   id_invalidation_sets_.clear();
-  pseudo_invalidation_sets_.clear();
+  for (auto& set : pseudo_invalidation_sets_) {
+    set.reset();
+  }
 }
 
 #define COLLECT_INVALIDATION_SETS(field, name, key_type)                  \
@@ -308,9 +314,20 @@ void RuleInvalidationSet::Clear() {
 
 COLLECT_INVALIDATION_SETS(id_invalidation_sets_, Id, std::string)
 COLLECT_INVALIDATION_SETS(class_invalidation_sets_, Class, std::string)
-COLLECT_INVALIDATION_SETS(pseudo_invalidation_sets_, PseudoClass,
-                          LynxCSSSelector::PseudoType)
 #undef COLLECT_INVALIDATION_SETS
+
+void RuleInvalidationSet::CollectPseudoClass(
+    InvalidationLists& invalidation_lists,
+    const LynxCSSSelector::PseudoType& pseudo) const {
+  const size_t index = PseudoInvalidationIndex(pseudo);
+  if (index >= pseudo_invalidation_sets_.size()) {
+    return;
+  }
+  const auto& set = pseudo_invalidation_sets_[index];
+  if (set && set->IsAlive()) {
+    invalidation_lists.descendants.push_back(set.get());
+  }
+}
 
 }  // namespace css
 }  // namespace lynx

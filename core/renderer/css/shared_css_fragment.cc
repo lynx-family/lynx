@@ -105,9 +105,6 @@ fml::RefPtr<CSSParseToken> SharedCSSFragment::GetSharedCSSStyle(
 
 SHARED_CSS_FRAGMENT_GET_STYLE(pseudo_map_, Pseudo)
 SHARED_CSS_FRAGMENT_GET_STYLE(cascade_map_, Cascade)
-SHARED_CSS_FRAGMENT_GET_STYLE(id_map_, Id)
-SHARED_CSS_FRAGMENT_GET_STYLE(tag_map_, Tag)
-SHARED_CSS_FRAGMENT_GET_STYLE(universal_map_, Universal)
 #undef SHARED_CSS_FRAGMENT_GET_STYLE
 
 void SharedCSSFragment::ImportOtherFragment(const SharedCSSFragment* fragment) {
@@ -162,15 +159,7 @@ void SharedCSSFragment::ImportOtherFragment(const SharedCSSFragment* fragment) {
   for (auto& cascade : fragment->cascade_map_) {
     cascade_map_[cascade.first] = cascade.second;
   }
-  for (auto& id : fragment->id_map_) {
-    id_map_[id.first] = id.second;
-  }
-  for (auto& tag : fragment->tag_map_) {
-    tag_map_[tag.first] = tag.second;
-  }
-  for (auto& universal : fragment->universal_map_) {
-    universal_map_[universal.first] = universal.second;
-  }
+  has_id_selector_ |= fragment->has_id_selector_;
   keyframes_.reserve(fragment->keyframes_.size());
   for (auto& frame : fragment->keyframes_) {
     keyframes_[frame.first] = frame.second;
@@ -274,11 +263,7 @@ void SharedCSSFragment::FindSpecificMapAndAdd(
       child_pseudo_map_.emplace(key, parse_token);
     }
   } else if (type == CSSSheet::ID_SELECT) {
-    id_map_.emplace(key, parse_token);
-  } else if (type == CSSSheet::NAME_SELECT) {
-    tag_map_.emplace(key, parse_token);
-  } else if (type == CSSSheet::ALL_SELECT) {
-    universal_map_.emplace(key, parse_token);
+    has_id_selector_ = true;
   }
 }
 

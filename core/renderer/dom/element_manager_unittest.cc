@@ -948,6 +948,46 @@ TEST_F(ElementManagerTest, AdoptStyleSheet_Multiple) {
   EXPECT_EQ(adopted_sheets[2].get(), wrapper3.get());
 }
 
+TEST_F(ElementManagerTest,
+       ForEachAdoptedStyleSheetPreservesOrderAndStopsEarly) {
+  auto first = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  auto second = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  auto third = fml::AdoptRef<MockSharedCSSFragmentWrapper>(
+      new MockSharedCSSFragmentWrapper());
+  manager->AdoptStyleSheet(first);
+  manager->AdoptStyleSheet(second);
+  manager->AdoptStyleSheet(third);
+
+  struct Context {
+    std::vector<SharedCSSFragmentWrapper*> visited;
+    size_t limit = 3;
+  } context;
+  auto visitor = [](const fml::RefPtr<SharedCSSFragmentWrapper>& wrapper,
+                    void* data) {
+    auto& context = *static_cast<Context*>(data);
+    context.visited.push_back(wrapper.get());
+    return context.visited.size() < context.limit;
+  };
+  manager->ForEachAdoptedStyleSheet(visitor, &context);
+  EXPECT_EQ(context.visited, (std::vector<SharedCSSFragmentWrapper*>{
+                                 first.get(), second.get(), third.get()}));
+  context.visited.clear();
+  manager->ForEachAdoptedStyleSheet(visitor, &context, true);
+  EXPECT_EQ(context.visited, (std::vector<SharedCSSFragmentWrapper*>{
+                                 third.get(), second.get(), first.get()}));
+  context.limit = 1;
+  context.visited.clear();
+  manager->ForEachAdoptedStyleSheet(visitor, &context);
+  EXPECT_EQ(context.visited,
+            (std::vector<SharedCSSFragmentWrapper*>{first.get()}));
+  context.visited.clear();
+  manager->ForEachAdoptedStyleSheet(visitor, &context, true);
+  EXPECT_EQ(context.visited,
+            (std::vector<SharedCSSFragmentWrapper*>{third.get()}));
+}
+
 TEST_F(ElementManagerTest, ClearAdoptedStyleSheets) {
   // Create and adopt a stylesheet
   auto wrapper = fml::AdoptRef<MockSharedCSSFragmentWrapper>(

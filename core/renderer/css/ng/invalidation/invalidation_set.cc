@@ -41,6 +41,72 @@
 namespace lynx {
 namespace css {
 
+void InvalidationSet::Backing::Add(InvalidationSet::BackingFlags& flags,
+                                   BackingType type,
+                                   const std::string& string) {
+  if (IsHashSet(flags, type)) {
+    hash_set_->insert(string);
+  } else if (string_impl_) {
+    if (*string_impl_ == string) {
+      return;
+    }
+    // The string_impl_ needs to be inserted into hash_set later
+    std::string string_impl(*string_impl_);
+    delete string_impl_;
+    string_impl_ = nullptr;
+    hash_set_ = new std::unordered_set<std::string>();
+    hash_set_->insert(string_impl);
+    hash_set_->insert(string);
+    SetIsHashSet(flags, type);
+  } else {
+    string_impl_ = new std::string(string);
+  }
+}
+
+void InvalidationSet::Backing::Clear(InvalidationSet::BackingFlags& flags,
+                                     BackingType type) {
+  if (IsHashSet(flags, type)) {
+    if (hash_set_) {
+      delete hash_set_;
+      string_impl_ = nullptr;
+    }
+  } else {
+    if (string_impl_) {
+      delete string_impl_;
+      string_impl_ = nullptr;
+    }
+  }
+  SetIsString(flags, type);
+}
+
+bool InvalidationSet::Backing::Contains(
+    const InvalidationSet::BackingFlags& flags, BackingType type,
+    const std::string& string) const {
+  if (IsHashSet(flags, type)) {
+    return hash_set_->find(string) != hash_set_->end();
+  }
+  if (string_impl_) {
+    return *string_impl_ == string;
+  }
+  return false;
+}
+
+bool InvalidationSet::Backing::IsEmpty(
+    const InvalidationSet::BackingFlags& flags, BackingType type) const {
+  return !IsHashSet(flags, type) && !string_impl_;
+}
+
+size_t InvalidationSet::Backing::Size(
+    const InvalidationSet::BackingFlags& flags, BackingType type) const {
+  if (const std::unordered_set<std::string>* set = GetHashSet(flags, type)) {
+    return set->size();
+  }
+  if (GetStringImpl(flags, type)) {
+    return 1;
+  }
+  return 0;
+}
+
 InvalidationSet::InvalidationSet(InvalidationType type)
     : type_(static_cast<unsigned>(type)),
       invalidates_self_(false),
@@ -116,15 +182,17 @@ void InvalidationSet::Combine(const InvalidationSet& other) {
 }
 
 bool InvalidationSet::HasEmptyBackings() const {
-  return classes_.IsEmpty(backing_flags_) && ids_.IsEmpty(backing_flags_) &&
-         tag_names_.IsEmpty(backing_flags_);
+  return classes_.IsEmpty(backing_flags_, BackingType::kClasses) &&
+         ids_.IsEmpty(backing_flags_, BackingType::kIds) &&
+         tag_names_.IsEmpty(backing_flags_, BackingType::kTagNames);
 }
 
 const std::string* InvalidationSet::FindAnyClass(
     const tasm::AttributeHolder& element) const {
   const auto& class_names = element.classes();
   size_t size = class_names.size();
-  if (std::string* string_impl = classes_.GetStringImpl(backing_flags_)) {
+  if (std::string* string_impl =
+          classes_.GetStringImpl(backing_flags_, BackingType::kClasses)) {
     for (size_t i = 0; i < size; ++i) {
       if (*string_impl == class_names[i].str()) {
         return string_impl;
@@ -132,7 +200,7 @@ const std::string* InvalidationSet::FindAnyClass(
     }
   }
   if (const std::unordered_set<std::string>* set =
-          classes_.GetHashSet(backing_flags_)) {
+          classes_.GetHashSet(backing_flags_, BackingType::kClasses)) {
     for (size_t i = 0; i < size; ++i) {
       auto it = set->find(class_names[i].str());
       if (it != set->end()) {
@@ -146,19 +214,19 @@ const std::string* InvalidationSet::FindAnyClass(
 void InvalidationSet::AddClass(const std::string& class_name) {
   if (WholeSubtreeInvalid()) return;
   DCHECK(!class_name.empty());
-  classes_.Add(backing_flags_, class_name);
+  classes_.Add(backing_flags_, BackingType::kClasses, class_name);
 }
 
 void InvalidationSet::AddId(const std::string& id) {
   if (WholeSubtreeInvalid()) return;
   DCHECK(!id.empty());
-  ids_.Add(backing_flags_, id);
+  ids_.Add(backing_flags_, BackingType::kIds, id);
 }
 
 void InvalidationSet::AddTagName(const std::string& tag_name) {
   if (WholeSubtreeInvalid()) return;
   DCHECK(!tag_name.empty());
-  tag_names_.Add(backing_flags_, tag_name);
+  tag_names_.Add(backing_flags_, BackingType::kTagNames, tag_name);
 }
 
 void InvalidationSet::SetWholeSubtreeInvalid() {
