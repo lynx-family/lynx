@@ -9,10 +9,43 @@
 #include <utility>
 
 #include "clay/flow/animation/scroll_offset_animation.h"
+#include "clay/gfx/style/color_source.h"
 #include "clay/ui/compositing/pending_offset_layer.h"
 #include "clay/ui/compositing/pending_scroll_offset_layer.h"
 
 namespace clay {
+namespace {
+
+std::shared_ptr<ColorSource> CreateFadingEdgeMask(const FloatRect& rect,
+                                                  ScrollDirection direction,
+                                                  float edge_length,
+                                                  bool fade_start,
+                                                  bool fade_end) {
+  const float length = std::min(
+      edge_length, direction == ScrollDirection::kVertical ? rect.height() / 2
+                                                           : rect.width() / 2);
+  if (length <= 0 || (!fade_start && !fade_end)) {
+    return nullptr;
+  }
+
+  const float extent =
+      direction == ScrollDirection::kVertical ? rect.height() : rect.width();
+  const float start_stop = length / extent;
+  const float end_stop = 1.f - start_stop;
+  const Color transparent = Color::kTransparent();
+  const Color opaque = Color::kWhite();
+  const Color colors[] = {fade_start ? transparent : opaque, opaque, opaque,
+                          fade_end ? transparent : opaque};
+  const float stops[] = {0.f, start_stop, end_stop, 1.f};
+  const skity::Vec2 start = {rect.x(), rect.y()};
+  const skity::Vec2 end = direction == ScrollDirection::kVertical
+                              ? skity::Vec2{rect.x(), rect.MaxY()}
+                              : skity::Vec2{rect.MaxX(), rect.y()};
+  return ColorSource::MakeLinear(start, end, std::size(colors), colors, stops,
+                                 TileMode::kClamp);
+}
+
+}  // namespace
 
 const char* RenderScroll::GetName() const { return "RenderScroll"; }
 
@@ -69,6 +102,29 @@ void RenderScroll::Paint(PaintingContext& context, const FloatPoint& offset) {
     ctx.PushLayer(offset_layer, painter, FloatPoint(0, 0));
   };
 
+  PaintingContextCallback content_painter = painter;
+  if (fading_edge_length_ > 0) {
+    const FloatPoint clip_offset = offset + ClipOffset();
+    const FloatRect mask_rect(clip_offset.x(), clip_offset.y(), ClientWidth(),
+                              ClientHeight());
+    const bool fade_start = scroll_direction_ == ScrollDirection::kVertical
+                                ? ScrollTop() > 0
+                                : ScrollLeft() > 0;
+    const bool fade_end = scroll_direction_ == ScrollDirection::kVertical
+                              ? ScrollTop() < MaxScrollHeight()
+                              : ScrollLeft() < MaxScrollWidth();
+    if (auto mask =
+            CreateFadingEdgeMask(mask_rect, scroll_direction_,
+                                 fading_edge_length_, fade_start, fade_end)) {
+      content_painter = [mask = std::move(mask), mask_rect, painter](
+                            PaintingContext& ctx,
+                            const FloatPoint& content_offset) {
+        ctx.PushShaderMask(mask, mask_rect, BlendMode::kDstIn, content_offset,
+                           painter);
+      };
+    }
+  }
+
   if (HasOverflowClip()) {
     // RenderScroll do not need clip because ScrollWrapper
     FloatPoint clip_offset = offset + ClipOffset();
@@ -81,10 +137,19 @@ void RenderScroll::Paint(PaintingContext& context, const FloatPoint& offset) {
       clip_rect.SetHeight(renderer_->GetFrameSize().height() * 2);
       clip_rect.SetY(clip_rect.y() - renderer_->GetFrameSize().height());
     }
-    context.PushClipRect(clip_rect, offset, painter);
+    context.PushClipRect(clip_rect, offset, content_painter);
   } else {
-    painter(context, offset);
+    content_painter(context, offset);
   }
+}
+
+void RenderScroll::SetFadingEdgeLength(float length) {
+  length = std::max(length, 0.f);
+  if (fading_edge_length_ == length) {
+    return;
+  }
+  fading_edge_length_ = length;
+  MarkNeedsPaint();
 }
 
 bool RenderScroll::ScrollTo(float scroll_x, float scroll_y) {
