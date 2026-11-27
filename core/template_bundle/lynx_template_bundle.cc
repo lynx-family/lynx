@@ -327,15 +327,9 @@ const ElementTemplateInfo &LynxTemplateBundle::GetElementTemplateInfo(
   // access and check the cache again before publishing the decoded result.
   auto info = std::make_shared<ElementTemplateInfo>();
   if (lazy_reader_) {
-    auto recycler = lazy_reader_->CreateRecycler();
-    if (recycler) {
-      // LynxTemplateBundle installs TemplateBinaryReader as the lazy reader.
-      auto *dedicated_reader =
-          static_cast<TemplateBinaryReader *>(recycler.get());
-      if (auto decoded_info =
-              dedicated_reader->DecodeElementTemplateInRender(key)) {
-        info = std::move(decoded_info);
-      }
+    if (auto decoded_info =
+            lazy_reader_->DecodeElementTemplateInRender(key, string_list_)) {
+      info = std::move(decoded_info);
     }
   }
 

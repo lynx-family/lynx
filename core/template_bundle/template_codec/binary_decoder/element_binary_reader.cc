@@ -74,6 +74,29 @@ ElementBinaryReader::ElementBinaryReader(
   string_key_parsed_styles_router_ = string_key_parsed_styles_router;
 }
 
+ElementBinaryReader::ElementBinaryReader(
+    std::unique_ptr<lepus::InputStream> stream,
+    const tasm::StringListVec& string_list,
+    const ElementBinaryReader& shared_state)
+    : LynxBinaryBaseCSSReader(std::move(stream), string_list),
+      shared_element_templates_router_(
+          &shared_state.element_templates_router()),
+      shared_parsed_styles_router_(&shared_state.parsed_styles_router()) {
+  compile_options_ = shared_state.compile_options_;
+  enable_css_font_face_extension_ =
+      shared_state.enable_css_font_face_extension_;
+  enable_css_variable_ = shared_state.enable_css_variable_;
+  enable_css_parser_ = shared_state.enable_css_parser_;
+  enable_css_variable_multi_default_value_ =
+      shared_state.enable_css_variable_multi_default_value_;
+  // Keep decoding flags aligned with TemplateBinaryReader::CopyForAsyncDecode()
+  // (used by CreateRecycler()), which intentionally leaves
+  // enable_css_inline_variables_ false so lazy-decoded element templates
+  // preserve legacy defaultValue fallback semantics instead of eagerly calling
+  // CSSValue::ToVarReference().
+  decode_string_directly_ = shared_state.decode_string_directly_;
+}
+
 // These are the APIs used for decoding data and return elements:
 fml::RefPtr<Element> ElementBinaryReader::DecodeSingleTemplate(
     ElementManager* manager, TemplateAssembler* tasm) {
@@ -413,7 +436,7 @@ std::unique_ptr<ElementBinaryReader>
 ElementBinaryReader::DeriveElementBinaryReader() {
   return std::make_unique<ElementBinaryReader>(
       stream_->DeriveInputStream(), GetStringList(), compile_options_,
-      element_templates_router_, string_key_parsed_styles_router_);
+      element_templates_router(), parsed_styles_router());
 }
 
 // These are the APIs used for decoding data and return element infos:
@@ -439,16 +462,25 @@ bool ElementBinaryReader::DecodeParsedStylesRouter() {
 
 std::shared_ptr<ElementTemplateInfo>
 ElementBinaryReader::DecodeTemplatesInfoWithKey(const std::string& key) {
+  // 1. Get templates offset info and seek to the start position of template
+  // info.
+  const auto& router = element_templates_router();
+  const auto& iter = router.start_offsets_.find(key);
+  if (iter == router.start_offsets_.end()) {
+    auto info = std::make_shared<ElementTemplateInfo>();
+    info->key_ = key;
+    return info;
+  }
+  return DecodeTemplatesInfoAtOffset(key,
+                                     router.descriptor_offset_ + iter->second);
+}
+
+std::shared_ptr<ElementTemplateInfo>
+ElementBinaryReader::DecodeTemplatesInfoAtOffset(const std::string& key,
+                                                 uint32_t start) {
   std::shared_ptr<ElementTemplateInfo> info =
       std::make_shared<ElementTemplateInfo>();
   info->key_ = key;
-  // 1. Get templates offset info and seek to the start position of template
-  // info.
-  const auto& iter = element_templates_router_.start_offsets_.find(key);
-  if (iter == element_templates_router_.start_offsets_.end()) {
-    return info;
-  }
-  uint32_t start = element_templates_router_.descriptor_offset_ + iter->second;
   stream_->Seek(start);
 
   // 2. Decode templates
@@ -781,11 +813,11 @@ bool ElementBinaryReader::DecodeOrderedStringKeyRouter(
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               ELEMENT_BINARY_READER_DECODE_ORDERED_STRING_KEY_ROUTER);
   DECODE_COMPACT_U32(size);
-  router.start_offsets_.reserve(size);
+  router.Reserve(size);
   for (size_t i = 0; i < size; ++i) {
     DECODE_STDSTR(key);
     DECODE_COMPACT_U32(start);
-    router.start_offsets_.insert_or_assign(std::move(key), start);
+    router.InsertOrAssign(std::move(key), start);
   }
   router.descriptor_offset_ = static_cast<uint32_t>(stream_->offset());
 
@@ -816,10 +848,11 @@ const std::shared_ptr<ParsedStyles>& ElementBinaryReader::GetParsedStyles(
   // Cache miss, try to decode parsed styles.
   std::shared_ptr<ParsedStyles> parsed_styles =
       std::make_shared<ParsedStyles>();
-  const auto& iter = string_key_parsed_styles_router_.start_offsets_.find(key);
-  if (iter != string_key_parsed_styles_router_.start_offsets_.end()) {
+  const auto& router = parsed_styles_router();
+  const auto& iter = router.start_offsets_.find(key);
+  if (iter != router.start_offsets_.end()) {
     uint32_t temp_offset = static_cast<uint32_t>(Offset());
-    Seek(string_key_parsed_styles_router_.descriptor_offset_ + iter->second);
+    Seek(router.descriptor_offset_ + iter->second);
     DecodeParsedStylesSectionInternal(parsed_styles->first,
                                       parsed_styles->second);
     Seek(temp_offset);

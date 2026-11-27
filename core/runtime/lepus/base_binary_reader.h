@@ -123,6 +123,9 @@ class BaseBinaryReader : public BinaryReader {
     func_vec.reserve(128);
 #endif
   }
+  BaseBinaryReader(std::unique_ptr<InputStream> stream,
+                   tasm::StringListVec string_list)
+      : BinaryReader(std::move(stream)), string_list_(std::move(string_list)) {}
   ~BaseBinaryReader() override = default;
 
   BaseBinaryReader(const BaseBinaryReader&) = delete;

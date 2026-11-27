@@ -303,8 +303,24 @@ bool TemplateBinaryReader::DecodeCSSFragmentByIdInRender(int32_t id) {
 }
 
 std::shared_ptr<ElementTemplateInfo>
-TemplateBinaryReader::DecodeElementTemplateInRender(const std::string& key) {
-  return DecodeTemplatesInfoWithKey(key);
+TemplateBinaryReader::DecodeElementTemplateInRender(
+    const std::string& key, const StringListVec& string_list) {
+  const auto& router = element_templates_router();
+  const auto iter = router.start_offsets_.find(key);
+  if (iter == router.start_offsets_.end() || stream_ == nullptr) {
+    auto info = std::make_shared<ElementTemplateInfo>();
+    info->key_ = key;
+    return info;
+  }
+  // Decode through a stack-local reader backed by a derived stream, the
+  // consumer bundle's string table, and borrowed read-only routers so
+  // concurrent render/worker calls stay thread-safe without deep-copying
+  // the bundle and routers via CreateRecycler() or dereferencing
+  // target_template_bundle_.
+  ElementBinaryReader dedicated_reader(stream_->DeriveInputStream(),
+                                       string_list, *this);
+  return dedicated_reader.DecodeTemplatesInfoAtOffset(
+      key, router.descriptor_offset_ + iter->second);
 }
 
 const std::shared_ptr<ParsedStyles>&
@@ -417,7 +433,7 @@ LynxTemplateBundle& TemplateBinaryReader::template_bundle() {
 
 std::unique_ptr<LynxBinaryRecyclerDelegate>
 TemplateBinaryReader::CreateRecycler() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_BINARY_READER_COMPLETE_DECODE);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_BINARY_READER_CREATE_RECYCLER);
   // 0. copy the binary the template bundle
   auto recycler =
       std::make_unique<TemplateBinaryReader>(stream_->DeriveInputStream());
@@ -441,7 +457,7 @@ TemplateBinaryReader::CreateRecycler() {
 }
 
 bool TemplateBinaryReader::CompleteDecode() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_BINARY_READER_CREATE_RECYCLER);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_BINARY_READER_COMPLETE_DECODE);
 
   // 0. decode css
   auto new_css_manager = std::make_shared<CSSStyleSheetManager>(nullptr);

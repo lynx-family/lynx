@@ -361,7 +361,7 @@ bool LynxBinaryReader::DecodeCustomSectionsByRoute(
 
 bool LynxBinaryReader::GreedyDecodeElementTemplateSection() {
   auto& tb = template_bundle();
-  for (const auto& [key, offset] : element_templates_router_.start_offsets_) {
+  for (const auto& key : element_templates_router_.ordered_keys_) {
     auto info = DecodeTemplatesInfoWithKey(key);
     tb.element_template_infos_.emplace(key, std::move(info));
   }

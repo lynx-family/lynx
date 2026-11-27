@@ -30,6 +30,13 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
       const OrderedStringKeyRouter& element_templates_router,
       const StringKeyRouter& string_key_parsed_styles_router);
 
+  // Constructs a lightweight reader that borrows read-only routers and CSS
+  // decode settings from |shared_state| without copying router maps. Callers
+  // must ensure |shared_state| outlives this reader.
+  ElementBinaryReader(std::unique_ptr<lepus::InputStream> stream,
+                      const tasm::StringListVec& string_list,
+                      const ElementBinaryReader& shared_state);
+
   ~ElementBinaryReader() override = default;
 
   ElementBinaryReader(const ElementBinaryReader&) = delete;
@@ -54,6 +61,9 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
   // and return the element info.
   std::shared_ptr<ElementTemplateInfo> DecodeTemplatesInfoWithKey(
       const std::string& key);
+
+  std::shared_ptr<ElementTemplateInfo> DecodeTemplatesInfoAtOffset(
+      const std::string& key, uint32_t start);
 
   std::unique_ptr<ElementBinaryReader> DeriveElementBinaryReader();
 
@@ -113,11 +123,28 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
   const std::shared_ptr<ParsedStyles>& GetParsedStyles(const std::string& key);
 
  protected:
+  const OrderedStringKeyRouter& element_templates_router() const {
+    return shared_element_templates_router_ != nullptr
+               ? *shared_element_templates_router_
+               : element_templates_router_;
+  }
+
+  const StringKeyRouter& parsed_styles_router() const {
+    return shared_parsed_styles_router_ != nullptr
+               ? *shared_parsed_styles_router_
+               : string_key_parsed_styles_router_;
+  }
+
   // The router for element templates
   OrderedStringKeyRouter element_templates_router_;
 
   // parsed styles router
   StringKeyRouter string_key_parsed_styles_router_;
+
+  // Non-owning read-only routers borrowed from a parent reader to avoid
+  // copying router hash maps during per-key lazy decoding.
+  const OrderedStringKeyRouter* shared_element_templates_router_{nullptr};
+  const StringKeyRouter* shared_parsed_styles_router_{nullptr};
 
   // the cache of parsed styles
   ParsedStylesMap parsed_styles_cache_;
