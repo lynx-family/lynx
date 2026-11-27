@@ -119,55 +119,6 @@ config("lynx_public_config") {
       defines += [ "JS_ENGINE_TYPE=3" ]
     }
   }
-
-  # Attach arguments to turn on Lynx Clang static checker plugin.
-  if (enable_lynx_clang_plugin) {
-    if (host_os == "linux") {
-      plugin_dylib = rebase_path(
-              "../../tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.so")
-    } else if (host_os == "mac") {
-      plugin_dylib = rebase_path(
-              "../../tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.dylib")
-    } else {
-      print(
-          "Unable to turn on Lynx Clang plugin on platforms other than MacOS or Linux.")
-    }
-
-    # Load plugin Clang args.
-    clang_args = [
-      "-load",
-      plugin_dylib,
-      "-add-plugin",
-      "lynx_static_analysis",
-    ]
-
-    # Arguments for plugin.
-    plugin_args = [
-      "-config",
-      rebase_path(
-          "../../tools/clang/lynx_clang_plugin/release/lynx_config.json"),
-      "-on_path",
-      rebase_path("//"),
-      "-output_dir",
-      rebase_path("../../lynx_clang_plugin_output"),
-    ]
-
-    # Forward all plugin arguments with plugin prefix.
-    foreach(arg, plugin_args) {
-      clang_args += [
-        "-plugin-arg-lynx_static_analysis",
-        arg,
-      ]
-    }
-
-    # Forward all arguments with -Xclang
-    foreach(arg, clang_args) {
-      cflags += [
-        "-Xclang",
-        arg,
-      ]
-    }
-  }
 }
 
 config("config") {
