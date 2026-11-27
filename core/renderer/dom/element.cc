@@ -2137,6 +2137,10 @@ void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
 
 bool Element::IsStackingContextNode() {
   if (!GetEnableZIndex()) return false;
+  // Transferred children are mounted outside the page's native view hierarchy.
+  // Keep their z-index ordering inside the transferred subtree.
+  static constexpr char kTransferView[] = "transfer-view";
+  if (GetTag() == BASE_STATIC_STRING(kTransferView)) return true;
   return element_manager()->root() == this || has_z_props() || is_fixed_ ||
          computed_css_style()->HasTransform() ||
          computed_css_style()->HasOpacity();
