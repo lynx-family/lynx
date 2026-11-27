@@ -4,7 +4,6 @@
 
 package com.lynx.tasm.core.resource;
 
-import static com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate;
 import static com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS;
 
 import com.lynx.tasm.TemplateBundle;
@@ -36,8 +35,9 @@ class TemplateLoaderHelper {
     return mTemplateFetcher != null;
   }
 
-  public void fetchTemplateByGenericTemplateFetcher(String url, TemplateResourceCallback callback) {
-    mTemplateFetcher.fetchTemplate(new LynxResourceRequest(url, callback.getResourceType()),
+  public void fetchTemplateByGenericTemplateFetcher(String url,
+      LynxResourceRequest.LynxResourceType resourceType, TemplateResourceCallback callback) {
+    mTemplateFetcher.fetchTemplate(new LynxResourceRequest(url, resourceType),
         new LynxResourceCallback<TemplateProviderResult>() {
           @Override
           public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
