@@ -79,7 +79,7 @@ using CustomPropertiesMapRef =
 class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:
   CSSValue() {}  // __attr__ initialized to zero.
-  ~CSSValue() { FreeValueStorage(); }
+  ~CSSValue();
 
   CSSValue(const CSSValue& other);
   CSSValue& operator=(const CSSValue& other);
