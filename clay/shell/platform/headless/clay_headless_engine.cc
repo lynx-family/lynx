@@ -37,6 +37,9 @@ ClayHeadlessEngine::ClayHeadlessEngine(
 }
 
 ClayHeadlessEngine::~ClayHeadlessEngine() {
+  if (renderer_) {
+    renderer_->StopDrawing();
+  }
   // Engine will reset rasterizer synchronously during `Shutdown`,
   // so there is no need to wait a latch here.
   fml::TaskRunner::RunNowOrPostTask(GetTaskRunners().GetRasterTaskRunner(),

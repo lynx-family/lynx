@@ -5,6 +5,7 @@
 #ifndef CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_BACKING_H_
 #define CLAY_GFX_SHARED_IMAGE_SHARED_IMAGE_BACKING_H_
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -113,6 +114,13 @@ class SharedImageBacking
   // User MUST client wait fence before readback.
   virtual bool ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
                                 uint32_t planes);
+  // A display consumer can stop waiting for a frame when it starts closing.
+  // Backends without interruptible readback retain their usual semantics.
+  virtual bool ReadbackForDisplay(SharedImageReadbackPixmap* pixmaps,
+                                  uint32_t planes,
+                                  const std::atomic_bool& enabled) {
+    return enabled.load() && ReadbackToMemory(pixmaps, planes);
+  }
 #ifndef ENABLE_SKITY
   virtual fml::RefPtr<SkiaImageRepresentation> CreateSkiaRepresentation(
       GrContext* gr_context) = 0;

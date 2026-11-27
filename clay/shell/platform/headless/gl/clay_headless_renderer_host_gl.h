@@ -55,6 +55,7 @@ class ClayHeadlessRendererSharedImageHostGL final
 
   ~ClayHeadlessRendererSharedImageHostGL() override;
 
+  void StopDrawing() override;
   void CleanupGPUResources() override;
 
   // |ClayHeadlessRenderer|

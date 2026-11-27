@@ -46,6 +46,8 @@ class D3DTextureImageBacking final : public SharedImageBacking {
       const ClaySharedImageRepresentationConfig* config) override;
   bool ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
                         uint32_t planes) override;
+  bool ReadbackForDisplay(SharedImageReadbackPixmap* pixmaps, uint32_t planes,
+                          const std::atomic_bool& enabled) override;
 #ifdef ENABLE_SKITY
   virtual fml::RefPtr<SkityImageRepresentation> CreateSkityRepresentation(
       skity::GPUContext* skity_context) override;
@@ -57,6 +59,8 @@ class D3DTextureImageBacking final : public SharedImageBacking {
   static bool IsSupported();
 
  private:
+  bool ReadbackImpl(SharedImageReadbackPixmap* pixmaps, uint32_t planes,
+                    const std::atomic_bool* enabled);
   HANDLE shared_handle_ = nullptr;
   bool owned_nt_handle_ = false;
 
