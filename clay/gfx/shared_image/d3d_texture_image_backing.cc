@@ -10,6 +10,7 @@
 #include <d3d11_3.h>
 
 #include <memory>
+#include <utility>
 
 #include "base/include/no_destructor.h"
 #include "clay/gfx/shared_image/utils/image_utils.h"
@@ -60,8 +61,14 @@ class D3DTextureFactory {
 
     ID3D11Device* GetDevice() const { return device_; }
 
+    void WaitForReadbackRetry() {
+      lock_.unlock();
+      ::Sleep(1);
+      lock_.lock();
+    }
+
    private:
-    std::lock_guard<std::recursive_mutex> lock_;
+    std::unique_lock<std::recursive_mutex> lock_;
     ID3D11Device* device_;
   };
   static D3DTextureFactory& Instance();
@@ -456,6 +463,21 @@ D3DTextureImageBacking::CreateSkiaRepresentation(GrDirectContext* gr_context) {
 
 bool D3DTextureImageBacking::ReadbackToMemory(
     SharedImageReadbackPixmap* pixmaps, uint32_t planes) {
+  return ReadbackImpl(pixmaps, planes, nullptr);
+}
+
+bool D3DTextureImageBacking::ReadbackForDisplay(
+    SharedImageReadbackPixmap* pixmaps, uint32_t planes,
+    const std::atomic_bool& enabled) {
+  return ReadbackImpl(pixmaps, planes, &enabled);
+}
+
+bool D3DTextureImageBacking::ReadbackImpl(SharedImageReadbackPixmap* pixmaps,
+                                          uint32_t planes,
+                                          const std::atomic_bool* enabled) {
+  if (enabled && !enabled->load()) {
+    return false;
+  }
   if (!SharedImagePixmapsWritable(pixmaps, planes)) {
     FML_LOG(ERROR) << "Invalid readback pixmap, pixels not allocated.";
     return false;
@@ -518,8 +540,26 @@ bool D3DTextureImageBacking::ReadbackToMemory(
     }
 
     D3D11_MAPPED_SUBRESOURCE mapped_resource = {};
-    HRESULT hr = device_context->Map(staging_texture, 0, D3D11_MAP_READ, 0,
+    HRESULT hr = device_context->Map(staging_texture, 0, D3D11_MAP_READ,
+                                     enabled ? D3D11_MAP_FLAG_DO_NOT_WAIT : 0,
                                      &mapped_resource);
+    if (enabled && hr == DXGI_ERROR_WAS_STILL_DRAWING) {
+      // Another reader must not overwrite this copy while the device lock is
+      // released. It can allocate its own staging texture in the empty slot.
+      auto pending = std::move(staging_texture_);
+      device_context->Flush();
+      do {
+        scoped_device.WaitForReadbackRetry();
+        if (!enabled->load()) {
+          return false;
+        }
+        hr = device_context->Map(pending.Get(), 0, D3D11_MAP_READ,
+                                 D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped_resource);
+      } while (hr == DXGI_ERROR_WAS_STILL_DRAWING);
+      // Keep the mapped texture alive until Unmap, even if a concurrent
+      // reader populated the cache. All access to the cache is serialized.
+      staging_texture_ = std::move(pending);
+    }
     if (FAILED(hr)) {
       FML_LOG(ERROR) << "Failed to map texture for read. hr=" << hr;
       return false;

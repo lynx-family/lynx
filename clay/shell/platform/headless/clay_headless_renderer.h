@@ -34,6 +34,9 @@ class ClayHeadlessRenderer {
    */
   virtual ~ClayHeadlessRenderer();
 
+  // Called on the platform thread before queuing renderer teardown.
+  virtual void StopDrawing() {}
+
   /**
    * Cleanup GPU resources, called in raster thread before destruction
    */

@@ -1025,7 +1025,7 @@ ClayHeadlessRendererSharedImageHostGL::GetEngineRenderer() {
 
 ClayHeadlessRendererSharedImageHostGL::
     ~ClayHeadlessRendererSharedImageHostGL() {
-  draw_tasks_enabled_->store(false);
+  StopDrawing();
   {
     std::lock_guard<std::mutex> lock(shared_image_sink_mutex_);
     // shared_image_sink internally keeps ref to D3D device and mutex,
@@ -1037,6 +1037,10 @@ ClayHeadlessRendererSharedImageHostGL::
   }
   renderer_.reset();
   DestroyHostGLRendererSync();
+}
+
+void ClayHeadlessRendererSharedImageHostGL::StopDrawing() {
+  draw_tasks_enabled_->store(false);
 }
 
 void ClayHeadlessRendererSharedImageHostGL::CleanupGPUResources() {
@@ -1196,8 +1200,11 @@ void ClayHeadlessRendererSharedImageHostGL::Draw() {
                        << height;
         return;
       }
-      if (!backing->ReadbackToMemory(readback_pixmap.get(), 1)) {
-        FML_LOG(ERROR) << "Failed to ReadbackToMemory";
+      if (!backing->ReadbackForDisplay(readback_pixmap.get(), 1,
+                                       *draw_tasks_enabled_)) {
+        if (draw_tasks_enabled_->load()) {
+          FML_LOG(ERROR) << "Failed to ReadbackToMemory";
+        }
         return;
       }
       transformation = backing->GetTransformation();
