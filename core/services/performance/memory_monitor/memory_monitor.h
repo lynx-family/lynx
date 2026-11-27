@@ -6,6 +6,7 @@
 #define CORE_SERVICES_PERFORMANCE_MEMORY_MONITOR_MEMORY_MONITOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -34,7 +35,7 @@ inline constexpr char kHighMemoryEventNotification[] = "lynx_high_memory_event";
 // Caches page memory by source and emits scheduled observations plus one
 // early summary. GlobalMemoryMonitor owns process snapshots and residency.
 //
-// Monitoring questions and query contract, schema_version=12:
+// Monitoring questions and query contract, schema_version=13:
 // - lynxsdk_performance_entry_memory_v2: Q1/Q2 page observations.
 // - lynxsdk_memory_page_residency: Q3.1 fixed 10min lifecycle cohorts.
 // - lynxsdk_memory_page: Q3.2/Q4 periodic active-page samples.
@@ -212,6 +213,8 @@ class MemoryMonitor {
   // Overwrites cached usage.
   // This interface will overwrite the record corresponding to the category in
   // the record, effectively updating the memory usage information.
+  // UI records between kUIMemorySnapshotBegin and kUIMemorySnapshotEnd replace
+  // the previous UI snapshot only when the end sentinel arrives.
   void UpdateMemoryUsage(MemoryRecord&& record, bool force_report = false);
 
   // Refresh at 16ms while tracing, otherwise at 60s, and emit trace counters
@@ -297,6 +300,8 @@ class MemoryMonitor {
   int32_t instance_id_ = report::kUninitializedInstanceId;
   base::LogContext log_context_;
   std::unordered_map<MemoryCategory, MemoryRecord> memory_records_;
+  std::optional<std::unordered_map<MemoryCategory, MemoryRecord>>
+      pending_ui_records_;
   int64_t last_refresh_at_ms_{0};
 
   GlobalMemoryMonitor* global_;

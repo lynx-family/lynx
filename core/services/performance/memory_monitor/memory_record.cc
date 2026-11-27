@@ -20,10 +20,12 @@ MemoryRecord::MemoryRecord(
 
 MemoryRecord::MemoryRecord(
     MemoryCategory category, int64_t size_bytes, int32_t instance_count,
-    std::unique_ptr<std::unordered_map<std::string, std::string>> detail)
+    std::unique_ptr<std::unordered_map<std::string, std::string>> detail,
+    bool is_ui)
     : category_(std::move(category)),
       size_bytes_(size_bytes),
       instance_count_(instance_count),
+      is_ui_(is_ui),
       detail_(std::move(detail)) {}
 
 MemoryRecord& MemoryRecord::operator+=(const MemoryRecord& other) {

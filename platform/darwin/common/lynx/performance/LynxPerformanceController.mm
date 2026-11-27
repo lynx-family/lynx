@@ -143,7 +143,7 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   }];
 }
 
-- (void)updateMemoryUsageWithRecords:(NSDictionary<NSString*, LynxMemoryRecord*>*)records {
+- (void)updateUIMemoryUsage:(NSDictionary<NSString*, LynxMemoryRecord*>*)records {
   if (_embeddedModeEnabled) {
     return;
   }
@@ -151,12 +151,16 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
     return;
   }
   [self ActAsync:^(const std::unique_ptr<performance::PerformanceController>& controller) {
+    controller->GetMemoryMonitor().UpdateMemoryUsage(
+        performance::MemoryRecord(performance::kUIMemorySnapshotBegin));
     [records enumerateKeysAndObjectsUsingBlock:^(
                  NSString* _Nonnull key, LynxMemoryRecord* _Nonnull record, BOOL* _Nonnull stop) {
       controller->GetMemoryMonitor().UpdateMemoryUsage(performance::MemoryRecord(
           [record.category UTF8String], record.sizeBytes, record.instanceCount,
-          ConvertNSDictToUnorderedMap(record.detail)));
+          ConvertNSDictToUnorderedMap(record.detail), true));
     }];
+    controller->GetMemoryMonitor().UpdateMemoryUsage(
+        performance::MemoryRecord(performance::kUIMemorySnapshotEnd));
   }];
 }
 

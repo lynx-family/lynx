@@ -3011,7 +3011,7 @@ public protocol LynxMemoryMonitorProtocol-p : <NSObject> {
   public void LynxMemoryMonitorProtocol-p::allocateMemory:(LynxMemoryRecordBuilder _Nonnull recordBuilder);
   public void LynxMemoryMonitorProtocol-p::deallocateMemory:(LynxMemoryRecordBuilder _Nonnull recordBuilder);
   public void LynxMemoryMonitorProtocol-p::updateMemoryUsage:(LynxMemoryRecordBuilder _Nonnull recordBuilder);
-  public void LynxMemoryMonitorProtocol-p::updateMemoryUsageWithRecords:(NSDictionary< NSString *, LynxMemoryRecord * > *records);
+  public void LynxMemoryMonitorProtocol-p::updateUIMemoryUsage:(NSDictionary< NSString *, LynxMemoryRecord * > *records);
   public BOOL LynxMemoryMonitorProtocol-p::isMemoryMonitorEnabled();
 }
 
@@ -5431,6 +5431,7 @@ public protocol LynxUITarget-p : <NSObject> {
   public void LynxUITarget-p::targetOffScreen();
   public int64_t LynxUITarget-p::memoryUsageBytes();
   public NSDictionary< NSString *, NSString * > * LynxUITarget-p::memoryUsageDetail();
+  public int64_t LynxUITarget-p::memoryUsageBytesWithSharedOwners:(NSHashTable *sharedOwners);
 }
 
 public class LynxUIText : LynxUI, <LynxTextView> {

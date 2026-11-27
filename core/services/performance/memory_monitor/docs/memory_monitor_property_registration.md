@@ -1,6 +1,6 @@
 # Memory Monitor Event Property Reference
 
-Applies to `schema_version=12`. The page event keeps its `_v2` name. The global
+Applies to `schema_version=13`. The page event keeps its `_v2` name. The global
 snapshot has been split into analysis-specific events whose names intentionally
 have no `_v2` suffix.
 
@@ -13,7 +13,7 @@ All global events contain:
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `schema_version` | int32 | Event schema version, currently 12. |
+| `schema_version` | int32 | Event schema version, currently 13. |
 
 Global-event deduplication is provided by the data platform rather than
 monitor-owned properties.
@@ -204,7 +204,7 @@ eligible.
 | `mts_pool_heap_bytes_weighted` | double | Heap multiplied by P. |
 | `mts_pool_heap_selection_weight` | double | Heap denominator P, always emitted with heap fields. |
 
-## Page event: `lynxsdk_performance_entry_memory_v2` - 21 fixed properties plus UI categories
+## Page event: `lynxsdk_performance_entry_memory_v2` - 22 fixed properties plus UI categories
 
 Page events have two carriers: `scheduled` observations and an `early_summary`
 emitted at destruction if the summary is still pending. Scheduled delivery
@@ -215,7 +215,7 @@ standalone `early_summary`. Planned points and early statistics are unchanged.
 
 | Property | Type | Description |
 | --- | --- | --- |
-| `schema_version` | int32 | Event schema version, currently 12. |
+| `schema_version` | int32 | Event schema version, currently 13. |
 | `lynx_ui_memory_enabled` | int32 | Whether Lynx UI memory collection is enabled. |
 | `page_key` | string | Host page ID or URL fallback. |
 | `mts_context_type` | int32 | MTS runtime context. |
@@ -227,6 +227,7 @@ standalone `early_summary`. Planned points and early statistics are unchanged.
 | `current_mts_heap_bytes` | double | Current measured MTS heap. |
 | `current_bts_attributed_bytes` | double | Current attributable BTS memory. |
 | `current_platform_ui_bytes` | double | Current Lynx UI memory. |
+| `current_graphics_bytes` | double | Current memory of graphics categories after shared-owner deduplication; a subset of UI memory. Scheduled rows only. |
 | `current_page_memory_bytes` | double | Sum of all available page records. |
 | `has_early_usage_summary` | int32 | Whether the row carries the unique early summary. |
 | `early_window_target_duration_ms` | double | Summary target duration, clamped to 0-20000ms. |
@@ -244,6 +245,16 @@ The value is the record's cached byte size, including zero. Element, MTS, and
 BTS records do not generate these properties. Saved end summaries omit them.
 These UI details overlap `current_platform_ui_bytes`; do not add them to the
 page total again.
+
+`current_graphics_bytes` includes the entire byte size of each category selected
+by the platform's graphics classifier, including per-UI base memory. It is an
+estimate of category-attributed memory, not a measurement of GPU-resident memory.
+Shared bytes are counted once per owner within a page collection; each UI's own
+bytes and instance count are preserved. This does not deduplicate owners across
+pages. Removed UI categories report zero on the next collection.
+The graphics subtotal is already included in `current_platform_ui_bytes` and
+`current_page_memory_bytes`. No graphics early mean or peak is emitted.
+The open-source classifier selects no categories and reports zero.
 
 ## Implementation references
 

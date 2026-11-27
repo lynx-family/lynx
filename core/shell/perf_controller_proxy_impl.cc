@@ -100,10 +100,14 @@ void PerfControllerProxyImpl::UpdateUIMemoryUsage(
   }
   perf_actor_->ActAsync([usage = std::move(usage)](auto& controller) {
     auto& monitor = controller->GetMemoryMonitor();
+    monitor.UpdateMemoryUsage(tasm::performance::MemoryRecord(
+        tasm::performance::kUIMemorySnapshotBegin));
     for (const auto& [tag, entry] : usage) {
       monitor.UpdateMemoryUsage(tasm::performance::MemoryRecord(
-          tag, entry.size_bytes, entry.instance_count, nullptr));
+          tag, entry.size_bytes, entry.instance_count, nullptr, true));
     }
+    monitor.UpdateMemoryUsage(tasm::performance::MemoryRecord(
+        tasm::performance::kUIMemorySnapshotEnd));
   });
 }
 

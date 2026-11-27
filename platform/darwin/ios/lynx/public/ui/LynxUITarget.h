@@ -13,6 +13,12 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)targetOffScreen;
 - (int64_t)memoryUsageBytes;
 - (NSDictionary<NSString *, NSString *> *)memoryUsageDetail;
+/**
+ * Returns bytes to count in this collection. Shared allocations should be counted
+ * only when their owner is first added to sharedOwners, which compares by identity.
+ * The default implementation calls memoryUsageBytes.
+ */
+- (int64_t)memoryUsageBytesWithSharedOwners:(NSHashTable *)sharedOwners;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -1138,17 +1138,17 @@ static NSString* const kPositionChangeEvent = @"positionchange";
 }
 
 - (NSDictionary<NSString*, LynxMemoryRecord*>*)getMemoryUsage {
-  if ([_uiHolder count] == 0) {
-    return nil;
-  }
   NSMutableDictionary<NSString*, LynxMemoryRecord*>* uiMemUsage = [NSMutableDictionary dictionary];
+  NSHashTable* sharedOwners =
+      [NSHashTable hashTableWithOptions:NSPointerFunctionsStrongMemory |
+                                        NSPointerFunctionsObjectPointerPersonality];
   [[_uiHolder copy] enumerateKeysAndObjectsUsingBlock:^(NSNumber* _Nonnull key,
                                                         LynxUI* _Nonnull obj, BOOL* _Nonnull stop) {
     NSString* tag = [obj tagName];
     if (!tag) {
       return;
     }
-    int64_t objSizeBytes = [obj memoryUsageBytes];
+    int64_t objSizeBytes = [obj memoryUsageBytesWithSharedOwners:sharedOwners];
     LynxMemoryRecord* record = [uiMemUsage objectForKey:tag];
     if (!record) {
       record = [[LynxMemoryRecord alloc] initWithCategory:tag sizeBytes:0.f detail:nil];

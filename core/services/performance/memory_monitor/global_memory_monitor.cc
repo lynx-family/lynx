@@ -1003,6 +1003,7 @@ GlobalMemoryUsage GlobalMemoryMonitor::BuildGlobalMemoryUsage(
     result.total.element_count += usage.element_count;
     result.total.mts_bytes += usage.mts_bytes;
     result.total.ui_bytes += usage.ui_bytes;
+    result.total.graphics_bytes += usage.graphics_bytes;
     result.total.total_bytes +=
         usage.total_bytes - (usage.bts_shared ? usage.bts_bytes : 0);
     if (usage.bts_shared) {

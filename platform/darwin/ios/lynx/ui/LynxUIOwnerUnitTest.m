@@ -5,6 +5,7 @@
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxContext+Private.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxMemoryRecord.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIOwner.h>
@@ -42,6 +43,82 @@
 @end
 
 @implementation LynxUIOwnerUnitTest
+
+- (void)testMemoryUsageDeduplicatesSharedOwnersWithoutReadSideEffects {
+  id firstOwner = [NSMutableString stringWithString:@"shared-owner"];
+  id secondOwner = [NSMutableString stringWithString:@"shared-owner"];
+  NSMutableDictionary<NSNumber *, LynxUI *> *holder = [NSMutableDictionary new];
+  __block int64_t sharedBytes = 100;
+  for (int index = 1; index <= 3; ++index) {
+    id ui = OCMClassMock([LynxUI class]);
+    OCMStub([ui tagName]).andReturn(index == 3 ? @"surface-other" : @"surface");
+    id sharedOwner = index == 3 ? secondOwner : firstOwner;
+    OCMStub([ui memoryUsageBytesWithSharedOwners:[OCMArg any]]).andDo(^(NSInvocation *invocation) {
+      NSHashTable *__unsafe_unretained sharedOwners = nil;
+      [invocation getArgument:&sharedOwners atIndex:2];
+      int64_t bytes = index * 10;
+      if (![sharedOwners containsObject:sharedOwner]) {
+        [sharedOwners addObject:sharedOwner];
+        bytes += index == 3 ? 200 : sharedBytes;
+      }
+      [invocation setReturnValue:&bytes];
+    });
+    OCMStub([ui memoryUsageDetail]).andReturn(@{@"source" : @"test"});
+    holder[@(index)] = ui;
+  }
+  id ordinary = OCMPartialMock([LynxUI new]);
+  OCMStub([ordinary tagName]).andReturn(@"ordinary");
+  OCMStub([ordinary memoryUsageBytes]).andReturn((int64_t)40);
+  holder[@4] = ordinary;
+  NSHashTable *sharedOwners =
+      [NSHashTable hashTableWithOptions:NSPointerFunctionsStrongMemory |
+                                        NSPointerFunctionsObjectPointerPersonality];
+  [sharedOwners addObject:firstOwner];
+  XCTAssertEqual([ordinary memoryUsageBytesWithSharedOwners:sharedOwners], 40);
+  XCTAssertEqual(sharedOwners.count, 1U);
+
+  [self.uiOwner setValue:holder forKey:@"uiHolder"];
+  NSDictionary<NSString *, LynxMemoryRecord *> *records = [self.uiOwner getMemoryUsage];
+  XCTAssertEqual(records[@"surface"].sizeBytes, 130);
+  XCTAssertEqual(records[@"surface"].instanceCount, 2);
+  XCTAssertEqualObjects(records[@"surface"].detail[@"source"], @"test");
+  XCTAssertEqual(records[@"surface-other"].sizeBytes, 230);
+  XCTAssertEqual(records[@"ordinary"].sizeBytes, 40);
+  XCTAssertEqual([self.uiOwner getMemoryUsage][@"surface"].sizeBytes, 130);
+
+  id alias = OCMClassMock([LynxUI class]);
+  OCMStub([alias tagName]).andReturn(@"surface-alias");
+  OCMStub([alias memoryUsageBytesWithSharedOwners:[OCMArg any]]).andDo(^(NSInvocation *invocation) {
+    NSHashTable *__unsafe_unretained owners = nil;
+    [invocation getArgument:&owners atIndex:2];
+    int64_t bytes = 20;
+    if (![owners containsObject:firstOwner]) {
+      [owners addObject:firstOwner];
+      bytes += sharedBytes;
+    }
+    [invocation setReturnValue:&bytes];
+  });
+  holder[@2] = alias;
+  sharedBytes = 150;
+  records = [self.uiOwner getMemoryUsage];
+  XCTAssertEqual(records[@"surface"].sizeBytes + records[@"surface-alias"].sizeBytes, 180);
+  XCTAssertEqual(records[@"surface"].instanceCount, 1);
+  XCTAssertEqual(records[@"surface-alias"].instanceCount, 1);
+
+  [holder removeObjectsForKeys:@[ @1, @2, @3 ]];
+  records = [self.uiOwner getMemoryUsage];
+  XCTAssertEqual(records.count, 1U);
+  XCTAssertNil(records[@"surface"]);
+  XCTAssertNil(records[@"surface-alias"]);
+  XCTAssertNil(records[@"surface-other"]);
+  XCTAssertEqual(records[@"ordinary"].sizeBytes, 40);
+  // A diagnostic read cannot consume removal state needed by the reporter.
+  XCTAssertEqual([self.uiOwner getMemoryUsage].count, records.count);
+  XCTAssertEqual([self.uiOwner getMemoryUsage][@"ordinary"].sizeBytes, 40);
+  [holder removeAllObjects];
+  XCTAssertEqual([self.uiOwner getMemoryUsage].count, 0U);
+  XCTAssertEqual([self.uiOwner getMemoryUsage].count, 0U);
+}
 
 - (void)setUp {
   self.uiOwner = [[LynxUIOwner alloc] init];

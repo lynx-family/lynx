@@ -2484,7 +2484,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                    strongSelf->_isMemoryCollecting = NO;
                    NSDictionary<NSString*, LynxMemoryRecord*>* records =
                        [[strongSelf uiOwner] getMemoryUsage];
-                   [[strongSelf performanceController] updateMemoryUsageWithRecords:records];
+                   [[strongSelf performanceController] updateUIMemoryUsage:records];
                  });
 }
 
