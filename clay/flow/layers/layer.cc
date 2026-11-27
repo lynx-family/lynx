@@ -41,9 +41,7 @@ void Layer::PreservePaintRegion(DiffContext* context) {
 
 void Layer::SavePrerollSummary(const PrerollContext& context,
                                size_t raster_cache_entry_count_before) {
-  // A quick-rejected subtree was not fully visited, so its bounds, propagated
-  // flags, and raster cache entries cannot describe a future visible frame.
-  preroll_summary_.is_valid = !context.subtree_was_quick_rejected;
+  preroll_summary_.is_valid = true;
   preroll_summary_.raster_cache_enabled = context.raster_cache != nullptr;
   preroll_summary_.has_raster_cache_entries =
       context.raster_cached_entries &&
