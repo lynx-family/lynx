@@ -255,6 +255,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getRenderer();
   public View com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getView();
+  public ViewGroup com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getRendererChildViewGroup();
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.onTouchEvent(MotionEvent ev);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.bindDrawChildHook(IDrawChildHook hook);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.addView(View child);
@@ -3308,6 +3309,7 @@ public interface com::lynx::tasm::behavior::render::IRendererHost {
   public default boolean com.lynx.tasm.behavior.render.IRendererHost.invokeUIMethod(String method, ReadableMap params, Callback callback);
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostWidth();
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostHeight();
+  public default boolean com.lynx.tasm.behavior.render.IRendererHost.isRendererHostScrollContainer();
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostScrollX();
   public default int com.lynx.tasm.behavior.render.IRendererHost.getRendererHostScrollY();
   public default ViewGroup com.lynx.tasm.behavior.render.IRendererHost.getRendererChildViewGroup();
@@ -9927,7 +9929,11 @@ public class com::lynx::tasm::behavior::render::Renderer :  {
   public final int com.lynx.tasm.behavior.render.Renderer.REPAINT_TYPE_DRAW_ONLY REPAINT_TYPE_DRAW_ONLY;
   public final int com.lynx.tasm.behavior.render.Renderer.REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
   public void com.lynx.tasm.behavior.render.Renderer.setLynxFrame(boolean needClip, int l, int t, int r, int b, int dx, int dy);
+  public void com.lynx.tasm.behavior.render.Renderer.publishChildPositions();
+  public void com.lynx.tasm.behavior.render.Renderer.publishChildPositions(View translatedChild, float translationY);
+  public void com.lynx.tasm.behavior.render.Renderer.publishChildDrawingOrder();
   public void com.lynx.tasm.behavior.render.Renderer.publishScrollOffset(float x, float y);
+  public void com.lynx.tasm.behavior.render.Renderer.publishViewTransform(boolean enabled);
   public void com.lynx.tasm.behavior.render.Renderer.publishStickyOffset(float x, float y, boolean sticky);
   public void com.lynx.tasm.behavior.render.Renderer.publishSiblingOrder(int order);
   public void com.lynx.tasm.behavior.render.Renderer.publishIsOnTree(boolean isOnTree);

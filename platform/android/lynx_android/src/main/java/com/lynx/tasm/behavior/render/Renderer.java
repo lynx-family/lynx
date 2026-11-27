@@ -11,11 +11,14 @@ import android.graphics.RectF;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import androidx.core.view.ViewCompat;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.list.container.UIListContainer;
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class Renderer {
   private static final String TAG = "NativeUIRenderer.Renderer";
@@ -40,8 +43,14 @@ public class Renderer {
   private java.nio.ByteBuffer mDisplayListDataBuffer = null;
   private IRendererHost mRenderHost;
   private LynxBaseUI mUIHost;
+  // Native wrappers and UIOwner parents can differ from the renderer tree.
+  int mParentSign = -1;
   private boolean mNativeInteractionEnabled;
   private boolean mHasStickyPosition;
+  private boolean mNeedsTreeStateRestore;
+  private boolean mPublishesChildDrawingOrder;
+  private Matrix mViewTransform;
+  private float[] mViewTransformValues;
   private int mSiblingOrder = -1;
 
   private int mRepaintType = REPAINT_TYPE_GET_DISPLAY_LIST_AND_DRAW;
@@ -71,8 +80,107 @@ public class Renderer {
     }
   }
 
+  // Native wrappers do not appear in the event tree. Fold their layout and
+  // scrolling into each direct renderer child's content position, leaving the
+  // host's own CSS transform and child scrolling to C++ hit testing.
+  public void publishChildPositions() {
+    publishChildPositions(null, 0);
+  }
+
+  public void publishChildPositions(View translatedChild, float translationY) {
+    if (mRenderHost == null || !(mRenderHost.getView() instanceof ViewGroup)) {
+      return;
+    }
+    ViewGroup root = (ViewGroup) mRenderHost.getView();
+    float scrollX = mRenderHost.getRendererHostScrollX();
+    float scrollY = mRenderHost.getRendererHostScrollY();
+    publishScrollOffset(scrollX, scrollY);
+    publishChildPositions(root, scrollX - root.getScrollX(), scrollY - root.getScrollY(),
+        translatedChild, translationY);
+  }
+
+  private void publishChildPositions(
+      ViewGroup parent, float x, float y, View translatedChild, float translationY) {
+    for (int i = 0; i < parent.getChildCount(); i++) {
+      View child = parent.getChildAt(i);
+      float left = x + child.getLeft();
+      float top = y + child.getTop();
+      Renderer renderer =
+          child instanceof IRendererHost ? ((IRendererHost) child).getRenderer() : null;
+      if (renderer != null && renderer.mParentSign == mSign) {
+        renderer.publishIsOnTree(true);
+        renderer.mPlatformRendererContext.publishLayoutPosition(
+            renderer.mSign, left, top + (child == translatedChild ? translationY : 0));
+      } else if (renderer == null && child instanceof ViewGroup) {
+        publishChildPositions((ViewGroup) child,
+            left + child.getTranslationX() - child.getScrollX(),
+            top + child.getTranslationY() - child.getScrollY(), translatedChild, translationY);
+      }
+    }
+  }
+
+  // Opt-in containers use native wrapper order rather than logical child order.
+  public void publishChildDrawingOrder() {
+    if (mRenderHost != null && mRenderHost.getView() instanceof ViewGroup) {
+      mPublishesChildDrawingOrder = true;
+      publishChildDrawingOrder((ViewGroup) mRenderHost.getView(), 0);
+    }
+  }
+
+  private int publishChildDrawingOrder(ViewGroup parent, int order) {
+    ArrayList<View> children = new ArrayList<>(parent.getChildCount());
+    for (int i = 0; i < parent.getChildCount(); i++) {
+      children.add(parent.getChildAt(i));
+    }
+    // Equal-Z children retain their native insertion order.
+    Collections.sort(
+        children, (left, right) -> Float.compare(ViewCompat.getZ(left), ViewCompat.getZ(right)));
+    for (View child : children) {
+      Renderer renderer =
+          child instanceof IRendererHost ? ((IRendererHost) child).getRenderer() : null;
+      if (renderer != null && renderer.mParentSign == mSign) {
+        renderer.publishSiblingOrder(order++);
+      } else if (renderer == null && child instanceof ViewGroup) {
+        order = publishChildDrawingOrder((ViewGroup) child, order);
+      }
+    }
+    return order;
+  }
+
   public void publishScrollOffset(float x, float y) {
     mPlatformRendererContext.publishScrollOffset(mSign, x, y);
+  }
+
+  public void publishViewTransform(boolean enabled) {
+    if (!enabled) {
+      if (mViewTransform != null) {
+        mViewTransform = null;
+        mViewTransformValues = null;
+        mPlatformRendererContext.publishViewTransform(mSign, null);
+      }
+      return;
+    }
+    View view = mRenderHost != null ? mRenderHost.getView() : null;
+    if (view == null) {
+      return;
+    }
+    if (mViewTransform == null) {
+      mViewTransform = new Matrix();
+      // Row-major 3x3 matrix followed by the untransformed host width/height.
+      mViewTransformValues = new float[11];
+    }
+    mViewTransform.set(view.getMatrix());
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+      Matrix animation = view.getAnimationMatrix();
+      if (animation != null) {
+        // Android draws the property transform inside the animation (CSS) matrix.
+        mViewTransform.postConcat(animation);
+      }
+    }
+    mViewTransform.getValues(mViewTransformValues);
+    mViewTransformValues[9] = view.getWidth();
+    mViewTransformValues[10] = view.getHeight();
+    mPlatformRendererContext.publishViewTransform(mSign, mViewTransformValues);
   }
 
   public void publishStickyOffset(float x, float y, boolean sticky) {
@@ -91,11 +199,23 @@ public class Renderer {
   }
 
   public void publishIsOnTree(boolean isOnTree) {
+    mNeedsTreeStateRestore = !isOnTree;
     if (!isOnTree) {
+      mViewTransform = null;
+      mViewTransformValues = null;
       mHasStickyPosition = false;
       mSiblingOrder = -1;
     }
     mPlatformRendererContext.publishIsOnTree(mSign, isOnTree);
+  }
+
+  void onRemoveFromParent() {
+    mParentSign = -1;
+    publishViewTransform(false);
+    if (mSiblingOrder != -1) {
+      // Drawing ranks belong to the old native parent, not the new container.
+      publishIsOnTree(false);
+    }
   }
 
   public Point getRenderOffset() {
@@ -181,6 +301,10 @@ public class Renderer {
         }
         Rect childFrame = childRenderer.getLynxFrame();
         child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
+        if (childRenderer.mNeedsTreeStateRestore && childRenderer.mParentSign == mSign
+            && child.getParent() == viewGroup) {
+          childRenderer.publishIsOnTree(true);
+        }
         if (mUIHost instanceof UIListContainer) {
           // Sticky translation and CSS transforms are published/applied separately.
           childRenderer.mPlatformRendererContext.publishLayoutPosition(
@@ -343,6 +467,7 @@ public class Renderer {
 
   public void updateExtraData(Object extraData) {}
   public void onDestroy() {
+    mParentSign = -1;
     mDisplayListApplier = null;
     mDisplayListItemsBuffer = null;
     mDisplayListDataBuffer = null;
@@ -369,7 +494,20 @@ public class Renderer {
         for (int j = 0; j < 16; j++) {
           transform[j] = buffer.getFloat();
         }
+        IRendererHost parentHost = mSiblingOrder >= 0 && mParentSign >= 0
+            ? mPlatformRendererContext.mViewHolder.get(mParentSign)
+            : null;
+        Renderer parentRenderer = parentHost != null ? parentHost.getRenderer() : null;
+        boolean updateOrder = parentRenderer != null && parentRenderer.mPublishesChildDrawingOrder;
+        View view = rendererHost.getView();
+        float oldZ = updateOrder && view != null ? ViewCompat.getZ(view) : 0;
         rendererHost.applyRendererTransform(transform);
+        if (mViewTransform != null) {
+          publishViewTransform(true);
+        }
+        if (updateOrder && view != null && oldZ != ViewCompat.getZ(view)) {
+          parentRenderer.publishChildDrawingOrder();
+        }
       } else if (type == SUBTREE_OP_OPACITY) {
         float opacity = buffer.getFloat();
         rendererHost.applyRendererOpacity(opacity);

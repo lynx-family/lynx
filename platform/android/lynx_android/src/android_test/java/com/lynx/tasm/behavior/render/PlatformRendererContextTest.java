@@ -25,6 +25,12 @@ import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.PropBundle;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
+import com.lynx.tasm.behavior.ui.scroll.UIScrollView;
+import com.lynx.tasm.behavior.ui.swiper.ModeCarryTransformer;
+import com.lynx.tasm.behavior.ui.swiper.ModeCoverFlowTransformer;
+import com.lynx.tasm.behavior.ui.swiper.ViewPager;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.image.ScalingUtils;
 import com.lynx.tasm.performance.PerformanceController;
@@ -120,6 +126,202 @@ public class PlatformRendererContextTest {
     verify(context).publishIsOnTree(99, false);
     verify(context, times(2)).publishSiblingOrder(99, 2);
     verifyNoMoreInteractions(context);
+  }
+
+  @Test
+  public void testNativeWrapperPositionsExcludeHostTransformAndChildScrolling() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      Context androidContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+      PlatformRendererContext context = mock(PlatformRendererContext.class);
+      FrameLayout root = new FrameLayout(androidContext);
+      FrameLayout wrapper = new FrameLayout(androidContext);
+      AndroidView child = new AndroidView(androidContext);
+      Renderer parentRenderer = new Renderer(context, 1);
+      Renderer childRenderer = new Renderer(context, 2);
+      parentRenderer.setRenderHost(new TestRendererHost(root, parentRenderer, 120, 0));
+      child.setRenderer(childRenderer);
+      childRenderer.mParentSign = 1;
+      root.addView(wrapper);
+      wrapper.addView(child);
+      wrapper.layout(12, 20, 400, 400);
+      wrapper.scrollTo(120, 17);
+      wrapper.setTranslationY(8);
+      child.layout(240, 60, 340, 160);
+      child.setTranslationY(30); // CSS is applied separately by hit testing.
+      child.scrollTo(0, 40); // The child's own content scroll is not its origin.
+
+      parentRenderer.publishChildPositions();
+      verify(context).publishScrollOffset(1, 120, 0);
+      verify(context).publishLayoutPosition(2, 252, 71);
+      parentRenderer.publishChildPositions(child, 40);
+      verify(context).publishLayoutPosition(2, 252, 111);
+      parentRenderer.publishChildPositions(child, 0);
+      verify(context, times(2)).publishLayoutPosition(2, 252, 71);
+
+      // Circular paging can relocate a surviving host without a new display list.
+      child.layout(-120, 60, -20, 160);
+      parentRenderer.publishChildPositions();
+      verify(context).publishLayoutPosition(2, -108, 71);
+      // A moved native view must not overwrite geometry owned by another parent.
+      childRenderer.mParentSign = -1;
+      clearInvocations(context);
+      parentRenderer.publishChildPositions();
+      verify(context).publishScrollOffset(1, 120, 0);
+      verifyNoMoreInteractions(context);
+
+      // Reuse the host under plain, vertical-scroll and horizontal-scroll parents.
+      AndroidScrollView vertical = new AndroidScrollView(androidContext, mock(UIScrollView.class));
+      AndroidScrollView horizontal =
+          new AndroidScrollView(androidContext, mock(UIScrollView.class));
+      horizontal.setOrientation(AndroidScrollView.HORIZONTAL);
+      int spec =
+          android.view.View.MeasureSpec.makeMeasureSpec(400, android.view.View.MeasureSpec.EXACTLY);
+      for (ViewGroup newRoot :
+          new ViewGroup[] {new AndroidView(androidContext), vertical, horizontal}) {
+        clearInvocations(context);
+        childRenderer.publishSiblingOrder(3);
+        childRenderer.onRemoveFromParent();
+        verify(context).publishIsOnTree(2, false);
+        ((ViewGroup) child.getParent()).removeView(child);
+        Renderer newRenderer = new Renderer(context, 4);
+        IRendererHost host = (IRendererHost) newRoot;
+        host.setRenderer(newRenderer);
+        newRenderer.setRenderHost(host);
+        newRoot.measure(spec, spec);
+        newRoot.layout(0, 0, 400, 400);
+        newRoot.addView(child);
+        newRoot.measure(spec, spec);
+        newRoot.layout(0, 0, 400, 400);
+        verify(context, never()).publishIsOnTree(2, true);
+        childRenderer.mParentSign = 4;
+        newRoot.requestLayout();
+        newRoot.measure(spec, spec);
+        newRoot.layout(0, 0, 400, 400);
+        newRoot.requestLayout();
+        newRoot.measure(spec, spec);
+        newRoot.layout(0, 0, 400, 400);
+        verify(context, times(1)).publishIsOnTree(2, true);
+      }
+    });
+  }
+
+  @Test
+  public void testPageTransformsIncludeCSSAndClearOnReuse() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      PlatformRendererContext context = mock(PlatformRendererContext.class);
+      AndroidView page =
+          new AndroidView(InstrumentationRegistry.getInstrumentation().getTargetContext());
+      Renderer renderer = new Renderer(context, 2);
+      page.setRenderer(renderer);
+      renderer.setRenderHost(page);
+      page.layout(0, 0, 200, 100);
+      ViewPager pager = mock(ViewPager.class);
+      when(pager.getChildExpectSize()).thenReturn(200);
+      ModeCarryTransformer carry = new ModeCarryTransformer();
+      carry.setNormTranslationFactor(1);
+      carry.transformPage(pager, page, false, 100);
+      renderer.publishViewTransform(true);
+      ArgumentCaptor<float[]> matrix = ArgumentCaptor.forClass(float[].class);
+      verify(context).publishViewTransform(eq(2), matrix.capture());
+      assertEquals(200.f, matrix.getValue()[9], 0.f);
+      assertEquals(100.f, matrix.getValue()[10], 0.f);
+      assertEquals(0.9f, matrix.getValue()[0], 0.001f);
+      assertEquals(0.f, matrix.getValue()[2], 0.001f);
+
+      // CSS updates must refresh the complete matrix without applying CSS twice.
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        clearInvocations(context);
+        ByteBuffer transform = ByteBuffer.allocateDirect(68).order(ByteOrder.nativeOrder());
+        transform.putInt(0);
+        for (int i = 0; i < 16; i++) {
+          transform.putFloat(i == 12 ? 30 : (i == 0 ? 2 : (i % 5 == 0 ? 1 : 0)));
+        }
+        renderer.applySubtreeProperties(transform, 1);
+        verify(context).publishViewTransform(eq(2), matrix.capture());
+        assertEquals(1.8f, matrix.getValue()[0], 0.001f);
+        assertEquals(30.f, matrix.getValue()[2], 0.001f);
+      }
+
+      clearInvocations(context);
+      carry.reset(page);
+      new ModeCoverFlowTransformer().transformPage(pager, page, false, 100);
+      renderer.publishViewTransform(true);
+      verify(context).publishViewTransform(eq(2), matrix.capture());
+      assertNotEquals(0.f, matrix.getValue()[6], 0.f);
+      clearInvocations(context);
+      renderer.publishViewTransform(false);
+      verify(context).publishViewTransform(2, null);
+      clearInvocations(context);
+      renderer.publishViewTransform(true);
+      renderer.onRemoveFromParent();
+      verify(context).publishViewTransform(2, null);
+      clearInvocations(context);
+      renderer.publishIsOnTree(false);
+      renderer.publishViewTransform(true);
+      verify(context).publishViewTransform(eq(2), any(float[].class));
+    });
+  }
+
+  @Test
+  public void testNativeWrapperDrawingOrderTracksReorderingAndZ() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      Context androidContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+      PlatformRendererContext context = mock(PlatformRendererContext.class);
+      FrameLayout root = new FrameLayout(androidContext);
+      FrameLayout appBar = new FrameLayout(androidContext);
+      AndroidView header = new AndroidView(androidContext);
+      AndroidView slot = new AndroidView(androidContext);
+      Renderer parentRenderer = new Renderer(context, 1);
+      Renderer headerRenderer = new Renderer(context, 2);
+      Renderer slotRenderer = new Renderer(context, 3);
+      parentRenderer.setRenderHost(new TestRendererHost(root, parentRenderer));
+      header.setRenderer(headerRenderer);
+      slot.setRenderer(slotRenderer);
+      headerRenderer.mParentSign = slotRenderer.mParentSign = 1;
+      appBar.addView(header);
+      root.addView(appBar);
+      root.addView(slot);
+      parentRenderer.publishChildDrawingOrder();
+      verify(context).publishSiblingOrder(2, 0);
+      verify(context).publishSiblingOrder(3, 1);
+
+      clearInvocations(context);
+      root.bringChildToFront(appBar);
+      parentRenderer.publishChildDrawingOrder();
+      verify(context).publishSiblingOrder(3, 0);
+      verify(context).publishSiblingOrder(2, 1);
+
+      clearInvocations(context);
+      root.bringChildToFront(slot);
+      parentRenderer.publishChildDrawingOrder();
+      verify(context).publishSiblingOrder(2, 0);
+      verify(context).publishSiblingOrder(3, 1);
+
+      clearInvocations(context);
+      appBar.setElevation(10);
+      parentRenderer.publishChildDrawingOrder();
+      verify(context).publishSiblingOrder(3, 0);
+      verify(context).publishSiblingOrder(2, 1);
+
+      // A transform changing native Z must invalidate opted-in parent order.
+      context.mViewHolder = new java.util.HashMap<>();
+      context.mViewHolder.put(1, parentRenderer.getRendererHost());
+      slotRenderer.setRenderHost(new TestRendererHost(slot, slotRenderer) {
+        @Override
+        public void applyRendererTransform(float[] transform) {
+          slot.setTranslationZ(transform[14]);
+        }
+      });
+      ByteBuffer transform = ByteBuffer.allocateDirect(68).order(ByteOrder.nativeOrder());
+      transform.putInt(0);
+      for (int i = 0; i < 16; i++) {
+        transform.putFloat(i == 14 ? 20 : (i % 5 == 0 ? 1 : 0));
+      }
+      clearInvocations(context);
+      slotRenderer.applySubtreeProperties(transform, 1);
+      verify(context).publishSiblingOrder(2, 0);
+      verify(context).publishSiblingOrder(3, 1);
+    });
   }
 
   @Test
@@ -413,13 +615,17 @@ public class PlatformRendererContextTest {
     ViewGroup mockParentView = mock(ViewGroup.class);
     ViewGroup mockChildView = mock(ViewGroup.class);
     when(mockParentView.getChildCount()).thenReturn(2);
+    Renderer childRenderer = new Renderer(rendererContext, 2);
     IRendererHost parentHost = createHost(mockParentView);
-    IRendererHost childHost = createHost(mockChildView);
+    IRendererHost childHost = createHost(mockChildView, childRenderer);
     rendererContext.mViewHolder.put(1, parentHost);
     rendererContext.mViewHolder.put(2, childHost);
 
     rendererContext.insertPlatformRenderer(1, 2, -1, false);
     verify(mockParentView).addView(mockChildView);
+    assertEquals(1, childRenderer.mParentSign);
+    rendererContext.removePlatformRendererFromParent(1, 2, false);
+    assertEquals(-1, childRenderer.mParentSign);
   }
 
   @Test
@@ -543,6 +749,16 @@ public class PlatformRendererContextTest {
     rendererContext.mViewHolder.put(1, createHost(mockView, renderer));
 
     assertTrue(rendererContext.isRendererHostScrollable(1));
+    when(uiHost.isScrollable()).thenReturn(false);
+    assertFalse(rendererContext.isRendererHostScrollable(1));
+    IRendererHost host = mock(IRendererHost.class);
+    when(host.getRenderer()).thenReturn(renderer);
+    when(host.isRendererHostScrollContainer()).thenReturn(true);
+    rendererContext.mViewHolder.put(1, host);
+    assertTrue(rendererContext.isRendererHostScrollable(1));
+    assertFalse(uiHost.isScrollable());
+    when(host.getRenderer()).thenReturn(null);
+    assertFalse(rendererContext.isRendererHostScrollable(1));
     assertFalse(rendererContext.isRendererHostScrollable(99));
   }
 

@@ -5119,6 +5119,167 @@ TEST_F(FragmentTest, PublishedListStickyHitTestHandlesOverlapAndHandoff) {
       30);  // A reused host must not retain the previous sticky position.
 }
 
+TEST_F(FragmentTest,
+       PublishedViewTransformOverridesCSSAndPreservesPerspective) {
+  auto root = fml::MakeRefCounted<TestPlatformRenderer>(
+      kRootId, PlatformRendererType::kPage);
+  auto page = fml::MakeRefCounted<TestPlatformRenderer>(
+      1, PlatformRendererType::kExtended);
+  DisplayListBuilder root_builder;
+  root_builder.Begin(kRootId, PlatformRendererType::kPage, 0, 0, 400, 200)
+      .Begin(3, PlatformRendererType::kView, 55, 5, 20, 20)
+      .End()
+      .DrawView(1, 0, 0)
+      .End();
+  root->UpdateDisplayList(root_builder.Build());
+  DisplayListBuilder page_builder;
+  page_builder.Begin(1, PlatformRendererType::kExtended, 0, 0, 100, 100)
+      .Begin(2, PlatformRendererType::kView, 10, 10, 20, 20)
+      .End()
+      .End();
+  page->UpdateDisplayList(page_builder.Build());
+  root->AddChild(page);
+  TestNativePaintingCtxPlatformRef platform;
+  platform.renderers_.insert_or_assign(kRootId, root);
+  platform.renderers_.insert_or_assign(1, page);
+  auto tree = platform.ReconstructEventTargetTreeRecursively();
+  auto target = platform.event_target_helper_->event_targets_.at(1);
+  const float css[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 200, 0, 0, 1};
+  target->SetTransform(css);
+  // Carry-like scale/translation and cover-flow-like projected rotation.
+  for (const auto& matrix :
+       {std::array<float, 9>{0.5f, 0, 50, 0, 0.5f, 0, 0, 0, 1},
+        std::array<float, 9>{0.9f, 0, 50, 0, 1, 0, 0.002f, 0, 1}}) {
+    page->UpdateViewTransform(matrix.data(), 100, 100);
+    float point[2] = {(matrix[0] * 15 + matrix[2]) / (matrix[6] * 15 + 1),
+                      matrix[4] * 15 / (matrix[6] * 15 + 1)};
+    auto hit = tree->HitTest(point);
+    ASSERT_NE(hit, nullptr);
+    EXPECT_EQ(hit->Sign(), 2);
+    float local[2];
+    ASSERT_TRUE(target->GetPointInTarget(local, tree, point));
+    EXPECT_NEAR(local[0], 15, 0.001f);
+    EXPECT_NEAR(local[1], 15, 0.001f);
+    float untransformed[2] = {15, 15};
+    EXPECT_NE(tree->HitTest(untransformed)->Sign(), 2);
+  }
+  // A smaller native page must not block an underlying sibling outside its
+  // bounds, while its content retains the original layout dimensions.
+  const float scaled[9] = {0.5f, 0, 50, 0, 0.5f, 0, 0, 0, 1};
+  for (const auto& size :
+       {std::array<float, 2>{10, 100}, std::array<float, 2>{100, 10}}) {
+    page->UpdateViewTransform(scaled, size[0], size[1]);
+    float outside_view[2] = {57.5f, 7.5f};
+    EXPECT_EQ(tree->HitTest(outside_view)->Sign(), 3);
+    target->SetMinimumTouchTargetSize(48);
+    auto sibling = platform.event_target_helper_->event_targets_.at(3);
+    sibling->SetMinimumTouchTargetSize(0);
+    EXPECT_EQ(
+        tree->HitTest(outside_view,
+                      PlatformEventTarget::HitTestMode::kRegisteredTargets)
+            ->Sign(),
+        3);
+    target->SetMinimumTouchTargetSize(-1);
+    sibling->SetMinimumTouchTargetSize(-1);
+    EXPECT_FLOAT_EQ(target->Width(), 100);
+  }
+  // Explicit hot zones extend the native box, including an identity matrix.
+  // The larger layout box must not become either a default or a direct target.
+  const float identity[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};
+  using Mode = PlatformEventTarget::HitTestMode;
+  PlatformEventTarget::EventRegion slop{};
+  for (int side : {0, 2}) {
+    slop[side].type =
+        PlatformEventTarget::EventRegionSizeValue::Type::kLayoutUnit;
+    slop[side].value = 10;
+  }
+  for (const float* matrix : {identity, scaled}) {
+    page->UpdateViewTransform(matrix, 20, 20);
+    for (float x : {-5.f, 25.f}) {
+      float point[2] = {matrix[0] * x + matrix[2], matrix[4] * 5};
+      EXPECT_EQ(tree->HitTest(point)->Sign(), kRootId);
+      EXPECT_EQ(tree->HitTest(point, Mode::kRegisteredTargets), nullptr);
+      target->SetHitSlop(slop);
+      EXPECT_EQ(tree->HitTest(point)->Sign(), 1);
+      target->ResetHitSlop();
+      target->SetMinimumTouchTargetSize(48);
+      auto hit = tree->HitTest(point, Mode::kRegisteredTargets);
+      ASSERT_NE(hit, nullptr);
+      EXPECT_EQ(hit->Sign(), 1);
+      target->SetMinimumTouchTargetSize(-1);
+    }
+    float inside[2] = {matrix[0] * 5 + matrix[2], matrix[4] * 5};
+    EXPECT_EQ(tree->HitTest(inside)->Sign(), 1);
+  }
+  // Native right/bottom edges and empty boxes do not capture a default hit.
+  // Registered targets may still explicitly expand these boxes.
+  for (const auto& size :
+       {std::array<float, 2>{20, 20}, {0, 20}, {20, 0}, {0, 0}}) {
+    page->UpdateViewTransform(identity, size[0], size[1]);
+    for (auto point : {std::array<float, 2>{size[0], 0}, {0, size[1]}}) {
+      EXPECT_EQ(tree->HitTest(point.data())->Sign(), kRootId);
+      target->SetMinimumTouchTargetSize(0);
+      EXPECT_EQ(tree->HitTest(point.data(), Mode::kRegisteredTargets), nullptr);
+      target->SetMinimumTouchTargetSize(48);
+      auto hit = tree->HitTest(point.data(), Mode::kRegisteredTargets);
+      ASSERT_NE(hit, nullptr);
+      EXPECT_EQ(hit->Sign(), 1);
+      target->SetMinimumTouchTargetSize(-1);
+    }
+  }
+  page->UpdateViewTransform(identity, 20, 20);
+  // The page has a 100-wide layout but only its 20-wide native view is visible.
+  std::unordered_map<int32_t, CommonAncestorRect> ancestor_rects;
+  float screen_origin[2] = {0, 0};
+  const float inside_window[4] = {0, 0, 20, 100};
+  const float outside_window[4] = {30, 0, 100, 20};
+  EXPECT_TRUE(target->IsVisibleForExposure(ancestor_rects, screen_origin,
+                                           inside_window));
+  EXPECT_FALSE(target->IsVisibleForExposure(ancestor_rects, screen_origin,
+                                            outside_window));
+
+  float origin[2] = {0, 0};
+  EXPECT_EQ(tree->HitTest(origin)->Sign(), 1);
+  slop[3] = slop[2];
+  target->SetHitSlop(slop);
+  for (auto expanded : {std::array<float, 2>{20, 5}, {5, 20}}) {
+    EXPECT_EQ(tree->HitTest(expanded.data())->Sign(), 1);
+  }
+  // The expanded native box is also half-open.
+  for (auto edge : {std::array<float, 2>{30, 5}, {5, 30}}) {
+    EXPECT_EQ(tree->HitTest(edge.data())->Sign(), kRootId);
+  }
+  // A 25% inset on a 20x40 native page leaves [5, 15) x [10, 30).
+  page->UpdateViewTransform(identity, 20, 40);
+  for (auto& side : slop) {
+    side.type = PlatformEventTarget::EventRegionSizeValue::Type::kPercentage;
+    side.value = -0.25f;
+  }
+  target->SetHitSlop(slop);
+  for (auto point : {std::array<float, 2>{10, 20}, {5, 10}, {14, 29}}) {
+    EXPECT_TRUE(target->ContainsPoint(point.data()));
+  }
+  for (auto point :
+       {std::array<float, 2>{4, 20}, {10, 9}, {15, 20}, {10, 30}}) {
+    EXPECT_FALSE(target->ContainsPoint(point.data()));
+  }
+  page->UpdateViewTransform(nullptr, 0, 0);
+  float layout_slop_edge[2] = {75, 75};
+  EXPECT_TRUE(target->ContainsPoint(layout_slop_edge));
+  target->ResetHitSlop();
+  float css_point[2] = {215, 15};
+  EXPECT_EQ(tree->HitTest(css_point)->Sign(), 2);
+  page->UpdateViewTransform(identity, 100, 100);
+  page->UpdateIsOnTree(false);
+  EXPECT_FALSE(page->GetPlatformState()->view_transform);
+  page->UpdateIsOnTree(true);
+  page->UpdateViewTransform(identity, 100, 100);
+  page->ClearPlatformState();
+  EXPECT_FALSE(page->GetPlatformState()->view_transform);
+  float layout_edge[2] = {100, 100};
+  EXPECT_TRUE(target->ContainsPoint(layout_edge));
+}
+
 TEST_F(FragmentTest, PublishedPlatformStateUpdatesAndTargetExclusions) {
   auto renderer = fml::MakeRefCounted<TestPlatformRenderer>(
       1, PlatformRendererType::kListItem);
@@ -5349,6 +5510,18 @@ TEST_F(FragmentTest,
   auto hit_target = root_target->HitTest(point);
   ASSERT_NE(hit_target, nullptr);
   EXPECT_EQ(hit_target->Sign(), 2);
+
+  // Outside both visual boxes, only the registered child's expanded target
+  // hits.
+  auto child = platform_ref.GetEventTargetHelper()->GetEventTarget(2);
+  ASSERT_NE(child, nullptr);
+  child->SetMinimumTouchTargetSize(48);
+  float expanded_point[2] = {45.f, 5.f};
+  EXPECT_EQ(root_target->HitTest(expanded_point), root_target);
+  EXPECT_EQ(
+      root_target->HitTest(
+          expanded_point, PlatformEventTarget::HitTestMode::kRegisteredTargets),
+      child);
 }
 
 TEST_F(FragmentTest,

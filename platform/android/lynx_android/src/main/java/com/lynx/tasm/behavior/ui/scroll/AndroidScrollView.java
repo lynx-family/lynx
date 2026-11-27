@@ -335,6 +335,11 @@ public class AndroidScrollView
   }
 
   @Override
+  public ViewGroup getRendererChildViewGroup() {
+    return mLinearLayout;
+  }
+
+  @Override
   protected void onLayout(boolean changed, int l, int t, int r, int b) {
     if (mRenderer != null) {
       if (mRenderer.getUIHost() != null) {
@@ -344,17 +349,8 @@ public class AndroidScrollView
 
     super.onLayout(changed, l, t, r, b);
 
-    if (mRenderer != null && mLinearLayout != null) {
-      for (int i = 0; i < mLinearLayout.getChildCount(); i++) {
-        View child = mLinearLayout.getChildAt(i);
-        if (child instanceof IRendererHost) {
-          Renderer childRenderer = ((IRendererHost) child).getRenderer();
-          if (childRenderer != null) {
-            Rect childFrame = childRenderer.getLynxFrame();
-            child.layout(childFrame.left, childFrame.top, childFrame.right, childFrame.bottom);
-          }
-        }
-      }
+    if (mRenderer != null) {
+      mRenderer.onLayout(changed, l, t, r, b);
     }
 
     if (!isHorizontal) {

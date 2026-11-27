@@ -176,6 +176,14 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   private native void nativeUpdateScrollOffset(long nativePtr, int sign, float x, float y);
 
+  void publishViewTransform(int sign, float[] matrix) {
+    if (!mDestroyed && mNativePtr != 0) {
+      nativeUpdateViewTransform(mNativePtr, sign, matrix);
+    }
+  }
+
+  private native void nativeUpdateViewTransform(long nativePtr, int sign, float[] matrix);
+
   void publishStickyOffset(int sign, float x, float y, boolean sticky) {
     if (!mDestroyed && mNativePtr != 0) {
       nativeUpdateStickyOffset(mNativePtr, sign, x, y, sticky);
@@ -268,7 +276,8 @@ public class PlatformRendererContext implements TextMeasurerProvider {
     IRendererHost host = mViewHolder.get(sign);
     Renderer renderer = host != null ? host.getRenderer() : null;
     LynxBaseUI uiHost = renderer != null ? renderer.getUIHost() : null;
-    return uiHost != null && uiHost.isScrollable();
+    return renderer != null
+        && (host.isRendererHostScrollContainer() || (uiHost != null && uiHost.isScrollable()));
   }
 
   @CalledByNative
@@ -775,6 +784,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   void insertPlatformRenderer(int parent, int child, int index, boolean shouldUpdateUIOwner) {
+    IRendererHost childHost = mViewHolder.get(child);
+    if (childHost != null && childHost.getRenderer() != null) {
+      childHost.getRenderer().mParentSign = parent;
+    }
     LynxUIOwner owner = mContext.getLynxUIOwner();
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(child) : null;
@@ -1294,6 +1307,10 @@ public class PlatformRendererContext implements TextMeasurerProvider {
 
   @CalledByNative
   void removePlatformRendererFromParent(int parent, int sign, boolean shouldUpdateUIOwner) {
+    IRendererHost removedHost = mViewHolder.get(sign);
+    if (removedHost != null && removedHost.getRenderer() != null) {
+      removedHost.getRenderer().onRemoveFromParent();
+    }
     LynxUIOwner owner = mContext.getLynxUIOwner();
     LynxBaseUI parentUI = owner != null ? owner.getNode(parent) : null;
     LynxBaseUI childUI = owner != null ? owner.getNode(sign) : null;

@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -19,6 +20,7 @@
 #include "core/public/prop_bundle.h"
 #include "core/public/pub_value.h"
 #include "core/renderer/utils/base/base_def.h"
+#include "gfx/geometry/matrix44.h"
 
 namespace lynx::lepus {
 class Value;
@@ -40,6 +42,13 @@ struct PlatformRendererState {
   std::optional<bool> is_on_tree;
   // Back-to-front drawing order among siblings, published by the native parent.
   std::optional<int32_t> sibling_order;
+  // Complete local-to-parent View transform, replacing the CSS transform when
+  // a native component also transforms its child host.
+  struct ViewTransform {
+    gfx::Matrix44 matrix;
+    std::array<float, 2> size;
+  };
+  std::unique_ptr<ViewTransform> view_transform;
 };
 
 // Initialization metadata consumed only by the C++ PlatformRenderer creation
@@ -89,6 +98,21 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage,
   void UpdateScrollOffset(float x, float y) {
     platform_state_.scroll_offset = {x, y};
   }
+  void UpdateViewTransform(const float* matrix, float width, float height) {
+    if (!matrix) {
+      platform_state_.view_transform.reset();
+      return;
+    }
+    if (!platform_state_.view_transform) {
+      platform_state_.view_transform =
+          std::make_unique<PlatformRendererState::ViewTransform>();
+    }
+    // Embed the projected 2D homography, so inversion preserves perspective.
+    platform_state_.view_transform->matrix = gfx::Matrix44(
+        matrix[0], matrix[1], 0, matrix[2], matrix[3], matrix[4], 0, matrix[5],
+        0, 0, 1, 0, matrix[6], matrix[7], 0, matrix[8]);
+    platform_state_.view_transform->size = {width, height};
+  }
   void UpdateStickyOffset(float x, float y, bool sticky) {
     platform_state_.sticky_offset =
         sticky ? std::array<float, 2>{x, y} : std::array<float, 2>{0.f, 0.f};
@@ -108,6 +132,7 @@ class PlatformRenderer : public fml::RefCountedThreadSafeStorage,
     platform_state_.layout_position.reset();
     platform_state_.scroll_offset.reset();
     platform_state_.sticky_offset = {0.f, 0.f};
+    platform_state_.view_transform.reset();
   }
 
   // Invoke a UI method on the platform renderer host. Return true only when the
