@@ -34,6 +34,8 @@ import { BlurViewProps } from './blur-view';
 import { WebviewProps, WebviewUIMethods } from './webview';
 import { TransferViewProps } from './transfer-view';
 import { MarkdownProps, MarkdownUIMethods } from './markdown';
+import { MapProps, MapUIMethods } from './map';
+import { MapMarkerProps, MapMarkerUIMethods } from './map-marker';
 import { VideoProps, VideoUIMethods } from './video';
 
 
@@ -49,6 +51,8 @@ export interface UIMethods {
   'viewpager': ViewPagerUIMethods;
   'webview': WebviewUIMethods;
   'markdown': MarkdownUIMethods;
+  'map': MapUIMethods;
+  'map-marker': MapMarkerUIMethods;
   'video': VideoUIMethods;
 }
 
@@ -355,6 +359,20 @@ export interface IntrinsicElements {
    * @compatOverride method takeScreenshot Android=4.1 iOS=4.1 Harmony=4.1 ClayAndroid=false ClayHarmony=false
    */
   'video': VideoProps;
+  /**
+   * A native map with a geographic camera center.
+   * @Android 4.5
+   * @iOS 4.5
+   * @Harmony 4.5
+   */
+  'map': MapProps;
+  /**
+   * A child of a map that displays Lynx content at a geographic coordinate.
+   * @Android 4.5
+   * @iOS 4.5
+   * @Harmony 4.5
+   */
+  'map-marker': MapMarkerProps;
 }
 
 declare module 'react' {
@@ -395,6 +413,8 @@ declare module 'react' {
       'transfer-view': TransferViewProps;
       'markdown': MarkdownProps;
       'video': VideoProps;
+      'map': MapProps;
+      'map-marker': MapMarkerProps;
     }
   }
 }

@@ -1,0 +1,12 @@
+{
+  "name": "@lynx/xelement_map_interface",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Lynx map interface and elements",
+  "main": "Index.ets",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "Lynx Authors <lynx.authors@gmail.com> (https://github.com/lynx-family/lynx)",
+  "dependencies": {
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+  }
+}

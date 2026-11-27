@@ -22,6 +22,8 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.service.ILynxHttpService;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import com.lynx.xelement.map.LynxXElementMapService;
+import com.lynx.xelement.map.google.GoogleMapProvider;
 
 public class ExplorerApplication extends Application {
   @Override
@@ -36,6 +38,7 @@ public class ExplorerApplication extends Application {
   }
 
   private void initLynxEnv() {
+    LynxXElementMapService.registerProvider(new GoogleMapProvider());
     LynxEnv.inst().prepareDevToolForDevelopmentBeforeInit();
     LynxEnv.inst().init(this, null, new ExplorerTemplateProvider(this), null);
   }

@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "xelement_map_impl",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}

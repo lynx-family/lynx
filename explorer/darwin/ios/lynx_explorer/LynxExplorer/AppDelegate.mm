@@ -8,6 +8,8 @@
 #import "SparklingMacro-umbrella.h"
 #define HAS_SPARKLING 1
 #endif
+#import <XElement/LynxMapKitProvider.h>
+#import <XElement/LynxXElementMapService.h>
 #import "LynxDebugger.h"
 #import "LynxExplorerSwiftInterop.h"
 #import "LynxInitProcessor.h"
@@ -51,6 +53,7 @@ NSString *const HOMEPAGE_URL = @"file://lynx?local://homepage.lynx.bundle?fullsc
 
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id> *)launchOptions {
+  [LynxXElementMapService registerProvider:[LynxMapKitProvider new]];
   InstallPrimJSWeakNodeApiBridge();
   [[LynxInitProcessor sharedInstance] setupEnvironment];
 

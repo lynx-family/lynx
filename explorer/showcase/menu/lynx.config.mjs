@@ -14,6 +14,7 @@ export default defineConfig({
       css: './sub-menu/css.tsx',
       layout: './sub-menu/layout.tsx',
       list: './sub-menu/list.tsx',
+      map: './sub-menu/map.tsx',
       scrollview: './sub-menu/scrollview.tsx',
       text: './sub-menu/text.tsx',
     },

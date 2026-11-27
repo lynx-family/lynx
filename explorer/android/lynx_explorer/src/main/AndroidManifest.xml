@@ -13,6 +13,7 @@
         android:theme="@style/AppTheme"
         android:hardwareAccelerated="true"
         android:usesCleartextTraffic="true">
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${googleMapsApiKey}" />
         <activity
             android:name=".LynxViewShellActivity"
             android:windowSoftInputMode="adjustNothing"

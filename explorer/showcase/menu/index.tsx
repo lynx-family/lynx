@@ -73,6 +73,11 @@ const ITEMS: ItemProps[] = [
     url: 'file://lynx?local://showcase/menu/list.lynx.bundle',
   },
   {
+    title: 'Map',
+    description: 'Select a custom marker and move it between two stops.',
+    url: 'file://lynx?local://showcase/menu/map.lynx.bundle',
+  },
+  {
     title: 'ScrollView',
     description: 'Some examples show how to use scrollable container',
     url: 'file://lynx?local://showcase/menu/scrollview.lynx.bundle',

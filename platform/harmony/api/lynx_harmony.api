@@ -141,6 +141,279 @@ export class LynxLogService implements ILynxBaseLogService {
   static logOutputChannel: LogOutputChannelType; = LogOutputChannelType.Platform
 }
 
+export class SystemMapProvider extends LynxMapProvider {
+  createMapView(): LynxAbstractMapView;
+}
+
+export interface ILynxMapMarkerView {
+  updateMetadata(metadata: LynxMapMarkerMetadata): void;
+  refreshMarker(builder: CustomBuilder): Promise<void>;
+  destroy(): void;
+}
+
+export interface ILynxMapViewListener {
+  onMapReady(): void;
+  onMapUnavailable(): void;
+  onMapError(message: string, code: number): void;
+  onMapEvent(name: string, detail: Object): void;
+  onMarkerClick(id: string): void;
+}
+
+export interface ILynxMapView {
+  initializeMapView(params: LynxMapInitParams, listener: ILynxMapViewListener): void;
+  setCenter(center: LynxMapLatLng, duration: number, scale: number): void;
+  setRotate(rotate: number, duration: number): void;
+  setTilt(tilt: number, animated: boolean, duration: number): void;
+  setScale(scale: number, duration: number): void;
+  getCenter(): LynxMapLatLng | undefined;
+  getScale(): number | undefined;
+  getBound(): LynxMapBounds | undefined;
+  setBound(points: LynxMapLatLng[], padding: number[], duration: number): Promise<void>;
+  setPointToCenter(point: LynxMapPoint): void;
+  latLngToPx(point: LynxMapLatLng): Promise<LynxMapPoint>;
+  pxToLatLng(point: LynxMapPoint): Promise<LynxMapLatLng>;
+  setMapStyle(style: string): void;
+  setScaleRange(range: number[]): void;
+  setRotationDegree(rotation: number): void;
+  setEnableScaleControls(enable: boolean): void;
+  setLogoPosition(position: string): void;
+  setEnableScale(enable: boolean): void;
+  setEnableDrag(enable: boolean): void;
+  setEnableRotate(enable: boolean): void;
+  setEnableTilt(enable: boolean): void;
+  setNativeInteractionEnabled(enable: boolean): void;
+  setPolyline(polylines: LynxMapPolyline[]): void;
+  setRouteLabel(labels: LynxMapRouteLabel[]): void;
+  setPolygons(polygons: LynxMapPolygon[]): void;
+  setArcs(arcs: LynxMapArc[]): void;
+  setCircles(circles: LynxMapCircle[]): void;
+  addMarker(metadata: LynxMapMarkerMetadata, builder: CustomBuilder): Promise<ILynxMapMarkerView>;
+  destroy(): void;
+}
+
+export class LynxMapInitParams {
+  bizName: string; = 'undefined'
+  mapType: number; = -1
+  extraParams?: Record<string, Object>;
+}
+
+export class LynxMapMarkerMetadata {
+  id: string; = ''
+  position?: LynxMapLatLng;
+  containerPosition?: LynxMapPoint;
+  anchor: number[]; = [0.5, 0.5]
+  enableDrag: boolean; = false
+  enableClick: boolean; = true
+  enableCollideWithPoi: boolean; = false
+  alpha: number; = 1
+  rotation: number; = 0
+  zIndex: number; = 1
+  animate?: LynxMapMarkerAnimation;
+}
+
+export interface LynxMapLatLng {
+  latitude: number;
+  longitude: number;
+}
+
+export interface LynxMapPoint {
+  x: number;
+  y: number;
+}
+
+export interface LynxMapBounds {
+  northeast: LynxMapLatLng;
+  southwest: LynxMapLatLng;
+}
+
+export interface LynxMapErrorEvent {
+  errCode: number;
+  errMsg: string;
+}
+
+export interface LynxMapClickEvent {
+  point: LynxMapLatLng;
+}
+
+export interface LynxMapPolylineClickEvent {
+  id: string;
+}
+
+export interface LynxMapRegionChangeEvent {
+  type: string;
+  rotate: number;
+  scale: number;
+  center: LynxMapLatLng;
+  region: LynxMapBounds;
+  causedBy: string;
+  triggeredBy: string;
+}
+
+export interface LynxMapPolylineTexture {
+  id: string;
+  url: string;
+}
+
+export interface LynxMapPolyline {
+  id: string;
+  points: LynxMapLatLng[];
+  reducePoints?: boolean;
+  collideDetection?: boolean;
+  edgeColor?: string[];
+  gradientVertexColor?: string[];
+  edgeTexture?: string[];
+  edgeTextureAssets?: LynxMapPolylineTexture[];
+  width?: number;
+  dottedLine?: boolean;
+  lineCapType?: string;
+  lineJoinType?: string;
+  zIndex?: number;
+}
+
+export interface LynxMapRouteLabel {
+  id: string;
+  points: LynxMapLatLng[];
+  text: string;
+  textColor?: string;
+  fontSize?: number;
+  borderColor?: string;
+  borderWidth?: number;
+  fontWeight?: string;
+  zIndex?: number;
+}
+
+export interface LynxMapPolygon {
+  id: string;
+  points: LynxMapLatLng[];
+  dottedLine?: boolean;
+  fillColor?: string;
+  strokeWidth?: number;
+  strokeColor?: string;
+  zIndex?: number;
+}
+
+export interface LynxMapArc {
+  id: string;
+  start: LynxMapLatLng;
+  mid: LynxMapLatLng;
+  end: LynxMapLatLng;
+  width?: number;
+  color?: string;
+  zIndex?: number;
+}
+
+export interface LynxMapCircle {
+  id: string;
+  center: LynxMapLatLng;
+  radius: number;
+  fillColor?: string;
+  strokeWidth?: number;
+  strokeColor?: string;
+  zIndex?: number;
+}
+
+export interface LynxMapAnimationChannel {
+  from?: number;
+  to?: number;
+  duration?: number;
+  repeatCount?: number;
+}
+
+export interface LynxMapMarkerAnimation {
+  scale?: LynxMapAnimationChannel;
+  alpha?: LynxMapAnimationChannel;
+}
+
+export abstract class LynxMapProvider {
+  abstract createMapView(): LynxAbstractMapView;
+}
+
+export class LynxXElementMapService {
+  static registerProvider(provider: LynxMapProvider): void;
+  static provider?: LynxMapProvider;
+}
+
+export enum LynxMapType {
+  UNKNOWN = -1
+  ALI_2D = 0
+  ALI = 1
+  GOOGLE = 2
+  GOOGLE_STATIC = 3
+  BAIDU = 4
+}
+
+export abstract class LynxAbstractMapView extends NodeController implements ILynxMapView {
+  abstract initializeMapView(params: LynxMapInitParams, listener: ILynxMapViewListener): void;
+  abstract setCenter(center: LynxMapLatLng, duration: number, scale: number): void;
+  abstract setRotate(rotate: number, duration: number): void;
+  abstract setTilt(tilt: number, animated: boolean, duration: number): void;
+  abstract setScale(scale: number, duration: number): void;
+  abstract getCenter(): LynxMapLatLng | undefined;
+  abstract getScale(): number | undefined;
+  abstract getBound(): LynxMapBounds | undefined;
+  abstract setBound(points: LynxMapLatLng[], padding: number[], duration: number): Promise<void>;
+  abstract setPointToCenter(point: LynxMapPoint): void;
+  abstract latLngToPx(point: LynxMapLatLng): Promise<LynxMapPoint>;
+  abstract pxToLatLng(point: LynxMapPoint): Promise<LynxMapLatLng>;
+  abstract setMapStyle(style: string): void;
+  abstract setScaleRange(range: number[]): void;
+  abstract setRotationDegree(rotation: number): void;
+  abstract setEnableScaleControls(enable: boolean): void;
+  abstract setLogoPosition(position: string): void;
+  abstract setEnableScale(enable: boolean): void;
+  abstract setEnableDrag(enable: boolean): void;
+  abstract setEnableRotate(enable: boolean): void;
+  abstract setEnableTilt(enable: boolean): void;
+  abstract setNativeInteractionEnabled(enable: boolean): void;
+  abstract setPolyline(polylines: LynxMapPolyline[]): void;
+  abstract setRouteLabel(labels: LynxMapRouteLabel[]): void;
+  abstract setPolygons(polygons: LynxMapPolygon[]): void;
+  abstract setArcs(arcs: LynxMapArc[]): void;
+  abstract setCircles(circles: LynxMapCircle[]): void;
+  abstract addMarker(metadata: LynxMapMarkerMetadata, builder: CustomBuilder): Promise<ILynxMapMarkerView>;
+  abstract destroy(): void;
+}
+
+export class LynxUIMap extends UIGroup implements ILynxMapViewListener {
+  override getMemoryUsageBytes(): number;
+  override hasCustomizedLayout(): boolean;
+  override onNodeReload(): void;
+  override update(props: Record<string, Object>, events: EventHandlerArray[]): void;
+  override onNodeReady(): void;
+  onMapReady(): void;
+  onMapUnavailable(): void;
+  onMapError(message: string, code: number): void;
+  onMapEvent(name: string, detail: Object): void;
+  onMarkerClick(id: string): void;
+  override invokeMethod(method: string, params: Object, callback: (code: number, res: Object) => void): boolean;
+  override insertChild(content: NativeContent, index: number): void;
+  override layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number, paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number, marginBottom: number, sticky: number[]): void;
+  override dispose(): void;
+  readonly mapParams: LynxMapParams; = new LynxMapParams()
+  readonly builder: WrappedBuilder<[UIBase]>; = wrapBuilder<[UIBase]>(buildMap)
+}
+
+export class LynxUIMapMarker extends UIGroup {
+  hasCustomizedLayout(): boolean;
+  onCreate(): void;
+  bindNativeContent(content: NativeContent): void;
+  getNativeContent(): NativeContent | undefined;
+  setCustomMarkerBuilder(builder: CustomBuilder): void;
+  bindIMapView(mapView: ILynxMapView): void;
+  override onNodeRemoved(): void;
+  update(props: Record<string, Object>, events: EventHandlerArray[]): void;
+  onNodeReady(): void;
+  layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number, paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number, marginBottom: number, sticky: number[]): void;
+  invalidate(): void;
+  refreshMarker(): void;
+  onMarkerClick(): void;
+  onEnterBackground(): void;
+  onEnterForeground(): void;
+  invokeMethod(method: string, params: Object, callback: (code: number, res: Object) => void): boolean;
+  dispose(): void;
+  readonly builder: WrappedBuilder<[UIBase]>; = wrapBuilder<[UIBase]>(buildMapMarkerHost)
+}
+
 export class UISVG extends UIBase {
   layout(x: number, y: number, width: number, height: number, paddingLeft: number, paddingTop: number, paddingRight: number, paddingBottom: number, marginLeft: number, marginTop: number, marginRight: number, marginBottom: number, sticky: number[] | undefined): void;
   override onCreate(): void;

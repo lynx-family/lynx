@@ -33,6 +33,7 @@ import {
   resolveColorScheme
 } from '../common/ExplorerAppearance';
 import { UISVG } from '@lynx/xelement_svg';
+import { LynxUIMap, LynxUIMapMarker } from '@lynx/xelement_map_interface';
 import { UIWebView } from '@lynx/xelement_webview';
 import { UIVideo } from '@lynx/xelement_video';
 
@@ -51,6 +52,8 @@ struct Index {
     new Behavior(UIClickView, ClickShadowNode, "this is a test custom data")],
     ['explorer-input', new Behavior(LynxExplorerInput, undefined)],
     ['svg',  new Behavior(UISVG, undefined)],
+    ['map', new Behavior(LynxUIMap, undefined)],
+    ['map-marker', new Behavior(LynxUIMapMarker, undefined)],
     ['webview', new Behavior(UIWebView, undefined)],
     ['video', new Behavior(UIVideo, undefined)]]);
   private metaData = new MetaData(
