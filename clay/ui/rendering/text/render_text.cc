@@ -219,11 +219,11 @@ void RenderText::PaintSelection(GraphicsContext* context) {
       painter_->GetRectsForRange(std::min(select_start_, select_end_),
                                  std::max(select_start_, select_end_),
                                  RectHeightStyle::kMax, RectWidthStyle::kMax);
-  clay::GrPath path;
+  clay::GrPathBuilder path;
   for (auto box : text_boxes) {
     PATH_ADD_RECT(path, box.rect);
   }
-  context->DrawPath(path, paint);
+  context->DrawPath(DetachPath(path), paint);
 }
 
 std::u16string RenderText::GetSelectionString() const {
