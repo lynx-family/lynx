@@ -24,11 +24,32 @@ TEST(LazyBundleLoaderTest, LoadFrameLynxML) {
 <lynx>
   <script thread="main">globalThis.frameLoaded = true;</script>
 </lynx>)XML";
-  auto loader = std::make_shared<LazyBundleLoader>(nullptr);
-  LazyBundleLoader::CallBackInfo info(url, {source.begin(), source.end()},
-                                      std::nullopt, std::nullopt);
-  info.request = {.url = url, .resource_type = pub::LynxResourceType::kFrame};
-  loader->DidFetchBundle(std::move(info));
+  class FrameResourceLoader : public pub::LynxResourceLoader {
+   public:
+    explicit FrameResourceLoader(const std::string& source) : source_(source) {}
+
+    bool requested = false;
+
+   protected:
+    void LoadResourceInternal(
+        const pub::LynxResourceRequest& request,
+        base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
+        override {
+      requested = true;
+      EXPECT_EQ(request.type, pub::LynxResourceType::kLazyBundle);
+      EXPECT_FALSE(request.request_in_current_thread);
+      pub::LynxResourceResponse response;
+      response.data.assign(source_.begin(), source_.end());
+      callback(response);
+    }
+
+   private:
+    std::string source_;
+  };
+  auto resource_loader = std::make_shared<FrameResourceLoader>(source);
+  auto loader = std::make_shared<LazyBundleLoader>(resource_loader);
+  loader->LoadFrameBundle(url);
+  EXPECT_TRUE(resource_loader->requested);
 
   auto bundle = loader->GetTemplateBundle(url);
   ASSERT_TRUE(bundle.has_value());
