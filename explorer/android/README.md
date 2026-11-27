@@ -2,6 +2,15 @@
 
 This document provides instructions for building the Lynx Explorer Android app from source. If you just want to try out Lynx, you can download the pre-built APK from the releases page instead.
 
+## Transfer playground
+
+Append `transferPlayground=true` to the URL of a Lynx bundle that registers
+Transfer components. Enter a registered component name and an optional JSON
+object, then select **Create**. All instances share the loaded LynxView.
+Select an instance to replace its props with **Set props** or release it with
+**Remove**. The same playground works with the chat and first-frame examples in
+`lynx-stack/examples/react-transfer`.
+
 ## System Requirements
 
 - 100GB or more of disk space
