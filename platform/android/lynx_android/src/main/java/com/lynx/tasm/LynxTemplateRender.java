@@ -4504,7 +4504,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
       if (uiOwner == null) {
         return;
       }
-      perfController.updateMemoryUsage(uiOwner.getMemoryUsage());
+      perfController.updateUIMemoryUsage(uiOwner.getMemoryUsage());
     }
   }
 

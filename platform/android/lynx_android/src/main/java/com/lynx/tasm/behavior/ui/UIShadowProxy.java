@@ -41,6 +41,8 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   private static final String TAG = "UIShadowProxy";
@@ -168,6 +170,17 @@ public class UIShadowProxy extends UIGroup<UIShadowProxy.ShadowView> {
   @Override
   public long getMemoryUsageBytes() {
     return mChild == null ? super.getMemoryUsageBytes() : mChild.getMemoryUsageBytes();
+  }
+
+  @Override
+  public Map<String, String> getMemoryUsageDetail() {
+    return mChild == null ? super.getMemoryUsageDetail() : mChild.getMemoryUsageDetail();
+  }
+
+  @Override
+  public long getMemoryUsageBytesWithSharedOwners(Set<Object> sharedOwners) {
+    return mChild == null ? super.getMemoryUsageBytesWithSharedOwners(sharedOwners)
+                          : mChild.getMemoryUsageBytesWithSharedOwners(sharedOwners);
   }
 
   @Override

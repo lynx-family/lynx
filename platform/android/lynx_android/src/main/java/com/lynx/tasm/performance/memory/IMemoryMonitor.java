@@ -40,10 +40,8 @@ public interface IMemoryMonitor {
   public void updateMemoryUsage(IMemoryRecordBuilder builder);
 
   /**
-   * @brief Updates memory usage and sends a PerformanceEntry. This interface
-   * updates the total memory usage for the specified category based on the
-   * provided size and detail.
-   * @param recordMap The map of MemoryRecord.
+   * @brief Replaces the complete UI memory snapshot, including an empty snapshot.
+   * @param recordMap The map of UI MemoryRecord.
    */
-  public void updateMemoryUsage(Map<String, MemoryRecord> recordMap);
+  public void updateUIMemoryUsage(Map<String, MemoryRecord> recordMap);
 }

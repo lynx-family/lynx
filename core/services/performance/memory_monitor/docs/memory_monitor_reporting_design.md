@@ -1,6 +1,6 @@
 # Global Memory Reporting Design
 
-This document describes the `schema_version=12` global memory event family. It
+This document describes the `schema_version=13` global memory event family. It
 covers process accounting, page residency, concurrent page groups, shared VMs,
 bundle-local MTS pools, post-exit residuals, and memory-pressure observations.
 
@@ -1071,7 +1071,7 @@ Collection:
 Example 1GiB crossing query:
 
 ```text
-schema_version = 12
+schema_version = 13
 lynx_ui_memory_enabled = <fixed cohort>
 trigger_pss_previous_milestone_bytes < 1073741824
 trigger_pss_milestone_bytes >= 1073741824

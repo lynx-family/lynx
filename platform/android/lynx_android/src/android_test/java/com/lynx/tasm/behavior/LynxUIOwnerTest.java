@@ -31,13 +31,17 @@ import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.performance.memory.MemoryRecord;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import org.junit.After;
 import org.junit.Before;
@@ -66,6 +70,36 @@ public class LynxUIOwnerTest {
     @Override
     public LynxUI createUI(LynxContext context) {
       return new MemoryUI(context);
+    }
+  }
+
+  static final class SharedMemoryUI extends UIView {
+    private final long mOwnBytes;
+    private final Object mSharedOwner;
+    long mSharedBytes;
+
+    SharedMemoryUI(
+        LynxContext context, int sign, String tag, long ownBytes, long sharedBytes, Object owner) {
+      super(context);
+      setSign(sign, tag);
+      mOwnBytes = ownBytes;
+      mSharedBytes = sharedBytes;
+      mSharedOwner = owner;
+    }
+
+    @Override
+    public long getMemoryUsageBytes() {
+      return mOwnBytes + mSharedBytes;
+    }
+
+    @Override
+    public Map<String, String> getMemoryUsageDetail() {
+      return Collections.singletonMap("detail-" + getSign(), "retained");
+    }
+
+    @Override
+    public long getMemoryUsageBytesWithSharedOwners(Set<Object> sharedOwners) {
+      return mOwnBytes + (sharedOwners.add(mSharedOwner) ? mSharedBytes : 0);
     }
   }
 
@@ -310,6 +344,65 @@ public class LynxUIOwnerTest {
       assertEquals(2, getExternalMemoryCandidateCount(uiOwner));
       assertEquals(0, uiOwner.getExternalMemorySnapshot()[1]);
       assertEquals(0, getExternalMemoryCandidateCount(uiOwner));
+    });
+  }
+
+  @Test
+  public void testMemoryUsageDeduplicatesSharedOwnersWithoutReadSideEffects() {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+      LynxContext context = spy(mContext);
+      LynxUIOwner owner = new LynxUIOwner(
+          context, new BehaviorRegistry(new BuiltInBehavior().create()), mUIBody.getBodyView());
+      context.setLynxUIOwner(owner);
+      // Equal values must still identify two independent allocations.
+      Object firstOwner = new String("shared-owner");
+      Object secondOwner = new String("shared-owner");
+      SharedMemoryUI first = new SharedMemoryUI(context, 1, "surface", 10, 100, firstOwner);
+      SharedMemoryUI second = new SharedMemoryUI(context, 2, "surface", 20, 100, firstOwner);
+      SharedMemoryUI third = new SharedMemoryUI(context, 3, "surface-other", 30, 200, secondOwner);
+      owner.setNode(1, first);
+      owner.setNode(2, new UIShadowProxy(context, second));
+      owner.setNode(3, third);
+      MemoryUI ordinary = new MemoryUI(context);
+      ordinary.setSign(4, MEMORY_UI_TAG);
+      owner.setNode(4, ordinary);
+      Set<Object> sharedOwners = Collections.newSetFromMap(new IdentityHashMap<>());
+      sharedOwners.add(firstOwner);
+      assertEquals(10, ordinary.getMemoryUsageBytesWithSharedOwners(sharedOwners));
+      assertEquals(1, sharedOwners.size());
+
+      Map<String, MemoryRecord> records = owner.getMemoryUsage();
+      assertEquals(130, records.get("surface").mSizeBytes);
+      assertEquals(2, records.get("surface").mInstanceCount);
+      assertEquals("retained", records.get("surface").mDetail.get("detail-1"));
+      assertEquals("retained", records.get("surface").mDetail.get("detail-2"));
+      assertEquals(230, records.get("surface-other").mSizeBytes);
+      assertEquals(10, records.get(MEMORY_UI_TAG).mSizeBytes);
+      assertEquals(130, owner.getMemoryUsage().get("surface").mSizeBytes);
+
+      // The same owner can appear under another tag in a subsequent collection.
+      second.setSign(2, "surface-alias");
+      first.mSharedBytes = second.mSharedBytes = 150;
+      records = owner.getMemoryUsage();
+      assertEquals(
+          180, records.get("surface").mSizeBytes + records.get("surface-alias").mSizeBytes);
+      assertEquals(1, records.get("surface").mInstanceCount);
+      assertEquals(1, records.get("surface-alias").mInstanceCount);
+
+      owner.destroy(-1, 1);
+      owner.destroy(-1, 2);
+      owner.destroy(-1, 3);
+      records = owner.getMemoryUsage();
+      assertFalse(records.containsKey("surface"));
+      assertFalse(records.containsKey("surface-alias"));
+      assertFalse(records.containsKey("surface-other"));
+      assertEquals(10, records.get(MEMORY_UI_TAG).mSizeBytes);
+      // A host diagnostic read and the later reporter read see the same live snapshot.
+      assertFalse(owner.getMemoryUsage().containsKey("surface"));
+      assertEquals(records.size(), owner.getMemoryUsage().size());
+      owner.destroy(-1, 4);
+      assertTrue(owner.getMemoryUsage().isEmpty());
+      assertTrue(owner.getMemoryUsage().isEmpty());
     });
   }
 

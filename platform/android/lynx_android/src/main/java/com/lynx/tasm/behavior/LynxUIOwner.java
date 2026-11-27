@@ -77,6 +77,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -1564,6 +1565,7 @@ public class LynxUIOwner {
       return null;
     }
     HashMap<String, MemoryRecord> records = new HashMap<>();
+    Set<Object> sharedOwners = Collections.newSetFromMap(new IdentityHashMap<>());
     for (Map.Entry<Integer, LynxBaseUI> e : mUIHolder.entrySet()) {
       LynxBaseUI baseUI = e.getValue();
       if (baseUI == null || !(baseUI instanceof LynxBaseUI)) {
@@ -1576,7 +1578,7 @@ public class LynxUIOwner {
       if (tag == null) {
         continue;
       }
-      long objSizeBytes = baseUI.getMemoryUsageBytes();
+      long objSizeBytes = baseUI.getMemoryUsageBytesWithSharedOwners(sharedOwners);
       MemoryRecord record = records.get(tag);
       if (record == null) {
         record = new MemoryRecord(tag, 0, 0, null);

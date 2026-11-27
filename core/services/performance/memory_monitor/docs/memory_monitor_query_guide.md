@@ -1,6 +1,6 @@
 # Memory Monitor Query Guide
 
-Applies to `schema_version=12` and the memory events below.
+Applies to `schema_version=13` and the memory events below.
 Recipes use top-level property filters, grouping, aggregates, and arithmetic
 **between aggregate results**. They do not require bitwise operations,
 cross-event joins, or custom row-wise expressions.
@@ -152,7 +152,7 @@ See the [global design](./memory_monitor_reporting_design.md), and the
 | --- | --- |
 | Page event | `lynxsdk_performance_entry_memory_v2` |
 | Global events | `lynxsdk_memory_process`, `lynxsdk_memory_page`, `lynxsdk_memory_page_residency`, `lynxsdk_memory_page_residual`, `lynxsdk_memory_persistence`, `lynxsdk_memory_vm_stat`, `lynxsdk_memory_vm_quickjs`, `lynxsdk_memory_mts_pool` |
-| Version | `schema_version=12` |
+| Version | `schema_version=13` |
 | Cohort | Fix SDK/build, date range, platform, experiment, and source configuration |
 | Event deduplication | Provided by the data platform; no monitor-owned deduplication fields |
 | Timer cohort | Encoded by production of the page, residual, VM-stat, and sampled QuickJS events |
@@ -457,6 +457,45 @@ Top-level aggregates cannot derive `PCT95(MTS+BTS)`:
 `PCT95(MTS)+PCT95(BTS)` is not the combined-value P95. Without backend row-wise
 expression support, name the primary view “Mean VM-only page memory at 5s” and
 display separate MTS and BTS P95s.
+
+### Q2.5 Graphics-memory page ranking
+
+Use `lynxsdk_performance_entry_memory_v2` with:
+
+```text
+schema_version = 13
+AND report_kind = scheduled
+AND scheduled_offset_ms = 5000
+AND lynx_ui_memory_enabled = 1
+AND current_graphics_bytes EXISTS
+```
+
+Group by `page_key`, keeping the common cohort settings fixed:
+
+| Metric | Expression | Meaning |
+| --- | --- | --- |
+| A | `AVG(current_graphics_bytes) / 1048576` | Mean graphics memory per observed instance, in MiB |
+| B | `PCT95(current_graphics_bytes) / 1048576` | Graphics-memory P95, in MiB |
+| C | `SUM(current_graphics_bytes) / 1048576` | Cumulative sampled contribution, in MiB-snapshots |
+| D | Event count after identical filters | Number of observed instances at this offset |
+
+Sort by B descending to find pages with high graphics-memory P95; compare A
+and D alongside it. Sort by A for mean per-instance cost, or by C for cumulative
+observed contribution. C also grows with traffic and is not simultaneous memory
+usage or a sampling-corrected population total.
+
+Keep zero values in all four metrics. Adding `current_graphics_bytes > 0`
+instead describes only instances with a positive graphics observation and
+changes the denominator. Change the offset to study another point, but do not
+mix offsets: only instances observed at the chosen point enter this ranking.
+`early_summary` rows have no graphics mean or peak.
+
+The field measures cached memory attributed to graphics categories, including
+their UI base memory; it is not GPU-resident memory. Shared owners are counted
+once within each page collection, without deduplication across pages. It is
+already included in `current_platform_ui_bytes` and `current_page_memory_bytes`,
+so do not add it to either total. Builds whose graphics classifier selects no
+categories report zero; keep the build and classification rules fixed.
 
 ## Q3. Which pages remain resident after creation?
 
@@ -811,7 +850,7 @@ does not prove permanent leakage.
 
 ## Q7. Which memory remains occupied over time?
 
-Event: `lynxsdk_memory_persistence`, filtered to `schema_version=12`.
+Event: `lynxsdk_memory_persistence`, filtered to `schema_version=13`.
 Q7.1 measures VM heap byte-time; Q7.2 measures exited-page residual byte-time.
 Both metrics use byte-ms. Divide by `1048576 × 3600000` for MiB-hours.
 Do not add these time contributions to instantaneous memory.
@@ -950,7 +989,7 @@ lifecycle conversion rates.
 
 ### Q9.3 Which pages use VMs with unstable names?
 
-Event: `lynxsdk_memory_vm_stat`, `schema_version=12`. Keep SDK/corejs version,
+Event: `lynxsdk_memory_vm_stat`, `schema_version=13`. Keep SDK/corejs version,
 platform, app/app version, and monitoring configuration fixed. No heap, slot,
 cache, or active-page filter is required; an idle VM can identify a page that
 has exited.
@@ -1222,7 +1261,7 @@ must determine success.
 | Query | Key checks |
 | --- | --- |
 | Q1.1-Q1.6 | One total/BTS/MTS mean and peak per instance, short/full-window distributions, fixed UI/runtime cohorts, early-only peaks, and intended high-memory ranking |
-| Q2 | One offset, timing/scope gates, zero values, and runtime-filtered MTS/BTS diagnostics |
+| Q2 | One offset, timing/scope gates, zero values, runtime-filtered MTS/BTS diagnostics, and UI-enabled graphics rankings without double counting |
 | Q3 | Complete creation windows, early exits, exact deadlines, 100% survival for always-resident eligible pages, and separate resident-memory estimates |
 | Q4 | Group-weighted bytes/counts and mixed-engine member handling |
 | Q5 | Heap contribution/weights/mean; missing and zero heaps; complete VM residuals; percentile query semantics |

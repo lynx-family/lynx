@@ -1,6 +1,6 @@
 # Page Memory Reporting Design
 
-This document describes `schema_version=12` of `lynxsdk_performance_entry_memory_v2`.
+This document describes `schema_version=13` of `lynxsdk_performance_entry_memory_v2`.
 Page observations aggregate cached values without querying producers on demand.
 Their schedule does not depend on app foreground state or page visibility.
 The primary metric is an equal-weight mean of planned observations, published
@@ -434,7 +434,7 @@ Q1.1 cached-memory mean query:
 
 ```text
 event = lynxsdk_performance_entry_memory_v2
-schema_version = 12
+schema_version = 13
 has_early_usage_summary = 1
 early_sample_mean_memory_bytes EXISTS
 
@@ -489,7 +489,7 @@ short-page coverage.
 
 ```text
 event = lynxsdk_performance_entry_memory_v2
-schema_version = 12
+schema_version = 13
 report_kind = scheduled
 scheduled_offset_ms = 5000
 
@@ -514,8 +514,8 @@ be added or forced into one score.
 
 ## 9. Flat event properties
 
-See the [page-property table](./memory_monitor_property_registration.md#page-event-lynxsdk_performance_entry_memory_v2--21-fixed-properties-plus-ui-categories)
-for the 21 fixed properties and dynamic UI category properties.
+See the [page-property table](./memory_monitor_property_registration.md#page-event-lynxsdk_performance_entry_memory_v2--22-fixed-properties-plus-ui-categories)
+for the 22 fixed properties and dynamic UI category properties.
 
 Common identity and carrier properties:
 
@@ -541,6 +541,7 @@ current_element_bytes
 current_mts_heap_bytes
 current_bts_attributed_bytes
 current_platform_ui_bytes
+current_graphics_bytes
 ```
 
 Every scheduled row carries the total and four components. Missing records
@@ -552,6 +553,36 @@ byte size under a key formed by replacing `-` with `_` and appending `SizeBytes`
 (for example, `x-viewpager-ng` becomes `x_viewpager_ngSizeBytes`). These fields
 retain zero values and are absent from saved end summaries. They describe the
 UI subtotal and must not be added to it again.
+
+`current_graphics_bytes` is the subset of UI memory selected by
+[`IsGraphicsMemoryCategory`](../../memory_graphics.cc). The open-source
+implementation selects no categories. The field includes the whole matching
+category, including UI base memory, and is not a GPU-residency measurement.
+UI producers keep the existing byte-count and detail callbacks. One additional
+byte-count callback receives the collection's identity-based set of shared
+owners. Its default calls the existing byte-count callback, so ordinary
+components do not need to override it. Components with shared memory add their
+owner to the set and include its shared bytes only on the first occurrence.
+Every UI's private bytes and instance count are retained.
+Deduplication is local to each collection and spans category names. Diagnostic
+reads do not change reporting state. The reporter applies each successful UI
+collection as a complete snapshot, removing categories owned by the previous
+UI snapshot that are now missing, including when the snapshot is empty. Records
+from other producers are retained. An unavailable collection does not replace
+the previous snapshot. Detail strings are not used for accounting.
+UI collectors send the reserved `kUIMemorySnapshotBegin` record, the collected
+records, and `kUIMemorySnapshotEnd` through the existing single-record update
+interface in one reporter-thread task. `MemoryMonitor` buffers these records
+until the end sentinel, then replaces the UI snapshot and reports once.
+An empty batch clears the previous UI snapshot. Sentinels never enter memory
+accounting. Updates outside a batch retain their incremental behavior.
+Platform UI collectors set `MemoryRecord::is_ui_` when constructing records.
+`MemoryMonitor` preserves this flag independently of the batch sentinels.
+UI totals, graphics totals, per-category UI fields, and snapshot cleanup
+use this flag rather than inferring UI ownership from category names. Other
+records still contribute to page totals without contributing to UI totals.
+The graphics subtotal is already included in UI and page totals. It is emitted
+only on scheduled rows; early summaries do not gain graphics statistics.
 
 Summary properties:
 

@@ -29,6 +29,14 @@ inline constexpr char kCategoryMTSEngine[] = "mainThreadScriptingEngine";
 inline constexpr char kCategoryBTSEngine[] = "backgroundThreadScriptingEngine";
 inline constexpr char kCategoryTasmElement[] = "lynxTasmElement";
 
+// Reserved categories framing a complete UI snapshot. Submit both sentinels
+// and all records in one reporter-thread task. Keep in sync with Android's
+// PerformanceController.
+inline constexpr char kUIMemorySnapshotBegin[] =
+    "__lynx_ui_memory_snapshot_begin__";
+inline constexpr char kUIMemorySnapshotEnd[] =
+    "__lynx_ui_memory_snapshot_end__";
+
 // Record memory information for a specific module
 struct MemoryRecord {
   // Memory type, required attribute.
@@ -41,6 +49,9 @@ struct MemoryRecord {
 
   // The number of instances of the category, default is one.
   int32_t instance_count_ = 1;
+
+  // Set by the platform UI collector when constructing the record.
+  bool is_ui_ = false;
 
   // Detailed description of the memory information, optional attribute.
   // For example, when category_ is kMemoryCategoryImage, detail_ can include
@@ -57,13 +68,14 @@ struct MemoryRecord {
   // `other.detail_` are removed from `detail_`. Null `detail_` are handled.
   MemoryRecord& operator-=(const MemoryRecord& other);
 
-  MemoryRecord(MemoryCategory category, int64_t size_bytes);
+  explicit MemoryRecord(MemoryCategory category, int64_t size_bytes = 0);
   MemoryRecord(
       MemoryCategory category, int64_t size_bytes,
       std::unique_ptr<std::unordered_map<std::string, std::string>> detail);
   MemoryRecord(
       MemoryCategory category, int64_t size_bytes, int32_t instance_count,
-      std::unique_ptr<std::unordered_map<std::string, std::string>> detail);
+      std::unique_ptr<std::unordered_map<std::string, std::string>> detail,
+      bool is_ui = false);
   MemoryRecord() = default;
   ~MemoryRecord() = default;
 

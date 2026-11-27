@@ -94,7 +94,8 @@ static void DeallocateMemory(JNIEnv* env, jobject jcaller, jlong j_native_ptr,
 
 static void UpdateMemoryUsage(JNIEnv* env, jobject jcaller, jlong j_native_ptr,
                               jstring j_category, jlong j_size_bytes,
-                              jint j_instance_count, jobject j_detail_map) {
+                              jint j_instance_count, jobject j_detail_map,
+                              jboolean j_is_ui) {
   if (j_native_ptr == 0) {
     return;
   }
@@ -112,12 +113,12 @@ static void UpdateMemoryUsage(JNIEnv* env, jobject jcaller, jlong j_native_ptr,
           ConvertJavaStringHashMapToSTLStringMap(env, j_detail_map);
   nativeActorPtr->Act(
       [category = std::move(category), size_bytes = j_size_bytes,
-       instance_count = j_instance_count,
+       instance_count = j_instance_count, is_ui = j_is_ui == JNI_TRUE,
        captured_detail = std::move(detail_ptr)](auto& performance) mutable {
         performance->GetMemoryMonitor().UpdateMemoryUsage(
-            lynx::tasm::performance::MemoryRecord(category, size_bytes,
-                                                  instance_count,
-                                                  std::move(captured_detail)));
+            lynx::tasm::performance::MemoryRecord(
+                category, size_bytes, instance_count,
+                std::move(captured_detail), is_ui));
       });
 }
 

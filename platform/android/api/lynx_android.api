@@ -3140,7 +3140,7 @@ public interface com::lynx::tasm::performance::memory::IMemoryMonitor {
   public void com.lynx.tasm.performance.memory.IMemoryMonitor.allocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.memory.IMemoryMonitor.deallocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.memory.IMemoryMonitor.updateMemoryUsage(IMemoryRecordBuilder builder);
-  public void com.lynx.tasm.performance.memory.IMemoryMonitor.updateMemoryUsage(Map< String, MemoryRecord > recordMap);
+  public void com.lynx.tasm.performance.memory.IMemoryMonitor.updateUIMemoryUsage(Map< String, MemoryRecord > recordMap);
 }
 
 public interface com::lynx::tasm::performance::memory::IMemoryRecordBuilder {
@@ -4718,6 +4718,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public long com.lynx.tasm.behavior.ui.LynxBaseUI.getFirstMeaningfulContentPresentedTimestampMicros();
   public long com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageBytes();
   public Map< String, String > com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageDetail();
+  public long com.lynx.tasm.behavior.ui.LynxBaseUI.getMemoryUsageBytesWithSharedOwners(Set< Object > sharedOwners);
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.getVisibility();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isVisible();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setDisplayNone(boolean displayNone);
@@ -9049,7 +9050,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.onPageConfigDecoded(PageConfig pageConfig);
   public void com.lynx.tasm.performance.PerformanceController.stopFSPTracerByUserInteraction();
   public boolean com.lynx.tasm.performance.PerformanceController.isFSPEnabled();
-  public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(Map< String, MemoryRecord > recordMap);
+  public void com.lynx.tasm.performance.PerformanceController.updateUIMemoryUsage(Map< String, MemoryRecord > recordMap);
   public void com.lynx.tasm.performance.PerformanceController.setMsTiming(String key, long msTimestamp, String pipelineID);
   public void com.lynx.tasm.performance.PerformanceController.markTiming(final String key, final String pipelineID);
   public void com.lynx.tasm.performance.PerformanceController.markHostPlatformTiming(final String key);
@@ -12036,6 +12037,8 @@ public class com::lynx::tasm::behavior::ui::UIShadowProxy : com.lynx.tasm.behavi
   public boolean com.lynx.tasm.behavior.ui.UIShadowProxy.isFlatten();
   public List< LynxBaseUI > com.lynx.tasm.behavior.ui.UIShadowProxy.getChildren();
   public long com.lynx.tasm.behavior.ui.UIShadowProxy.getMemoryUsageBytes();
+  public Map< String, String > com.lynx.tasm.behavior.ui.UIShadowProxy.getMemoryUsageDetail();
+  public long com.lynx.tasm.behavior.ui.UIShadowProxy.getMemoryUsageBytesWithSharedOwners(Set< Object > sharedOwners);
   public LynxBaseUI com.lynx.tasm.behavior.ui.UIShadowProxy.getChildAt(int index);
   public int com.lynx.tasm.behavior.ui.UIShadowProxy.getChildCount();
   public LynxBaseUI com.lynx.tasm.behavior.ui.UIShadowProxy.getChild();

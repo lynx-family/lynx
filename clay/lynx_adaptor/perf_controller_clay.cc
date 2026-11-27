@@ -82,7 +82,7 @@ void PerfControllerClay::ScheduleUIMemoryCollection() {
         }
 
         auto usage = self->read_ui_memory_(*self);
-        if (usage && !usage->empty()) {
+        if (usage) {
           self->perf_controller_proxy_->UpdateUIMemoryUsage(std::move(*usage));
         }
       },

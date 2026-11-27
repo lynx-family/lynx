@@ -19,6 +19,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/memory_graphics.h"
 #include "core/services/performance/memory_monitor/global_memory_monitor.h"
 #include "quickjs/include/quickjs.h"
 #if ENABLE_TRACE_PERFETTO
@@ -72,13 +73,6 @@ void EnableAllMemorySources(MemoryMonitor::Settings& settings) {
     entry->enabled = 1;
     entry->sample_rate = 1.0f;
   }
-}
-
-int SourceIndex(const std::string& category) {
-  if (category == kCategoryTasmElement) return 0;
-  if (category == kCategoryMTSEngine) return 1;
-  if (category == kCategoryBTSEngine) return 2;
-  return 3;  // Platform UI producers use per-widget category names.
 }
 
 #if ENABLE_TRACE_PERFETTO
@@ -244,8 +238,34 @@ void MemoryMonitor::UpdateMemoryUsage(MemoryRecord&& record,
   if (!Enable()) {
     return;
   }
-  auto category = record.category_;
-  memory_records_.insert_or_assign(category, std::move(record));
+  if (record.category_ == kUIMemorySnapshotBegin) {
+    pending_ui_records_.emplace();
+    return;
+  }
+  if (record.category_ == kUIMemorySnapshotEnd) {
+    if (!pending_ui_records_) {
+      return;
+    }
+    for (auto it = memory_records_.begin(); it != memory_records_.end();) {
+      if (it->second.is_ui_) {
+        it = memory_records_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    for (auto& [category, pending] : *pending_ui_records_) {
+      memory_records_.insert_or_assign(category, std::move(pending));
+    }
+    pending_ui_records_.reset();
+  } else {
+    auto category = record.category_;
+    auto& records =
+        pending_ui_records_ ? *pending_ui_records_ : memory_records_;
+    records.insert_or_assign(category, std::move(record));
+    if (pending_ui_records_) {
+      return;
+    }
+  }
   ReportMemoryUsage(force_report);
 }
 
@@ -254,20 +274,22 @@ PageMemoryUsage MemoryMonitor::RefreshMemoryUsage() {
   if (!state || state->destroyed) return last_usage_;
   last_refresh_at_ms_ = MemoryNowMs();
   PageMemoryUsage usage;
-  for (const auto& item : memory_records_) {
-    const auto index = SourceIndex(item.first);
-    if (index == 2) {
+  for (const auto& [category, record] : memory_records_) {
+    const auto bytes = record.size_bytes_;
+    if (record.is_ui_) {
+      usage.ui_bytes += bytes;
+      if (IsGraphicsMemoryCategory(category)) {
+        usage.graphics_bytes += bytes;
+      }
+    } else if (category == kCategoryTasmElement) {
+      usage.element_bytes += bytes;
+      usage.element_count += record.instance_count_;
+    } else if (category == kCategoryMTSEngine) {
+      usage.mts_bytes += bytes;
+    } else if (category == kCategoryBTSEngine) {
       continue;  // This value is heap size of VM.
     }
-    const auto bytes = item.second.size_bytes_;
     usage.total_bytes += bytes;
-    int64_t* part = index == 0   ? &usage.element_bytes
-                    : index == 1 ? &usage.mts_bytes
-                                 : &usage.ui_bytes;
-    *part += bytes;
-    if (index == 0) {
-      usage.element_count += item.second.instance_count_;
-    }
   }
   if (!state->bts_disabled) {
     const auto bts = global_->GetInstanceBtsMemoryUsage(instance_id_);
@@ -477,11 +499,12 @@ report::MoveOnlyEvent MemoryMonitor::BuildPageEvent(
   event.SetProps("current_mts_heap_bytes", usage.mts_bytes);
   event.SetProps("current_bts_attributed_bytes", usage.bts_bytes);
   event.SetProps("current_platform_ui_bytes", usage.ui_bytes);
+  event.SetProps("current_graphics_bytes", usage.graphics_bytes);
   event.SetProps("current_page_memory_bytes", usage.total_bytes);
   event.SetProps("bts_shared", usage.bts_shared);
   if (GetSettings().lynx_ui.enabled) {
     for (const auto& item : memory_records_) {
-      if (SourceIndex(item.first) == 3) {
+      if (item.second.is_ui_) {
         auto key = item.first + "SizeBytes";
         std::replace(key.begin(), key.end(), '-', '_');
         event.SetProps(key.c_str(), item.second.size_bytes_);

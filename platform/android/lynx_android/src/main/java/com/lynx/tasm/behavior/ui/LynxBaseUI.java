@@ -581,6 +581,15 @@ public abstract class LynxBaseUI
     return null;
   }
 
+  /**
+   * Returns bytes to count in this collection. Shared allocations should be counted only when their
+   * owner is first added to sharedOwners, which compares by identity.
+   * The default implementation calls getMemoryUsageBytes().
+   */
+  public long getMemoryUsageBytesWithSharedOwners(Set<Object> sharedOwners) {
+    return getMemoryUsageBytes();
+  }
+
   public boolean getVisibility() {
     return !mDisplayNone;
   }

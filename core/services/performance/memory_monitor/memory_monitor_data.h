@@ -21,7 +21,7 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
-inline constexpr int32_t kMemoryEventSchemaVersion = 12;
+inline constexpr int32_t kMemoryEventSchemaVersion = 13;
 
 inline int64_t MemoryNowMs() {
   return fml::TimePoint::Now().ToEpochDelta().ToMilliseconds();
@@ -35,6 +35,8 @@ struct PageMemoryUsage {
   int64_t element_bytes{0};
   int64_t mts_bytes{0};
   int64_t ui_bytes{0};
+  // A category-attributed subset of ui_bytes, already included in total_bytes.
+  int64_t graphics_bytes{0};
   int32_t element_count{0};
   bool bts_shared{false};
 };

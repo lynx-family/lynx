@@ -372,6 +372,10 @@ static int64_t LynxSaturatedAddMemoryUsageBytes(int64_t lhs, int64_t rhs) {
   return nil;
 }
 
+- (int64_t)memoryUsageBytesWithSharedOwners:(NSHashTable*)sharedOwners {
+  return [self memoryUsageBytes];
+}
+
 - (void)getMeaningfulPaintingContentRecursive:
             (NSMutableArray<LynxMeaningfulContentInfo*>*)contentsArray
                                       offsetX:(CGFloat)offsetX

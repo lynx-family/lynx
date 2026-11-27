@@ -51,6 +51,9 @@ import java.util.Map;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private static final String TAG = "PerformanceController";
+  // Keep in sync with memory_record.h.
+  private static final String UI_MEMORY_SNAPSHOT_BEGIN = "__lynx_ui_memory_snapshot_begin__";
+  private static final String UI_MEMORY_SNAPSHOT_END = "__lynx_ui_memory_snapshot_end__";
   private static volatile boolean sIsNativeLibraryLoaded = false;
   private static volatile LynxBooleanOption sIsMemoryMonitorEnabled = LynxBooleanOption.UNSET;
   private EmbeddedTimingCollector mEmbeddedTimingCollector;
@@ -184,7 +187,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       }
       MemoryRecord record = builder.build();
       nativeUpdateMemoryUsage(mNativePerformanceActorPtr, record.getCategory(), record.mSizeBytes,
-          record.mInstanceCount, null);
+          record.mInstanceCount, null, false);
     });
   }
 
@@ -216,7 +219,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   }
 
   @Override
-  public void updateMemoryUsage(Map<String, MemoryRecord> recordMap) {
+  public void updateUIMemoryUsage(Map<String, MemoryRecord> recordMap) {
     if (isEmbeddedMode() || recordMap == null) {
       return;
     }
@@ -224,14 +227,18 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       if (mNativePerformanceActorPtr == 0) {
         return;
       }
+      nativeUpdateMemoryUsage(
+          mNativePerformanceActorPtr, UI_MEMORY_SNAPSHOT_BEGIN, 0, 0, null, false);
       for (Map.Entry<String, MemoryRecord> recordEntry : recordMap.entrySet()) {
         MemoryRecord record = recordEntry.getValue();
         if (record == null) {
           continue;
         }
         nativeUpdateMemoryUsage(mNativePerformanceActorPtr, record.getCategory(), record.mSizeBytes,
-            record.mInstanceCount, record.mDetail);
+            record.mInstanceCount, record.mDetail, true);
       }
+      nativeUpdateMemoryUsage(
+          mNativePerformanceActorPtr, UI_MEMORY_SNAPSHOT_END, 0, 0, null, false);
     });
   }
 
@@ -493,7 +500,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private native void nativeDeallocateMemory(
       long nativePtr, String category, long sizeBytes, String detailKey, String detailValue);
   private native void nativeUpdateMemoryUsage(long nativePtr, String category, long sizeBytes,
-      int instanceCount, Map<String, String> detail);
+      int instanceCount, Map<String, String> detail, boolean isUI);
   private native void nativeSetTiming(
       long nativePtr, String key, long usTimestamp, String pipelineID);
   private native void nativeSetPaintEndTimingAndHostPlatformTiming(
