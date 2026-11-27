@@ -879,8 +879,9 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqualWithAccuracy(gradientLayer.frame.origin.y, 12.0f, 0.001f);
   XCTAssertEqualWithAccuracy(gradientLayer.frame.size.width, 80.0f, 0.001f);
   XCTAssertEqualWithAccuracy(gradientLayer.frame.size.height, 60.0f, 0.001f);
-  XCTAssertTrue([gradientLayer isKindOfClass:[CAReplicatorLayer class]]);
-  XCTAssertNotNil(gradientLayer.sublayers.firstObject);
+  XCTAssertFalse([gradientLayer isKindOfClass:[CAReplicatorLayer class]]);
+  XCTAssertTrue(gradientLayer.masksToBounds);
+  XCTAssertTrue([gradientLayer.sublayers.firstObject isKindOfClass:[CAGradientLayer class]]);
 
   XCTAssertTrue(CGRectEqualToRect(fillLayer.frame, CGRectMake(5, 6, 10, 12)));
 }
@@ -998,7 +999,7 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqual(host.layer.sublayers.count, 2u);
   XCTAssertTrue(CGColorEqualToColor(host.layer.sublayers.firstObject.backgroundColor,
                                     UIColor.greenColor.CGColor));
-  XCTAssertTrue([host.layer.sublayers.lastObject isKindOfClass:CAReplicatorLayer.class]);
+  XCTAssertTrue([host.layer.sublayers.lastObject isKindOfClass:CAGradientLayer.class]);
 }
 
 - (void)testProcessContentOperationsWithLinearGradientRoundedClipAppliesMask {
@@ -1045,9 +1046,10 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertEqual(view.layer.sublayers.count, 1u);
   CALayer *gradientLayer = view.layer.sublayers.firstObject;
   XCTAssertTrue(CGRectEqualToRect(gradientLayer.frame, CGRectMake(10, 12, 80, 60)));
+  XCTAssertFalse([gradientLayer isKindOfClass:[CAReplicatorLayer class]]);
   XCTAssertNotNil(gradientLayer.mask);
-  CALayer *horizontalLayer = gradientLayer.sublayers.firstObject;
-  CAGradientLayer *radialLayer = (CAGradientLayer *)horizontalLayer.sublayers.firstObject;
+  CAGradientLayer *radialLayer = (CAGradientLayer *)gradientLayer.sublayers.firstObject;
+  XCTAssertTrue([radialLayer isKindOfClass:[CAGradientLayer class]]);
   XCTAssertEqualObjects(radialLayer.type, kCAGradientLayerRadial);
 }
 
@@ -1065,11 +1067,146 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   [applier applyDisplayList:&list];
 
   XCTAssertEqual(view.layer.sublayers.count, 1u);
-  CALayer *gradientLayer = view.layer.sublayers.firstObject;
-  XCTAssertNotNil(gradientLayer);
-  CALayer *horizontalLayer = gradientLayer.sublayers.firstObject;
-  CAGradientLayer *radialLayer = (CAGradientLayer *)horizontalLayer.sublayers.firstObject;
+  CAGradientLayer *radialLayer = (CAGradientLayer *)view.layer.sublayers.firstObject;
+  XCTAssertTrue([radialLayer isKindOfClass:[CAGradientLayer class]]);
+  XCTAssertEqual(radialLayer.sublayers.count, 0u);
   XCTAssertEqualObjects(radialLayer.type, kCAGradientLayerRadial);
+}
+
+- (void)testGradientRepeatDirectionsCreateMinimalReplicatorLayers {
+  for (BOOL isRadial : {NO, YES}) {
+    for (BOOL repeatX : {NO, YES}) {
+      for (BOOL repeatY : {NO, YES}) {
+        LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+        LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                            andContext:nil];
+        DisplayList list;
+        AppendRecordBox(list, 5.0f, 6.0f, 20.0f, 16.0f);
+        AppendRecordBox(list, 2.0f, 3.0f, 80.0f, 64.0f);
+        lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF0000FF};
+        lynx::base::Vector<float> stops{0.0f, 1.0f};
+        const int32_t rx = repeatX ? LynxBackgroundRepeatRepeat : LynxBackgroundRepeatNoRepeat;
+        const int32_t ry = repeatY ? LynxBackgroundRepeatRepeat : LynxBackgroundRepeatNoRepeat;
+        if (isRadial) {
+          list.AddRadialGradient(10.0f, 8.0f, 10.0f, 8.0f, colors, stops, 0, 1, rx, ry);
+        } else {
+          list.AddLinearGradient(90.0f, colors, stops, 0, 1, rx, ry);
+        }
+        [applier applyDisplayList:&list];
+
+        XCTAssertEqual(view.layer.sublayers.count, 1u);
+        CALayer *root = view.layer.sublayers.firstObject;
+        XCTAssertTrue(CGRectEqualToRect(root.frame, CGRectMake(2, 3, 80, 64)));
+        XCTAssertTrue(root.masksToBounds);
+
+        CAGradientLayer *paint = nil;
+        if (repeatX && repeatY) {
+          XCTAssertTrue([root isKindOfClass:[CAReplicatorLayer class]]);
+          CAReplicatorLayer *vertical = (CAReplicatorLayer *)root;
+          XCTAssertEqual(vertical.instanceCount, 5);
+          XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, 16.0, 0.001);
+          CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+          XCTAssertTrue([horizontal isKindOfClass:[CAReplicatorLayer class]]);
+          XCTAssertEqual(horizontal.instanceCount, 5);
+          XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, 20.0, 0.001);
+          paint = (CAGradientLayer *)horizontal.sublayers.firstObject;
+        } else if (repeatX) {
+          XCTAssertTrue([root isKindOfClass:[CAReplicatorLayer class]]);
+          CAReplicatorLayer *horizontal = (CAReplicatorLayer *)root;
+          XCTAssertEqual(horizontal.instanceCount, 5);
+          XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, 20.0, 0.001);
+          paint = (CAGradientLayer *)horizontal.sublayers.firstObject;
+        } else if (repeatY) {
+          XCTAssertTrue([root isKindOfClass:[CAReplicatorLayer class]]);
+          CAReplicatorLayer *vertical = (CAReplicatorLayer *)root;
+          XCTAssertEqual(vertical.instanceCount, 5);
+          XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, 16.0, 0.001);
+          paint = (CAGradientLayer *)vertical.sublayers.firstObject;
+        } else {
+          XCTAssertFalse([root isKindOfClass:[CAReplicatorLayer class]]);
+          XCTAssertFalse([root isKindOfClass:[CAGradientLayer class]]);
+          paint = (CAGradientLayer *)root.sublayers.firstObject;
+        }
+
+        XCTAssertTrue([paint isKindOfClass:[CAGradientLayer class]]);
+        XCTAssertEqual(paint.sublayers.count, 0u);
+        XCTAssertEqual(paint.colors.count, 2u);
+        XCTAssertEqualObjects(paint.type,
+                              isRadial ? kCAGradientLayerRadial : kCAGradientLayerAxial);
+        XCTAssertEqualWithAccuracy(paint.frame.origin.x, repeatX ? -17.0 : 3.0, 0.001);
+        XCTAssertEqualWithAccuracy(paint.frame.origin.y, repeatY ? -13.0 : 3.0, 0.001);
+        XCTAssertEqualWithAccuracy(paint.frame.size.width, 20.0, 0.001);
+        XCTAssertEqualWithAccuracy(paint.frame.size.height, 16.0, 0.001);
+      }
+    }
+  }
+}
+
+- (void)testGradientDefaultRepeatCoveringClipBoxSkipsReplicatorLayers {
+  for (BOOL isRadial : {NO, YES}) {
+    // 1. originBox == clipBox with CSS default repeat: single CAGradientLayer, 0 replicators.
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 120, 80)];
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:nil];
+    DisplayList list;
+    AppendRecordBox(list, 10.0f, 12.0f, 100.0f, 60.0f);
+    lynx::base::Vector<uint32_t> colors{0xFFFF0000, 0xFF00FF00, 0xFF0000FF};
+    lynx::base::Vector<float> stops{0.2f, 0.1f, 1.0f};
+    if (isRadial) {
+      list.AddRadialGradient(50.0f, 30.0f, 50.0f, 30.0f, colors, stops, 0, 0,
+                             LynxBackgroundRepeatRepeat, LynxBackgroundRepeatRepeat);
+    } else {
+      list.AddLinearGradient(45.0f, colors, stops, 0, 0, LynxBackgroundRepeatRepeat,
+                             LynxBackgroundRepeatRepeat);
+    }
+    [applier applyDisplayList:&list];
+
+    XCTAssertEqual(view.layer.sublayers.count, 1u);
+    CAGradientLayer *paint = (CAGradientLayer *)view.layer.sublayers.firstObject;
+    XCTAssertTrue([paint isKindOfClass:[CAGradientLayer class]]);
+    XCTAssertEqual(paint.sublayers.count, 0u);
+    XCTAssertTrue(CGRectEqualToRect(paint.frame, CGRectMake(10, 12, 100, 60)));
+    XCTAssertEqual(paint.colors.count, 3u);
+    XCTAssertEqual(paint.locations.count, 3u);
+    XCTAssertEqualWithAccuracy(paint.locations[0].doubleValue, 0.2, 0.001);
+    XCTAssertEqualWithAccuracy(paint.locations[1].doubleValue, 0.2, 0.001);
+    XCTAssertEqualWithAccuracy(paint.locations[2].doubleValue, 1.0, 0.001);
+    if (!isRadial) {
+      // 45 deg on 100x60: halfDx = 10/17, halfDy = -6/17.
+      XCTAssertEqualWithAccuracy(paint.startPoint.x, 0.5 - 10.0 / 17.0, 0.001);
+      XCTAssertEqualWithAccuracy(paint.startPoint.y, 0.5 + 6.0 / 17.0, 0.001);
+      XCTAssertEqualWithAccuracy(paint.endPoint.x, 0.5 + 10.0 / 17.0, 0.001);
+      XCTAssertEqualWithAccuracy(paint.endPoint.y, 0.5 - 6.0 / 17.0, 0.001);
+    } else {
+      XCTAssertEqualWithAccuracy(paint.startPoint.x, 0.5, 0.001);
+      XCTAssertEqualWithAccuracy(paint.startPoint.y, 0.5, 0.001);
+      XCTAssertEqualWithAccuracy(paint.endPoint.x, 1.0, 0.001);
+      XCTAssertEqualWithAccuracy(paint.endPoint.y, 1.0, 0.001);
+    }
+
+    // 2. originBox strictly larger than and covering clipBox with default repeat: plain clip
+    // layer + CAGradientLayer, 0 replicators.
+    DisplayList oversized;
+    AppendRecordBox(oversized, 0.0f, 0.0f, 100.0f, 80.0f);
+    AppendRecordBox(oversized, 10.0f, 12.0f, 80.0f, 50.0f);
+    if (isRadial) {
+      oversized.AddRadialGradient(50.0f, 40.0f, 50.0f, 40.0f, colors, stops, 0, 1,
+                                  LynxBackgroundRepeatRepeat, LynxBackgroundRepeatRepeat);
+    } else {
+      oversized.AddLinearGradient(90.0f, colors, stops, 0, 1, LynxBackgroundRepeatRepeat,
+                                  LynxBackgroundRepeatRepeat);
+    }
+    [applier applyDisplayList:&oversized];
+
+    XCTAssertEqual(view.layer.sublayers.count, 1u);
+    CALayer *clip = view.layer.sublayers.firstObject;
+    XCTAssertFalse([clip isKindOfClass:[CAReplicatorLayer class]]);
+    XCTAssertTrue(clip.masksToBounds);
+    XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(10, 12, 80, 50)));
+    CAGradientLayer *childPaint = (CAGradientLayer *)clip.sublayers.firstObject;
+    XCTAssertTrue([childPaint isKindOfClass:[CAGradientLayer class]]);
+    XCTAssertTrue(CGRectEqualToRect(childPaint.frame, CGRectMake(-10, -12, 100, 80)));
+  }
 }
 
 - (void)testProcessContentOperationsWithClipRectPartial {
@@ -1175,9 +1312,9 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     XCTAssertTrue(host.layer.masksToBounds);
     XCTAssertEqual(host.layer.cornerRadius, 12.f);
     if (gradient) {
-      CAGradientLayer *paint =
-          (CAGradientLayer *)background.sublayers.firstObject.sublayers.firstObject;
+      CAGradientLayer *paint = (CAGradientLayer *)background;
       XCTAssertTrue([paint isKindOfClass:CAGradientLayer.class]);
+      XCTAssertEqual(paint.sublayers.count, 0u);
       XCTAssertEqual(paint.colors.count, 2u);
     } else {
       XCTAssertTrue(CGColorEqualToColor(background.backgroundColor, UIColor.redColor.CGColor));
@@ -1435,9 +1572,10 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
   XCTAssertTrue(CGRectEqualToRect(background.sublayers[1].frame, CGRectMake(10, 10, 80, 60)));
   XCTAssertTrue(CGRectEqualToRect(background.sublayers[2].frame, CGRectMake(2, 3, 96, 74)));
   CALayer *clip = background.sublayers.firstObject;
-  XCTAssertTrue([clip isKindOfClass:CAReplicatorLayer.class]);
+  XCTAssertFalse([clip isKindOfClass:CAReplicatorLayer.class]);
   XCTAssertTrue(CGRectEqualToRect(clip.frame, CGRectMake(2, 3, 96, 74)));
   XCTAssertTrue(clip.masksToBounds);
+  XCTAssertEqual(clip.sublayers.count, 1u);
   XCTAssertEqual(host.layer.sublayers.count, 0u);
 
   // Simulate scrolling followed by an opacity update on the host.
@@ -1498,28 +1636,87 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
       list.AppendItem(item);
       [applier applyDisplayList:&list];
 
-      CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
-      CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+      CALayer *root = view.layer.sublayers.firstObject;
       XCTAssertNotNil(target);
-      XCTAssertEqual(horizontal.sublayers.firstObject, target);
-      XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(2.25, 3.25, 88, 64)));
-      XCTAssertTrue(vertical.masksToBounds);
-      XCTAssertEqualWithAccuracy(vertical.cornerRadius, 6, 0.001);
+      XCTAssertTrue(CGRectEqualToRect(root.frame, CGRectMake(2.25, 3.25, 88, 64)));
+      XCTAssertTrue(root.masksToBounds);
+      XCTAssertEqualWithAccuracy(root.cornerRadius, 6, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.size.width, repeatX ? 15.5 : 15.3, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.size.height, repeatY ? 11.5 : 11.7, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.origin.x, repeatX ? -7.25 : 8.05, 0.001);
       XCTAssertEqualWithAccuracy(target.frame.origin.y, repeatY ? -6.75 : -6.95, 0.001);
-      XCTAssertEqual(horizontal.instanceCount, repeatX ? 7 : 1);
-      XCTAssertEqual(vertical.instanceCount, repeatY ? 7 : 1);
-      XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, repeatX ? 15.5 : 15.3, 0.001);
-      XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, repeatY ? 11.5 : 11.7, 0.001);
+      if (repeatX && repeatY) {
+        XCTAssertTrue([root isKindOfClass:[CAReplicatorLayer class]]);
+        CAReplicatorLayer *vertical = (CAReplicatorLayer *)root;
+        CAReplicatorLayer *horizontal = (CAReplicatorLayer *)vertical.sublayers.firstObject;
+        XCTAssertTrue([horizontal isKindOfClass:[CAReplicatorLayer class]]);
+        XCTAssertEqual(horizontal.sublayers.firstObject, target);
+        XCTAssertEqual(horizontal.instanceCount, 7);
+        XCTAssertEqual(vertical.instanceCount, 7);
+        XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, 15.5, 0.001);
+        XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, 11.5, 0.001);
+      } else if (repeatX) {
+        XCTAssertTrue([root isKindOfClass:[CAReplicatorLayer class]]);
+        CAReplicatorLayer *horizontal = (CAReplicatorLayer *)root;
+        XCTAssertEqual(horizontal.sublayers.firstObject, target);
+        XCTAssertEqual(horizontal.instanceCount, 7);
+        XCTAssertEqualWithAccuracy(horizontal.instanceTransform.m41, 15.5, 0.001);
+      } else if (repeatY) {
+        XCTAssertTrue([root isKindOfClass:[CAReplicatorLayer class]]);
+        CAReplicatorLayer *vertical = (CAReplicatorLayer *)root;
+        XCTAssertEqual(vertical.sublayers.firstObject, target);
+        XCTAssertEqual(vertical.instanceCount, 7);
+        XCTAssertEqualWithAccuracy(vertical.instanceTransform.m42, 11.5, 0.001);
+      } else {
+        XCTAssertFalse([root isKindOfClass:[CAReplicatorLayer class]]);
+        XCTAssertEqual(root.sublayers.firstObject, target);
+      }
 
       [applier applyDisplayList:&list];
-      XCTAssertNil(vertical.superlayer);
+      XCTAssertNil(root.superlayer);
       XCTAssertEqual(view.layer.sublayers.count, 1u);
       [applier reset];
       XCTAssertEqual(view.layer.sublayers.count, 0u);
     }
+  }
+}
+
+- (void)testBackgroundImageNoRepeatMatchingClipBoxUsesSingleLayer {
+  for (int32_t repeatMode : {LynxBackgroundRepeatNoRepeat, LynxBackgroundRepeatRepeat}) {
+    LynxMockView *view = [[LynxMockView alloc] initWithFrame:CGRectMake(0, 0, 100, 80)];
+    id context = OCMClassMock([LynxRendererContext class]);
+    id manager = OCMClassMock([LynxImageManager class]);
+    OCMStub([context imageManagerForID:123]).andReturn(manager);
+    __block CALayer *target = nil;
+    OCMStub([manager setLayerTarget:[OCMArg any]]).andDo(^(NSInvocation *invocation) {
+      __unsafe_unretained CALayer *imageLayer;
+      [invocation getArgument:&imageLayer atIndex:2];
+      target = imageLayer;
+    });
+    LynxDisplayListApplier *applier = [[LynxDisplayListApplier alloc] initWithView:view
+                                                                        andContext:context];
+    DisplayList list;
+    float radii[] = {6, 6, 6, 6, 6, 6, 6, 6};
+    AppendRecordBox(list, 4.0f, 6.0f, 80.0f, 50.0f, true, radii);
+    DisplayListItem item{};
+    item.type = DisplayListOpType::kBackgroundImage;
+    item.payload.background_image.image_id = 123;
+    item.payload.background_image.clip_index = 0;
+    item.payload.background_image.tiling_index = 0;
+    item.payload.background_image.repeat_x = repeatMode;
+    item.payload.background_image.repeat_y = repeatMode;
+    list.AppendItem(item);
+
+    [applier applyDisplayList:&list];
+
+    XCTAssertEqual(view.layer.sublayers.count, 1u);
+    CALayer *root = view.layer.sublayers.firstObject;
+    XCTAssertEqual(root, target);
+    XCTAssertFalse([root isKindOfClass:[CAReplicatorLayer class]]);
+    XCTAssertEqual(root.sublayers.count, 0u);
+    XCTAssertTrue(CGRectEqualToRect(root.frame, CGRectMake(4, 6, 80, 50)));
+    XCTAssertEqualWithAccuracy(root.cornerRadius, 6, 0.001);
+    XCTAssertTrue(root.masksToBounds);
   }
 }
 
@@ -1618,9 +1815,10 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
     item.payload.background_image.repeat_y = LynxBackgroundRepeatNoRepeat;
     list.AppendItem(item);
     [applier applyDisplayList:&list];
-    CAReplicatorLayer *vertical = (CAReplicatorLayer *)view.layer.sublayers.firstObject;
-    CALayer *target = vertical.sublayers.firstObject.sublayers.firstObject;
-    XCTAssertTrue(vertical.hidden);
+    CALayer *container = view.layer.sublayers.firstObject;
+    XCTAssertFalse([container isKindOfClass:[CAReplicatorLayer class]]);
+    CALayer *target = container.sublayers.firstObject;
+    XCTAssertTrue(container.hidden);
 
     const CGSize imageSizes[] = {CGSizeMake(40, 20), CGSizeMake(20, 40)};
     const CGRect frames[] = {test.landscapeFrame, test.portraitFrame};
@@ -1632,20 +1830,19 @@ void AppendClipRect(DisplayList &list, float x, float y, float w, float h, bool 
       images[@(LynxImageRequestSrc)] = image;
       // Completion updates the existing layers without applying another display list.
       [manager applyImage:image withType:LynxImageRequestSrc];
-      XCTAssertEqual(view.layer.sublayers.firstObject, vertical);
-      XCTAssertFalse(vertical.hidden);
-      XCTAssertTrue(CGRectEqualToRect(vertical.frame, CGRectMake(2, 3, 140, 120)));
-      XCTAssertTrue(vertical.masksToBounds);
-      XCTAssertEqualWithAccuracy(vertical.cornerRadius, 6, 0.001);
+      XCTAssertEqual(view.layer.sublayers.firstObject, container);
+      XCTAssertFalse(container.hidden);
+      XCTAssertTrue(CGRectEqualToRect(container.frame, CGRectMake(2, 3, 140, 120)));
+      XCTAssertTrue(container.masksToBounds);
+      XCTAssertEqualWithAccuracy(container.cornerRadius, 6, 0.001);
       XCTAssertTrue(CGRectEqualToRect(target.frame, frames[index]));
     }
 
     [manager applyImage:nil withType:LynxImageRequestSrc];
-    XCTAssertTrue(vertical.hidden);
+    XCTAssertTrue(container.hidden);
     [applier reset];
     [applier applyDisplayList:&list];
-    CALayer *cachedTarget =
-        view.layer.sublayers.firstObject.sublayers.firstObject.sublayers.firstObject;
+    CALayer *cachedTarget = view.layer.sublayers.firstObject.sublayers.firstObject;
     XCTAssertFalse(view.layer.sublayers.firstObject.hidden);
     XCTAssertTrue(CGRectEqualToRect(cachedTarget.frame, test.portraitFrame));
     [applier reset];
