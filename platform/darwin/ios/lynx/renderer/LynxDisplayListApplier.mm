@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxBackgroundDrawable.h>
 #import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxImageLoader.h>
 #import <Lynx/LynxImageManager.h>
@@ -29,6 +29,33 @@
 @implementation LynxHostDrawingContainerLayer
 @end
 
+@interface LynxDisplayListNoActionLayer : CALayer
+@end
+
+@implementation LynxDisplayListNoActionLayer
+- (id<CAAction>)actionForKey:(NSString *)event {
+  return (id<CAAction>)[NSNull null];
+}
+@end
+
+@interface LynxDisplayListGradientLayer : CAGradientLayer
+@end
+
+@implementation LynxDisplayListGradientLayer
+- (id<CAAction>)actionForKey:(NSString *)event {
+  return (id<CAAction>)[NSNull null];
+}
+@end
+
+@interface LynxDisplayListReplicatorLayer : CAReplicatorLayer
+@end
+
+@implementation LynxDisplayListReplicatorLayer
+- (id<CAAction>)actionForKey:(NSString *)event {
+  return (id<CAAction>)[NSNull null];
+}
+@end
+
 @interface LynxRendererContext (TextContentReuse)
 // Stable while the context owns this Page; changes when the Page is replaced.
 - (id)textBundleIdentityForID:(int32_t)textID;
@@ -42,6 +69,85 @@ namespace {
 bool BorderValuesAreApproximatelyEqual(CGFloat lhs, CGFloat rhs) {
   constexpr CGFloat kBorderThreshold = 0.001f;
   return ABS(lhs - rhs) < kBorderThreshold;
+}
+
+// Compute CAGradientLayer unit-square start/end points for a CSS linear-gradient angle.
+// In CAGradientLayer, interpolation happens in normalized [0, 1]^2 space before scaling to bounds,
+// so the gradient vector must be perpendicular to the scaled iso-color lines in unit-square space.
+void ComputeLinearGradientPoints(float angleDegrees, CGSize size, CGPoint *startPoint,
+                                 CGPoint *endPoint) {
+  const double w = MAX(static_cast<double>(size.width), 1.0);
+  const double h = MAX(static_cast<double>(size.height), 1.0);
+  const double radians = static_cast<double>(angleDegrees) * M_PI / 180.0;
+  const double s = sin(radians);
+  const double c = cos(radians);
+  // W3C CSS Images Level 3 §3.4.1 half gradient-line length: (|w*sin| + |h*cos|) / 2.
+  const double halfLength = (fabs(w * s) + fabs(h * c)) * 0.5;
+  const double denom = w * w * s * s + h * h * c * c;
+  const double halfDx = denom > 0.0 ? (halfLength * w * s) / denom : 0.0;
+  const double halfDy = denom > 0.0 ? (-halfLength * h * c) / denom : 0.0;
+  *startPoint = CGPointMake(0.5 - halfDx, 0.5 - halfDy);
+  *endPoint = CGPointMake(0.5 + halfDx, 0.5 + halfDy);
+}
+
+struct RepeatLayerHierarchy {
+  CALayer *root = nil;
+  CAReplicatorLayer *horizontal = nil;
+  CAReplicatorLayer *vertical = nil;
+};
+
+// Wraps `contentLayer` with only the CAReplicatorLayer(s) or clip layer required for the active
+// repeat axes. When neither axis repeats and `allowDirectRoot` is true, returns `contentLayer`
+// directly as the root layer with frame `clipRect`.
+RepeatLayerHierarchy BuildRepeatLayerHierarchy(CALayer *contentLayer, CGRect clipRect, bool repeatX,
+                                               bool repeatY, bool allowDirectRoot) {
+  RepeatLayerHierarchy result;
+  if (!repeatX && !repeatY) {
+    if (allowDirectRoot) {
+      contentLayer.frame = clipRect;
+      result.root = contentLayer;
+    } else {
+      CALayer *clipLayer = [LynxDisplayListNoActionLayer layer];
+      clipLayer.frame = clipRect;
+      clipLayer.masksToBounds = YES;
+      [clipLayer addSublayer:contentLayer];
+      result.root = clipLayer;
+    }
+    return result;
+  }
+
+  CALayer *current = contentLayer;
+  if (repeatX) {
+    CAReplicatorLayer *horizontal = [LynxDisplayListReplicatorLayer layer];
+    horizontal.frame =
+        repeatY ? CGRectMake(0, 0, clipRect.size.width, clipRect.size.height) : clipRect;
+    horizontal.masksToBounds = !repeatY;
+    [horizontal addSublayer:current];
+    result.horizontal = horizontal;
+    current = horizontal;
+  }
+  if (repeatY) {
+    CAReplicatorLayer *vertical = [LynxDisplayListReplicatorLayer layer];
+    vertical.frame = clipRect;
+    vertical.masksToBounds = YES;
+    [vertical addSublayer:current];
+    result.vertical = vertical;
+    current = vertical;
+  }
+  result.root = current;
+  return result;
+}
+
+void ConfigureRepeatLayers(const RepeatLayerHierarchy &layers, CGSize tileSize,
+                           NSInteger horizontalCount, NSInteger verticalCount) {
+  if (layers.horizontal != nil) {
+    layers.horizontal.instanceTransform = CATransform3DMakeTranslation(tileSize.width, 0, 0);
+    layers.horizontal.instanceCount = horizontalCount;
+  }
+  if (layers.vertical != nil) {
+    layers.vertical.instanceTransform = CATransform3DMakeTranslation(0, tileSize.height, 0);
+    layers.vertical.instanceCount = verticalCount;
+  }
 }
 
 bool HasApproximatelyUniformRadius(const RoundedRectangle &rect) {
@@ -100,16 +206,20 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
                                     blurRadius:(float)blurRadius
                                          inset:(BOOL)inset;
 - (CALayer *)createLinearGradientLayerWithAngle:(float)angle
-                                         colors:(NSArray<NSNumber *> *)colors
-                                          stops:(NSArray<NSNumber *> *)stops
+                                         colors:(const uint32_t *)colorData
+                                     colorCount:(int32_t)colorCount
+                                          stops:(const float *)stopData
+                                      stopCount:(int32_t)stopCount
                                       originBox:(const RoundedRectangle &)originBox
                                         clipBox:(const RoundedRectangle &)clipBox
                                         repeatX:(int32_t)repeatX
                                         repeatY:(int32_t)repeatY;
 - (CALayer *)createRadialGradientLayerWithCenter:(CGPoint)center
                                           radius:(CGPoint)radius
-                                          colors:(NSArray<NSNumber *> *)colors
-                                           stops:(NSArray<NSNumber *> *)stops
+                                          colors:(const uint32_t *)colorData
+                                      colorCount:(int32_t)colorCount
+                                           stops:(const float *)stopData
+                                       stopCount:(int32_t)stopCount
                                        originBox:(const RoundedRectangle &)originBox
                                          clipBox:(const RoundedRectangle &)clipBox
                                          repeatX:(int32_t)repeatX
@@ -401,104 +511,139 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         const CGFloat scale = _view.window.screen.scale ?: _view.contentScaleFactor;
         const bool repeatX = background.repeat_x == LynxBackgroundRepeatRepeat;
         const bool repeatY = background.repeat_y == LynxBackgroundRepeatRepeat;
-        CAReplicatorLayer *horizontal = [CAReplicatorLayer layer];
-        CAReplicatorLayer *vertical = [CAReplicatorLayer layer];
-        horizontal.frame = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
-        vertical.frame = clipRect;
-        CALayer *imageLayer = [CALayer layer];
-        __weak CALayer *weakImageLayer = imageLayer;
-        __weak CAReplicatorLayer *weakHorizontal = horizontal;
-        __weak CAReplicatorLayer *weakVertical = vertical;
-        // Capture geometry by value; the display list may change before loading completes.
-        const CGRect fallbackRect = CGRectMake(tilingBox.GetX(), tilingBox.GetY(),
-                                               tilingBox.GetWidth(), tilingBox.GetHeight());
-        const CGPoint clipOrigin = CGPointMake(clipBox.GetX(), clipBox.GetY());
-        const CGPoint hostOffset = CGPointMake(left_offset_, top_offset_);
         const BackgroundSizeMode sizeMode = background.size_mode;
         const bool needsIntrinsicSize = sizeMode != BackgroundSizeMode::kResolved;
-        const CGPoint position = CGPointMake(background.position_x, background.position_y);
-        void (^updateGeometry)(CGSize) = ^(CGSize imageSize) {
-          CALayer *target = weakImageLayer;
-          CAReplicatorLayer *horizontalLayer = weakHorizontal;
-          CAReplicatorLayer *verticalLayer = weakVertical;
-          if (!target || !horizontalLayer || !verticalLayer) {
-            return;
+        const CGRect localClipBounds = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
+        auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
+          const CGFloat pixelSize = round(size * scale);
+          const CGFloat clipPixel = floor(clipStart * scale);
+          CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
+          if (phase < 0) {
+            phase += pixelSize;
           }
-          if (needsIntrinsicSize && (imageSize.width <= 0 || imageSize.height <= 0)) {
-            verticalLayer.hidden = YES;
-            return;
-          }
-          CGFloat width = fallbackRect.size.width;
-          CGFloat height = fallbackRect.size.height;
-          switch (sizeMode) {
-            case BackgroundSizeMode::kCover:
-            case BackgroundSizeMode::kContain: {
-              const CGFloat widthScale = width / imageSize.width;
-              const CGFloat heightScale = height / imageSize.height;
-              const CGFloat fitScale = sizeMode == BackgroundSizeMode::kCover
-                                           ? MAX(widthScale, heightScale)
-                                           : MIN(widthScale, heightScale);
-              width = imageSize.width * fitScale;
-              height = imageSize.height * fitScale;
-              break;
-            }
-            case BackgroundSizeMode::kAutoBoth:
-              width = imageSize.width;
-              height = imageSize.height;
-              break;
-            case BackgroundSizeMode::kAutoWidth:
-              width = height * imageSize.width / imageSize.height;
-              break;
-            case BackgroundSizeMode::kAutoHeight:
-              height = width * imageSize.height / imageSize.width;
-              break;
-            case BackgroundSizeMode::kResolved:
-              break;
-          }
-          CGPoint origin =
-              CGPointMake(fallbackRect.origin.x + (fallbackRect.size.width - width) * position.x,
-                          fallbackRect.origin.y + (fallbackRect.size.height - height) * position.y);
-          width = repeatX ? MAX(1, round(width * scale)) / scale : width;
-          height = repeatY ? MAX(1, round(height * scale)) / scale : height;
-          // Align in host drawing pixels, then convert to the clip's local coordinates.
-          auto firstTile = [scale](CGFloat origin, CGFloat clipStart, CGFloat size) {
-            const CGFloat pixelSize = round(size * scale);
-            const CGFloat clipPixel = floor(clipStart * scale);
-            CGFloat phase = fmod(clipPixel - round(origin * scale), pixelSize);
-            if (phase < 0) {
-              phase += pixelSize;
-            }
-            return (clipPixel - phase) / scale - clipStart;
-          };
-          CGFloat x = origin.x - clipOrigin.x;
-          CGFloat y = origin.y - clipOrigin.y;
-          horizontalLayer.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
-          verticalLayer.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
-          if (repeatX) {
-            x = firstTile(origin.x + hostOffset.x, clipRect.origin.x, width);
-            horizontalLayer.instanceCount = ceil((clipRect.size.width - x) / width);
-          }
-          if (repeatY) {
-            y = firstTile(origin.y + hostOffset.y, clipRect.origin.y, height);
-            verticalLayer.instanceCount = ceil((clipRect.size.height - y) / height);
-          }
-          target.frame = CGRectMake(x, y, width, height);
-          verticalLayer.hidden = NO;
+          return (clipPixel - phase) / scale - clipStart;
         };
-        if (needsIntrinsicSize) {
-          [imageManager setLayerTarget:imageLayer imageSizeDidChange:updateGeometry];
-        } else {
-          updateGeometry(CGSizeZero);
+
+        CALayer *imageLayer = [CALayer layer];
+        CALayer *rootLayer = nil;
+        if (!needsIntrinsicSize) {
+          const CGFloat rawWidth = tilingBox.GetWidth();
+          const CGFloat rawHeight = tilingBox.GetHeight();
+          const CGFloat rawX = tilingBox.GetX() - clipBox.GetX();
+          const CGFloat rawY = tilingBox.GetY() - clipBox.GetY();
+          // Per W3C CSS Backgrounds §3.4, repeated tiles are disjoint. If the primary tile already
+          // covers the clipped painting area on an axis, no repeated tile is visible on that axis.
+          const bool coversX = rawX <= 0 && rawX + rawWidth >= clipRect.size.width;
+          const bool coversY = rawY <= 0 && rawY + rawHeight >= clipRect.size.height;
+          const bool effectiveRepeatX = repeatX && !coversX;
+          const bool effectiveRepeatY = repeatY && !coversY;
+          CGFloat width = effectiveRepeatX ? MAX(1, round(rawWidth * scale)) / scale : rawWidth;
+          CGFloat height = effectiveRepeatY ? MAX(1, round(rawHeight * scale)) / scale : rawHeight;
+          CGFloat x = effectiveRepeatX
+                          ? firstTile(tilingBox.GetX() + left_offset_, clipRect.origin.x, width)
+                          : rawX;
+          CGFloat y = effectiveRepeatY
+                          ? firstTile(tilingBox.GetY() + top_offset_, clipRect.origin.y, height)
+                          : rawY;
+          const CGRect targetFrame = CGRectMake(x, y, width, height);
+          const bool matchesClipBounds = CGRectEqualToRect(targetFrame, localClipBounds);
+          const RepeatLayerHierarchy layers = BuildRepeatLayerHierarchy(
+              imageLayer, clipRect, effectiveRepeatX, effectiveRepeatY, matchesClipBounds);
+          if (layers.root != imageLayer) {
+            imageLayer.frame = targetFrame;
+            ConfigureRepeatLayers(layers, CGSizeMake(width, height),
+                                  effectiveRepeatX ? ceil((clipRect.size.width - x) / width) : 1,
+                                  effectiveRepeatY ? ceil((clipRect.size.height - y) / height) : 1);
+          }
+          rootLayer = layers.root;
           [imageManager setLayerTarget:imageLayer];
+        } else {
+          // Replicate one image target so asynchronous updates reach every tile.
+          const RepeatLayerHierarchy layers =
+              BuildRepeatLayerHierarchy(imageLayer, clipRect, repeatX, repeatY,
+                                        /*allowDirectRoot=*/false);
+          rootLayer = layers.root;
+          CAReplicatorLayer *horizontal = layers.horizontal;
+          CAReplicatorLayer *vertical = layers.vertical;
+
+          __weak CALayer *weakImageLayer = imageLayer;
+          __weak CALayer *weakRootLayer = rootLayer;
+          __weak CAReplicatorLayer *weakHorizontal = horizontal;
+          __weak CAReplicatorLayer *weakVertical = vertical;
+          // Capture geometry by value; the display list may change before loading completes.
+          const CGRect fallbackRect = CGRectMake(tilingBox.GetX(), tilingBox.GetY(),
+                                                 tilingBox.GetWidth(), tilingBox.GetHeight());
+          const CGPoint clipOrigin = CGPointMake(clipBox.GetX(), clipBox.GetY());
+          const CGPoint hostOffset = CGPointMake(left_offset_, top_offset_);
+          const CGPoint position = CGPointMake(background.position_x, background.position_y);
+          void (^updateGeometry)(CGSize) = ^(CGSize imageSize) {
+            CALayer *target = weakImageLayer;
+            CALayer *container = weakRootLayer;
+            CAReplicatorLayer *horizontalLayer = weakHorizontal;
+            CAReplicatorLayer *verticalLayer = weakVertical;
+            if (!target || !container || (repeatX && !horizontalLayer) ||
+                (repeatY && !verticalLayer)) {
+              return;
+            }
+            if (imageSize.width <= 0 || imageSize.height <= 0) {
+              container.hidden = YES;
+              return;
+            }
+            CGFloat width = fallbackRect.size.width;
+            CGFloat height = fallbackRect.size.height;
+            switch (sizeMode) {
+              case BackgroundSizeMode::kCover:
+              case BackgroundSizeMode::kContain: {
+                const CGFloat widthScale = width / imageSize.width;
+                const CGFloat heightScale = height / imageSize.height;
+                const CGFloat fitScale = sizeMode == BackgroundSizeMode::kCover
+                                             ? MAX(widthScale, heightScale)
+                                             : MIN(widthScale, heightScale);
+                width = imageSize.width * fitScale;
+                height = imageSize.height * fitScale;
+                break;
+              }
+              case BackgroundSizeMode::kAutoBoth:
+                width = imageSize.width;
+                height = imageSize.height;
+                break;
+              case BackgroundSizeMode::kAutoWidth:
+                width = height * imageSize.width / imageSize.height;
+                break;
+              case BackgroundSizeMode::kAutoHeight:
+                height = width * imageSize.height / imageSize.width;
+                break;
+              case BackgroundSizeMode::kResolved:
+                break;
+            }
+            CGPoint origin = CGPointMake(
+                fallbackRect.origin.x + (fallbackRect.size.width - width) * position.x,
+                fallbackRect.origin.y + (fallbackRect.size.height - height) * position.y);
+            width = repeatX ? MAX(1, round(width * scale)) / scale : width;
+            height = repeatY ? MAX(1, round(height * scale)) / scale : height;
+            // Align in host drawing pixels, then convert to the clip's local coordinates.
+            CGFloat x = origin.x - clipOrigin.x;
+            CGFloat y = origin.y - clipOrigin.y;
+            if (repeatX) {
+              x = firstTile(origin.x + hostOffset.x, clipRect.origin.x, width);
+              horizontalLayer.instanceTransform = CATransform3DMakeTranslation(width, 0, 0);
+              horizontalLayer.instanceCount = ceil((clipRect.size.width - x) / width);
+            }
+            if (repeatY) {
+              y = firstTile(origin.y + hostOffset.y, clipRect.origin.y, height);
+              verticalLayer.instanceTransform = CATransform3DMakeTranslation(0, height, 0);
+              verticalLayer.instanceCount = ceil((clipRect.size.height - y) / height);
+            }
+            target.frame = CGRectMake(x, y, width, height);
+            container.hidden = NO;
+          };
+          [imageManager setLayerTarget:imageLayer imageSizeDidChange:updateGeometry];
         }
-        // Replicate one image target so asynchronous updates reach every tile.
-        [horizontal addSublayer:imageLayer];
-        [vertical addSublayer:horizontal];
         if (clipBox.HasRadius()) {
-          [self applyRoundedRect:clipBox toLayer:vertical];
+          [self applyRoundedRect:clipBox toLayer:rootLayer];
         }
-        vertical.masksToBounds = YES;
-        [self insertLayer:vertical forOp:op];
+        rootLayer.masksToBounds = YES;
+        [self insertLayer:rootLayer forOp:op];
         break;
       }
       case DisplayListOpType::kBorder: {
@@ -693,39 +838,32 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
       }
       case DisplayListOpType::kLinearGradient: {
         const int32_t innerPlusOne = item.payload.linear_gradient.inner_clip_index_plus_one;
-        int32_t color_count = item.payload.linear_gradient.color_count;
-        int32_t stop_count = item.payload.linear_gradient.stop_count;
+        const int32_t color_count = item.payload.linear_gradient.color_count;
+        const int32_t stop_count = item.payload.linear_gradient.stop_count;
 
-        if (color_count < 0) {
+        if (color_count < 0 || stop_count < 0) {
           break;
         }
 
-        NSMutableArray<NSNumber *> *colors = [NSMutableArray arrayWithCapacity:color_count];
-        const uint32_t *color_data = reader_.Colors(item);
-        for (int32_t i = 0; i < color_count; ++i) {
-          [colors addObject:@(color_data[i])];
-        }
-
-        int32_t origin_index = item.payload.linear_gradient.tiling_index;
-        int32_t clip_index = item.payload.linear_gradient.clip_index;
-        int32_t repeat_x = item.payload.linear_gradient.repeat_x;
-        int32_t repeat_y = item.payload.linear_gradient.repeat_y;
+        const int32_t origin_index = item.payload.linear_gradient.tiling_index;
+        const int32_t clip_index = item.payload.linear_gradient.clip_index;
+        const int32_t repeat_x = item.payload.linear_gradient.repeat_x;
+        const int32_t repeat_y = item.payload.linear_gradient.repeat_y;
 
         if (origin_index < 0 || static_cast<size_t>(origin_index) >= box_array_.size() ||
             clip_index < 0 || static_cast<size_t>(clip_index) >= box_array_.size()) {
           break;
         }
 
-        float angle = item.payload.linear_gradient.angle;
-        NSMutableArray<NSNumber *> *stops = [NSMutableArray arrayWithCapacity:stop_count];
+        const uint32_t *color_data = reader_.Colors(item);
         const float *stop_data = reader_.Stops(item);
-        for (int32_t i = 0; i < stop_count; ++i) {
-          [stops addObject:@(stop_data[i] * 100.0f)];
-        }
+        const float angle = item.payload.linear_gradient.angle;
 
         CALayer *gradientLayer = [self createLinearGradientLayerWithAngle:angle
-                                                                   colors:colors
-                                                                    stops:stops
+                                                                   colors:color_data
+                                                               colorCount:color_count
+                                                                    stops:stop_data
+                                                                stopCount:stop_count
                                                                 originBox:box_array_[origin_index]
                                                                   clipBox:box_array_[clip_index]
                                                                   repeatX:repeat_x
@@ -760,25 +898,20 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         break;
       }
       case DisplayListOpType::kRadialGradient: {
-        int32_t colorCount = item.payload.radial_gradient.color_count;
-        int32_t stopCount = item.payload.radial_gradient.stop_count;
-        NSMutableArray<NSNumber *> *colors = [NSMutableArray arrayWithCapacity:colorCount];
-        const uint32_t *colorData = reader_.Colors(item);
-        for (int32_t i = 0; i < colorCount; ++i) {
-          [colors addObject:@(colorData[i])];
-        }
-        NSMutableArray<NSNumber *> *stops = [NSMutableArray arrayWithCapacity:stopCount];
-        const float *stopData = reader_.Stops(item);
-        for (int32_t i = 0; i < stopCount; ++i) {
-          [stops addObject:@(stopData[i] * 100.0f)];
+        const int32_t colorCount = item.payload.radial_gradient.color_count;
+        const int32_t stopCount = item.payload.radial_gradient.stop_count;
+        if (colorCount < 0 || stopCount < 0) {
+          break;
         }
 
-        int32_t originIndex = item.payload.radial_gradient.tiling_index;
-        int32_t clipIndex = item.payload.radial_gradient.clip_index;
+        const int32_t originIndex = item.payload.radial_gradient.tiling_index;
+        const int32_t clipIndex = item.payload.radial_gradient.clip_index;
         if (originIndex < 0 || static_cast<size_t>(originIndex) >= box_array_.size() ||
             clipIndex < 0 || static_cast<size_t>(clipIndex) >= box_array_.size()) {
           break;
         }
+        const uint32_t *colorData = reader_.Colors(item);
+        const float *stopData = reader_.Stops(item);
         CGPoint center = CGPointMake(item.payload.radial_gradient.center_x,
                                      item.payload.radial_gradient.center_y);
         CGPoint radius = CGPointMake(item.payload.radial_gradient.radius_x,
@@ -786,8 +919,10 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
         CALayer *gradientLayer =
             [self createRadialGradientLayerWithCenter:center
                                                radius:radius
-                                               colors:colors
-                                                stops:stops
+                                               colors:colorData
+                                           colorCount:colorCount
+                                                stops:stopData
+                                            stopCount:stopCount
                                             originBox:box_array_[originIndex]
                                               clipBox:box_array_[clipIndex]
                                               repeatX:item.payload.radial_gradient.repeat_x
@@ -1052,93 +1187,145 @@ bool UpdateLegacyViewLayoutOffsetIfNeeded(UIView *view, CGPoint offset) {
   return container;
 }
 
+- (CALayer *)buildGradientLayerWithColors:(const uint32_t *)colorData
+                               colorCount:(int32_t)colorCount
+                                    stops:(const float *)stopData
+                                stopCount:(int32_t)stopCount
+                                originBox:(const RoundedRectangle &)originBox
+                                  clipBox:(const RoundedRectangle &)clipBox
+                                  repeatX:(int32_t)repeatX
+                                  repeatY:(int32_t)repeatY
+                                configure:(void (^)(CAGradientLayer *layer, CGSize size))configure {
+  CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
+  if (CGRectIsEmpty(clipRect)) {
+    return nil;
+  }
+
+  CGRect localBorderRect = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
+  CGRect originRect = [self rectForRoundedRectangle:originBox applyingOffsets:YES];
+  CGRect localPaintRect =
+      CGRectOffset(originRect, -CGRectGetMinX(clipRect), -CGRectGetMinY(clipRect));
+  const CGFloat width = localPaintRect.size.width;
+  const CGFloat height = localPaintRect.size.height;
+  if (ABS(width) < FLT_EPSILON || ABS(height) < FLT_EPSILON) {
+    return nil;
+  }
+
+  CAGradientLayer *gradientLayer = [LynxDisplayListGradientLayer layer];
+  NSMutableArray<id> *cgColors = [NSMutableArray arrayWithCapacity:colorCount];
+  if (colorData != nullptr) {
+    for (int32_t i = 0; i < colorCount; ++i) {
+      [cgColors addObject:(__bridge id)[self colorFromARGB:colorData[i]].CGColor];
+    }
+  }
+  gradientLayer.colors = cgColors;
+
+  if (stopCount == colorCount && stopCount > 0 && stopData != nullptr) {
+    NSMutableArray<NSNumber *> *locations = [NSMutableArray arrayWithCapacity:stopCount];
+    float previousStop = stopData[0];
+    for (int32_t i = 0; i < stopCount; ++i) {
+      // W3C CSS Images Level 3 §3.4.3: color stops must be non-decreasing.
+      float stop = i == 0 ? stopData[i] : MAX(stopData[i], previousStop);
+      previousStop = stop;
+      [locations addObject:@(stop)];
+    }
+    gradientLayer.locations = locations;
+  }
+
+  configure(gradientLayer, localPaintRect.size);
+
+  CGFloat startX = localPaintRect.origin.x;
+  CGFloat startY = localPaintRect.origin.y;
+  // CSS background-repeat defaults to repeat. Per W3C CSS Backgrounds §3.4, repeated tiles occupy
+  // disjoint intervals [start + k * size, start + (k + 1) * size); if the primary tile (k = 0)
+  // already covers the entire clip box along an axis, no repeated tile is visible on that axis.
+  const bool coversX = startX <= 0 && startX + width >= clipRect.size.width;
+  const bool coversY = startY <= 0 && startY + height >= clipRect.size.height;
+  const bool needsRepeatX = repeatX == LynxBackgroundRepeatRepeat && !coversX;
+  const bool needsRepeatY = repeatY == LynxBackgroundRepeatRepeat && !coversY;
+  const bool matchesClipBounds = CGRectEqualToRect(localPaintRect, localBorderRect);
+  const RepeatLayerHierarchy layers = BuildRepeatLayerHierarchy(
+      gradientLayer, clipRect, needsRepeatX, needsRepeatY, matchesClipBounds);
+
+  if (layers.root != gradientLayer) {
+    if (needsRepeatX) {
+      int backwardCount = ceil(startX / width);
+      startX = startX - backwardCount * width;
+    }
+    if (needsRepeatY) {
+      int backwardCount = ceil(startY / height);
+      startY = startY - backwardCount * height;
+    }
+    gradientLayer.frame = CGRectMake(startX, startY, width, height);
+    ConfigureRepeatLayers(layers, CGSizeMake(width, height),
+                          needsRepeatX ? ceil(clipRect.size.width / width) + 1 : 1,
+                          needsRepeatY ? ceil(clipRect.size.height / height) + 1 : 1);
+  }
+  CALayer *rootLayer = layers.root;
+
+  if (clipBox.HasRadius()) {
+    RoundedRectangle localClipBox = clipBox;
+    localClipBox.SetX(0);
+    localClipBox.SetY(0);
+    [self applyRoundedRect:localClipBox toLayer:rootLayer];
+  }
+  return rootLayer;
+}
+
 - (CALayer *)createLinearGradientLayerWithAngle:(float)angle
-                                         colors:(NSArray<NSNumber *> *)colors
-                                          stops:(NSArray<NSNumber *> *)stops
+                                         colors:(const uint32_t *)colorData
+                                     colorCount:(int32_t)colorCount
+                                          stops:(const float *)stopData
+                                      stopCount:(int32_t)stopCount
                                       originBox:(const RoundedRectangle &)originBox
                                         clipBox:(const RoundedRectangle &)clipBox
                                         repeatX:(int32_t)repeatX
                                         repeatY:(int32_t)repeatY {
-  CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
-  if (CGRectIsEmpty(clipRect)) {
-    return nil;
-  }
-
-  CGRect localBorderRect = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
-  CGRect originRect = [self rectForRoundedRectangle:originBox applyingOffsets:YES];
-  CGRect localPaintRect =
-      CGRectOffset(originRect, -CGRectGetMinX(clipRect), -CGRectGetMinY(clipRect));
-
-  LynxBackgroundLinearGradientDrawable *drawable =
-      [[LynxBackgroundLinearGradientDrawable alloc] initWithArray:@[ @(angle), colors, stops ]];
-  if (drawable == nil) {
-    return nil;
-  }
-
-  drawable.repeatX = static_cast<LynxBackgroundRepeatType>(repeatX);
-  drawable.repeatY = static_cast<LynxBackgroundRepeatType>(repeatY);
-  [drawable prepareGradientWithBorderBox:localBorderRect
-                             andPaintBox:localPaintRect
-                             andClipRect:localBorderRect];
-
-  CALayer *layer = drawable.verticalRepeatLayer;
-  if (layer == nil) {
-    return nil;
-  }
-
-  layer.frame = clipRect;
-
-  if (clipBox.HasRadius()) {
-    RoundedRectangle localClipBox = clipBox;
-    localClipBox.SetX(0);
-    localClipBox.SetY(0);
-    [self applyRoundedRect:localClipBox toLayer:layer];
-  }
-  return layer;
+  return
+      [self buildGradientLayerWithColors:colorData
+                              colorCount:colorCount
+                                   stops:stopData
+                               stopCount:stopCount
+                               originBox:originBox
+                                 clipBox:clipBox
+                                 repeatX:repeatX
+                                 repeatY:repeatY
+                               configure:^(CAGradientLayer *layer, CGSize size) {
+                                 CGPoint startPoint = CGPointZero;
+                                 CGPoint endPoint = CGPointZero;
+                                 ComputeLinearGradientPoints(angle, size, &startPoint, &endPoint);
+                                 layer.startPoint = startPoint;
+                                 layer.endPoint = endPoint;
+                                 layer.type = kCAGradientLayerAxial;
+                               }];
 }
 
 - (CALayer *)createRadialGradientLayerWithCenter:(CGPoint)center
                                           radius:(CGPoint)radius
-                                          colors:(NSArray<NSNumber *> *)colors
-                                           stops:(NSArray<NSNumber *> *)stops
+                                          colors:(const uint32_t *)colorData
+                                      colorCount:(int32_t)colorCount
+                                           stops:(const float *)stopData
+                                       stopCount:(int32_t)stopCount
                                        originBox:(const RoundedRectangle &)originBox
                                          clipBox:(const RoundedRectangle &)clipBox
                                          repeatX:(int32_t)repeatX
                                          repeatY:(int32_t)repeatY {
-  CGRect clipRect = [self rectForRoundedRectangle:clipBox applyingOffsets:YES];
-  if (CGRectIsEmpty(clipRect)) {
-    return nil;
-  }
-
-  CGRect localBorderRect = CGRectMake(0, 0, clipRect.size.width, clipRect.size.height);
-  CGRect originRect = [self rectForRoundedRectangle:originBox applyingOffsets:YES];
-  CGRect localPaintRect =
-      CGRectOffset(originRect, -CGRectGetMinX(clipRect), -CGRectGetMinY(clipRect));
-  NSArray<NSNumber *> *shape = @[
-    @(LynxRadialGradientShapeEllipse), @(LynxRadialGradientSizeLength), @(LynxRadialCenterTypePX),
-    @(center.x), @(LynxRadialCenterTypePX), @(center.y), @0, @0, @0, @0, @(radius.x),
-    @(LynxPlatformLengthUnitNumber), @(radius.y), @(LynxPlatformLengthUnitNumber)
-  ];
-  LynxBackgroundRadialGradientDrawable *drawable =
-      [[LynxBackgroundRadialGradientDrawable alloc] initWithArray:@[ shape, colors, stops ]];
-  drawable.repeatX = static_cast<LynxBackgroundRepeatType>(repeatX);
-  drawable.repeatY = static_cast<LynxBackgroundRepeatType>(repeatY);
-  [drawable prepareGradientWithBorderBox:localBorderRect
-                             andPaintBox:localPaintRect
-                             andClipRect:localBorderRect];
-
-  CALayer *layer = drawable.verticalRepeatLayer;
-  if (layer == nil) {
-    return nil;
-  }
-  layer.frame = clipRect;
-  if (clipBox.HasRadius()) {
-    RoundedRectangle localClipBox = clipBox;
-    localClipBox.SetX(0);
-    localClipBox.SetY(0);
-    [self applyRoundedRect:localClipBox toLayer:layer];
-  }
-  return layer;
+  return [self buildGradientLayerWithColors:colorData
+                                 colorCount:colorCount
+                                      stops:stopData
+                                  stopCount:stopCount
+                                  originBox:originBox
+                                    clipBox:clipBox
+                                    repeatX:repeatX
+                                    repeatY:repeatY
+                                  configure:^(CAGradientLayer *layer, CGSize size) {
+                                    const CGFloat w = MAX(size.width, 1.0);
+                                    const CGFloat h = MAX(size.height, 1.0);
+                                    layer.startPoint = CGPointMake(center.x / w, center.y / h);
+                                    layer.endPoint = CGPointMake((center.x + radius.x) / w,
+                                                                 (center.y + radius.y) / h);
+                                    layer.type = kCAGradientLayerRadial;
+                                  }];
 }
 
 - (void)applyRoundedRect:(const RoundedRectangle &)box toLayer:(CALayer *)layer {
