@@ -1,5 +1,14 @@
 summary: Starts a screencast with the standard CDP options and an optional Lynx capture mode.
 parameters:
+  - name: enableBetterScreencast
+    type: boolean
+    optional: true
+    description: Opt in to the experimental Android native JPEG pipeline. Captures at up to 8 fps with asynchronous PixelCopy, pre-encoding pixel comparison and one outstanding frame. Defaults to false; PNG and Clay use the existing pipeline.
+  - name: screencastEncoding
+    type: string
+    optional: true
+    enum: [jpeg-delta-v1]
+    description: With enableBetterScreencast, explicitly accept cropped JPEG updates. Omit to receive complete JPEG images only. Other platforms ignore this option.
   - name: mode
     type: string
     optional: true
@@ -8,6 +17,12 @@ parameters:
 returns: []
 events: []
 notes:
+  - The optimized Android pipeline defaults to a 720 by 1280 bounding box and caps each requested dimension at 1920 pixels. It preserves aspect ratio and does not upscale.
+  - Optimized frames carry a unique params.sessionId. Echo this value in Page.screencastFrameAck after decoding and applying the image. Old or duplicate ACKs are ignored.
+  - metadata.screencastFrame contains encoding (jpeg-delta-v1), frameId, baseFrameId, isDelta, fullWidth, fullHeight, x, y, width and height. Coordinates and dimensions are encoded-image pixels, while deviceWidth and deviceHeight remain device-independent pixels.
+  - For a full frame, replace the canvas and reference ID. For a delta, require baseFrameId to match the last applied frameId and decode the JPEG into the indicated rectangle. Apply frames serially and only then ACK. The data field is always a base64 JPEG, without an additional compression layer.
+  - Send frameApplied false in Page.screencastFrameAck if decoding fails or the reference is missing. This requests a full frame. A missing ACK triggers a full-frame retry after two seconds. Reject deltas until the replacement full frame is applied.
+  - A changed area at or above 35 percent of the full image is sent as a full frame. A full frame is also forced after 60 delta frames, a size change, pause/resume, or a rejected frame. Identical images are skipped before JPEG encoding.
   - mode is a Lynx extension to the standard Page.startScreencast parameters.
   - The selected mode is stored in process-wide DevTool screenshot status, not in ScreenshotRequest. Screenshot capture, hit testing, box-model calculation, and touch emulation read that status.
   - When no mode has been stored, Android and iOS native implementations default to fullscreen, while Harmony native defaults to lynxview.

@@ -157,11 +157,11 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  public void startCasting(
-      int quality, int max_width, int max_height, String screenshot_mode, String format) {
+  public void startCasting(int quality, int max_width, int max_height, String screenshot_mode,
+      String format, boolean enableBetterScreencast, boolean enableJpegDelta) {
     if (mCastHelper != null) {
-      mCastHelper.startCasting(
-          quality, max_width, max_height, screenshot_mode, format, mDevToolDelegate);
+      mCastHelper.startCasting(quality, max_width, max_height, screenshot_mode, format,
+          mDevToolDelegate, enableBetterScreencast, enableJpegDelta);
     }
   }
 
@@ -191,6 +191,13 @@ public class DevToolPlatformAndroidDelegate {
   public void onAckReceived() {
     if (mCastHelper != null) {
       mCastHelper.onAckReceived();
+    }
+  }
+
+  @CalledByNative
+  public void onScreencastFrameAck(int sessionId, boolean frameApplied) {
+    if (mCastHelper != null) {
+      mCastHelper.onScreencastFrameAck(sessionId, frameApplied);
     }
   }
 
@@ -256,6 +263,14 @@ public class DevToolPlatformAndroidDelegate {
   public void sendConsoleEvent(String text, int level, long timestamp) {
     if (mFacadePtr != 0) {
       nativeSendConsoleEvent(mFacadePtr, text, level, timestamp);
+    }
+  }
+
+  public void sendOptimizedScreenCast(
+      String data, float deviceWidth, float deviceHeight, double timestamp, int[] frame) {
+    if (mFacadePtr != 0) {
+      nativeSendOptimizedScreencastFrameEvent(
+          mFacadePtr, data, deviceWidth, deviceHeight, timestamp, frame);
     }
   }
 
@@ -348,6 +363,7 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   public void destroy() {
+    stopCasting();
     if (mInputEventDispatcher != null) {
       mInputEventDispatcher.detach();
       mInputEventDispatcher = null;
@@ -495,6 +511,8 @@ public class DevToolPlatformAndroidDelegate {
     }
   }
   private native long nativeCreateDevToolPlatformFacade();
+  private native void nativeSendOptimizedScreencastFrameEvent(long facadePtr, String data,
+      float deviceWidth, float deviceHeight, double timestamp, int[] frame);
   private native void nativeDestroyDevToolPlatformFacade(long facadePtr);
   private native void nativeSendPageScreencastFrameEvent(long facadePtr, String data,
       float offsetTop, float pageScaleFactor, float deviceWidth, float deviceHeight,
