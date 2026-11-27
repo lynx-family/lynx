@@ -2132,14 +2132,23 @@ void ElementManager::Repaint() {
 }
 
 void ElementManager::UpdateDirtyStackingContexts() {
-  if (dirty_stacking_contexts_.empty()) {
+  if (dirty_restacking_fragments_.empty() && dirty_stacking_contexts_.empty()) {
     return;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_UPDATE_Z_INDEX_LIST);
-  auto contexts = std::move(dirty_stacking_contexts_);
-  dirty_stacking_contexts_.clear();
-  for (const auto &context : contexts) {
-    context->UpdateZIndexList();
+  if (!dirty_restacking_fragments_.empty()) {
+    auto fragments = std::move(dirty_restacking_fragments_);
+    dirty_restacking_fragments_.clear();
+    for (auto *fragment : fragments) {
+      fragment->FlushPendingRestacking();
+    }
+  }
+  if (!dirty_stacking_contexts_.empty()) {
+    auto contexts = std::move(dirty_stacking_contexts_);
+    dirty_stacking_contexts_.clear();
+    for (const auto &context : contexts) {
+      context->UpdateZIndexList();
+    }
   }
 }
 

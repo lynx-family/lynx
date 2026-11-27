@@ -56,6 +56,7 @@ class Fragment : public BaseElementContainer {
   void RemoveElementContainerAccordingToElement(Element* child,
                                                 bool destroy) override;
   void Destroy() override {
+    ClearNeedRestacking();
     // Unregister event targets, including flattened ones without a renderer.
     ClearEventNames();
     ClearEventProps();
@@ -80,6 +81,8 @@ class Fragment : public BaseElementContainer {
   void StyleChanged() override;
   void CaptureClipPathStyleChange();
   void UpdateZIndexList() override;
+  bool NeedRestacking() const { return need_restacking_; }
+  void FlushPendingRestacking();
 
   void CreatePaintingNode(
       bool is_flatten, const fml::RefPtr<PropBundle>& painting_data) override;
@@ -188,6 +191,9 @@ class Fragment : public BaseElementContainer {
   };
 
   void CheckRootIfNeedClipBounds(DisplayListBuilder& display_list_builder);
+  void MarkNeedRestacking();
+  void ClearNeedRestacking();
+  void MarkNeedRestackingIfNeeded();
   static StackingPlacement ComputeStackingPlacement(bool fixed,
                                                     int32_t z_index);
   StackingState CaptureCommittedStackingState() const;
@@ -268,6 +274,7 @@ class Fragment : public BaseElementContainer {
   bool list_item_animation_opacity_changed_{false};
   bool has_platform_renderer_{false};
   bool pending_node_ready_{false};
+  bool need_restacking_{false};
   struct {
     ResolvedClipPath resolved;
     float source_to_layout_scale{1.f};

@@ -87,6 +87,7 @@ class WrapperElement;
 class FrameElement;
 class Catalyzer;
 class ElementCache;
+class Fragment;
 class LynxEnvConfig;
 class TemplateAssembler;
 class ElementLayoutNodeManager;
@@ -835,6 +836,17 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
     auto it = dirty_stacking_contexts_.find(stacking_context);
     if (it != dirty_stacking_contexts_.end())
       dirty_stacking_contexts_.erase(it);
+  }
+
+  void InsertDirtyRestackingFragment(Fragment *fragment) {
+    dirty_restacking_fragments_.insert(fragment);
+  }
+
+  void RemoveDirtyRestackingFragment(Fragment *fragment) {
+    auto it = dirty_restacking_fragments_.find(fragment);
+    if (it != dirty_restacking_fragments_.end()) {
+      dirty_restacking_fragments_.erase(it);
+    }
   }
 
   std::string GetTargetSdkVersion() {
@@ -1616,6 +1628,7 @@ class ElementManager : public LayoutScheduler::LayoutSchedulerImpl {
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_ =
       std::make_shared<lynx::tasm::PropBundleCreatorDefault>();
 
+  base::InlineLinearFlatSet<Fragment *, 4> dirty_restacking_fragments_;
   base::InlineLinearFlatSet<BaseElementContainer *, 4> dirty_stacking_contexts_;
 
   // TODO(yuyang), check this

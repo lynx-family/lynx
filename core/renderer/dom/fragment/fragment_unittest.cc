@@ -982,11 +982,17 @@ TEST_P(ClipPathPipelineTest, ClipChangesReparentZIndexDescendants) {
   page->FlushActionsAsRoot();
   EXPECT_TRUE(parent->IsStackingContextNode());
   EXPECT_TRUE(parent->fragment_impl()->has_platform_renderer_);
+  EXPECT_TRUE(parent->fragment_impl()->NeedRestacking());
+  manager->UpdateDirtyStackingContexts();
+  EXPECT_FALSE(parent->fragment_impl()->NeedRestacking());
   EXPECT_EQ(child->fragment_impl()->fragment_parent(), parent->fragment_impl());
 
   parent->SetStyle(kPropertyIDClipPath, lepus::Value());
   page->FlushActionsAsRoot();
   EXPECT_FALSE(parent->IsStackingContextNode());
+  EXPECT_TRUE(parent->fragment_impl()->NeedRestacking());
+  manager->UpdateDirtyStackingContexts();
+  EXPECT_FALSE(parent->fragment_impl()->NeedRestacking());
   EXPECT_EQ(child->fragment_impl()->fragment_parent(), page->fragment_impl());
 }
 
@@ -4425,10 +4431,11 @@ TEST_F(FragmentDrawTest, NonZeroZIndexChangeResortsSiblings) {
 
   lower->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(3));
   page->FlushActionsAsRoot();
-  EXPECT_EQ(lower_fragment->old_z_index(), 3);
-  EXPECT_TRUE(page_fragment->NeedSortZChild());
+  EXPECT_TRUE(lower_fragment->NeedRestacking());
   auto update_options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(update_options);
+  EXPECT_FALSE(lower_fragment->NeedRestacking());
+  EXPECT_EQ(lower_fragment->old_z_index(), 3);
   ASSERT_EQ(page_fragment->children_.size(), 2u);
   EXPECT_EQ(page_fragment->children_[0], higher_fragment);
   EXPECT_EQ(page_fragment->children_[1], lower_fragment);
@@ -4796,13 +4803,13 @@ TEST_F(FragmentDrawTest, DeferredDrawingOffsetRefreshCoalescesAcrossSiblings) {
   EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[1], 31.f);
 
   // Returning both siblings to normal flow under inner_fragment queues a
-  // single deferred offset refresh without needing a z-sort on inner_fragment.
+  // single deferred restack and offset refresh without needing a z-sort.
   first->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
   second->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(0));
   page->FlushActionsAsRoot();
 
-  EXPECT_TRUE(inner_fragment->NeedRefreshDrawingOffsets());
-  EXPECT_FALSE(inner_fragment->NeedSortZChild());
+  EXPECT_TRUE(first_fragment->NeedRestacking());
+  EXPECT_TRUE(second_fragment->NeedRestacking());
   EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[0], 66.f);
   EXPECT_FLOAT_EQ(second_fragment->drawing_offset_[0], 72.f);
 
@@ -4811,7 +4818,12 @@ TEST_F(FragmentDrawTest, DeferredDrawingOffsetRefreshCoalescesAcrossSiblings) {
   no_patch_options->trigger_layout_ = false;
   manager->OnPatchFinish(no_patch_options);
 
+  EXPECT_FALSE(first_fragment->NeedRestacking());
+  EXPECT_FALSE(second_fragment->NeedRestacking());
   EXPECT_FALSE(inner_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_FALSE(inner_fragment->NeedSortZChild());
+  EXPECT_EQ(first_fragment->fragment_parent(), inner_fragment);
+  EXPECT_EQ(second_fragment->fragment_parent(), inner_fragment);
   EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[0], 3.f);
   EXPECT_FLOAT_EQ(first_fragment->drawing_offset_[1], 5.f);
   EXPECT_FLOAT_EQ(first_fragment->render_offset_[0], 31.f);
@@ -4866,24 +4878,170 @@ TEST_F(FragmentDrawTest,
   EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[0], 34.f);
   EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[1], 16.f);
 
-  // Removing z-index on outer returns outer to grand_fragment while moving
-  // layer up to page_fragment. Both parents get deferred offset refreshes.
+  // Removing z-index on outer defers restacking until patch finish.
   outer->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value());
   page->FlushActionsAsRoot();
 
   ASSERT_FALSE(outer->IsStackingContextNode());
-  EXPECT_EQ(outer_fragment->fragment_parent(), grand_fragment);
-  EXPECT_EQ(layer_fragment->fragment_parent(), page_fragment);
-  EXPECT_TRUE(grand_fragment->NeedRefreshDrawingOffsets());
-  EXPECT_TRUE(page_fragment->NeedRefreshDrawingOffsets());
+  EXPECT_TRUE(outer_fragment->NeedRestacking());
 
   auto update_options = std::make_shared<PipelineOptions>();
   manager->OnPatchFinish(update_options);
 
+  EXPECT_FALSE(outer_fragment->NeedRestacking());
+  EXPECT_EQ(outer_fragment->fragment_parent(), grand_fragment);
+  EXPECT_EQ(layer_fragment->fragment_parent(), page_fragment);
   EXPECT_FALSE(grand_fragment->NeedRefreshDrawingOffsets());
   EXPECT_FALSE(page_fragment->NeedRefreshDrawingOffsets());
   EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[0], 76.f);
   EXPECT_FLOAT_EQ(layer_fragment->drawing_offset_[1], 43.f);
+}
+
+TEST_F(FragmentDrawTest, DeferredRestackingCoalescesRoundTripZIndexChange) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto container = manager->CreateFiberView();
+  auto first = manager->CreateFiberView();
+  auto middle = manager->CreateFiberView();
+  auto last = manager->CreateFiberView();
+  page->InsertNode(container);
+  container->InsertNode(first);
+  container->InsertNode(middle);
+  container->InsertNode(last);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* container_fragment = container->fragment_impl();
+  auto* first_fragment = first->fragment_impl();
+  auto* middle_fragment = middle->fragment_impl();
+  auto* last_fragment = last->fragment_impl();
+
+  middle->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(middle_fragment->NeedRestacking());
+  EXPECT_EQ(middle_fragment->fragment_parent(), container_fragment);
+
+  // Reverting z-index before OnPatchFinish() clears NeedRestacking() with no
+  // reparenting and preserves normal-flow order.
+  middle->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value());
+  page->FlushActionsAsRoot();
+  EXPECT_FALSE(middle_fragment->NeedRestacking());
+  EXPECT_TRUE(manager->dirty_restacking_fragments_.empty());
+
+  auto update_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(update_options);
+  EXPECT_EQ(middle_fragment->fragment_parent(), container_fragment);
+  EXPECT_TRUE(page_fragment->children_.size() == 1u);
+  EXPECT_THAT(
+      container_fragment->children_,
+      ::testing::ElementsAre(first_fragment, middle_fragment, last_fragment));
+}
+
+TEST_F(FragmentDrawTest,
+       DeferredRestackingHandlesCombinedOpacityZIndexAndFixedInOnePatch) {
+  manager->GetConfig()->SetEnableFixedNew(true);
+  manager->SetConfig(manager->GetConfig());
+  auto page = manager->CreateFiberPage("0", 0);
+  auto container = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  auto nested = manager->CreateFiberView();
+  nested->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(2));
+  page->InsertNode(container);
+  container->InsertNode(child);
+  child->InsertNode(nested);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* container_fragment = container->fragment_impl();
+  auto* child_fragment = child->fragment_impl();
+  auto* nested_fragment = nested->fragment_impl();
+  ASSERT_EQ(child_fragment->fragment_parent(), container_fragment);
+  ASSERT_EQ(nested_fragment->fragment_parent(), page_fragment);
+
+  child->SetStyle(CSSPropertyID::kPropertyIDOpacity, lepus::Value(0.5));
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  child->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(child_fragment->NeedRestacking());
+
+  auto update_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(update_options);
+  EXPECT_FALSE(child_fragment->NeedRestacking());
+  EXPECT_EQ(child_fragment->fragment_parent(), page_fragment);
+  EXPECT_TRUE(child_fragment->was_position_fixed());
+  EXPECT_EQ(child_fragment->old_z_index(), 1);
+  EXPECT_TRUE(child_fragment->was_stacking_context());
+  EXPECT_EQ(nested_fragment->fragment_parent(), child_fragment);
+}
+
+TEST_F(FragmentTest, DestroyedFragmentIsRemovedFromDirtyRestackingFragments) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view = manager->CreateFiberView();
+  page->InsertNode(view);
+  page->FlushActionsAsRoot();
+
+  auto* pending_fragment = view->fragment_impl();
+  view->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(pending_fragment->NeedRestacking());
+  ASSERT_NE(manager->dirty_restacking_fragments_.find(pending_fragment),
+            manager->dirty_restacking_fragments_.end());
+
+  page->RemoveNode(view);
+  page->FlushActionsAsRoot();
+  view = nullptr;
+
+  EXPECT_EQ(manager->dirty_restacking_fragments_.find(pending_fragment),
+            manager->dirty_restacking_fragments_.end());
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options);
+}
+
+TEST_F(FragmentDrawTest,
+       DetachedFragmentWithPendingRestackingNoOpsAndReconcilesOnReinsert) {
+  auto page = manager->CreateFiberPage("0", 0);
+  auto container = manager->CreateFiberView();
+  auto child = manager->CreateFiberView();
+  page->InsertNode(container);
+  container->InsertNode(child);
+  page->FlushActionsAsRoot();
+  auto initial_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(initial_options);
+
+  auto* page_fragment = page->fragment_impl();
+  auto* container_fragment = container->fragment_impl();
+  auto* child_fragment = child->fragment_impl();
+
+  child->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+  page->FlushActionsAsRoot();
+  ASSERT_TRUE(child_fragment->NeedRestacking());
+
+  container->RemoveNode(child, false);
+  page->FlushActionsAsRoot();
+  ASSERT_EQ(child_fragment->fragment_parent(), nullptr);
+
+  // Detached fragment no-ops cleanly during OnPatchFinish().
+  auto detach_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(detach_options);
+  EXPECT_FALSE(child_fragment->NeedRestacking());
+  EXPECT_EQ(child_fragment->fragment_parent(), nullptr);
+  EXPECT_EQ(child_fragment->old_z_index(), 0);
+
+  // Reinserting the fragment detects the pending style mismatch and reconciles
+  // it to page_fragment on the following OnPatchFinish().
+  container->InsertNode(child);
+  page->FlushActionsAsRoot();
+  EXPECT_TRUE(child_fragment->NeedRestacking());
+
+  auto reinsert_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(reinsert_options);
+  EXPECT_FALSE(child_fragment->NeedRestacking());
+  EXPECT_EQ(child_fragment->fragment_parent(), page_fragment);
+  EXPECT_EQ(child_fragment->fragment_from_element_parent(), container_fragment);
+  EXPECT_EQ(child_fragment->old_z_index(), 1);
 }
 
 TEST_F(FragmentTest, CreateLayerIfNeededKeepsCompatibleComponentInitConfig) {

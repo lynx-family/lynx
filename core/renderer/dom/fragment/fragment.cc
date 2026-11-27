@@ -45,6 +45,7 @@ const int32_t Fragment::kDefaultDrawNodeCapacity = 1;
 Fragment::Fragment(Element* element) : BaseElementContainer(element) {}
 
 Fragment::~Fragment() {
+  ClearNeedRestacking();
   if (!element()->will_destroy()) {
     element_manager()->RemoveDirtyContext(this);
   }
@@ -210,6 +211,7 @@ void Fragment::StyleChanged() {
       placement_z_index_pending_ = false;
       ApplyPlacementZIndex();
       if (element()->is_fixed() == was_position_fixed()) {
+        ClearNeedRestacking();
         return;
       }
     } else {
@@ -217,6 +219,50 @@ void Fragment::StyleChanged() {
     }
   }
 
+  MarkNeedRestackingIfNeeded();
+}
+
+void Fragment::MarkNeedRestacking() {
+  if (need_restacking_) {
+    return;
+  }
+  need_restacking_ = true;
+  if (element_manager() != nullptr) {
+    element_manager()->InsertDirtyRestackingFragment(this);
+  }
+}
+
+void Fragment::ClearNeedRestacking() {
+  if (!need_restacking_) {
+    return;
+  }
+  need_restacking_ = false;
+  if (element() != nullptr && !element()->will_destroy() &&
+      element_manager() != nullptr) {
+    element_manager()->RemoveDirtyRestackingFragment(this);
+  }
+}
+
+void Fragment::MarkNeedRestackingIfNeeded() {
+  if (element() == nullptr) {
+    return;
+  }
+  if (element()->is_fixed() != was_position_fixed() ||
+      element()->ZIndex() != old_z_index() ||
+      element()->IsStackingContextNode() != was_stacking_context()) {
+    MarkNeedRestacking();
+  } else {
+    ClearNeedRestacking();
+  }
+}
+
+void Fragment::FlushPendingRestacking() {
+  need_restacking_ = false;
+  if (element() == nullptr ||
+      (element()->parent() == nullptr && !element()->is_page()) ||
+      (fragment_parent() == nullptr && !element()->is_page())) {
+    return;
+  }
   ReconcileStackingState(/*handle_fixed=*/true);
 }
 
@@ -1839,6 +1885,7 @@ void Fragment::InsertElementContainerAccordingToElement(Element* child,
     element_manager()->root()->fragment_impl()->AddChildBefore(
         child->fragment_impl(), nullptr);
     if (!child->fragment_impl()->placement_z_index_pending_) {
+      child->fragment_impl()->MarkNeedRestackingIfNeeded();
       return;
     }
   } else if (child->fragment_impl()->old_z_index() != 0) {
@@ -1851,6 +1898,7 @@ void Fragment::InsertElementContainerAccordingToElement(Element* child,
         EnclosingStackingContextNode()->CastToFragment();
     parent_stacking_context->AddChildBefore(child->fragment_impl(), nullptr);
     if (!child->fragment_impl()->placement_z_index_pending_) {
+      child->fragment_impl()->MarkNeedRestackingIfNeeded();
       return;
     }
   } else {
@@ -1870,6 +1918,7 @@ void Fragment::InsertElementContainerAccordingToElement(Element* child,
                     false)) {
     child->fragment_impl()->ApplyPlacementZIndex();
   }
+  child->fragment_impl()->MarkNeedRestackingIfNeeded();
 }
 
 void Fragment::RemoveElementContainerAccordingToElement(Element* child,
