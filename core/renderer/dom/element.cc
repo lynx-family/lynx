@@ -3134,6 +3134,8 @@ void Element::UpdatePlatformRootOffset(float x, float y) {
   *platform_root_offset_ = {x, y};
 }
 
+void Element::ClearPlatformRootOffset() { platform_root_offset_.reset(); }
+
 starlight::LayoutResultForRendering Element::layout_result() {
   auto layout_result = starlight::LayoutResultForRendering();
   layout_result.size_ = FloatSize(width(), height());

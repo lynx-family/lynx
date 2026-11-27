@@ -1656,6 +1656,7 @@ class Element : public lepus::RefCounted,
   // Engine-thread snapshot of the FLR event root's platform origin in Page
   // layout units. Independent Overlay roots do not use their layout-box origin.
   void UpdatePlatformRootOffset(float x, float y);
+  void ClearPlatformRootOffset();
   const std::array<float, 2>* platform_root_offset() const {
     return platform_root_offset_.get();
   }

@@ -140,6 +140,9 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   void MarkDirty(int32_t id);
   void DispatchLayoutUpdates(const std::shared_ptr<PipelineOptions>& options);
   void SetPageConfigForLayoutThread(const std::shared_ptr<PageConfig>& config);
+  bool GetSyncXElementRegistry() const override {
+    return page_config_ && page_config_->GetSyncXElementRegistry();
+  }
   void SetPageOptions(const PageOptions& options) { page_options_ = options; }
 
   // In Embedded mode, we disable event reporter by now.

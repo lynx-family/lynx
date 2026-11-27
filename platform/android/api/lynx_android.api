@@ -256,6 +256,7 @@ public class com::lynx::tasm::behavior::ui::scroll::AndroidScrollView : com.lynx
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.setRenderer(Renderer renderer);
   public Renderer com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getRenderer();
   public View com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getView();
+  public ViewGroup com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.getRendererChildViewGroup();
   public boolean com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.onTouchEvent(MotionEvent ev);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.bindDrawChildHook(IDrawChildHook hook);
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.addView(View child);
@@ -9166,7 +9167,8 @@ public class com::lynx::tasm::behavior::render::PlatformRendererContext : com.ly
   public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getRootViewLocationOnScreen();
   public boolean com.lynx.tasm.behavior.render.PlatformRendererContext.requestRootFocus(int rootSign, boolean focused);
-  public void com.lynx.tasm.behavior.render.PlatformRendererContext.applyListScrollState(int sign, float x, float y, float width, float height, boolean managed);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.applyListScrollState(int sign, float x, float y, float width, float height);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.applyScrollViewState(int sign, float x, float y, float width, float height);
   public float[] com.lynx.tasm.behavior.render.PlatformRendererContext.getScreenSize();
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetWidth(int sign);
   public int com.lynx.tasm.behavior.render.PlatformRendererContext.getTargetHeight(int sign);
@@ -11885,7 +11887,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.autoScroll(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onScrollStateChange(NestedScrollContainerView scrollView, int state);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.sendCustomEvent(int l, int t, int oldl, int oldt, String type);
-  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.applyComposeScrollState(float x, float y, float width, float height, boolean managed);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.applyEngineScrollState(float x, float y, float width, float height);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateScrollInfo(boolean smooth, float estimatedOffset, boolean scrolling);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateStickyStarts();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateStickyEnds();
@@ -11961,6 +11963,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.measure();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layout();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.layoutChildren();
+  public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.applyEngineScrollState(float x, float y, float width, float height);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.onNodeReload();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.invalidate();
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.destroy();

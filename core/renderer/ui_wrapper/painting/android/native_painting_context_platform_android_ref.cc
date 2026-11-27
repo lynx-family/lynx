@@ -29,10 +29,21 @@ bool NativePaintingCtxAndroidRef::RequestRootFocus(int32_t root_id,
 
 void NativePaintingCtxAndroidRef::ApplyListScrollState(
     int32_t sign, float scroll_x, float scroll_y, float content_width,
-    float content_height, bool cmp_managed) {
+    float content_height, bool) {
   if (!destroyed_.load(std::memory_order_acquire))
     view_manager_->ApplyListScrollState(sign, scroll_x, scroll_y, content_width,
-                                        content_height, cmp_managed);
+                                        content_height);
+}
+
+void NativePaintingCtxAndroidRef::ApplyScrollViewState(int32_t sign,
+                                                       float scroll_x,
+                                                       float scroll_y,
+                                                       float content_width,
+                                                       float content_height) {
+  if (!destroyed_.load(std::memory_order_acquire)) {
+    view_manager_->ApplyScrollViewState(sign, scroll_x, scroll_y, content_width,
+                                        content_height);
+  }
 }
 
 PlatformRendererContext::PreparationScheduler::TaskRef

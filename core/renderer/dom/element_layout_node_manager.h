@@ -45,6 +45,7 @@ class ElementLayoutNodeManager : public LayoutNodeManager {
                                        bool final_measure) override;
   void AlignmentByPlatform(int32_t id, float offset_top,
                            float offset_left) override;
+  bool GetSyncXElementRegistry() const override;
   void DestroyLayoutNode(int32_t id);
   void DestroyPlatformLayoutNodes();
 
