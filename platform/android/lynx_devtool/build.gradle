@@ -150,33 +150,75 @@ android {
         }
     }
 
-    project.afterEvaluate{
-        project.android.libraryVariants.each {
-            String flavorName = it.flavorName.capitalize()
-            String buildTypeName = it.buildType.name.capitalize()
-            tasks.getByName("merge${flavorName}${buildTypeName}JniLibFolders") {
-                it.doFirst {
-                    copyLynxSoToLib("debugMode", buildTypeName)
-                }
-            }
-        }
-    }
-
     buildFeatures {
         prefab true
     }
 }
 
-def copyLynxSoToLib(String flavor, String buildType) {
-    ABI_FILTERS.each { abi ->
-        String soPath = "$buildDir/../../lynx_android/build/intermediates/cmake/$flavor$buildType/obj/$abi/"
-        delete "$buildDir/../src/main/jniLibs/$abi/liblynx_debug.so"
-        File desFile = new File(projectDir, "src/main/jniLibs/$abi/")
-        copy {
-            from soPath
-            into desFile
-            rename 'liblynx.so', 'liblynx_debug.so'
-            include 'liblynx.so'
+// AGP merges JNI directories without applying source-set exclude filters.
+// Preserve other main JNI files while ignoring old generated debug libraries.
+def legacyMainJniDir = file('src/main/jniLibs')
+def filteredMainJniDir = file("$buildDir/generated/lynxDevtoolJni/main")
+def mainJniLibs = android.sourceSets.main.jniLibs
+mainJniLibs.setSrcDirs(mainJniLibs.srcDirs.findAll { it != legacyMainJniDir } + [filteredMainJniDir])
+def legacyMainJniFiles = fileTree(dir: legacyMainJniDir, excludes: ['*/liblynx_debug.so'])
+def prepareMainJni = tasks.register('prepareLynxDevtoolMainJni') {
+    inputs.files(legacyMainJniFiles)
+    outputs.dir(filteredMainJniDir)
+    doLast {
+        project.sync {
+            from legacyMainJniFiles
+            into filteredMainJniDir
+        }
+    }
+}
+
+def prepareDebugJni = [:]
+if (rootProject.ext.buildLynxDebugSo) {
+    def selectedAbis = rootProject.ext.abiList.collect { it.toString() }
+    if (selectedAbis.isEmpty() || selectedAbis.any { !it.trim() }) {
+        throw new GradleException('At least one valid ABI is required to build debug Lynx libraries')
+    }
+    android.buildTypes.all { buildType ->
+        def buildTypeName = buildType.name.capitalize()
+        def generatedJniDir = file("$buildDir/generated/lynxDevtoolJni/${buildType.name}")
+        android.sourceSets.getByName(buildType.name).jniLibs.srcDir(generatedJniDir)
+        def sourceSoFiles = selectedAbis.collectEntries { abi ->
+            [(abi): new File(project(':LynxAndroid').buildDir,
+                    "intermediates/cmake/debugMode${buildTypeName}/obj/$abi/liblynx.so")]
+        }
+        def prepare = tasks.register("prepareLynxDevtool${buildTypeName}DebugJni") {
+            dependsOn ":LynxAndroid:externalNativeBuildDebugMode${buildTypeName}"
+            inputs.property('abis', selectedAbis)
+            inputs.files(sourceSoFiles.values())
+            outputs.dir(generatedJniDir)
+            doLast {
+                def missing = sourceSoFiles.findAll { abi, soFile -> !soFile.isFile() }
+                if (missing) {
+                    throw new GradleException("Missing debug Lynx libraries for ${buildType.name}: " +
+                            missing.collect { abi, soFile -> "$abi: $soFile" }.join(', '))
+                }
+                project.sync {
+                    into generatedJniDir
+                    sourceSoFiles.each { abi, soFile ->
+                        from(soFile) {
+                            into abi
+                            rename 'liblynx.so', 'liblynx_debug.so'
+                        }
+                    }
+                }
+            }
+        }
+        prepareDebugJni[buildType.name] = prepare
+    }
+}
+
+project.afterEvaluate {
+    android.libraryVariants.all { variant ->
+        def mergeJni = tasks.getByName("merge${variant.name.capitalize()}JniLibFolders")
+        mergeJni.dependsOn(prepareMainJni)
+        if (rootProject.ext.buildLynxDebugSo) {
+            mergeJni.dependsOn(prepareDebugJni[variant.buildType.name])
         }
     }
 }
