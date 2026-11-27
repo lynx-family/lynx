@@ -133,6 +133,11 @@ event::DispatchEventResult ElementManagerDelegateImpl::DispatchMessageEvent(
   return tasm_->DispatchMessageEvent(std::move(event));
 }
 
+runtime::ContextProxy *ElementManagerDelegateImpl::GetContextProxy(
+    runtime::ContextProxy::Type type) {
+  return tasm_ != nullptr ? tasm_->GetContextProxy(type) : nullptr;
+}
+
 bool ElementManagerDelegateImpl::EnableEventHandleRefactor() const {
   return tasm_ != nullptr && tasm_->EnableEventHandleRefactor();
 }

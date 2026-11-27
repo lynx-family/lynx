@@ -125,7 +125,7 @@ DispatchEventResult EventDispatcher::Dispatch() {
   if (event_->HandleEventConflictAndParam()) {
     return {EventCancelType::kCanceledByEventHandler, false};
   }
-  event_->HandleEventCustomDetail();
+  event_->PrepareForDispatch();
   if (!defer_touch_cancel_cleanup_ &&
       event_->event_type() == Event::EventType::kTouchEvent &&
       event_->type() == EVENT_TOUCH_CANCEL) {
@@ -135,7 +135,7 @@ DispatchEventResult EventDispatcher::Dispatch() {
     }
   }
   bool consumed = false;
-  auto path = event_->event_path();
+  const auto& path = event_->event_path();
 
   // trigger global event, eg: trigger-global-event attribute or global-bind
   // event
