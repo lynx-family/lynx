@@ -3,4 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 gfx_path_headers = [ "public/path_parser.h" ]
-gfx_path_sources = [ "path/lbs_path_parser.c" ]
+gfx_path_sources = [
+  "path/lbs_path_parser.c",
+  "path/lbs_svg_arc.c",
+]

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <array>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,35 @@ std::vector<Segment> Parse(const char* data, bool* error) {
   *error = c.error;
   return result;
 }
+TEST(LBSPathParserTest, SvgArcKeepsShallowAndNearlyFullSweeps) {
+  std::vector<std::array<double, 6>> curves;
+  const LBSSvgArcSink sink{
+      &curves,
+      [](void*, double, double) { ADD_FAILURE() << "Expected cubic output"; },
+      [](void* ctx, double c1x, double c1y, double c2x, double c2y, double x,
+         double y) {
+        static_cast<decltype(curves)*>(ctx)->push_back(
+            {c1x, c1y, c2x, c2y, x, y});
+      }};
+  for (bool large : {false, true}) {
+    for (bool sweep : {false, true}) {
+      curves.clear();
+      ASSERT_TRUE(
+          LBSAppendSvgArc(&sink, 0, 0, 1e30f, 2e30f, 45, large, sweep, 10, 0));
+      ASSERT_EQ(curves.size(), large ? 8u : 1u);
+      for (const auto& curve : curves) {
+        for (double coordinate : curve) EXPECT_TRUE(std::isfinite(coordinate));
+      }
+      EXPECT_EQ(curves.back()[4], 10);
+      EXPECT_EQ(curves.back()[5], 0);
+      if (!large) {
+        EXPECT_NEAR(curves.front()[1], 0, 1e-10);
+        EXPECT_NEAR(curves.front()[3], 0, 1e-10);
+      }
+    }
+  }
+}
+
 TEST(LBSPathParserTest, ScientificNotationAndAdjacentNumbers) {
   bool error;
   auto p = Parse("M1e2 3 l-2.5+.5 1E-1-3.4e+1", &error);
