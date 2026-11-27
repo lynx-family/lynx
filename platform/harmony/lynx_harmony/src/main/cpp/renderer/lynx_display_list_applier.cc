@@ -9,7 +9,6 @@
 #include <native_drawing/drawing_matrix.h>
 #include <native_drawing/drawing_path.h>
 #include <native_drawing/drawing_rect.h>
-#include <native_drawing/drawing_round_rect.h>
 
 #include <algorithm>
 #include <cmath>
@@ -19,6 +18,7 @@
 
 #include "base/include/value/array.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/ui_wrapper/painting/harmony/drawing_round_rect.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/renderer/lynx_renderer_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_harmony.h"
@@ -103,20 +103,15 @@ RoundedRectangle RecordBox(const DisplayListItem& item) {
 }
 
 void ClipRoundedRect(OH_Drawing_Canvas* canvas, OH_Drawing_Rect* rect,
-                     const float* radii, float density) {
-  auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
-  constexpr OH_Drawing_CornerPos kCornerPositions[] = {
-      CORNER_POS_TOP_LEFT, CORNER_POS_TOP_RIGHT, CORNER_POS_BOTTOM_RIGHT,
-      CORNER_POS_BOTTOM_LEFT};
-  for (size_t corner = 0; corner < 4; ++corner) {
-    OH_Drawing_Corner_Radii corner_radii{radii[corner * 2] * density,
-                                         radii[corner * 2 + 1] * density};
-    OH_Drawing_RoundRectSetCorner(round_rect, kCornerPositions[corner],
-                                  corner_radii);
+                     const float (&radii)[8], float density) {
+  auto round_rect = CreateDrawingRoundRect(rect, radii, density);
+  if (round_rect) {
+    OH_Drawing_CanvasClipRoundRect(canvas, round_rect.get(),
+                                   OH_Drawing_CanvasClipOp::INTERSECT, true);
+  } else if (rect) {
+    OH_Drawing_CanvasClipRect(canvas, rect, OH_Drawing_CanvasClipOp::INTERSECT,
+                              true);
   }
-  OH_Drawing_CanvasClipRoundRect(canvas, round_rect,
-                                 OH_Drawing_CanvasClipOp::INTERSECT, true);
-  OH_Drawing_RoundRectDestroy(round_rect);
 }
 
 bool ResolveGradientData(const DisplayListItem& item,
@@ -165,28 +160,29 @@ void ClipToBox(OH_Drawing_Canvas* canvas, const RoundedRectangle& clip_box,
   OH_Drawing_RectDestroy(clip_rect);
 }
 
-OH_Drawing_Path* CreateBoxPath(const RoundedRectangle& box, float density) {
-  auto* rect = OH_Drawing_RectCreate(box.GetX() * density, box.GetY() * density,
-                                     (box.GetX() + box.GetWidth()) * density,
-                                     (box.GetY() + box.GetHeight()) * density);
-  auto* round_rect = OH_Drawing_RoundRectCreate(rect, 0.f, 0.f);
+using DrawingPath =
+    std::unique_ptr<OH_Drawing_Path, decltype(&OH_Drawing_PathDestroy)>;
+
+DrawingPath CreateBoxPath(const RoundedRectangle& box, float density) {
+  std::unique_ptr<OH_Drawing_Rect, decltype(&OH_Drawing_RectDestroy)> rect(
+      OH_Drawing_RectCreate(box.GetX() * density, box.GetY() * density,
+                            (box.GetX() + box.GetWidth()) * density,
+                            (box.GetY() + box.GetHeight()) * density),
+      OH_Drawing_RectDestroy);
   const float radii[] = {
       box.GetRadiusXTopLeft(),     box.GetRadiusYTopLeft(),
       box.GetRadiusXTopRight(),    box.GetRadiusYTopRight(),
       box.GetRadiusXBottomRight(), box.GetRadiusYBottomRight(),
       box.GetRadiusXBottomLeft(),  box.GetRadiusYBottomLeft()};
-  constexpr OH_Drawing_CornerPos corners[] = {
-      CORNER_POS_TOP_LEFT, CORNER_POS_TOP_RIGHT, CORNER_POS_BOTTOM_RIGHT,
-      CORNER_POS_BOTTOM_LEFT};
-  for (size_t i = 0; i < 4; ++i) {
-    OH_Drawing_RoundRectSetCorner(
-        round_rect, corners[i],
-        {radii[i * 2] * density, radii[i * 2 + 1] * density});
+  auto round_rect = CreateDrawingRoundRect(rect.get(), radii, density);
+  if (!round_rect) {
+    return {nullptr, OH_Drawing_PathDestroy};
   }
-  auto* path = OH_Drawing_PathCreate();
-  OH_Drawing_PathAddRoundRect(path, round_rect, PATH_DIRECTION_CW);
-  OH_Drawing_RoundRectDestroy(round_rect);
-  OH_Drawing_RectDestroy(rect);
+  DrawingPath path(OH_Drawing_PathCreate(), OH_Drawing_PathDestroy);
+  if (path) {
+    OH_Drawing_PathAddRoundRect(path.get(), round_rect.get(),
+                                PATH_DIRECTION_CW);
+  }
   return path;
 }
 
@@ -207,14 +203,19 @@ void DrawBoxShadow(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
       clip_box.GetHeight() <= 0.f) {
     return;
   }
-  auto* path = CreateBoxPath(empty_shadow ? clip_box : shadow_box, density);
-  auto* clip_path = CreateBoxPath(clip_box, density);
+  auto path = CreateBoxPath(empty_shadow ? clip_box : shadow_box, density);
+  auto clip_path = CreateBoxPath(clip_box, density);
+  if (!path || !clip_path) {
+    return;
+  }
   if (inset && !empty_shadow) {
     // Match BoxShadowLayer: blur the base shape minus the inset shadow shape.
-    auto* inset_path = CreateBoxPath(clip_box, density);
-    OH_Drawing_PathOp(inset_path, path, PATH_OP_MODE_DIFFERENCE);
-    OH_Drawing_PathDestroy(path);
-    path = inset_path;
+    auto inset_path = CreateBoxPath(clip_box, density);
+    if (!inset_path) {
+      return;
+    }
+    OH_Drawing_PathOp(inset_path.get(), path.get(), PATH_OP_MODE_DIFFERENCE);
+    path = std::move(inset_path);
   }
   auto* brush = OH_Drawing_BrushCreate();
   OH_Drawing_BrushSetAntiAlias(brush, true);
@@ -230,10 +231,10 @@ void DrawBoxShadow(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
     OH_Drawing_BrushSetFilter(brush, filter);
   }
   OH_Drawing_CanvasSave(canvas);
-  OH_Drawing_CanvasClipPath(canvas, clip_path, inset ? INTERSECT : DIFFERENCE,
-                            true);
+  OH_Drawing_CanvasClipPath(canvas, clip_path.get(),
+                            inset ? INTERSECT : DIFFERENCE, true);
   OH_Drawing_CanvasAttachBrush(canvas, brush);
-  OH_Drawing_CanvasDrawPath(canvas, path);
+  OH_Drawing_CanvasDrawPath(canvas, path.get());
   OH_Drawing_CanvasDetachBrush(canvas);
   OH_Drawing_CanvasRestore(canvas);
   OH_Drawing_BrushDestroy(brush);
@@ -241,8 +242,6 @@ void DrawBoxShadow(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
     OH_Drawing_FilterDestroy(filter);
     BoxShadowLayer::DestroyBlurMaskFilter(mask_filter);
   }
-  OH_Drawing_PathDestroy(clip_path);
-  OH_Drawing_PathDestroy(path);
 }
 
 bool HasGradientArea(const RoundedRectangle& tiling_box,
@@ -397,10 +396,12 @@ void DrawLinearGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
       center_x - offset_x, center_y - offset_y, center_x + offset_x,
       center_y + offset_y, colors, stops, gradient.color_count, CLAMP);
   if (inner_plus_one > 0) {
-    auto* inner_path = CreateBoxPath(boxes[inner_plus_one - 1], density);
+    auto inner_path = CreateBoxPath(boxes[inner_plus_one - 1], density);
+    if (!inner_path) {
+      return;
+    }
     OH_Drawing_CanvasSave(canvas);
-    OH_Drawing_CanvasClipPath(canvas, inner_path, DIFFERENCE, true);
-    OH_Drawing_PathDestroy(inner_path);
+    OH_Drawing_CanvasClipPath(canvas, inner_path.get(), DIFFERENCE, true);
   }
   DrawGradient(canvas, shader->HarmonyShaderEffect(), tiling_box,
                boxes[gradient.clip_index], gradient.repeat_x, gradient.repeat_y,
