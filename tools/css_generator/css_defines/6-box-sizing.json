@@ -64,5 +64,5 @@
     }
   },
   "is_shorthand": false,
-  "formal_syntax": "border-box | content-box"
+  "formal_syntax": "border-box | content-box | auto"
 }

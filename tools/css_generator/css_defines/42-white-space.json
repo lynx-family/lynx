@@ -19,7 +19,8 @@
       "desc": ""
     }
   ],
-  "is_shorthand": true,
+  "formal_syntax": "normal | nowrap",
+  "is_shorthand": false,
   "compat_data": {
     "white-space": {
       "__compat": {

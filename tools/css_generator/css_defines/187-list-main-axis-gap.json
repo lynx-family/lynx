@@ -6,9 +6,7 @@
   "version": "2.2",
   "author": "huangsu, yangqingchuan",
   "consumption_status": "skip",
-  "keywords": [
-    "grayscale"
-  ],
   "desc": "",
+  "formal_syntax": "<length>",
   "is_shorthand": false
 }
