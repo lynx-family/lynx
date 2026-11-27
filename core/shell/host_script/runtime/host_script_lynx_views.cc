@@ -119,6 +119,22 @@ std::shared_ptr<HostScriptLynxViews> HostScriptLynxViews::Create(
     Napi::Env env, fml::RefPtr<fml::TaskRunner> owner, Guard guard) {
   auto views = std::shared_ptr<HostScriptLynxViews>(
       new HostScriptLynxViews(env, std::move(owner), std::move(guard)));
+  {
+    Napi::ContextScope context_scope(env);
+    Napi::HandleScope scope(env);
+    auto global = env.Global();
+    if (!global.Has("lynxViews")) {
+      auto api = Napi::Object::New(env);
+      api.Set("list",
+              views->Bind("list", List, base::kUnavailableLynxEntityId));
+      global.Get("Object")
+          .As<Napi::Object>()
+          .Get("freeze")
+          .As<Napi::Function>()
+          .Call({api});
+      global.Set("lynxViews", api);
+    }
+  }
   LynxViewRegistry::GetInstance().AddObserver(views);
   return views;
 }
@@ -146,6 +162,8 @@ void HostScriptLynxViews::Detach() {
   created_handler_ = nullptr;
   destroyed_handler_ = nullptr;
   Napi::ContextScope context_scope(env_);
+  Napi::HandleScope scope(env_);
+  Napi::Env(env_).Global().Delete("lynxViews");
   views_.clear();
 }
 
@@ -287,6 +305,22 @@ HostScriptLynxViews* HostScriptLynxViews::From(const Napi::CallbackInfo& info,
   auto views = data->views.lock();
   // The owning bindings keep the instance alive while its context runs.
   return views && views->IsActive() ? views.get() : nullptr;
+}
+
+Napi::Value HostScriptLynxViews::List(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  base::LynxEntityId unused;
+  auto* views = From(info, &unused);
+  if (!views) {
+    return Throw(env, kInvalidState, "Host Script context is detached");
+  }
+  auto result = Napi::Array::New(env);
+  uint32_t index = 0;
+  for (const auto& entry : LynxViewRegistry::GetInstance().List()) {
+    auto proxy = views->Get(entry.view);
+    if (!proxy.IsNull()) result.Set(index++, proxy);
+  }
+  return result;
 }
 
 Napi::Value HostScriptLynxViews::GetUrl(const Napi::CallbackInfo& info) {

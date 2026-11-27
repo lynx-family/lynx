@@ -346,6 +346,60 @@ TEST_F(ProcessRuntimeTest,
                             "loadTemplate:https://example.com/later"}));
 }
 
+TEST_F(ProcessRuntimeTest, LynxViewsListsCachedProxiesSynchronously) {
+  RegisterView(10, "https://example.com/ten");
+  RegisterView(2, "https://example.com/two");
+  RegisterView(0, "");
+  InitializeWithInterceptor();
+
+  for (auto domain : {Domain::kBTS, Domain::kMTS, Domain::kUI}) {
+    EXPECT_EQ(
+        Value(domain, R"(
+      const listed = lynxViews.list();
+      const again = lynxViews.list();
+      [Object.isFrozen(lynxViews),
+       listed.map(v => [v.viewId, v.url, v.available]),
+       again[0] === listed[0] && again[1] === listed[1] && again[2] === listed[2]])"),
+        "[true,[[\"0\",\"\",true],[\"2\",\"https://example.com/two\",true],"
+        "[\"10\",\"https://example.com/ten\",true]],true]");
+  }
+
+  // Proxies from lynxViews.list() share identity with view.created and
+  // decisions, and accept lifecycle listeners without prior view.created.
+  ASSERT_EQ(Value(Domain::kUI, R"(
+    globalThis.events = [];
+    globalThis.direct = lynxViews.list().find(v => v.viewId === '2');
+    direct.on('loadSuccess', () => events.push('loaded:' + direct.viewId));
+    interceptor.on('view.created', v => {
+      if (v.viewId === '2') events.push('createdSame:' + (v === direct));
+    });
+    interceptor.on('view.loadTemplate', (e, c, v) => {
+      events.push('decisionSame:' + (v === direct));
+      return c.proceed();
+    });
+    direct.sendGlobalEvent('ping', 7))"),
+            "true");
+  OnRunner(runners_.ui, [] {
+    auto provider = Interceptor::Current({InterceptKind::kLoadTemplate},
+                                         Interceptor::Domain::kUI);
+    ASSERT_TRUE(provider);
+    EXPECT_FALSE(
+        provider->Dispatch(InterceptKind::kLoadTemplate, LoadEvent("2"))
+            .failed);
+  });
+  OnRunner(platform_->GetTaskRunner(), [] {
+    LynxViewRegistry::GetInstance().NotifyLifecycle(2, "loadSuccess");
+    LynxViewRegistry::GetInstance().Unregister(2);
+  });
+  registered_.erase(2);
+  Flush();
+  EXPECT_EQ(Value(Domain::kUI, R"(
+    [events, direct.available, lynxViews.list().map(v => v.viewId)])"),
+            "[[\"createdSame:true\",\"decisionSame:true\",\"loaded:2\"],"
+            "false,[\"0\",\"10\"]]");
+  EXPECT_EQ(Commands(), (std::vector<std::string>{"sendGlobalEvent:ping[7]"}));
+}
+
 TEST_F(ProcessRuntimeTest, LynxViewProxyValidatesAndQueuesOperations) {
   RegisterView(4, "");
   InitializeWithInterceptor();

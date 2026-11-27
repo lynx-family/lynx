@@ -19,6 +19,7 @@
 #include "core/runtime/common/napi/napi_environment.h"
 #include "core/runtime/common/napi/napi_runtime_proxy.h"
 #include "core/runtime/common/napi/napi_runtime_proxy_quickjs.h"
+#include "core/shell/host_script/runtime/host_script_lynx_views.h"
 #include "quickjs/include/quickjs.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -1062,6 +1063,19 @@ TEST_F(HostScriptInterceptorTest, TracksExistingLogContextIDsIncludingZero) {
   EXPECT_FALSE(Interceptor::IsViewAlive(0));
   EXPECT_TRUE(Interceptor::IsViewAlive(42));
   Interceptor::DestroyView(42);
+}
+
+TEST_F(HostScriptInterceptorTest,
+       DetachedLynxViewsRemovesGlobalAndRejectsRetainedList) {
+  auto views = HostScriptLynxViews::Create(env_, task_runner_, {});
+  Script("globalThis.retainedList = lynxViews.list;");
+  views->Detach();
+  Script(R"(
+    globalThis.afterDetach = [typeof globalThis.lynxViews];
+    try { retainedList(); afterDetach.push('ok'); }
+    catch (e) { afterDetach.push(e.code); }
+  )");
+  EXPECT_EQ(EvalString("afterDetach.join(',')"), "undefined,INVALID_STATE");
 }
 
 }  // namespace

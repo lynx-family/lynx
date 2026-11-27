@@ -72,6 +72,7 @@ class HostScriptLynxViews final
 
   static HostScriptLynxViews* From(const Napi::CallbackInfo& info,
                                    base::LynxEntityId* view);
+  static Napi::Value List(const Napi::CallbackInfo& info);
   static Napi::Value GetUrl(const Napi::CallbackInfo& info);
   static Napi::Value GetAvailable(const Napi::CallbackInfo& info);
   static Napi::Value LoadURL(const Napi::CallbackInfo& info);
