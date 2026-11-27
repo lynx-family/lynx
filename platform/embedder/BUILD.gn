@@ -39,7 +39,10 @@ config("config") {
     "../..",
     "../../base/include/value",
   ]
-  defines = [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+  defines = [
+    "CLAY_LIBRARY_IMPLEMENTATION",
+    "ENABLE_EMBEDDER_LITE=${enable_embedder_lite}",
+  ]
   if (enable_frame_tick_fence) {
     defines += [ "ENABLE_FRAME_TICK_FENCE" ]
   }
@@ -116,6 +119,12 @@ lynx_core_source_set("embedder") {
     sources += [
       "frame_tick_fence.cc",
       "frame_tick_fence.h",
+    ]
+  }
+  if (enable_embedder_lite) {
+    sources += [
+      "capi_module/lynx_capi_module.cc",
+      "capi_module/lynx_capi_module.h",
     ]
   }
   if (is_win || is_mac) {
@@ -245,6 +254,9 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_vsync_monitor_capi.h",
     "./public/capi/lynx_windowless_renderer_capi.h",
   ]
+  if (enable_embedder_lite) {
+    sources += [ "./public/capi/lynx_capi_module_capi.h" ]
+  }
   outputs = [ "$root_build_dir/include/capi/{{source_file_part}}" ]
 }
 
@@ -331,6 +343,20 @@ if (enable_unittests && !enable_embedder_lite) {
       "../../core/public",
       "//third_party/googletest:gtest",
       "//third_party/googletest:gtest_main",
+    ]
+  }
+}
+
+if (enable_unittests && enable_embedder_lite && enable_lepusng_worklet) {
+  unittest_exec("lynx_capi_module_unittests_exec") {
+    configs = [ ":config" ]
+    sources = [
+      "capi_module/lynx_capi_module.cc",
+      "capi_module/lynx_capi_module_unittest.cc",
+    ]
+    deps = [
+      "../../core:lynx_native",
+      "../../core/shell",
     ]
   }
 }

@@ -748,16 +748,22 @@ napi_value ValueUtilsNapiPrimJS::ConvertPubValueToNapiValue(
     }
   } else if (value.IsNumber()) {
     env->napi_create_double(env, value.Number(), &result);
+  } else if (value.IsArrayBuffer()) {
+    const int length = value.Length();
+    void* data = nullptr;
+    if (length < 0 ||
+        env->napi_create_arraybuffer(env, length, &data, &result) != napi_ok) {
+      return nullptr;
+    }
+    if (length > 0) {
+      auto* source = value.ArrayBuffer();
+      if (!source) return nullptr;
+      memcpy(data, source, length);
+    }
   } else if (value.IsMap()) {
     result = ConvertPubValueToNapiObject(env, value);
   } else if (value.IsArray()) {
     result = ConvertPubValueToNapiArray(env, value);
-  } else if (value.IsArrayBuffer()) {
-    void* data = value.ArrayBuffer();
-    size_t length = value.Length();
-    Napi::ArrayBuffer array_buffer = Napi::ArrayBuffer::New(env, length);
-    memcpy(array_buffer.Data(), data, length);
-    result = array_buffer;
   } else if (value.IsUndefined()) {
     env->napi_get_undefined(env, &result);
   } else {

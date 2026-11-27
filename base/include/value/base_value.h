@@ -458,6 +458,9 @@ class BASE_EXPORT Value {
   }
 
   bool IsJSArray() const;
+  bool IsJSArrayBuffer() const;
+  // The bytes are borrowed from the JS ArrayBuffer.
+  bool GetJSArrayBufferInfo(uint8_t** data, size_t* length) const;
   bool IsJSTable() const;
 
   inline bool IsJSBool() const {

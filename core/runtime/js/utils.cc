@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/runtime/js/utils.h"
 
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -68,6 +69,8 @@ std::optional<Value> valueFromLepus(
       return Value::null();
     case lepus::ValueType::Value_Undefined:
       return Value::undefined();
+    case lepus::ValueType::Value_NaN:
+      return Value(std::numeric_limits<double>::quiet_NaN());
     case lepus::ValueType::Value_Double:
     case lepus::ValueType::Value_UInt32:
     case lepus::ValueType::Value_Int32:
@@ -165,15 +168,13 @@ std::optional<Value> valueFromLepus(
     }
     case lepus::ValueType::Value_ByteArray: {
       auto byte_array = data.ByteArray();
-      size_t length = byte_array->GetLength();
-      std::unique_ptr<const uint8_t[]> buffer = byte_array->MovePtr();
-      return Value(ArrayBuffer(runtime, std::move(buffer), length));
+      return Value(
+          ArrayBuffer(runtime, byte_array->GetPtr(), byte_array->GetLength()));
     }
     case lepus::ValueType::Value_Closure:
     case lepus::ValueType::Value_CFunction:
     case lepus::ValueType::Value_CPointer:
     case lepus::ValueType::Value_RefCounted:
-    case lepus::ValueType::Value_NaN:
     case lepus::ValueType::Value_CDate:
     case lepus::ValueType::Value_RegExp:
     case lepus::ValueType::Value_PrimJsValue:
