@@ -9,6 +9,7 @@
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/resource/trace/resource_trace_event_def.h"
 #include "core/shell/lynx_engine.h"
 #include "core/template_bundle/template_codec/magic_number.h"
@@ -253,6 +254,11 @@ void LazyBundleLoader::FetchBundle(
   auto request =
       pub::LynxResourceRequest{bundle_request.url, bundle_request.resource_type,
                                bundle_request.request_in_current_thread};
+  if (request.type == pub::LynxResourceType::kFrame &&
+      LynxEnv::GetInstance().GetBoolEnv(
+          LynxEnv::Key::FETCH_FRAME_AS_DYNAMIC_COMPONENT, true)) {
+    request.type = pub::LynxResourceType::kLazyBundle;
+  }
   resource_loader_->LoadResource(
       request, [bundle_request = std::move(bundle_request),
                 weak_self = weak_from_this()](
