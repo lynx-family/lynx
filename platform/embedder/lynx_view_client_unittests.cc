@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "platform/embedder/lynx_view_client_priv.h"
+#include "platform/embedder/lynx_view_clients.h"
 #include "platform/embedder/public/lynx_view_client.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -69,6 +70,34 @@ class TestLynxViewClient : public lynx::pub::LynxViewClient {
   int enter_foreground_count_ = 0;
   int enter_background_count_ = 0;
 };
+
+TEST(LynxViewClientTest, IntrinsicSizeCallbackRespectsClientRegistration) {
+  class SizeClient : public lynx::pub::LynxViewClient {
+   public:
+    void OnIntrinsicContentSizeChanged(float width, float height) override {
+      ++count;
+      last_width = width;
+      last_height = height;
+    }
+    int count = 0;
+    float last_width = 0;
+    float last_height = 0;
+  } client;
+  auto* unbound = lynx_view_client_create(nullptr);
+  lynx::embedder::LynxViewClients clients(nullptr);
+  clients.AddClient(unbound);
+  clients.AddClient(client.Impl());
+  clients.AddClient(client.Impl());
+  clients.OnIntrinsicContentSizeChanged(123.5f, 456.25f);
+  EXPECT_EQ(client.count, 1);
+  EXPECT_FLOAT_EQ(client.last_width, 123.5f);
+  EXPECT_FLOAT_EQ(client.last_height, 456.25f);
+  clients.RemoveClient(client.Impl());
+  clients.OnIntrinsicContentSizeChanged(10.f, 20.f);
+  EXPECT_EQ(client.count, 1);
+  clients.RemoveClient(unbound);
+  lynx_view_client_release(unbound);
+}
 
 TEST(LynxViewClientTest, TestLynxViewClient) {
   auto client = std::make_shared<TestLynxViewClient>();

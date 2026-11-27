@@ -59,6 +59,9 @@ class LynxUIRenderer {
 
   virtual void Reset() { CancelInputEvents(); }
 
+  virtual bool AttachPlatformView(void* platform_view) { return false; }
+  virtual void DetachPlatformView() {}
+
   std::shared_ptr<devtool::input::InputEventTarget> GetInputEventTarget();
 
   virtual void OnEnterForeground() = 0;

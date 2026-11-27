@@ -16,6 +16,7 @@
 #include "core/public/devtool/lynx_inspector_owner.h"
 #include "core/public/lynx_layout_proxy.h"
 #include "core/public/lynx_resource_loader.h"
+#include "core/public/page_options.h"
 #include "core/public/performance_controller_platform_impl.h"
 #include "core/public/ui_delegate.h"
 #include "core/public/vsync_monitor_platform_impl.h"
@@ -108,6 +109,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     int thread_mode = 0;
     LynxSize screen_size;
     LynxSize viewport_size;
+    bool has_viewport = true;
     int viewport_width_mode = 1;
     int viewport_height_mode = 1;
     float device_pixel_ratio = 1.f;
@@ -119,6 +121,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
     bool use_quickjs = false;
     bool enable_bytecode = false;
     std::string bytecode_source_url = "";
+    tasm::EmbeddedMode embedded_mode = tasm::EmbeddedMode::UNSET;
     bool enable_js = true;
     std::shared_ptr<tasm::WhiteBoard> white_board = nullptr;
     std::shared_ptr<base::VSyncMonitorPlatformImpl>

@@ -124,7 +124,6 @@ lynx_core_source_set("embedder") {
       "native_view/lynx_texture_view.h",
     ]
   }
-
   deps = [
     ":lynx_runtime_lifecycle_observer",
     ":public_headers",
@@ -134,6 +133,14 @@ lynx_core_source_set("embedder") {
     "./resource",
     embedder_base_dep,
   ]
+  if (is_harmony && !is_headless) {
+    sources += [ "harmony/lynx_view_harmony.cc" ]
+    deps += [
+      "../../core/renderer/ui_wrapper/layout",
+      "../../core/renderer/ui_wrapper/painting",
+      "../harmony/lynx_harmony/src/main/cpp",
+    ]
+  }
   if (!enable_embedder_lite) {
     sources += [
       "lynx_native_view.cc",
@@ -242,6 +249,7 @@ copy("lynx_embedder_capi") {
     "./public/capi/lynx_view_builder_capi.h",
     "./public/capi/lynx_view_capi.h",
     "./public/capi/lynx_view_client_capi.h",
+    "./public/capi/lynx_view_harmony_capi.h",
     "./public/capi/lynx_vsync_monitor_capi.h",
     "./public/capi/lynx_windowless_renderer_capi.h",
   ]

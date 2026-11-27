@@ -124,6 +124,13 @@ class LynxViewClient {
                                    frame_finish_time_in_ns);
           }
         });
+    lynx_view_client_bind_on_intrinsic_content_size_changed(
+        client_, [](lynx_view_client_t* client, float width, float height) {
+          auto* wrapper = LynxViewClient::Unwrap(client);
+          if (wrapper) {
+            wrapper->OnIntrinsicContentSizeChanged(width, height);
+          }
+        });
   }
   virtual ~LynxViewClient() { lynx_view_client_release(client_); }
 
@@ -139,6 +146,9 @@ class LynxViewClient {
    * @brief Called when page load finish.
    */
   virtual void OnLoadSuccess() {}
+
+  // Harmony intrinsic content dimensions in logical pixels, on the UI thread.
+  virtual void OnIntrinsicContentSizeChanged(float width, float height) {}
 
   /**
    * @apidoc
