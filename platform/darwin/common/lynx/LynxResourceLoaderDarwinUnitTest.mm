@@ -170,6 +170,9 @@
         id fetcher = OCMProtocolMock(@protocol(LynxTemplateResourceFetcher));
         OCMStub([fetcher fetchTemplate:[OCMArg any] onComplete:[OCMArg any]])
             .andDo(^(NSInvocation* invocation) {
+              __unsafe_unretained LynxResourceRequest* request;
+              [invocation getArgument:&request atIndex:2];
+              XCTAssertEqual(request.type, LynxResourceTypeDynamicComponent);
               __unsafe_unretained LynxTemplateResourceCompletionBlock callback;
               [invocation getArgument:&callback atIndex:3];
               callback([[LynxTemplateResource alloc] initWithNSData:data], nil);
@@ -194,19 +197,23 @@
         for (const auto& loader : {std::make_shared<Loader>(nil, nil, fetcher, nil),
                                    std::make_shared<Loader>(nil, legacyFetcher, nil, nil),
                                    std::make_shared<Loader>(registry, nil, nil, nil)}) {
-          verificationCalls = 0;
-          const bool isXMLFrame = data == source && type == lynx::pub::LynxResourceType::kFrame;
-          bool called = false;
-          loader->LoadResource({"https://example.com/resource", type, true},
-                               [&](lynx::pub::LynxResourceResponse& response) {
-                                 called = true;
-                                 XCTAssertEqual(response.Success(), isXMLFrame);
-                                 if (isXMLFrame) {
-                                   XCTAssertEqual(response.data.size(), source.length);
-                                 }
-                               });
-          XCTAssertTrue(called);
-          XCTAssertEqual(verificationCalls, isXMLFrame ? 0 : 1);
+          for (bool requestInCurrentThread : {true, false}) {
+            verificationCalls = 0;
+            const bool isXMLFrame = data == source && type == lynx::pub::LynxResourceType::kFrame;
+            XCTestExpectation* completed =
+                [self expectationWithDescription:@"resource callback completed"];
+            loader->LoadResource(
+                {"https://example.com/resource", type, requestInCurrentThread},
+                [self, completed, isXMLFrame, data](lynx::pub::LynxResourceResponse& response) {
+                  XCTAssertEqual(response.Success(), isXMLFrame);
+                  if (isXMLFrame) {
+                    XCTAssertEqual(response.data.size(), data.length);
+                  }
+                  [completed fulfill];
+                });
+            [self waitForExpectations:@[ completed ] timeout:5];
+            XCTAssertEqual(verificationCalls, isXMLFrame ? 0 : 1);
+          }
         }
       }
     }

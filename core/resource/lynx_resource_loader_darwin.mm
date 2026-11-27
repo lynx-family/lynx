@@ -352,8 +352,11 @@ void LynxResourceLoaderDarwin::LoadResourceInternalSync(const pub::LynxResourceR
           callback(response);
         };
     auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
+    // Host containers rely on DynamicComponent to route all frame requests,
+    // including binary templates and LynxML. Keep kFrame internal for decoding
+    // and verification; do not expose it as a different host resource type.
     // 1. try to use LynxTemplateResourceFetcher
-    if (FetchTemplateByGenericFetcher(request.url, LynxResourceTypeTemplate,
+    if (FetchTemplateByGenericFetcher(request.url, LynxResourceTypeDynamicComponent,
                                       copyable_wrapper_callback)) {
       return;
     }

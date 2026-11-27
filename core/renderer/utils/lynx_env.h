@@ -164,7 +164,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_ANIMATION_ROUTING,
     ENABLE_PAUSE_ELEMENT_VSYNC_IN_BACKGROUND,
     ENABLE_UNIFIED_GESTURE_HANDLER,
-    FETCH_FRAME_AS_DYNAMIC_COMPONENT,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -359,9 +358,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ANIMATION_ROUTING, "enable_animation_routing"},
             {Key::ENABLE_PAUSE_ELEMENT_VSYNC_IN_BACKGROUND,
              "enable_pause_element_vsync_in_background"},
-            // NOLINT(harmony-trail-key): Settings-only configuration.
-            {Key::FETCH_FRAME_AS_DYNAMIC_COMPONENT,
-             "fetch_frame_as_dynamic_component"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());

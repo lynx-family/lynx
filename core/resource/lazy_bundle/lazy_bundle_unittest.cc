@@ -39,7 +39,7 @@ TEST(LazyBundleLoaderTest, LoadFrameLynxML) {
         base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback)
         override {
       requested = true;
-      EXPECT_EQ(request.type, pub::LynxResourceType::kLazyBundle);
+      EXPECT_EQ(request.type, pub::LynxResourceType::kFrame);
       EXPECT_FALSE(request.request_in_current_thread);
       pub::LynxResourceResponse response;
       response.data.assign(source_.begin(), source_.end());

@@ -31,10 +31,6 @@ class TemplateResourceCallback extends GuardedResourceCallback {
     mResourceType = resourceType;
   }
 
-  public LynxResourceRequest.LynxResourceType getResourceType() {
-    return this.mResourceType;
-  }
-
   public void onTemplateLoaded(
       boolean success, byte[] data, TemplateBundle bundle, ByteBuffer buffer, String errorMsg) {
     if (!EnsureInvokedOnce()) {

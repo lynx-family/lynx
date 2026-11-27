@@ -404,7 +404,10 @@ public class LynxResourceLoader {
     }
     final TemplateResourceCallback callback =
         new TemplateResourceCallback(url, responseHandler, mReportHelper, resourceType);
-    mTemplateLoaderHelper.fetchTemplateByGenericTemplateFetcher(url, callback);
+    // Host containers expect DynamicComponent for both lazy bundles and frames, including LynxML.
+    // Preserve the original callback type for verification.
+    mTemplateLoaderHelper.fetchTemplateByGenericTemplateFetcher(
+        url, LynxResourceRequest.LynxResourceType.LynxResourceTypeDynamicComponent, callback);
     return true;
   }
 
