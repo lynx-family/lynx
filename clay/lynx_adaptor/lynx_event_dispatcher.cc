@@ -10,14 +10,8 @@
 
 #include "clay/lynx_adaptor/base_def.h"
 #include "clay/lynx_adaptor/clay_value.h"
+#include "clay/lynx_adaptor/key_modifiers.h"
 #include "clay/public/value.h"
-
-#if OS_WIN
-#include <Windows.h>
-#elif OS_MAC
-#include <ApplicationServices/ApplicationServices.h>
-#include <Carbon/Carbon.h>
-#endif
 
 namespace clay {
 
@@ -171,51 +165,15 @@ std::string AnimationPropertyTypeToString(ClayAnimationPropertyType type) {
   ret = "transition-" + ret;
   return ret;
 }
-void AddKeyModifierProperties(clay::Value::Map& dict) {
-  bool altKey = false;
-  bool ctrlKey = false;
-  bool shiftKey = false;
-  bool metaKey = false;
-#if OS_WIN
-  if ((GetKeyState(VK_LMENU) | GetKeyState(VK_RMENU)) & 0x8000) {
-    altKey = true;
-  }
-  if ((GetKeyState(VK_LCONTROL) | GetKeyState(VK_RCONTROL)) & 0x8000) {
-    ctrlKey = true;
-  }
-  if ((GetKeyState(VK_LSHIFT) | GetKeyState(VK_RSHIFT)) & 0x8000) {
-    shiftKey = true;
-  }
-  if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000) {
-    metaKey = true;
-  }
-#elif OS_MAC
-  if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Option) ||
-      CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                            kVK_RightOption)) {
-    altKey = true;
-  }
-  if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Control) ||
-      CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                            kVK_RightControl)) {
-    ctrlKey = true;
-  }
-  if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Shift) ||
-      CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                            kVK_RightShift)) {
-    shiftKey = true;
-  }
-  if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Command) ||
-      CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                            kVK_RightCommand)) {
-    metaKey = true;
-  }
-#endif
-  dict["altKey"] = clay::Value(altKey);
-  dict["shiftKey"] = clay::Value(shiftKey);
-  dict["ctrlKey"] = clay::Value(ctrlKey);
-  dict["metaKey"] = clay::Value(metaKey);
+void AddKeyModifierProperties(clay::Value::Map& dict,
+                              const EventDelegate* delegate) {
+  auto modifiers = GetKeyModifiers(delegate);
+  dict["altKey"] = clay::Value(modifiers.alt);
+  dict["shiftKey"] = clay::Value(modifiers.shift);
+  dict["ctrlKey"] = clay::Value(modifiers.control);
+  dict["metaKey"] = clay::Value(modifiers.meta);
 }
+
 }  // namespace
 
 // clay::EventDelegate override
@@ -329,7 +287,7 @@ void LynxEventDispatcher::OnMouseEvent(const std::string& event_name,
 
   rk_dict["identifier"] = clay::Value(reinterpret_cast<int64_t>(&rk_dict));
 
-  AddKeyModifierProperties(rk_dict);
+  AddKeyModifierProperties(rk_dict, this);
 
   auto params = lynx::ClayValue(clay::Value(std::move(rk_dict)));
   engine_proxy_->SendBubbleEvent(event_name, view_id, params);
@@ -373,7 +331,7 @@ void LynxEventDispatcher::OnPointerEvent(
   params_map["pageY"] = clay::Value(page_y / density);
   params_map["clientX"] = clay::Value(page_x / density);
   params_map["clientY"] = clay::Value(page_y / density);
-  AddKeyModifierProperties(params_map);
+  AddKeyModifierProperties(params_map, this);
 
   auto params = lynx::ClayValue(clay::Value(std::move(params_map)));
   engine_proxy_->SendBubbleEvent(event_name, view_id, params);
@@ -416,7 +374,7 @@ void LynxEventDispatcher::OnKeyEvent(const std::string& event_name, int view_id,
   rk_dict["key"] = clay::Value(key);
   rk_dict["repeat"] = clay::Value(repeat);
 
-  AddKeyModifierProperties(rk_dict);
+  AddKeyModifierProperties(rk_dict, this);
 
   auto params = lynx::ClayValue(clay::Value(std::move(rk_dict)));
   engine_proxy_->SendBubbleEvent(event_name, view_id, params);

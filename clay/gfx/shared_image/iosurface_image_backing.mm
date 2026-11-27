@@ -20,6 +20,7 @@
 #else
 #if OS_MAC
 #include "clay/gfx/shared_image/cgl_image_representation.h"
+#include "clay/gfx/shared_image/skia_raster_image_representation.h"
 #endif
 
 #if SKIA_ENABLE_GL
@@ -126,6 +127,11 @@ fml::RefPtr<SharedImageRepresentation> IOSurfaceImageBacking::CreateRepresentati
 #ifndef ENABLE_SKITY
 fml::RefPtr<SkiaImageRepresentation> IOSurfaceImageBacking::CreateSkiaRepresentation(
     GrDirectContext* gr_context) {
+#if OS_MAC
+  if (!gr_context) {
+    return fml::MakeRefCounted<SkiaRasterImageRepresentation>(fml::Ref(this));
+  }
+#endif
   switch (gr_context->backend()) {
 #if SKIA_ENABLE_GL
     case GrBackendApi::kOpenGL:
@@ -178,6 +184,9 @@ bool IOSurfaceImageBacking::ReadbackToMemory(SharedImageReadbackPixmap* pixmaps,
 #ifdef ENABLE_SKITY
 fml::RefPtr<SkityImageRepresentation> IOSurfaceImageBacking::CreateSkityRepresentation(
     skity::GPUContext* skity_context) {
+  if (!skity_context) {
+    return fml::MakeRefCounted<SkityRasterImageRepresentation>(fml::Ref(this));
+  }
   switch (skity_context->GetBackendType()) {
     case skity::GPUBackendType::kOpenGL:
       return fml::MakeRefCounted<SkityRasterImageRepresentation>(fml::Ref(this));

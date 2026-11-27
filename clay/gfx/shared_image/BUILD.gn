@@ -4,6 +4,21 @@
 
 import("../../common/config.gni")
 
+if (is_mac && !enable_skity) {
+  executable("shared_image_raster_unittests") {
+    testonly = true
+    sources = [ "skia_raster_image_representation_unittests.cc" ]
+    deps = [
+      ":shared_image",
+      "../../../base/src:base_static",
+      "../../common/graphics",
+      "//third_party/googletest:gtest",
+      "//third_party/googletest:gtest_main",
+    ]
+    configs += [ "../../:config" ]
+  }
+}
+
 # Linux Skity supports two headless GL backends:
 #   * Epoxy with the host EGL implementation (Mesa/llvmpipe when selected by
 #     the environment), when enable_software_rendering is false.
@@ -82,6 +97,12 @@ source_set("shared_image") {
     }
   } else {
     public_deps += [ "//third_party/skia" ]
+    if (is_mac) {
+      sources += [
+        "skia_raster_image_representation.cc",
+        "skia_raster_image_representation.h",
+      ]
+    }
   }
 
   if (is_apple) {

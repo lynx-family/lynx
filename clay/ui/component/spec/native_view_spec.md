@@ -554,3 +554,18 @@ frames through `UpdateSurfaceColorSpace`. Changes fail while a back buffer is
 acquired but not yet swapped. Successful changes apply to subsequent acquisitions
 and imports without replacing the sink; queued frames retain their original encoding.
 New buffers require a full redraw, and old buffers are retired behind GPU fences.
+
+## Desktop software composition and input
+
+On Linux and macOS, a NativeView selects a bitmap drawable when its PageView
+uses a software renderer. On macOS, an IOSurface can produce an owned raster
+snapshot without a GPU context. Its source pixel format, color space, and
+bottom-left origin are preserved when converting to the software image. Bitmap
+consumers return the front buffer after copying, so a frozen layer retains its
+own image without blocking the producer. Producers must complete GPU writes or
+supply a fence before publishing a buffer for CPU readback.
+
+An embedder may install a key-modifier provider on its EventDelegate. Both DOM
+pointer events and native motion events use that provider. Without a provider,
+the existing platform key-state query remains in effect. Headless hosts can
+supply neutral or simulated input state without polling global HID state.

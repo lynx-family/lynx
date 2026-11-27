@@ -162,6 +162,16 @@ bool ShouldInterpretTextInput(NSEvent* event) {
   return character != 0 && !IsFunctionKeyCharacter(character);
 }
 
+clay::KeyModifiers KeyModifiersForEvent(NSEvent* event) {
+  const auto flags = event.modifierFlags;
+  clay::KeyModifiers modifiers;
+  modifiers.alt = (flags & NSEventModifierFlagOption) != 0;
+  modifiers.control = (flags & NSEventModifierFlagControl) != 0;
+  modifiers.shift = (flags & NSEventModifierFlagShift) != 0;
+  modifiers.meta = (flags & NSEventModifierFlagCommand) != 0;
+  return modifiers;
+}
+
 void FillKeyEvent(lynx_key_event_t* key_event, lynx_key_event_type_e type, double timestamp,
                   uint64_t physical, uint64_t logical, const char* character, bool synthesized) {
   *key_event = {};
@@ -553,7 +563,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
     double x = point.x * scale;
     double y = (content_view_.bounds.size.height - point.y) * scale;
     SendPointer(phase, x, y, buttons, signal_kind, scroll_delta_x * scale, scroll_delta_y * scale,
-                precise_scroll);
+                precise_scroll, KeyModifiersForEvent(event));
   }
 
   void HandleKeyDown(NSEvent* event) { SendNativeKeyEvent(event, true); }
@@ -585,7 +595,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
     } else {
       pressed_keys_.erase(physical);
     }
-    SendKey(key_event, "");
+    SendKey(key_event, "", KeyModifiersForEvent(event));
   }
 
  private:
@@ -666,7 +676,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
 
   void SendPointer(lynx_pointer_phase_e phase, double x, double y, int64_t buttons,
                    lynx_pointer_signal_kind_e signal_kind, double scroll_delta_x,
-                   double scroll_delta_y, bool precise_scroll) {
+                   double scroll_delta_y, bool precise_scroll, clay::KeyModifiers modifiers = {}) {
     lynx_pointer_event_t pointer_event{};
     pointer_event.struct_size = sizeof(pointer_event);
     pointer_event.phase = phase;
@@ -683,7 +693,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
     pointer_event.scale = 1.0;
     pointer_event.is_precise_scroll = precise_scroll ? 1 : 0;
     if (pointer_callback_) {
-      pointer_callback_(pointer_event);
+      pointer_callback_(pointer_event, modifiers);
     }
   }
 
@@ -728,11 +738,12 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
     return false;
   }
 
-  void SendKey(const lynx_key_event_t& event, std::string character) {
+  void SendKey(const lynx_key_event_t& event, std::string character,
+               clay::KeyModifiers modifiers = {}) {
     if (!key_callback_) {
       return;
     }
-    WindowedKeyEvent key_event{event, std::move(character)};
+    WindowedKeyEvent key_event{event, std::move(character), modifiers};
     key_event.event.character = key_event.character.empty() ? nullptr : key_event.character.c_str();
     key_callback_(key_event);
   }
@@ -757,7 +768,7 @@ class NodeLynxWindowHostMac final : public NodeLynxWindowHost {
     } else {
       pressed_keys_.erase(physical);
     }
-    SendKey(key_event, std::move(character));
+    SendKey(key_event, std::move(character), KeyModifiersForEvent(event));
   }
 
   void SetTextInputRect(float x, float y, float width, float height) {

@@ -11,17 +11,11 @@
 #include <utility>
 
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#include "clay/lynx_adaptor/key_modifiers.h"
 #include "clay/lynx_adaptor/value_converter.h"
 #include "clay/ui/component/native_view.h"
 #include "clay/ui/component/page_view.h"
 #include "clay/ui/event/gesture_event.h"
-
-#if OS_WIN
-#include <Windows.h>
-#elif OS_MAC
-#include <ApplicationServices/ApplicationServices.h>
-#include <Carbon/Carbon.h>
-#endif
 
 namespace clay {
 
@@ -120,41 +114,12 @@ class NativeViewPluginEmbedder : public NativeViewPlugin {
       motion_event.deltaY = event.delta.height();
     }
     motion_event.scale = event.scale;
-#if OS_WIN
-    if ((GetKeyState(VK_LMENU) | GetKeyState(VK_RMENU)) & 0x8000) {
-      motion_event.altKey = true;
-    }
-    if ((GetKeyState(VK_LCONTROL) | GetKeyState(VK_RCONTROL)) & 0x8000) {
-      motion_event.ctrlKey = true;
-    }
-    if ((GetKeyState(VK_LSHIFT) | GetKeyState(VK_RSHIFT)) & 0x8000) {
-      motion_event.shiftKey = true;
-    }
-    if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000) {
-      motion_event.metaKey = true;
-    }
-#elif OS_MAC
-    if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Option) ||
-        CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                              kVK_RightOption)) {
-      motion_event.altKey = true;
-    }
-    if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Control) ||
-        CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                              kVK_RightControl)) {
-      motion_event.ctrlKey = true;
-    }
-    if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Shift) ||
-        CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                              kVK_RightShift)) {
-      motion_event.shiftKey = true;
-    }
-    if (CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Command) ||
-        CGEventSourceKeyState(kCGEventSourceStateHIDSystemState,
-                              kVK_RightCommand)) {
-      motion_event.metaKey = true;
-    }
-#endif
+    auto key_modifiers =
+        GetKeyModifiers(native_view_->page_view()->GetEventDelegate());
+    motion_event.altKey = key_modifiers.alt;
+    motion_event.ctrlKey = key_modifiers.control;
+    motion_event.shiftKey = key_modifiers.shift;
+    motion_event.metaKey = key_modifiers.meta;
     if (native_platform_view_->HandleMotionEvent(&motion_event)) {
       return;
     }

@@ -94,6 +94,10 @@ void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
 }
 
 // Called from raster thread.
+void SharedDrawableImage::ReleaseFrontAfterSnapshot() {
+  if (accessor_) accessor_->ReleaseFront();
+}
+
 bool SharedDrawableImage::Update() {
   fml::RefPtr<SharedImageRepresentation> repr = accessor_->UpdateFront();
   if (!repr) {
@@ -176,7 +180,7 @@ void SharedDrawableImage::DrawSkiaImage(sk_sp<SkImage> sk_image,
         break;
     }
     context.canvas->drawImageRect(
-        sk_image_, image_src_rect, dst_rect, sampling, context.sk_paint,
+        sk_image, image_src_rect, dst_rect, sampling, context.sk_paint,
         SkCanvas::SrcRectConstraint::kStrict_SrcRectConstraint);
   }
 }

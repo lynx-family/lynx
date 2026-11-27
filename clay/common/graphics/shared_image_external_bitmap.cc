@@ -4,7 +4,6 @@
 
 #include "clay/common/graphics/shared_image_external_bitmap.h"
 
-#include <algorithm>
 #include <memory>
 
 #include "clay/gfx/shared_image/shared_image_backing.h"
@@ -34,24 +33,44 @@ void SharedImageExternalBitmap::Paint(PaintContext& context,
   if (!EnsureAttached()) {
     return;
   }
-  AdvanceFrameConsumption(freeze);
-
+  if (!freeze) frozen_image_ = nullptr;
 #ifndef ENABLE_SKITY
-  if (!sk_image_) {
-    return;
-  }
-
-  DrawSkiaImage(sk_image_, context, bounds, sampling, fit_mode);
+  const auto& current_image = sk_image_;
 #else
-  if (!skity_image_) {
+  const auto& current_image = skity_image_;
+#endif
+  auto freeze_snapshot = [&] {
+    if (freeze && !frozen_image_) {
+      frozen_image_ = current_image;
+      frozen_transform_ = transform_;
+    }
+  };
+  freeze_snapshot();
+  // Drain completed frames even when displaying an older snapshot, so freeze
+  // does not pin producer buffers. The displayed image owns independent pixels.
+  AdvanceFrameConsumption(false);
+  ReleaseFrontAfterSnapshot();
+  freeze_snapshot();
+
+  auto image = frozen_image_ ? frozen_image_ : current_image;
+  if (!image) {
     return;
   }
-
-  std::shared_ptr<skity::Image> skity_image = skity_image_->gr_image();
+  const auto latest_transform = transform_;
+  if (frozen_image_) transform_ = frozen_transform_;
+#ifndef ENABLE_SKITY
+  DrawSkiaImage(image, context, bounds, sampling, fit_mode);
+#else
+  std::shared_ptr<skity::Image> skity_image = image->gr_image();
   FML_DCHECK(skity_image);
   DrawSkityImage(skity_image, context, bounds, sampling, fit_mode);
 #endif  // ENABLE_SKITY
-  FlushAndReleaseFrontForSingleBuffer();
+  transform_ = latest_transform;
+}
+
+void SharedImageExternalBitmap::OnGrContextDestroyed() {
+  frozen_image_ = nullptr;
+  SharedDrawableImage::OnGrContextDestroyed();
 }
 
 }  // namespace clay
