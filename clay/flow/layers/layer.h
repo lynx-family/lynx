@@ -98,10 +98,6 @@ struct PrerollContext {
   // This flag indicates there are cache-worthy effects such as filters or
   // saveLayers in the current subtree.
   bool has_cacheable_effect = false;
-  // This flag indicates that Preroll skipped part of the current subtree after
-  // an empty cull rect rejected it. Outputs produced by such a Preroll are
-  // damage-dependent and must not be reused as a complete subtree summary.
-  bool subtree_was_quick_rejected = false;
   // The list of flags that describe which rendering state attributes
   // (such as opacity, ColorFilter, ImageFilter) a given layer can
   // render itself without requiring the parent to perform a protective

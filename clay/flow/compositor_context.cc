@@ -126,8 +126,11 @@ RasterStatus CompositorContext::ScopedFrame::Raster(
           ? frame_damage->ComputeClipRect(layer_tree, !ignore_raster_cache)
           : std::nullopt;
 
+  // The canvas applies the root transform to the logical damage clip. The
+  // Preroll tracker expects its initial cull rect in device coordinates.
   const skity::Rect preroll_cull_rect =
-      clip_rect ? *clip_rect : skity::Rect::MakeSize(layer_tree.frame_size());
+      clip_rect ? root_surface_transformation().MapRect(*clip_rect)
+                : skity::Rect::MakeSize(layer_tree.frame_size());
   bool root_needs_readback =
       layer_tree.Preroll(*this, ignore_raster_cache, preroll_cull_rect);
   bool needs_save_layer = root_needs_readback && !surface_supports_readback();

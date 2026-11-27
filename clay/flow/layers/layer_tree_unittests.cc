@@ -7,21 +7,31 @@
 
 #include <stddef.h>
 
+#include <memory>
+#include <utility>
+
 #include "base/include/fml/macros.h"
 #include "clay/flow/animation/animation_host.h"
 #include "clay/flow/animation/animation_mutator.h"
 #include "clay/flow/compositor_context.h"
 #include "clay/flow/layers/clip_rect_layer.h"
+#include "clay/flow/layers/color_filter_layer.h"
 #include "clay/flow/layers/container_layer.h"
 #include "clay/flow/layers/layer_tree.h"
 #include "clay/flow/layers/opacity_layer.h"
 #include "clay/flow/raster_cache.h"
 #include "clay/flow/testing/mock_layer.h"
 #include "clay/gfx/animation/transition_manager.h"
+#include "clay/gfx/paint.h"
 #include "clay/gfx/skity_to_skia_utils.h"
 #include "clay/testing/canvas_test.h"
 #include "clay/testing/mock_canvas.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
+
+#ifndef ENABLE_SKITY
+#include "third_party/skia/include/core/SkPixmap.h"
+#include "third_party/skia/include/core/SkSurface.h"
+#endif
 
 namespace clay {
 namespace testing {
@@ -134,7 +144,145 @@ TEST_F(LayerTreeTest, Simple) {
                 0, MockCanvas::DrawPathData{child_path, child_paint}}}));
 }
 
-TEST_F(LayerTreeTest, RasterQuickRejectsSubtreeOutsideFrame) {
+#ifndef ENABLE_SKITY
+class LayerTreeRasterTest : public ::testing::Test {
+ protected:
+  static constexpr int kFrameSize = 64;
+
+  void SetUp() override {
+    surface_ = SkSurface::MakeRasterN32Premul(kFrameSize, kFrameSize);
+    ASSERT_TRUE(surface_);
+  }
+
+  std::unique_ptr<CompositorContext::ScopedFrame> AcquireFrame(
+      const skity::Matrix& root_transform = skity::Matrix()) {
+    auto* canvas = surface_->getCanvas();
+    canvas->setMatrix(ConvertSkityMatrixToSkM44(root_transform));
+    return context_.AcquireFrame(nullptr, canvas, nullptr, root_transform,
+                                 false, true);
+  }
+
+  void ExpectPixel(int x, int y, SkColor color) {
+    SkPixmap pixels;
+    ASSERT_TRUE(surface_->peekPixels(&pixels));
+    EXPECT_EQ(pixels.getColor(x, y), color);
+  }
+
+  static void SetRootWithChild(LayerTree& tree, std::shared_ptr<Layer> child) {
+    auto root = std::make_shared<ContainerLayer>();
+    root->Add(std::move(child));
+    tree.set_root_layer(root);
+  }
+
+  static std::shared_ptr<MockLayer> MakeRect(const skity::Rect& rect,
+                                             SkColor color) {
+    SkPaint paint;
+    paint.setColor(color);
+    return std::make_shared<MockLayer>(
+        SkPath().addRect(ConvertSkityRectToSkRect(rect)), paint);
+  }
+
+ private:
+  sk_sp<SkSurface> surface_;
+  CompositorContext context_;
+};
+
+TEST_F(LayerTreeRasterTest, PartialRepaintPreservesRasterCacheContents) {
+  const auto target = skity::Rect::MakeLTRB(28, 5, 36, 15);
+  auto clip = std::make_shared<ClipRectLayer>(target, Clip::hardEdge);
+  clip->Add(MakeRect(target, SK_ColorRED));
+
+  auto effect = std::make_shared<ColorFilterLayer>(
+      SrgbToLinearGammaColorFilter::GetInstance());
+  effect->Add(MakeRect(skity::Rect::MakeLTRB(5, 5, 15, 15), SK_ColorBLUE));
+  effect->Add(clip);
+  effect->Add(MakeRect(skity::Rect::MakeLTRB(45, 5, 55, 15), SK_ColorGREEN));
+
+  auto frame = AcquireFrame();
+  ASSERT_TRUE(frame);
+  auto& cache = frame->context().raster_cache();
+
+  // Populate the framebuffer while leaving the cache cold.
+  LayerTree initial_tree({kFrameSize, kFrameSize}, 1.0f);
+  SetRootWithChild(initial_tree, effect);
+  FrameDamage initial_damage;
+  ASSERT_EQ(frame->Raster(initial_tree, true, &initial_damage, SK_ColorWHITE),
+            RasterStatus::kSuccess);
+  ExpectPixel(32, 10, SK_ColorRED);
+  ASSERT_EQ(cache.GetLayerCachedEntriesCount(), 0u);
+
+  // The cache still needs the whole effect subtree when only its left side
+  // has framebuffer damage.
+  LayerTree cached_tree({kFrameSize, kFrameSize}, 1.0f);
+  SetRootWithChild(cached_tree, effect);
+  const auto left = skity::Rect::MakeLTRB(0, 0, 20, 20);
+  FrameDamage left_damage;
+  left_damage.SetPreviousLayerTree(&initial_tree);
+  left_damage.AddAdditionalDamage(left);
+  cache.BeginFrame();
+  ASSERT_EQ(frame->Raster(cached_tree, false, &left_damage, SK_ColorWHITE),
+            RasterStatus::kSuccess);
+  EXPECT_EQ(left_damage.GetBufferDamage(), left);
+  ASSERT_EQ(cache.GetLayerCachedEntriesCount(), 1u);
+  cache.EndFrame();
+  ExpectPixel(32, 10, SK_ColorRED);
+
+  // Redraw the middle from the cache populated by the previous frame.
+  LayerTree repaint_tree({kFrameSize, kFrameSize}, 1.0f);
+  SetRootWithChild(repaint_tree, effect);
+  FrameDamage target_damage;
+  target_damage.SetPreviousLayerTree(&cached_tree);
+  target_damage.AddAdditionalDamage(target);
+  cache.BeginFrame();
+  ASSERT_EQ(frame->Raster(repaint_tree, false, &target_damage, SK_ColorWHITE),
+            RasterStatus::kSuccess);
+  EXPECT_EQ(target_damage.GetBufferDamage(), target);
+  EXPECT_EQ(cache.GetLayerCachedEntriesCount(), 1u);
+  cache.EndFrame();
+  EXPECT_EQ(clip->paint_bounds(), target);
+  ExpectPixel(32, 10, SK_ColorRED);
+}
+
+TEST_F(LayerTreeRasterTest, PartialRepaintMapsDamageForFlippedRoot) {
+  const auto child_bounds = skity::Rect::MakeLTRB(5, 5, 15, 15);
+  const auto clip_bounds = skity::Rect::MakeLTRB(3, 3, 24, 24);
+  const auto damage_rect = skity::Rect::MakeLTRB(0, 0, 20, 20);
+  const skity::Matrix flip_y(1, 0, 0, 0, -1, kFrameSize, 0, 0, 1);
+  auto frame = AcquireFrame(flip_y);
+  ASSERT_TRUE(frame);
+
+  LayerTree initial_tree({kFrameSize, kFrameSize}, 1.0f);
+  auto initial_clip =
+      std::make_shared<ClipRectLayer>(clip_bounds, Clip::hardEdge);
+  initial_clip->Add(MakeRect(child_bounds, SK_ColorRED));
+  SetRootWithChild(initial_tree, initial_clip);
+  FrameDamage initial_damage;
+  ASSERT_EQ(frame->Raster(initial_tree, true, &initial_damage, SK_ColorWHITE),
+            RasterStatus::kSuccess);
+  ExpectPixel(10, kFrameSize - 10, SK_ColorRED);
+
+  LayerTree repaint_tree({kFrameSize, kFrameSize}, 1.0f);
+  auto child = MakeRect(child_bounds, SK_ColorRED);
+  auto clip = std::make_shared<ClipRectLayer>(clip_bounds, Clip::hardEdge);
+  clip->Add(child);
+  clip->AssignOldLayer(initial_clip.get());
+  SetRootWithChild(repaint_tree, clip);
+  FrameDamage damage;
+  damage.SetPreviousLayerTree(&initial_tree);
+  damage.AddAdditionalDamage(damage_rect);
+  ASSERT_EQ(frame->Raster(repaint_tree, true, &damage, SK_ColorBLACK),
+            RasterStatus::kSuccess);
+
+  EXPECT_EQ(damage.GetBufferDamage(), damage_rect);
+  EXPECT_EQ(child->parent_cull_rect(), skity::Rect::MakeLTRB(3, 3, 20, 20));
+  EXPECT_EQ(clip->paint_bounds(), child_bounds);
+  ExpectPixel(10, kFrameSize - 10, SK_ColorRED);
+  ExpectPixel(2, kFrameSize - 10, SK_ColorBLACK);
+  ExpectPixel(25, kFrameSize - 10, SK_ColorWHITE);
+}
+#endif
+
+TEST_F(LayerTreeTest, RasterPreservesBoundsOutsideFrame) {
   const skity::Rect clip_bounds =
       skity::Rect::MakeXYWH(100.0f, 100.0f, 10.0f, 10.0f);
   const SkPath child_path =
@@ -148,13 +296,12 @@ TEST_F(LayerTreeTest, RasterQuickRejectsSubtreeOutsideFrame) {
   layer_tree().set_root_layer(clip_layer);
   frame().Raster(layer_tree(), true, nullptr);
 
-  EXPECT_EQ(mock_layer->paint_bounds(), skity::Rect::MakeEmpty());
-  EXPECT_EQ(clip_layer->paint_bounds(), skity::Rect::MakeEmpty());
-  EXPECT_EQ(clip_layer->child_paint_bounds(), skity::Rect::MakeEmpty());
+  EXPECT_EQ(mock_layer->paint_bounds(), clip_bounds);
+  EXPECT_EQ(clip_layer->paint_bounds(), clip_bounds);
+  EXPECT_EQ(clip_layer->child_paint_bounds(), clip_bounds);
 }
 
-TEST_F(LayerTreeTest,
-       RetainedPrerollRebuildsQuickRejectedSubtreeWhenVisibleAgain) {
+TEST_F(LayerTreeTest, RetainedPrerollPreservesBoundsOutsideDamage) {
   const skity::Rect child_bounds =
       skity::Rect::MakeLTRB(40.0f, 40.0f, 50.0f, 50.0f);
   const SkPath child_path =
@@ -182,20 +329,20 @@ TEST_F(LayerTreeTest,
   EXPECT_EQ(raster_cache.GetAccessCount(child_cache_key, root_transform()), 1);
   raster_cache.EndFrame();
 
-  LayerTree rejected_tree({64, 64}, 1.0f);
-  auto rejected_root = std::make_shared<ContainerLayer>();
-  rejected_root->Add(retained_clip);
-  rejected_tree.set_root_layer(rejected_root);
+  LayerTree outside_tree({64, 64}, 1.0f);
+  auto outside_root = std::make_shared<ContainerLayer>();
+  outside_root->Add(retained_clip);
+  outside_tree.set_root_layer(outside_root);
 
   raster_cache.BeginFrame();
   FrameDamage outside_damage;
   outside_damage.SetPreviousLayerTree(&visible_tree);
   outside_damage.AddAdditionalDamage(
       skity::Rect::MakeLTRB(8.0f, 8.0f, 12.0f, 12.0f));
-  EXPECT_EQ(frame().Raster(rejected_tree, false, &outside_damage),
+  EXPECT_EQ(frame().Raster(outside_tree, false, &outside_damage),
             RasterStatus::kSuccess);
-  ASSERT_EQ(child->preroll_count(), 1u);
-  ASSERT_EQ(retained_clip->paint_bounds(), skity::Rect::MakeEmpty());
+  ASSERT_EQ(child->preroll_count(), 2u);
+  ASSERT_EQ(retained_clip->paint_bounds(), child_bounds);
   EXPECT_EQ(raster_cache.GetAccessCount(child_cache_key, root_transform()), -1);
   raster_cache.EndFrame();
 
@@ -206,11 +353,11 @@ TEST_F(LayerTreeTest,
 
   raster_cache.BeginFrame();
   FrameDamage visible_damage;
-  visible_damage.SetPreviousLayerTree(&rejected_tree);
+  visible_damage.SetPreviousLayerTree(&outside_tree);
   visible_damage.AddAdditionalDamage(child_bounds);
   EXPECT_EQ(frame().Raster(visible_again_tree, false, &visible_damage),
             RasterStatus::kSuccess);
-  EXPECT_EQ(child->preroll_count(), 2u);
+  EXPECT_EQ(child->preroll_count(), 3u);
   EXPECT_EQ(child->paint_bounds(), child_bounds);
   EXPECT_EQ(retained_clip->paint_bounds(), child_bounds);
   EXPECT_EQ(raster_cache.GetAccessCount(child_cache_key, root_transform()), 1);
@@ -423,7 +570,6 @@ TEST_F(LayerTreeTest, PrerollContextInitialization) {
     EXPECT_EQ(context.has_platform_view, false);
     EXPECT_EQ(context.has_drawable_image_layer, false);
     EXPECT_EQ(context.has_punch_hole_layer, false);
-    EXPECT_EQ(context.subtree_was_quick_rejected, false);
 
     EXPECT_EQ(context.renderable_state_flags, 0);
     EXPECT_EQ(context.raster_cached_entries, nullptr);
