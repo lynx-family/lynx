@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
 #include "core/renderer/css/css_decoder.h"
@@ -26,6 +27,7 @@
 #include "core/renderer/ui_wrapper/painting/harmony/painting_context_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_target.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/gesture/arena/gesture_arena_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/module/module_factory_capi.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -315,9 +317,19 @@ void UIDelegateHarmony::OnPageConfigDecoded(
         config->GetEnableHarmonyNewOverlay() ||
         LynxEnv::GetInstance().EnableHarmonyNewOverlay());
     if (ui_owner_) {
+      const bool enable_new_gesture = config->GetEnableNewGesture();
       ui_owner_->InitGestureArenaManager(
           lynx_context.get(), config->GetEnableUnifiedGestureHandler(),
-          config->GetEnableNewGesture());
+          enable_new_gesture);
+      [[maybe_unused]] const char* gesture_handler = "arena_disabled";
+      if (enable_new_gesture) {
+        gesture_handler =
+            ui_owner_->GetGestureArenaManager()->UsesUnifiedGestureHandler()
+                ? "unified"
+                : "legacy";
+      }
+      LOGI("gestureHandler=" << gesture_handler << " instanceId="
+                             << lynx_context->GetInstanceId());
     }
     if (config->GetSyncXElementRegistry() && ui_owner_) {
       ui_owner_->SetEnableSyncXElementRegistry();

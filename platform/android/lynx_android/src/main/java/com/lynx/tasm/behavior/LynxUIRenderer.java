@@ -241,10 +241,17 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     mEnablePlatformGesture = config.isEnablePlatformGesture();
     mEnableNewGesture = config.isEnableNewGesture();
     mEnableUnifiedGestureHandler = config.isEnableUnifiedGestureHandler();
+    LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
+    String gestureHandler = "arena_disabled";
     if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
-      LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
       mLynxUIOwner.initGestureArenaManager(lynxContext, mEnableUnifiedGestureHandler);
+      gestureHandler = mLynxUIOwner.getGestureArenaManager().isUsingUnifiedGestureHandler()
+          ? "unified"
+          : "legacy";
     }
+    int instanceId =
+        lynxContext != null ? lynxContext.getInstanceId() : LynxContext.INSTANCE_ID_DEFAULT;
+    LLog.i(TAG, "gestureHandler=" + gestureHandler + " instanceId=" + instanceId);
     if ((mLynxUIOwner != null) && (mLynxUIOwner.getRootUI() != null)) {
       mLynxUIOwner.getRootUI().onPageConfigDecoded(config);
     }

@@ -15,6 +15,7 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceTextProtocol.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
@@ -305,6 +306,21 @@ static id<LynxServiceTextProtocol> getTextService() {
 
   if (pageConfig->GetSyncXElementRegistry()) {
     [_uiOwner setEnableSyncXelementRegistry];
+  }
+
+  // When off the main thread, the arena initialization above is queued there.
+  BOOL enableNewGesture = pageConfig->GetEnableNewGesture();
+  dispatch_block_t logGestureHandler = ^{
+    NSString *gestureHandler = @"arena_disabled";
+    if (enableNewGesture) {
+      gestureHandler = [uiContext isUsingUnifiedGestureHandler] ? @"unified" : @"legacy";
+    }
+    LLogInfo(@"gestureHandler=%@ instanceId=%d", gestureHandler, [uiContext instanceId]);
+  };
+  if ([NSThread isMainThread]) {
+    logGestureHandler();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), logGestureHandler);
   }
 }
 
