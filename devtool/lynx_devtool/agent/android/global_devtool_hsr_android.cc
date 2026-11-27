@@ -23,6 +23,7 @@ using Callback = GlobalDevToolPlatformFacade::HSRScriptCallback;
 struct PendingLoad {
   uint64_t id = 0;
   bool fetching = false;
+  ProcessRuntime::Domain domain = ProcessRuntime::Domain::kBTS;
   std::string url;
   Callback callback;
 };
@@ -35,6 +36,8 @@ PendingLoad& Load() {
 auto DevToolRunner() {
   return LynxDevToolMediatorBase::GetDevToolsThread().GetTaskRunner();
 }
+
+ProcessRuntime::Domain RuntimeDomain(HSRScriptRequest::Thread thread);
 
 void FinishLoad(uint64_t id, const std::string& error) {
   auto& load = Load();
@@ -54,12 +57,14 @@ void SourceLoaded(uint64_t id, std::string source, const std::string& error) {
     return;
   }
   shell::LoadHostScriptRuntime(
-      std::move(source), load.url, [id](const ProcessRuntime::Result& result) {
+      std::move(source), load.url,
+      [id](const ProcessRuntime::Result& result) {
         std::string error = result.error;
         if (!result.success && error.empty()) error = "HSR_LOAD_FAILED";
         DevToolRunner()->PostTask(
             [id, error = std::move(error)] { FinishLoad(id, error); });
-      });
+      },
+      load.domain);
 }
 
 void StartLoad(HSRScriptRequest request, Callback callback) {
@@ -71,6 +76,7 @@ void StartLoad(HSRScriptRequest request, Callback callback) {
   const auto id = ++load.id;
   load.fetching = true;
   load.callback = std::move(callback);
+  load.domain = RuntimeDomain(request.thread);
   load.url = request.source_type == HSRScriptRequest::SourceType::kUrl
                  ? request.source
                  : "host-script://cdp-main.js";
