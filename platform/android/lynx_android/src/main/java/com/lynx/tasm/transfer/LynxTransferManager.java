@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
 public final class LynxTransferManager {
   static final String CREATE_TRANSFER = "__CreateTransfer";
-  static final String SET_TRANSFER_PROPS = "__SetTransferProps";
   static final String UPDATE_TRANSFER = "__UpdateTransfer";
   static final String RELOAD_TRANSFER = "__ReloadTransfer";
   static final String DESTROY_TRANSFER = "__DestroyTransfer";

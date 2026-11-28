@@ -154,8 +154,8 @@ public class LynxTransferClientTest {
     mManager.loadTransfer(mOwner, "Message", new JavaOnlyMap(), new LynxTransferClient() {
       @Override
       public void onLoadStart(LynxTransferredView view) {
-        view.setProps(new JavaOnlyMap());
-        view.setProps(updated);
+        view.updateProps(new JavaOnlyMap());
+        view.updateProps(updated);
       }
     });
     assertEquals(Arrays.asList("__CreateTransfer"), mCommands);
@@ -299,7 +299,7 @@ public class LynxTransferClientTest {
         Bitmap bitmap = Bitmap.createBitmap(300, 200, Bitmap.Config.ARGB_8888);
         view.draw(new Canvas(bitmap));
         bitmap.recycle();
-        view.setProps(new JavaOnlyMap());
+        view.updateProps(new JavaOnlyMap());
         view.release();
       });
       assertEquals(1, draws.get());

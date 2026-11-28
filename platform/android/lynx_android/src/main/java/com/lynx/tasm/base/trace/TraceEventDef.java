@@ -9,8 +9,6 @@ import androidx.annotation.RestrictTo;
 public class TraceEventDef {
   /** @trace_description: Notify load start and dispatch the managed transfer's create command. */
   public static final String TRANSFER_LOAD = "LynxTransfer.Load";
-  /** @trace_description: Dispatch a managed-transfer props update. */
-  public static final String TRANSFER_SET_PROPS = "LynxTransfer.SetProps";
   /** @trace_description: Dispatch a props update that keeps the frontend instance state. */
   public static final String TRANSFER_UPDATE = "LynxTransfer.Update";
   /** @trace_description: Dispatch a props update that asks the frontend to drop its state. */
