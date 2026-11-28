@@ -18,6 +18,7 @@ import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.service.ILynxSystemInvokeService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.BitmapUtils;
+import com.lynx.tasm.utils.OffscreenViewCapture;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -83,10 +84,12 @@ final class ScrollContentScreenshotHelper {
 
       int saveCount = canvas.save();
       canvas.translate(-contentView.getLeft(), -contentView.getTop());
-      boolean dirty = contentView.isDirty();
-      contentView.draw(canvas);
-      if (dirty) {
-        contentView.postInvalidate();
+      if (!OffscreenViewCapture.drawIfEnabled(contentView, canvas)) {
+        boolean dirty = contentView.isDirty();
+        contentView.draw(canvas);
+        if (dirty) {
+          contentView.postInvalidate();
+        }
       }
       canvas.restoreToCount(saveCount);
     } catch (Throwable e) {
@@ -254,10 +257,12 @@ final class ScrollContentScreenshotHelper {
     }
     int saveCount = canvas.save();
     canvas.translate(x, y);
-    boolean dirty = view.isDirty();
-    view.draw(canvas);
-    if (dirty) {
-      view.postInvalidate();
+    if (!OffscreenViewCapture.drawIfEnabled(view, canvas)) {
+      boolean dirty = view.isDirty();
+      view.draw(canvas);
+      if (dirty) {
+        view.postInvalidate();
+      }
     }
     canvas.restoreToCount(saveCount);
   }

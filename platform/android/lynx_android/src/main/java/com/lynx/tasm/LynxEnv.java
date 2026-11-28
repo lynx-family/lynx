@@ -214,6 +214,8 @@ public class LynxEnv {
 
   private volatile boolean mEnablePlatformObservability = false;
 
+  private volatile boolean mEnableOffscreenCapture = false;
+
   private boolean mEnableTextLayoutCache = true;
 
   // FSP related fields
@@ -974,6 +976,33 @@ public class LynxEnv {
       return;
     }
     DevToolSettings.inst().setPixelCopyEnabled(enabled);
+  }
+
+  /**
+   * Enables offscreen hardware rendering for UI screenshots on Android 10+.
+   *
+   * <p>When enabled, {@code takeScreenshot}, scroll-view {@code takeContentScreenshot} and DevTool
+   * screenshots record the View and render it with a {@link android.graphics.HardwareRenderer}
+   * into an {@link android.media.ImageReader}, instead of drawing it into a software canvas or
+   * copying the window with PixelCopy. The result keeps hardware-only content such as hardware
+   * bitmaps, RenderEffect, TextureView and outline clipping like rounded corners, reflects the
+   * current display lists without waiting for a frame, covers the whole View even when part of it
+   * is outside the window, and contains only the View itself rather than what is composited above
+   * it. Large Views are rendered in tiles and stitched. Screenshots fall back to their existing
+   * path below Android 10, for Views that are not hardware accelerated, and when rendering fails.
+   * A screenshot service provided by the host still takes precedence.
+   *
+   * <p>Disabled by default.
+   */
+  @AnyThread
+  public void enableOffscreenCapture(boolean enabled) {
+    mEnableOffscreenCapture = enabled;
+  }
+
+  /** Returns whether offscreen hardware rendering is enabled for UI screenshots. */
+  @AnyThread
+  public boolean isOffscreenCaptureEnabled() {
+    return mEnableOffscreenCapture;
   }
 
   public boolean isHighlightTouchEnabled() {
