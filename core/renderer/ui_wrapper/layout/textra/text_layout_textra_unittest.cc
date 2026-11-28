@@ -161,6 +161,11 @@ class FakeTextLayoutAPI : public text::TextLayoutAPI {
   void DestroyParagraph(text::Paragraph*) override {
     ++state_.destroyed_paragraph_count;
   }
+  static base::Vector<base::geometry::FloatRect> GetRectsForRange(
+      text::Paragraph*, int32_t start, int32_t end) {
+    return {{{static_cast<float>(start), 0},
+             {static_cast<float>(end - start), 10}}};
+  }
   text::TextInfo GetTextInfo(std::string_view, float, std::string_view, float,
                              int) override {
     return {};
@@ -218,8 +223,8 @@ class TextLayoutTextraTest : public ::testing::Test {
  public:
   void SetUp() override {
     api_ = new FakeTextLayoutAPI(state_);
-    layout_ =
-        std::make_unique<TextLayoutTextra>(reinterpret_cast<intptr_t>(api_));
+    layout_ = std::make_unique<TextLayoutTextra>(
+        reinterpret_cast<intptr_t>(api_), &FakeTextLayoutAPI::GetRectsForRange);
   }
 
   FakeTextLayoutAPI* api() { return api_; }
@@ -598,6 +603,76 @@ TEST_F(TextLayoutTextraTest, ParagraphFailureDiscardsPreviousParagraph) {
   state_.fail_paragraph = false;
   layout_->DispatchLayoutBefore(&element_);
   EXPECT_TRUE(layout_->MeasureDetached(&element_, 100, 2, 100, 2).has_value());
+}
+
+TEST_F(TextLayoutTextraTest, OlderServiceMeasuresWithoutRangeRects) {
+  auto text = CreateTextWithEventRanges();
+  auto* paragraph = static_cast<TextElement*>(text.get());
+  const auto child_id = text->first_render_child()->impl_id();
+  auto* legacy_api = new FakeTextLayoutAPI(state_);
+  TextLayoutTextra legacy(reinterpret_cast<intptr_t>(legacy_api));
+  legacy.DispatchLayoutBefore(text.get());
+
+  legacy.Measure(text.get(), 100, 2, 100, 2);
+  EXPECT_EQ(state_.measured_count, 1);
+  EXPECT_EQ(paragraph->GetInlineTextGeometry(child_id), nullptr);
+  legacy_api->DestroyPage(state_.last_page);
+  legacy.Destroy(text.get());
+}
+
+TEST_F(TextLayoutTextraTest, MeasuredBoundsDoNotChangeEventRangePublication) {
+  auto text = CreateTextWithEventRanges();
+  auto* paragraph = static_cast<TextElement*>(text.get());
+  const auto child_id = text->first_render_child()->impl_id();
+  layout_->DispatchLayoutBefore(text.get());
+  ASSERT_EQ(event_context_->range_updates.size(), 1u);
+  EXPECT_EQ(paragraph->GetInlineTextGeometry(child_id), nullptr);
+
+  ASSERT_TRUE(layout_->MeasureDetached(text.get(), 100, 2, 100, 2).has_value());
+  EXPECT_EQ(paragraph->GetInlineTextGeometry(child_id), nullptr);
+  EXPECT_EQ(state_.created_page_count, 0);
+
+  layout_->Measure(text.get(), 100, 2, 100, 2);
+  const auto* geometry = paragraph->GetInlineTextGeometry(child_id);
+  ASSERT_NE(geometry, nullptr);
+  EXPECT_FLOAT_EQ(geometry->bounds.Width(), 3);
+  EXPECT_FLOAT_EQ(geometry->bounds.Height(), 10);
+  ASSERT_EQ(geometry->rects.size(), 1u);
+  EXPECT_EQ(geometry->rects[0], geometry->bounds);
+  EXPECT_EQ(event_context_->range_updates.size(), 1u);
+  EXPECT_EQ(state_.created_page_count, 1);
+  api()->DestroyPage(state_.last_page);
+
+  state_.fail_paragraph = true;
+  layout_->DispatchLayoutBefore(text.get());
+  EXPECT_EQ(paragraph->GetInlineTextGeometry(child_id), nullptr);
+  ASSERT_EQ(event_context_->range_updates.size(), 2u);
+  EXPECT_TRUE(event_context_->range_updates.back().empty());
+}
+
+TEST_F(TextLayoutTextraTest, TruncationTokenDoesNotShiftFollowingBodyGeometry) {
+  auto text = CreateTextWithEventRanges();
+  auto truncation = event_manager_->CreateFiberNode("inline-truncation");
+  auto token = event_manager_->CreateFiberText("text");
+  token->content() = "More";
+  token->AddEventListener("tap", std::make_shared<event::ClosureEventListener>(
+                                     [](lepus::Value) {}));
+  truncation->InsertNode(token);
+  truncation->StoreLayoutNode(token.get(), nullptr);
+  text->InsertNode(truncation);
+  text->StoreLayoutNode(truncation.get(), text->first_render_child());
+
+  layout_->DispatchLayoutBefore(text.get());
+  layout_->Measure(text.get(), 100, 2, 100, 2);
+  api()->DestroyPage(state_.last_page);
+
+  const auto* paragraph = static_cast<TextElement*>(text.get());
+  const auto* body = paragraph->GetInlineTextGeometry(
+      truncation->next_render_sibling()->impl_id());
+  ASSERT_NE(body, nullptr);
+  EXPECT_FLOAT_EQ(body->bounds.X(), 0);
+  EXPECT_FLOAT_EQ(body->bounds.Width(), 3);
+  EXPECT_EQ(paragraph->GetInlineTextGeometry(token->impl_id()), nullptr);
 }
 
 TEST_F(TextLayoutTextraTest, PreparationFailureClearsPublishedEventRanges) {

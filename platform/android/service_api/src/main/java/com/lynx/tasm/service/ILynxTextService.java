@@ -25,6 +25,11 @@ public interface ILynxTextService extends IServiceProvider {
    * @return native object pointer of TextLayoutAPI
    */
   long createTextLayoutAPI(Object context);
+
+  /** Returns the optional native text range rectangle callback, or zero. */
+  default long getTextLayoutRangeRects() {
+    return 0;
+  }
   /**
    * Destroy a TextLayoutAPI Object
    *

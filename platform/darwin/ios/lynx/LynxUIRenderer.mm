@@ -214,8 +214,12 @@ static id<LynxServiceTextProtocol> getTextService() {
   if (textService != nil) {
     _textra = [textService createTextLayoutAPIFromContext:_uiOwner];
   }
+  void *rangeRects = [textService respondsToSelector:@selector(textLayoutRangeRects)]
+                         ? [textService textLayoutRangeRects]
+                         : nullptr;
   ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateDarwin>(
-      _uiOwner, _componentRegistry, _lynxContext.isFragmentLayerRenderOn, _textra, owner);
+      _uiOwner, _componentRegistry, _lynxContext.isFragmentLayerRenderOn, _textra, rangeRects,
+      owner);
 }
 
 - (void *)uiDelegate {

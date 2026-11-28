@@ -374,6 +374,10 @@ public class TextMeasurerTest {
     attributes.setFontSize(30);
     attributes.setMaxLineCount(maxLines);
     attributes.setTextOverflow(overflow);
+    return measure(text, attributes, width);
+  }
+
+  private float[] measure(String text, TextAttributes attributes, float width) {
     mAttributedTextBundles.put(
         SIGN, new AttributedTextBundle(new SpannableStringBuilder(text), attributes));
     return mMeasurer.measureText(SIGN, width, MeasureMode.EXACTLY.intValue(), 0,
@@ -474,6 +478,11 @@ public class TextMeasurerTest {
       assertEquals(0xff0000ff, paint.getColor());
       assertEquals(body.length() - cut, bundle.getLayoutEventEllipsisCount());
       assertEquals(0, bundle.getTextLayout().getEllipsisCount(0));
+
+      float[] visibleBody = InlineTextGeometry.getRegions(bundle, new int[] {21, 0, cut});
+      assertTrue(visibleBody.length > 0);
+      assertArrayEquals(visibleBody,
+          InlineTextGeometry.getRegions(bundle, new int[] {21, 0, body.length()}), 0.f);
     }
   }
 
@@ -705,6 +714,60 @@ public class TextMeasurerTest {
         StyleConstants.TEXTOVERFLOW_ELLIPSIS, 80);
     assertMatchesLegacyEvent(result);
     assertTrue(result[6] > 0);
+  }
+
+  @Test
+  public void inlineGeometryExcludesThePlatformEllipsis() {
+    String text = "prefix first second third fourth fifth suffix";
+    measure(text, 1, StyleConstants.TEXTOVERFLOW_ELLIPSIS, 100);
+    TextUpdateBundle bundle = (TextUpdateBundle) mMeasurer.takeTextLayout(SIGN);
+    Layout layout = bundle.getTextLayout();
+    assertTrue(layout.getEllipsisCount(0) > 0);
+    assertInlineGeometryKeepsOnlyVisibleText(bundle, text.length(), layout.getEllipsisStart(0));
+  }
+
+  @Test
+  public void inlineGeometryKeepsTheVisiblePrefixAfterRtlRelayout() {
+    String text = "prefix first second third fourth fifth suffix";
+    TextAttributes attributes = new TextAttributes();
+    attributes.setFontSize(30);
+    attributes.setMaxLineCount(1);
+    attributes.setTextOverflow(StyleConstants.TEXTOVERFLOW_ELLIPSIS);
+    attributes.mDirection = StyleConstants.DIRECTION_RTL;
+    measure(text, attributes, 150);
+
+    TextUpdateBundle bundle = (TextUpdateBundle) mMeasurer.takeTextLayout(SIGN);
+    Layout layout = bundle.getTextLayout();
+    // The renderer rewrites the text with a literal ellipsis.
+    assertEquals(0, layout.getEllipsisCount(0));
+    String rendered = layout.getText().toString();
+    assertTrue(rendered.length() < text.length());
+    int ellipsis = rendered.indexOf('\u2026');
+    assertTrue(ellipsis > 0);
+    int visibleEnd = rendered.charAt(ellipsis - 1) == '\u200f' ? ellipsis - 1 : ellipsis;
+    assertInlineGeometryKeepsOnlyVisibleText(bundle, text.length(), visibleEnd);
+  }
+
+  @Test
+  public void inlineGeometryExcludesTheMaxTextLengthEllipsis() {
+    String text = "prefix first second third";
+    TextAttributes attributes = new TextAttributes();
+    attributes.setFontSize(30);
+    attributes.mMaxTextLength = 11;
+    measure(text, attributes, 600);
+    TextUpdateBundle bundle = (TextUpdateBundle) mMeasurer.takeTextLayout(SIGN);
+    assertEquals("prefix firs\u2026", bundle.getTextLayout().getText().toString());
+    assertInlineGeometryKeepsOnlyVisibleText(bundle, text.length(), 11);
+  }
+
+  private void assertInlineGeometryKeepsOnlyVisibleText(
+      TextUpdateBundle bundle, int sourceLength, int visibleEnd) {
+    float[] visible = InlineTextGeometry.getRegions(bundle, new int[] {SIGN, 1, visibleEnd});
+    assertTrue(visible.length > 0);
+    assertArrayEquals(
+        visible, InlineTextGeometry.getRegions(bundle, new int[] {SIGN, 1, sourceLength}), 0.01f);
+    assertEquals(0,
+        InlineTextGeometry.getRegions(bundle, new int[] {SIGN, visibleEnd, visibleEnd + 1}).length);
   }
 
   @Test

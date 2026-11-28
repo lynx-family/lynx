@@ -147,7 +147,7 @@ Java_com_lynx_tasm_behavior_render_DeferredRendererPreparationTest_nativeCheckFl
       [&](base::closure task) { workers.push_back(std::move(task)); });
   auto* context =
       new tasm::PlatformRendererContext(env, java_context, scheduler);
-  tasm::NativePaintingCtxAndroid painting(env, nullptr, 0, context);
+  tasm::NativePaintingCtxAndroid painting(env, nullptr, 0, 0, context);
   auto ref = std::static_pointer_cast<tasm::NativePaintingCtxAndroidRef>(
       painting.GetPlatformRef());
   auto queue = std::make_shared<shell::DynamicUIOperationQueue>(
@@ -222,7 +222,7 @@ Java_com_lynx_tasm_behavior_render_DeferredRendererPreparationTest_nativeCheckFl
       [&](base::closure task) { workers.push_back(std::move(task)); });
   auto* context =
       new tasm::PlatformRendererContext(env, java_context, scheduler);
-  tasm::NativePaintingCtxAndroid painting(env, nullptr, 0, context);
+  tasm::NativePaintingCtxAndroid painting(env, nullptr, 0, 0, context);
   auto queue = std::make_shared<shell::DynamicUIOperationQueue>(
       base::ThreadStrategyForRendering::ALL_ON_UI, nullptr);
   painting.SetUIOperationQueue(queue);

@@ -70,7 +70,8 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
 
 class PaintingContextDarwin : public PaintingCtxPlatformImpl {
  public:
-  explicit PaintingContextDarwin(LynxUIOwner* owner, void* textra = nullptr);
+  explicit PaintingContextDarwin(LynxUIOwner* owner, void* textra = nullptr,
+                                 void* range_rects = nullptr);
   ~PaintingContextDarwin() override;
   virtual void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override;

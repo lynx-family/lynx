@@ -15,9 +15,10 @@ namespace tasm {
 
 std::unique_ptr<PaintingCtxPlatformImpl> UIDelegateDarwin::CreatePaintingContext() {
   if (use_native_painting_context_) {
-    return std::make_unique<NativePaintingCtxDarwin>(ui_owner_, component_registry_, textra_);
+    return std::make_unique<NativePaintingCtxDarwin>(ui_owner_, component_registry_, textra_,
+                                                     range_rects_);
   }
-  return std::make_unique<PaintingContextDarwin>(ui_owner_, textra_);
+  return std::make_unique<PaintingContextDarwin>(ui_owner_, textra_, range_rects_);
 }
 
 std::unique_ptr<LayoutCtxPlatformImpl> UIDelegateDarwin::CreateLayoutContext() {

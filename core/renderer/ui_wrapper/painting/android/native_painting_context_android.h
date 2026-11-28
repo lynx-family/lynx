@@ -32,6 +32,7 @@ class NativePaintingCtxAndroid : public PaintingCtxPlatformImpl,
     return path_impl_factory_;
   }
   NativePaintingCtxAndroid(JNIEnv *env, jobject text_layout, jlong textra,
+                           jlong range_rects,
                            PlatformRendererContext *view_manager);
   NativePaintingCtxAndroid(const NativePaintingCtxAndroid &) = delete;
 
