@@ -67,6 +67,10 @@
 - (LynxBackgroundRuntimeOptions*)effectiveLynxRuntimeOptions;
 @end
 
+@interface LynxTemplateRender ()
+- (void)logZeroViewportWarningForURL:(NSString*)url;
+@end
+
 #include <cmath>
 #include <functional>
 #include <memory>
@@ -411,6 +415,43 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     _preferredLayoutHeight = frame.size.height;
     [self updateViewport];
   }
+}
+
+- (void)logZeroViewportWarningIfNeededForURL:(NSString*)url {
+  if (_hasStartedLoad || _layoutWidthMode != LynxViewSizeModeUndefined ||
+      _layoutHeightMode != LynxViewSizeModeUndefined || _preferredLayoutWidth != 0 ||
+      _preferredLayoutHeight != 0) {
+    return;
+  }
+
+  if (![NSThread isMainThread]) {
+    __weak LynxTemplateRender* weakSelf = self;
+    [LynxTemplateRender runOnMainThread:^{
+      __strong LynxTemplateRender* strongSelf = weakSelf;
+      if (strongSelf) {
+        [strongSelf logZeroViewportWarningForURL:url];
+      }
+    }];
+    return;
+  }
+
+  [self logZeroViewportWarningForURL:url];
+}
+
+- (void)logZeroViewportWarningForURL:(NSString*)url {
+  if (![_containerView isKindOfClass:[LynxView class]]) {
+    return;
+  }
+
+  LynxView* lynxView = (LynxView*)_containerView;
+  if (lynxView.enableAutoLayout || CGRectIsEmpty(lynxView.bounds)) {
+    return;
+  }
+
+  _LogW(@"LynxView %p is loading template %@ with non-zero bounds %@ but both layout modes are "
+        @"Undefined. The viewport will remain 0 x 0. Set builder.frame at creation time, "
+        @"set enableAutoLayout to YES, or update the viewport explicitly.",
+        lynxView, url, NSStringFromCGRect(lynxView.bounds));
 }
 
 - (void)setUpTiming {
@@ -950,6 +991,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [self onLoadTemplateFromSSRPage];
   }
 
+  [self logZeroViewportWarningIfNeededForURL:url];
   if (_hasStartedLoad || self->shell_->IsDestroyed()) {
     [self reset];
   } else {
