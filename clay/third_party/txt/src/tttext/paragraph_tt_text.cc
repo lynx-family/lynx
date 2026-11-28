@@ -9,10 +9,16 @@
 #include <textra/platform_helper.h>
 #include <textra/text_layout.h>
 #include <textra/text_line.h>
+#include <textra/tttext_context.h>
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <type_traits>
+#include <utility>
+
+#include "base/include/platform/operating_system.h"
 #include "base/include/string/string_utils.h"
 #include "clay/third_party/txt/src/txt/placeholder_run.h"
 #ifdef ENABLE_SKITY
@@ -23,7 +29,41 @@
 #include "third_party/textlayout/textra/public/textra/run_delegate.h"
 #endif
 
+namespace ttoffice {
+namespace tttext {
+enum class HyphenationMode;
+}  // namespace tttext
+}  // namespace ttoffice
+
 namespace txt {
+namespace {
+
+// The hyphenation API is optional in TTText distributions.
+template <typename Context, typename = void>
+struct ContextHyphenation {
+  static constexpr bool kSupported = false;
+  static void Apply(Context&, Hyphens) {}
+};
+
+template <typename Context>
+struct ContextHyphenation<
+    Context,
+    std::void_t<decltype(std::declval<Context&>().SetHyphenation(
+        tttext::HyphenationMode{}))>> {
+  static constexpr bool kSupported = true;
+
+  static void Apply(Context& context, Hyphens mode) {
+    context.SetHyphenation(static_cast<tttext::HyphenationMode>(mode));
+  }
+};
+
+constexpr bool kSupportsHyphenation =
+    lynx::base::GetOSType() == lynx::base::OSType::kMacOS &&
+    ContextHyphenation<tttext::TTTextContext>::kSupported;
+
+}  // namespace
+
+bool ParagraphTTText::SupportsHyphenation() { return kSupportsHyphenation; }
 
 #ifdef ENABLE_SKITY
 namespace {
@@ -323,6 +363,11 @@ void ParagraphTTText::Layout(double width) {
       tttext::LayoutMode::kAtMost);
   tttext::TTTextContext context;
   context.SetEnableSystemFontAdjust(false);
+  if constexpr (kSupportsHyphenation) {
+    if (hyphens_ != Hyphens::kUnspecified) {
+      ContextHyphenation<tttext::TTTextContext>::Apply(context, hyphens_);
+    }
+  }
 #if defined(ENABLE_SKITY)
   if (variation_font_manager_ && variation_font_manager_->HasVariations()) {
     // Dynamic aliases are paragraph-local. Do not let TextLayout's shared

@@ -49,6 +49,10 @@ config("define_minikin") {
 }
 
 source_set("txt") {
+  if (is_mac) {
+    configs += [ "../../../base/src:base_public_config" ]
+  }
+
   defines = []
   if (flutter_use_fontconfig) {
     defines += [ "FLUTTER_USE_FONTCONFIG" ]
@@ -263,9 +267,9 @@ source_set("txt") {
       "src/tttext/paragraph_builder_tt_text.h",
       "src/tttext/paragraph_tt_text.cc",
       "src/tttext/paragraph_tt_text.h",
+      "src/tttext/tttext_headers.h",
       "src/tttext/tttext_index_mapper.cc",
       "src/tttext/tttext_index_mapper.h",
-      "src/tttext/tttext_headers.h",
     ]
 
     include_dirs += [ "src/tttext/" ]
@@ -438,9 +442,7 @@ if (enable_unittests) {
     executable("paragraph_tt_text_unittests") {
       testonly = true
 
-      sources = [
-        "tests/paragraph_tt_text_unittests.cc",
-      ]
+      sources = [ "tests/paragraph_tt_text_unittests.cc" ]
 
       deps = [
                ":txt",
