@@ -49,6 +49,7 @@ import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
 import { LynxImageConfig } from './image/LynxImageConfig';
 import { registerGlobalLynxModules } from '../library/LynxLibraryRegistry';
+import { LynxViewInsets } from './LynxViewInsets';
 
 export enum MeasureMode {
   INDEFINITE = 0,
@@ -88,6 +89,8 @@ const DEFAULT_KEYBOARD_AVOID_ANIMATION_DURATION = 300;
 const KEYBOARD_ANIMATION_CURVE_PARAM_SIZE = 4;
 
 export interface LynxViewBuilder {
+  /** Initial inset categories in screen coordinates, in vp. */
+  insets?: LynxViewInsets;
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
   templateResourceFetcher?: LynxTemplateResourceFetcher;
@@ -178,6 +181,21 @@ class CAPINodeController extends LynxNodeController {
 
 @Component
 export struct LynxView {
+  insets?: LynxViewInsets;
+  private currentInsets?: LynxViewInsets;
+
+  private getInsetsSnapshot(): LynxViewInsets {
+    if (this.currentInsets === undefined) {
+      this.currentInsets = this.insets?.copy() ?? new LynxViewInsets();
+    }
+    return this.currentInsets;
+  }
+
+  updateInsets(update: LynxViewInsets): void {
+    if (update.isEmpty()) return;
+    this.currentInsets = this.getInsetsSnapshot().merge(update);
+    this.templateRenderer?.updateInsetsSnapshot(this.currentInsets);
+  }
   private readonly viewId: number = lynx.generateViewId();
   genericResourceFetcher?: LynxGenericResourceFetcher;
   mediaResourceFetcher?: LynxMediaResourceFetcher;
@@ -254,6 +272,8 @@ export struct LynxView {
   lynxImageConfig?: LynxImageConfig;
 
   initWithBuilder(builder: LynxViewBuilder) {
+    this.insets = builder.insets?.copy();
+    this.currentInsets = this.insets?.copy();
     this.genericResourceFetcher = builder.genericResourceFetcher;
     this.mediaResourceFetcher = builder.mediaResourceFetcher;
     this.templateResourceFetcher = builder.templateResourceFetcher;
@@ -298,6 +318,7 @@ export struct LynxView {
    */
   getLynxViewBuilder(): LynxViewBuilder {
     return {
+      insets: this.getInsetsSnapshot().copy(),
       genericResourceFetcher: this.genericResourceFetcher,
       mediaResourceFetcher: this.mediaResourceFetcher,
       templateResourceFetcher: this.templateResourceFetcher,
@@ -503,6 +524,8 @@ export struct LynxView {
       this.setupExtensionModules();
     }
     this.templateRenderer.initScreenMetrics();
+    // reset() may attach a fresh or reused engine; always apply the current complete snapshot.
+    this.templateRenderer.updateInsetsSnapshot(this.getInsetsSnapshot());
     this.syncWindowInfoToNative(this.currentWindow);
   }
 

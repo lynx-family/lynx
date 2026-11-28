@@ -576,6 +576,16 @@ public class LynxView extends UIBodyView implements ILynxSecurityTarget {
   }
 
   /**
+   * Updates the supplied inset categories on the UI thread. Omitted categories keep their values.
+   * Geometry uses screen coordinates in dp.
+   */
+  public void updateInsets(@NonNull LynxViewInsets insets) {
+    checkAccessFromNonUiThread("updateInsets");
+    if (mLynxTemplateRender != null)
+      mLynxTemplateRender.updateInsets(insets);
+  }
+
+  /**
    * @apidoc
    * @brief Remove `LynxView` lifecycle event monitoring.
    * @param client The structure implemented by the client and registered to the

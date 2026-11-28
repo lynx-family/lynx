@@ -44,6 +44,8 @@ common_lynx_shared_sources = [
   "LynxUpdateMeta.m",
   "LynxView+Identify.m",
   "LynxViewClientV2.mm",
+  "LynxViewInsets+Internal.h",
+  "LynxViewInsets.m",
   "StaticPageHost+Internal.h",
   "StaticPageHost.mm",
   "TemplateRenderCallbackProtocol.h",

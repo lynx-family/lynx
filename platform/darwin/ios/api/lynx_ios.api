@@ -2408,6 +2408,55 @@ public class LynxInnerImpressionView : UIView {
   public void LynxInnerImpressionView::exit();
 }
 
+public class LynxInsetCorner : NSObject {
+  public CGFloat LynxInsetCorner::centerX centerX;
+  public CGFloat LynxInsetCorner::centerY centerY;
+  public CGFloat LynxInsetCorner::radius radius;
+  public instancetype LynxInsetCorner::NS_UNAVAILABLE();
+  public instancetype LynxInsetCorner::initWithCenterX:centerY:radius:(CGFloat x,[centerY] CGFloat y,[radius] CGFloat radius);
+}
+
+public class LynxInsetCorners : LynxInsetGeometry {
+  public LynxInsetCorner* LynxInsetCorners::topLeft topLeft;
+  public LynxInsetCorner* LynxInsetCorners::topRight topRight;
+  public LynxInsetCorner* LynxInsetCorners::bottomRight bottomRight;
+  public LynxInsetCorner* LynxInsetCorners::bottomLeft bottomLeft;
+  public instancetype LynxInsetCorners::initWithTopLeft:topRight:bottomRight:bottomLeft:(nullable LynxInsetCorner *topLeft,[topRight] nullable LynxInsetCorner *topRight,[bottomRight] nullable LynxInsetCorner *bottomRight,[bottomLeft] nullable LynxInsetCorner *bottomLeft);
+}
+
+public class LynxInsetEdges : LynxInsetGeometry {
+  public CGFloat LynxInsetEdges::left left;
+  public CGFloat LynxInsetEdges::top top;
+  public CGFloat LynxInsetEdges::right right;
+  public CGFloat LynxInsetEdges::bottom bottom;
+  public instancetype LynxInsetEdges::initWithLeft:top:right:bottom:(CGFloat left,[top] CGFloat top,[right] CGFloat right,[bottom] CGFloat bottom);
+}
+
+public class LynxInsetGeometry : NSObject {
+  public instancetype LynxInsetGeometry::NS_UNAVAILABLE();
+}
+
+public class LynxInsetRect : NSObject {
+  public CGFloat LynxInsetRect::x x;
+  public CGFloat LynxInsetRect::y y;
+  public CGFloat LynxInsetRect::width width;
+  public CGFloat LynxInsetRect::height height;
+  public instancetype LynxInsetRect::NS_UNAVAILABLE();
+  public instancetype LynxInsetRect::initWithX:y:width:height:(CGFloat x,[y] CGFloat y,[width] CGFloat width,[height] CGFloat height);
+}
+
+public class LynxInsetRects : LynxInsetGeometry {
+  public NSArray<LynxInsetRect*>* LynxInsetRects::rects rects;
+  public instancetype LynxInsetRects::initWithRects:(NSArray< LynxInsetRect * > *rects);
+}
+
+public class LynxInsetState : NSObject {
+  public LynxInsetGeometry* LynxInsetState::geometry geometry;
+  public NSNumber* LynxInsetState::visible visible;
+  public instancetype LynxInsetState::NS_UNAVAILABLE();
+  public instancetype LynxInsetState::initWithGeometry:visible:(LynxInsetGeometry *geometry,[visible] nullable NSNumber *visible);
+}
+
 public protocol LynxInspectorConsoleDelegate-p : <NSObject> {
   public void LynxInspectorConsoleDelegate-p::onConsoleMessage:(NSString *msg);
 }
@@ -3929,6 +3978,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public id<LynxResourceFetcher> LynxTemplateRender::resourceFetcher resourceFetcher;
   public id<LynxLogicExecutor> LynxTemplateRender::logicExecutor logicExecutor;
   public LynxLogContext* LynxTemplateRender()::logContext logContext;
+  public void LynxTemplateRender::updateInsets:(nonnull LynxViewInsets *insets);
   public nullable id< LynxEventTarget > LynxTemplateRender::hitTestInEventHandler:withEvent:(CGPoint point,[withEvent] UIEvent *_Nonnull event);
   public void LynxTemplateRender::willMoveToWindow:(nonnull UIWindow *newWindow);
   public void LynxTemplateRender::setScrollListener:(id< LynxScrollListener > _Nullable scrollListener);
@@ -3996,6 +4046,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public NSArray< NSNumber * > * LynxTemplateRender()::GetCachedConsumeSlideEventAngles();
   public lynx::runtime::js::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
   public LynxLifecycleDispatcher * LynxTemplateRender()::getLifecycleDispatcher();
+  public void LynxTemplateRender()::updateNativeInsets();
   public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
   public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
   public BOOL LynxTemplateRender(StaticPage)::prepareStaticPageLoadWithInitialData:globalProps:loadMode:(nullable LynxTemplateData *initialData, [globalProps] nullable LynxTemplateData *loadGlobalProps, [loadMode] LynxLoadMode loadMode);
@@ -5599,6 +5650,7 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::updateScreenMetricsWithWidth:height:(CGFloat width,[height] CGFloat height);
   public void LynxView::updateScreenMetricsWithWidth:height:scale:(CGFloat width,[height] CGFloat height,[scale] CGFloat scale);
   public void LynxView::updateScreenMetrics:(nonnull LynxScreenMetrics *screenMetrics);
+  public void LynxView::updateInsets:(nonnull LynxViewInsets *insets);
   public void LynxView::updateFontScale:(CGFloat scale);
   public void LynxView::getLynxElementRoot:(void(^_Nullable callback)(LynxElement *_Nullable root));
   public void LynxView::takeHeapSnapshot:callback:type:(nonnull NSString *outputFile,[callback] void(^_Nullable callback)(NSString *_Nullable error),[type] nonnull NSString *type);
@@ -5696,6 +5748,7 @@ public protocol LynxViewBaseLifecycle-p : <NSObjectNSObject> {
 }
 
 public class LynxViewBuilder : LynxBaseConfigurator {
+  public LynxViewInsets* LynxViewBuilder::insets insets;
   public BOOL LynxViewBuilder::disableMTSPoolWarmup disableMTSPoolWarmup;
   public BOOL LynxViewBuilder::enableRadonCompatible enableRadonCompatible;
   public id<LynxDynamicComponentFetcher> LynxViewBuilder::fetcher fetcher;
@@ -5736,6 +5789,25 @@ public class LynxViewGroup : LynxBaseConfigurator {
   public void LynxViewGroup::registerModule:param:(Class< LynxModule > module,[param] nullable id param);
   public LynxTemplateBundle *_Nullable LynxViewGroup()::getTemplateBundleNonBlocking();
   public instancetype LynxViewGroup::NS_UNAVAILABLE();
+}
+
+public class LynxViewInsets : NSObject {
+  public NSDictionary<LynxInsetType, LynxInsetState*>* LynxViewInsets::categories categories;
+  public instancetype LynxViewInsets::NS_UNAVAILABLE();
+  public instancetype LynxViewInsets::initWithCategories:(NSDictionary< LynxInsetType, LynxInsetState * > *categories);
+  public LynxViewInsets * LynxViewInsets(Internal)::lynx_mergingInsets:(LynxViewInsets *update);
+  public NSDictionary * LynxViewInsets(Internal)::lynx_dictionaryRepresentation();
+  public instancetype LynxViewInsets::empty();
+}
+
+public interface LynxViewInsets(Internal) {
+  public LynxViewInsets * LynxViewInsets(Internal)::lynx_mergingInsets:(LynxViewInsets *update);
+  public NSDictionary * LynxViewInsets(Internal)::lynx_dictionaryRepresentation();
+}
+
+public class LynxViewInsetsBuilder : NSObject {
+  public instancetype LynxViewInsetsBuilder::setInset:state:(LynxInsetType type,[state] nullable LynxInsetState *state);
+  public LynxViewInsets * LynxViewInsetsBuilder::build();
 }
 
 public protocol LynxViewLifecycle-p : <NSObject>, <LynxTimingListener>, <LynxJSBTimingListener>, <LynxViewBaseLifecycle> {
@@ -6830,6 +6902,20 @@ public enum LynxColorScheme {
 }
 
   public typedef NS_OPTIONS(NSInteger, LynxEmbeddedMode);
+
+  public NS_ASSUME_NONNULL_BEGIN typedef NSString* LynxInsetType NS_TYPED_ENUM NS_TYPED_ENUM;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetStatusBars LynxInsetStatusBars;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetNavigationBars LynxInsetNavigationBars;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetCaptionBar LynxInsetCaptionBar;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetSystemBars LynxInsetSystemBars;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetSystemOverlays LynxInsetSystemOverlays;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetIme LynxInsetIme;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetDisplayCutout LynxInsetDisplayCutout;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetWaterfall LynxInsetWaterfall;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetRoundedCorners LynxInsetRoundedCorners;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetSystemGestures LynxInsetSystemGestures;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetMandatorySystemGestures LynxInsetMandatorySystemGestures;
+  public FOUNDATION_EXPORT LynxInsetType const LynxInsetTappableElement LynxInsetTappableElement;
 
   typedef void(^ LynxPromiseResolveBlock) (id result)
   typedef void(^ LynxPromiseRejectBlock) (NSString *code, NSString *message)

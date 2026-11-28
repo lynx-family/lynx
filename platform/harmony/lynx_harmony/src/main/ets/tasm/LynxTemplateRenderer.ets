@@ -21,6 +21,7 @@ import { LynxLepusModule } from '../lepus/LynxLepusModule';
 import { LLog } from '../base/LLog';
 import { LynxElement, LynxElementCallback, LynxElementOwner } from './LynxElement';
 import { LynxLogContext } from './LynxLogContext';
+import { LynxViewInsets } from './LynxViewInsets';
 
 const TAG = 'LynxTemplateRenderer';
 
@@ -46,6 +47,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private enablePendingJsTask: boolean = false;
   private hasDestroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
+  private currentInsets = new LynxViewInsets();
 
   constructor(viewId: number, clients: LynxViewClient[], providers: (LynxResourceProvider | undefined)[],
     isHostRenderer: boolean,
@@ -275,6 +277,19 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.displayInfo.updateDisplayInfo(width, height);
       super.updateScreenMetrics(width, height, LynxEnv.getDensity());
     }
+  }
+
+  updateViewInsets(update: LynxViewInsets): void {
+    if (this.hasDestroyed || update.isEmpty()) return;
+    this.updateInsetsSnapshot(this.currentInsets.merge(update));
+  }
+
+  /** @internal Installs the complete snapshot, including empty state during engine reuse. */
+  updateInsetsSnapshot(insets: LynxViewInsets): void {
+    if (this.hasDestroyed) return;
+    this.currentInsets = insets.copy();
+    // TODO(insets): submit currentInsets to native and publish __InsetsChanged
+    // once the native bridge lands.
   }
 
   setEnableBytecode(enable: boolean, sourceUrl: string) {

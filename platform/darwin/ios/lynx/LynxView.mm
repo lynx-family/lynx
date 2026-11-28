@@ -595,6 +595,10 @@
   [_templateRender updateScreenMetricsWithWidth:width height:height scale:scale];
 }
 
+- (void)updateInsets:(LynxViewInsets*)insets {
+  [_templateRender updateInsets:insets];
+}
+
 - (void)updateScreenMetrics:(LynxScreenMetrics*)screenMetrics {
   [_templateRender updateScreenMetrics:screenMetrics];
 }

@@ -271,6 +271,9 @@
  */
 - (void)updateScreenMetrics:(nonnull LynxScreenMetrics*)screenMetrics;
 
+/** Updates supplied inset categories. Call on the main thread. */
+- (void)updateInsets:(nonnull LynxViewInsets*)insets;
+
 /**
  * @apidoc
  * @brief Changing the font scaling ratio in client settings

@@ -317,6 +317,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
   private Map<Double, PlatformCallBack> platformCallBackMap = new HashMap<>();
 
   private AtomicBoolean mIsDestroyed = new AtomicBoolean(true);
+  @NonNull private LynxViewInsets mInsets = LynxViewInsets.empty();
   private boolean mEnableNativeLifecycleOptimization;
   private long mNativeLifecycle;
   // Destory mNativeLifecycle when no reference to LynxTemplateRender.
@@ -351,6 +352,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
     mInitStart = System.currentTimeMillis();
     mLynxViewGroup = builder.lynxViewGroup;
+    mInsets = builder.insets;
     mEnableNativeLifecycleOptimization = builder.isNativeLifecycleOptimizationEnabled();
     mEnableLayoutOnly = builder.enableLayoutOnly;
     mDynamicComponentFetcher = builder.fetcher;
@@ -782,6 +784,22 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     }
   }
 
+  public void updateInsets(@NonNull LynxViewInsets insets) {
+    if (insets == null)
+      throw new IllegalArgumentException("View insets must not be null");
+    if (mHasDestroy || mDestroying)
+      return;
+    if (insets.categories.isEmpty())
+      return;
+    mInsets = mInsets.merge(insets);
+    updateInsetsInternal();
+  }
+
+  private void updateInsetsInternal() {
+    // TODO(insets): submit mInsets to the engine and publish __InsetsChanged
+    // once the native bridge lands.
+  }
+
   public void addLynxViewClient(LynxViewClient client) {
     if (client == null)
       return;
@@ -1150,6 +1168,9 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     mLynxContext.setEventEmitter(eventEmitter);
 
     setThemeInternal(mTheme);
+
+    // Also apply the empty snapshot so a reused engine cannot retain another View's data.
+    updateInsetsInternal();
 
     updateGlobalPropsInternal(globalProps);
 
@@ -4693,6 +4714,7 @@ public class LynxTemplateRender implements ILynxEngine, EventEmitter.LynxEventFa
     if (density != null) {
       builder.setDensity(density);
     }
+    builder.setInsets(mInsets);
     return builder;
   }
 

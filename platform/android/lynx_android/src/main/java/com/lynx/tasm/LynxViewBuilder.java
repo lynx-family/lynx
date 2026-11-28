@@ -36,6 +36,19 @@ import java.util.Map;
 
 public class LynxViewBuilder
     extends LynxBaseConfigurator<LynxViewBuilder> implements ILynxViewConfigProvider {
+  @NonNull LynxViewInsets insets = LynxViewInsets.empty();
+
+  /**
+   * Sets the initial insets in screen coordinates. Unspecified categories start with no geometry.
+   */
+  @NonNull
+  public LynxViewBuilder setInsets(@NonNull LynxViewInsets insets) {
+    if (insets == null)
+      throw new IllegalArgumentException("View insets must not be null");
+    this.insets = insets;
+    return this;
+  }
+
   AbsTemplateProvider templateProvider;
   Object lynxModuleExtraData;
   DynamicComponentFetcher fetcher;
