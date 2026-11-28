@@ -29,3 +29,8 @@ subspec_target("lynx_animax") {
   public_header_files = animax_lynx_public_headers
   sources = animax_lynx_sources
 }
+
+subspec_target("lynx_animax_preload") {
+  public_header_files = [ "preload/LynxAnimaXPreloadModule.h" ]
+  sources = public_header_files + [ "preload/LynxAnimaXPreloadModule.mm" ]
+}

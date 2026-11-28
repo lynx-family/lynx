@@ -42,6 +42,21 @@ static NSString *const DisplayModeAuto = @"auto";
 - (void)setEnableResourceLoadReporting:(BOOL)enabled;
 @end
 
+// Resolve dynamically so builds without the preload module retain their
+// existing UI path. Composition player APIs are reached only through it.
+@protocol LynxAnimaXCompositionHost <NSObject>
++ (instancetype)moduleForContext:(LynxContext *)context;
++ (void)setCompositionMode:(BOOL)enabled forPlayer:(AnimaXPlayer *)player;
++ (NSDictionary *)compositionReceiverInfoForPlayer:(AnimaXPlayer *)player;
++ (void)cancelPendingCompositionBindingForPlayer:(AnimaXPlayer *)player;
+- (void)ensureReady:(void (^)(BOOL))callback;
+- (BOOL)attachCompositionPlayer:(AnimaXPlayer *)player;
+@end
+
+static Class<LynxAnimaXCompositionHost> LynxAnimaXCompositionHostClass() {
+  return NSClassFromString(@"LynxAnimaXPreloadModule");
+}
+
 @interface LynxUIAnimaX () <LynxForegroundProtocol, AnimaXAnimationListener>
 
 @property(nonatomic, assign) BOOL ignoreLynxLifecycle;
@@ -49,6 +64,9 @@ static NSString *const DisplayModeAuto = @"auto";
 @property(nonatomic, assign) BOOL hasReportMotionEvent;
 @property(nonatomic, assign) BOOL enableMultiThreadAccelerate;
 @property(nonatomic, assign) BOOL ignoreAttachStatus;
+@property(nonatomic, assign) BOOL compositionMode;
+@property(nonatomic, assign) BOOL hasCompositionMode;
+@property(nonatomic, assign) BOOL initialPropsCommitted;
 
 @property(nonatomic, strong) NSString *displayMode;
 @property(nonatomic, strong) NSString *tag;
@@ -94,6 +112,30 @@ LYNX_REGISTER_UI("animax-view")
 
 #pragma mark Props Setter
 
+LYNX_PROP_SETTER("composition-mode", compositionMode, BOOL) {
+  if (self.initialPropsCommitted && (!self.hasCompositionMode || self.compositionMode != value)) {
+    [self reportSourceConflict:@"composition-mode is fixed by the initial properties"];
+    return;
+  }
+  // This must be synchronous: source setters may have already queued work in
+  // the same transaction, but none of that work may run before mode locking.
+  self.hasCompositionMode = YES;
+  self.compositionMode = value;
+}
+
+- (void)reportSourceConflict:(NSString *)message {
+  // 14 is PropertyUpdateResult::kSourceConflict, the code Android also reports.
+  [self onError:@{@"code" : @14, @"errorCode" : @"SourceConflict", @"message" : message}];
+}
+
+- (BOOL)rejectSourceProperty:(NSString *)name {
+  if (!self.compositionMode) {
+    return NO;
+  }
+  [self reportSourceConflict:[name stringByAppendingString:@" is unavailable in composition mode"]];
+  return YES;
+}
+
 LYNX_PROP_SETTER("muted", muted, BOOL) {
   [self.propsPrioritySetter enqueueTask:^(AnimaXPlayer *player) {
     [player setMuted:value];
@@ -138,7 +180,7 @@ LYNX_PROP_SETTER("src", src, NSString *) {
   [self.propsPrioritySetter
       enqueueTask:^(AnimaXPlayer *player) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
+        if (!self || [self rejectSourceProperty:@"src"]) {
           return;
         }
         [player setSrc:value];
@@ -155,7 +197,7 @@ LYNX_PROP_SETTER("src-format", srcFormat, NSString *) {
   [self.propsPrioritySetter
       enqueueTask:^(AnimaXPlayer *player) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
+        if (!self || [self rejectSourceProperty:@"src-format"]) {
           return;
         }
         [player setSrc:value];
@@ -168,8 +210,13 @@ LYNX_PROP_SETTER("src-polyfill", srcPolyfill, NSDictionary *) {
   if (![value isKindOfClass:[NSDictionary class]]) {
     return;
   }
+  __weak typeof(self) weakSelf = self;
   [self.propsPrioritySetter
       enqueueTask:^(AnimaXPlayer *player) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || [self rejectSourceProperty:@"src-polyfill"]) {
+          return;
+        }
         [player setPolyfill:value];
       }
          priority:AnimaXHigh];
@@ -183,7 +230,7 @@ LYNX_PROP_SETTER("json", json, NSString *) {
   [self.propsPrioritySetter
       enqueueTask:^(AnimaXPlayer *player) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
+        if (!self || [self rejectSourceProperty:@"json"]) {
           return;
         }
         [player setJson:value];
@@ -304,8 +351,13 @@ LYNX_PROP_SETTER("anti-aliasing", setAntiAlias, NSString *) {
 }
 
 LYNX_PROP_SETTER("dynamic-resource", dynamicResource, BOOL) {
+  __weak typeof(self) weakSelf = self;
   [self.propsPrioritySetter
       enqueueTask:^(AnimaXPlayer *player) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || (value && [self rejectSourceProperty:@"dynamic-resource"])) {
+          return;
+        }
         [player setDynamicResource:value];
       }
          priority:AnimaXHigh];
@@ -323,7 +375,50 @@ LYNX_PROP_SETTER("ignore-lynx-lifecycle", ignoreLynxLifecycle, BOOL) {
   if (!self.animaxView) {
     [self createAnimaXView];
   }
+  BOOL initialCommit = !self.initialPropsCommitted && self.animaxPlayer != nil;
+  Class<LynxAnimaXCompositionHost> hostClass = LynxAnimaXCompositionHostClass();
+  if (initialCommit) {
+    [hostClass setCompositionMode:self.compositionMode forPlayer:self.animaxPlayer];
+    self.initialPropsCommitted = YES;
+  }
   [self.propsPrioritySetter flush];
+  if (initialCommit && self.compositionMode) {
+    // Source properties have already flushed. Only the new receiver notification
+    // waits for host attachment; existing loading and UI playback never wait.
+    id<LynxAnimaXCompositionHost> module = [hostClass moduleForContext:self.context.lynxContext];
+    __weak typeof(self) weakSelf = self;
+    __weak AnimaXPlayer *expectedPlayer = self.animaxPlayer;
+    void (^notify)(BOOL) = ^(BOOL ready) {
+      void (^finish)(void) = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        AnimaXPlayer *currentPlayer = expectedPlayer;
+        if (!self || !currentPlayer || self.animaxPlayer != currentPlayer ||
+            self.context.lynxContext.hasLynxViewDestroyed)
+          return;
+        BOOL attached = ready && [module attachCompositionPlayer:currentPlayer];
+        if (self.compositionMode && !attached) {
+          [self onError:@{
+            @"code" : @-1,
+            @"errorCode" : @"UnsupportedCapability",
+            @"message" : @"Composition binding requires an available page preload host"
+          }];
+        }
+        NSDictionary *receiverInfo = [hostClass compositionReceiverInfoForPlayer:currentPlayer];
+        if (receiverInfo) {
+          // cspell:ignore playercreated
+          [self sendEventToJS:@"playercreated" params:receiverInfo];
+        }
+      };
+      if (NSThread.isMainThread)
+        finish();
+      else
+        dispatch_async(dispatch_get_main_queue(), finish);
+    };
+    if (module)
+      [module ensureReady:notify];
+    else
+      notify(NO);
+  }
 }
 
 #pragma mark Layout
@@ -371,6 +466,17 @@ LYNX_PROP_SETTER("ignore-lynx-lifecycle", ignoreLynxLifecycle, BOOL) {
 }
 
 #pragma mark UI Method
+
+- (void)onNodeRemoved {
+  [super onNodeRemoved];
+  if (!self.compositionMode || !self.animaxPlayer) {
+    return;
+  }
+  // A removed node can remain retained until JS releases it. Cancel pending
+  // binding here rather than waiting for player deallocation. This is not a
+  // visibility callback and does not destroy an already installed model.
+  [LynxAnimaXCompositionHostClass() cancelPendingCompositionBindingForPlayer:self.animaxPlayer];
+}
 
 - (void)onNodeReload {
   [super onNodeReload];
