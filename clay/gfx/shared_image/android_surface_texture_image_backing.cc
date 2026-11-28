@@ -89,12 +89,7 @@ SurfaceTextureImageBacking::SurfaceTextureImageBacking(
   if (uses_internal_frame_listener_) {
     // The first SurfaceTexture frame may arrive before the drawable image
     // callback is registered. Cache that signal and replay it on registration.
-    std::weak_ptr<FrameCallbackState> weak_state = frame_callback_state_;
-    surface_texture_->SetFrameAvailableCallback([weak_state]() {
-      if (auto state = weak_state.lock()) {
-        SurfaceTextureImageBacking::TriggerFrameCallback(state);
-      }
-    });
+    RestoreFrameListener();
   }
 }
 
@@ -492,22 +487,42 @@ void SurfaceTextureImageBacking::DetachGLContext() {
   }
 }
 
-void SurfaceTextureImageBacking::TriggerFrameCallback(
-    const std::shared_ptr<FrameCallbackState>& state) {
-  fml::closure callback;
+fml::closure SurfaceTextureImageBacking::TakeFrameNotification() {
+  if (!uses_internal_frame_listener_) return {};
+  auto notify = NewFrameNotifier();
+  surface_texture_->SetFrameAvailableCallback(nullptr);
+  return notify;
+}
+
+void SurfaceTextureImageBacking::RestoreFrameListener() {
+  surface_texture_->SetFrameAvailableCallback(NewFrameNotifier());
+}
+
+fml::closure SurfaceTextureImageBacking::NewFrameNotifier() {
+  std::weak_ptr<FrameCallbackState> weak_state = frame_callback_state_;
+  uint64_t generation;
   {
-    std::lock_guard<std::mutex> l(state->mutex);
-    if (!state->is_valid) {
-      return;
-    }
-    ++state->available_sequence;
-    if (!state->callback) {
-      state->has_pending_frame = true;
-      return;
-    }
-    callback = state->callback;
+    std::lock_guard<std::mutex> lock(frame_callback_state_->mutex);
+    generation = ++frame_callback_state_->source_generation;
   }
-  callback();
+  return [weak_state, generation] {
+    auto state = weak_state.lock();
+    if (!state) return;
+    fml::closure callback;
+    {
+      std::lock_guard<std::mutex> l(state->mutex);
+      if (!state->is_valid || generation != state->source_generation) {
+        return;
+      }
+      ++state->available_sequence;
+      if (!state->callback) {
+        state->has_pending_frame = true;
+        return;
+      }
+      callback = state->callback;
+    }
+    callback();
+  };
 }
 
 }  // namespace clay

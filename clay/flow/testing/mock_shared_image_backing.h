@@ -24,10 +24,12 @@ class MockSharedImageBacking final : public clay::SharedImageBacking {
   fml::RefPtr<clay::SkiaImageRepresentation> CreateSkiaRepresentation(
       GrDirectContext* gr_context) override;
   const std::vector<uint8_t>& Bytes() const { return bytes_; }
+  int ProducedFenceCount() const { return produced_fence_count_; }
   uint32_t GetSkImageId() const { return sk_image_id_; }
 
  private:
   std::vector<uint8_t> bytes_;
+  int produced_fence_count_ = 0;
   uint32_t sk_image_id_ = 0;
 
   friend class MockSkiaImageRepresentation;

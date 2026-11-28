@@ -237,7 +237,9 @@ class CGLFenceContext {
   }
   GLsync CreateSync() { return glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); }
   void DeleteSync(GLsync sync) { glDeleteSync(sync); }
-  GLenum PollSync(GLsync sync) { return glClientWaitSync(sync, 0, 0); }
+  GLenum ClientWaitSync(GLsync sync, uint64_t timeout_ns) {
+    return glClientWaitSync(sync, 0, timeout_ns);
+  }
   void WaitSync(GLsync sync) { glWaitSync(sync, 0, GL_TIMEOUT_IGNORED); }
   class ScopedCurrent {
    public:

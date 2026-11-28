@@ -8,6 +8,7 @@
 #include "clay/gfx/shared_image/fence_sync.h"
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink.h"
+#include "clay/gfx/shared_image/shared_image_sink_accessor.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace clay {
@@ -181,6 +182,40 @@ TEST_P(SharedImageSinkDamageTest, ReconfigurationKeepsQueuedAndCurrentFronts) {
   EXPECT_EQ(current, backings_.front());
 }
 
+TEST_P(SharedImageSinkDamageTest, PendingGLReuseRetainsFenceUntilReady) {
+  struct ReleaseFence final : FenceSync {
+    explicit ReleaseFence(PollResult& state) : completion(state) {}
+    Type GetType() const override { return Type::kClientWaitOnly; }
+    bool ClientWait() override {
+      ADD_FAILURE() << "Pending release must be retried";
+      return false;
+    }
+    PollResult Poll() override { return completion; }
+    PollResult& completion;
+  };
+  auto [back, age] = sink_->AcquireBackForced(size_);
+  ASSERT_TRUE(back);
+  ASSERT_TRUE(sink_->SwapBack(nullptr));
+  ASSERT_EQ(sink_->UpdateFront(nullptr), back);
+  auto completion = FenceSync::PollResult::kPending;
+  sink_->ReleaseFront(std::make_unique<ReleaseFence>(completion));
+
+  SharedImageSinkAccessor writer(sink_, [](auto backing) {
+    return backing->CreateRepresentation(nullptr);
+  });
+  SharedImageSink::AcquireBackStatus status;
+  EXPECT_FALSE(std::get<0>(writer.AcquireBackForcedForGL(size_, status)));
+  EXPECT_EQ(status, SharedImageSink::AcquireBackStatus::kFencePending);
+  EXPECT_FALSE(writer.SwapBack());
+  EXPECT_FALSE(std::get<0>(writer.AcquireBackForcedForGL(size_, status)));
+  EXPECT_EQ(status, SharedImageSink::AcquireBackStatus::kFencePending);
+  completion = FenceSync::PollResult::kSignaled;
+  auto [repr, restored_age] = writer.AcquireBackForcedForGL(size_, status);
+  ASSERT_TRUE(repr);
+  EXPECT_EQ(repr->GetBacking(), back.get());
+  EXPECT_EQ(status, SharedImageSink::AcquireBackStatus::kSuccess);
+}
+
 class ReconfigurationFence final : public FenceSync {
  public:
   ReconfigurationFence(bool& ready, int& waits,
@@ -265,6 +300,229 @@ auto MakeBacking(skity::Vec2 size,
 using Status = SharedImageSink::AcquireBackStatus;
 const skity::Vec2 kSize(16, 16);
 
+void CheckSkippedWriteFence(SharedImageSinkManaged& sink, bool preserve) {
+  sink.SetFrameAvailableCallback([] {});
+  auto current = std::get<0>(sink.AcquireBackForced(kSize));
+  ASSERT_TRUE(sink.SwapBack(nullptr));
+  ASSERT_EQ(sink.UpdateFront(nullptr), current);
+  auto skipped = std::get<0>(sink.AcquireBackForced(kSize));
+  auto write = std::make_unique<FailedFenceSync>();
+  auto* expected_write = write.get();
+  ASSERT_TRUE(sink.SwapBack(std::move(write)));
+  auto latest = std::get<0>(sink.AcquireBackForced(kSize));
+  ASSERT_TRUE(sink.SwapBack(nullptr));
+  auto read = std::make_unique<FailedFenceSync>();
+  auto* expected_read = read.get();
+  EXPECT_EQ(sink.UpdateFrontToLatest(std::move(read)), latest);
+  EXPECT_EQ(current->GetFenceSync().get(), expected_read);
+  auto recycled_fence = skipped->GetFenceSync();
+  if (preserve) {
+    EXPECT_EQ(recycled_fence.get(), expected_write);
+  } else {
+    EXPECT_EQ(recycled_fence, nullptr);
+  }
+}
+
+TEST(SharedImageSinkTest, SkippingUnreadFrontDiscardsItsWriteFenceByDefault) {
+  SharedImageSinkManaged sink(SharedImageSink::kTripleBuffer, MakeBacking,
+                              SharedImageSink::UpdateFrontMode::kLatest);
+  CheckSkippedWriteFence(sink, false);
+}
+
+TEST(SharedImageSinkTest,
+     SkippingUnreadFrontPreservesItsWriteFenceWhenEnabled) {
+  SharedImageSinkManaged sink(
+      SharedImageSink::kTripleBuffer, MakeBacking,
+      SharedImageSink::UpdateFrontMode::kLatest,
+      SharedImageSinkManaged::SkippedWriteFence::kPreserve);
+  CheckSkippedWriteFence(sink, true);
+}
+
+class CanvasWriteFence final : public FenceSync {
+ public:
+  explicit CanvasWriteFence(PollResult& result) : result_(result) {}
+  Type GetType() const override { return Type::kClientWaitOnly; }
+  PollResult Poll() override { return result_; }
+  bool ClientWait() override {
+    EXPECT_EQ(result_, PollResult::kSignaled);
+    return result_ == PollResult::kSignaled;
+  }
+
+ private:
+  PollResult& result_;
+};
+
+auto MakeCanvasSink(
+    SharedImageSink::BufferMode mode = SharedImageSink::kDoubleBuffer) {
+  return fml::MakeRefCounted<SharedImageSinkManaged>(
+      mode,
+      [](auto size, auto) {
+        return fml::MakeRefCounted<testing::MockSharedImageBacking>(size);
+      },
+      SharedImageSink::UpdateFrontMode::kLatestReady,
+      SharedImageSinkManaged::SkippedWriteFence::kPreserve);
+}
+
+TEST(SharedImageSinkTest, SlowCanvasKeepsDisplayedFrameUntilRasterRetry) {
+  auto sink = MakeCanvasSink();
+  int notifications = 0;
+  sink->SetFrameAvailableCallback([&] { ++notifications; });
+  SharedImageSinkAccessor raster(sink, [](auto backing) {
+    return backing->CreateRepresentation(nullptr);
+  });
+  bool retry = false;
+  auto previous = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  auto displayed = raster.UpdateFront(retry);
+  ASSERT_TRUE(displayed);
+  EXPECT_EQ(displayed->GetBacking(), previous.get());
+  EXPECT_FALSE(retry);
+
+  auto next = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_NE(next, previous);
+  auto write = FenceSync::PollResult::kPending;
+  ASSERT_TRUE(sink->SwapBack(std::make_unique<CanvasWriteFence>(write)));
+  EXPECT_FALSE(raster.UpdateFront(retry));
+  EXPECT_TRUE(retry);
+  // Neither the displayed backing nor the deferred publication can be stolen.
+  EXPECT_FALSE(std::get<0>(sink->AcquireBackForced(kSize)));
+  write = FenceSync::PollResult::kSignaled;
+  auto* mock = static_cast<testing::MockSharedImageBacking*>(previous.get());
+  EXPECT_EQ(mock->ProducedFenceCount(), 0);
+  auto ready = raster.UpdateFront(retry);
+  ASSERT_TRUE(ready);
+  EXPECT_EQ(mock->ProducedFenceCount(), 1);
+  EXPECT_EQ(ready->GetBacking(), next.get());
+  EXPECT_FALSE(retry);
+  EXPECT_EQ(notifications, 2);
+  EXPECT_EQ(std::get<0>(sink->AcquireBackForced(kSize)), previous);
+}
+
+TEST(SharedImageSinkTest, FirstCanvasPaintSelectsReadyFrameBehindPendingFrame) {
+  auto sink = MakeCanvasSink(SharedImageSink::kTripleBuffer);
+  sink->SetFrameAvailableCallback([] {});
+  SharedImageSinkAccessor raster(
+      sink, [](auto b) { return b->CreateRepresentation(nullptr); });
+  auto first = std::get<0>(sink->AcquireBackForced(kSize));
+  auto first_status = FenceSync::PollResult::kPending;
+  ASSERT_TRUE(sink->SwapBack(std::make_unique<CanvasWriteFence>(first_status)));
+  bool retry = false;
+  EXPECT_FALSE(raster.UpdateFront(retry));
+  EXPECT_TRUE(retry);
+  auto second = std::get<0>(sink->AcquireBackForced(kSize));
+  auto second_status = FenceSync::PollResult::kPending;
+  ASSERT_TRUE(
+      sink->SwapBack(std::make_unique<CanvasWriteFence>(second_status)));
+  first_status = FenceSync::PollResult::kSignaled;
+  auto ready = raster.UpdateFront(retry);
+  ASSERT_TRUE(ready);
+  EXPECT_EQ(ready->GetBacking(), first.get());
+  EXPECT_TRUE(retry);
+  second_status = FenceSync::PollResult::kFailed;
+  EXPECT_FALSE(raster.UpdateFront(retry));
+  EXPECT_FALSE(retry);
+  auto fresh = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(fresh);
+  EXPECT_NE(fresh, second);
+  EXPECT_NE(fresh, first);
+}
+
+TEST(SharedImageSinkTest, FailedCanvasImportKeepsDisplayedBackingOwned) {
+  auto sink = MakeCanvasSink();
+  sink->SetFrameAvailableCallback([] {});
+  bool reject_representation = false;
+  SharedImageSinkAccessor raster(
+      sink, [&](auto b) -> fml::RefPtr<SharedImageRepresentation> {
+        return reject_representation ? nullptr
+                                     : b->CreateRepresentation(nullptr);
+      });
+  auto displayed = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  bool retry = false;
+  ASSERT_TRUE(raster.UpdateFront(retry));
+  auto* mock = static_cast<testing::MockSharedImageBacking*>(displayed.get());
+  for (bool reject_factory : {true, false}) {
+    auto candidate = std::get<0>(sink->AcquireBackForced(kSize));
+    ASSERT_TRUE(candidate);
+    ASSERT_NE(candidate, displayed);
+    ASSERT_TRUE(sink->SwapBack(nullptr));
+    reject_representation = reject_factory;
+    bool called = false;
+    EXPECT_FALSE(raster.UpdateFront(retry, [&](auto*) {
+      called = true;
+      // No queue mutex is held; both the old and candidate are reserved.
+      EXPECT_FALSE(std::get<0>(sink->AcquireBackForced(kSize)));
+      return false;
+    }));
+    EXPECT_EQ(called, !reject_factory);
+    EXPECT_EQ(mock->ProducedFenceCount(), 0);
+  }
+  auto replacement = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_NE(replacement, displayed);
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  ASSERT_TRUE(raster.UpdateFront(retry));
+  EXPECT_EQ(mock->ProducedFenceCount(), 1);
+}
+
+TEST(SharedImageSinkTest, FailedNewestImportFallsBackToEarlierReadyFrame) {
+  auto sink = MakeCanvasSink(SharedImageSink::kTripleBuffer);
+  sink->SetFrameAvailableCallback([] {});
+  auto earlier = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  auto newest = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  SharedImageSinkAccessor raster(sink, [](auto backing) {
+    return backing->CreateRepresentation(nullptr);
+  });
+  bool retry = false;
+  auto front = raster.UpdateFront(
+      retry, [&](auto* repr) { return repr->GetBacking() != newest.get(); });
+  ASSERT_TRUE(front);
+  EXPECT_EQ(front->GetBacking(), earlier.get());
+  EXPECT_FALSE(retry);
+}
+
+TEST(SharedImageSinkTest, MissingRasterRetryDoesNotPinBufferIndefinitely) {
+  auto sink = MakeCanvasSink();
+  sink->SetFrameAvailableCallback([] {});
+  SharedImageSinkAccessor raster(
+      sink, [](auto b) { return b->CreateRepresentation(nullptr); });
+  bool retry;
+  auto displayed = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  ASSERT_TRUE(raster.UpdateFront(retry));
+  auto pending = std::get<0>(sink->AcquireBackForced(kSize));
+  auto completion = FenceSync::PollResult::kPending;
+  ASSERT_TRUE(sink->SwapBack(std::make_unique<CanvasWriteFence>(completion)));
+  EXPECT_FALSE(raster.UpdateFront(retry));
+  ASSERT_TRUE(retry);
+  EXPECT_FALSE(std::get<0>(sink->AcquireBackForced(kSize)));
+  auto reused = std::get<0>(sink->AcquireBackForced(kSize));
+  EXPECT_NE(reused, displayed);
+  ASSERT_EQ(reused, pending);
+  ASSERT_TRUE(reused->GetFenceSync());
+}
+
+TEST(SharedImageSinkTest, WriterRetiresPermanentlyFailedBacking) {
+  auto sink = MakeCanvasSink();
+  sink->SetFrameAvailableCallback([] {});
+  auto old = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(nullptr));
+  ASSERT_EQ(sink->UpdateFront(nullptr), old);
+  auto bad = std::get<0>(sink->AcquireBackForced(kSize));
+  ASSERT_TRUE(sink->SwapBack(std::make_unique<FailedFenceSync>()));
+  SharedImageSinkAccessor writer(
+      sink, [](auto b) { return b->CreateRepresentation(nullptr); });
+  Status status;
+  EXPECT_FALSE(std::get<0>(writer.AcquireBackForcedForGL(kSize, status)));
+  EXPECT_EQ(status, Status::kBackingRetired);
+  auto fresh = std::get<0>(writer.AcquireBackForcedForGL(kSize, status));
+  ASSERT_TRUE(fresh);
+  EXPECT_NE(fresh->GetBacking(), bad.get());
+  EXPECT_NE(fresh->GetBacking(), old.get());
+  EXPECT_TRUE(writer.SwapBack());
+}
+
 TEST(SharedImageSinkTest, ForcedAcquireDetachedWithAvailableBack) {
   SharedImageSinkManaged sink(SharedImageSink::kDoubleBuffer, MakeBacking);
   sink.SetFrameAvailableCallback([] {});
@@ -326,6 +584,18 @@ TEST(SharedImageSinkTest, ForcedAcquireNeverStealsCurrentFront) {
   auto [released, released_age] = sink.AcquireBackForced(kSize, {}, &status);
   EXPECT_EQ(released, back);
   EXPECT_EQ(status, Status::kSuccess);
+}
+
+TEST(SharedImageSinkTest, CancelBackAllowsReconfigurationWithoutPublishing) {
+  SharedImageSinkManaged sink(SharedImageSink::kSingleBuffer, MakeBacking);
+  int available = 0;
+  sink.SetFrameAvailableCallback([&] { ++available; });
+  auto [back, age] = sink.AcquireBackForced(kSize);
+  ASSERT_TRUE(back);
+  sink.CancelBack();
+  EXPECT_EQ(available, 0);
+  EXPECT_TRUE(sink.UpdateSharedImageFactory(MakeBacking));
+  EXPECT_NE(std::get<0>(sink.AcquireBackForced(kSize)), back);
 }
 
 TEST(SharedImageSinkTest, ForcedAcquireAllocationFailureIsNotDetached) {

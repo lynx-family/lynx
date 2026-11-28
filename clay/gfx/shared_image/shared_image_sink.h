@@ -40,6 +40,8 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
     kSequence,
     // Only update to the latest frame, skip intermediate frames
     kLatest,
+    // Managed canvas buffers: a pending write must not delay UI composition.
+    kLatestReady,
   };
 
   enum class AcquireBackStatus {
@@ -53,6 +55,10 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
     kUnkown,
     // Forced acquisition stopped because the consumer is detached.
     kDetached,
+    // The slot still has an unsignaled dependency.
+    kFencePending,
+    // A failed dependency retired this backing. A later draw can reacquire.
+    kBackingRetired,
   };
 
   using GraphicsMemoryHandle = void*;
@@ -126,6 +132,9 @@ class SharedImageSink : public fml::RefCountedThreadSafe<SharedImageSink> {
 
   virtual void ClearBackFences() {}
 
+  // Give up an acquired slot without publishing a frame or consuming its fence.
+  virtual void CancelBack() {}
+
  private:
   UpdateFrontMode update_front_mode_;
 };
@@ -138,9 +147,18 @@ class SharedImageSinkManaged final : public SharedImageSink {
       skity::Vec2, std::optional<GraphicsMemoryHandle>)>;
   using UpdateFrontMode = SharedImageSink::UpdateFrontMode;
 
+  // Controls how UpdateFrontToLatest recycles a frame the consumer never read.
+  enum class SkippedWriteFence {
+    // Drop the skipped frame's write fence (the default).
+    kDiscard,
+    // Keep the fence so the next writer can order its GPU work after the
+    // previous write to the same backing.
+    kPreserve,
+  };
   SharedImageSinkManaged(
       BufferMode buffer_mode, const SharedImageFactory& shared_image_factory,
-      UpdateFrontMode update_front_mode = UpdateFrontMode::kSequence);
+      UpdateFrontMode update_front_mode = UpdateFrontMode::kSequence,
+      SkippedWriteFence skipped_write_fence = SkippedWriteFence::kDiscard);
   ~SharedImageSinkManaged();
 
   void SetFrameAvailableCallback(const fml::closure& callback) override;
@@ -175,7 +193,16 @@ class SharedImageSinkManaged final : public SharedImageSink {
   bool IsManaged() const override { return true; }
   void UpdateBufferMode(BufferMode mode) override;
 
+  // Reserve a completed publication while the single consumer prepares its
+  // image. Only a successful prepare transfers ownership of the old front.
+  bool TryLatchReadyFront(
+      bool& retry_pending,
+      const std::function<bool(SharedImageBacking*,
+                               std::unique_ptr<FenceSync>&)>& prepare);
+  void DiscardFailedBack();
+
   void ClearBackFences() override;
+  void CancelBack() override;
 
   // Changes the factory for future acquisitions without replacing this sink.
   // Returns false while a producer owns a back buffer. Existing front frames
@@ -184,6 +211,9 @@ class SharedImageSinkManaged final : public SharedImageSink {
 
  private:
   struct SharedImageSlot;
+  fml::RefPtr<SharedImageBacking> AdvanceToFront(
+      std::list<SharedImageSlot>::iterator selected,
+      std::unique_ptr<FenceSync> release);
   bool ReplaceBacking(SharedImageSlot& slot, skity::Vec2 size,
                       std::optional<GraphicsMemoryHandle> gfx_handle,
                       std::unique_lock<std::mutex>& lock);
@@ -194,11 +224,13 @@ class SharedImageSinkManaged final : public SharedImageSink {
     std::optional<uint64_t> swap_id;
     fml::RefPtr<SharedImageBacking> shared_image;
     bool is_current = false;  // is current front or current back
+    bool awaiting_raster = false;
     uint64_t generation = 0;
   };
 
   uint32_t used_ = 0;
   uint32_t capacity_;
+  const SkippedWriteFence skipped_write_fence_;
   SharedImageFactory shared_image_factory_;
   uint64_t generation_ = 0;
 

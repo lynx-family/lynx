@@ -50,6 +50,8 @@ class MockSkiaImageRepresentation final : public clay::SkiaImageRepresentation {
     return sk_image_;
   }
 
+  bool EndWrite() override { return true; }
+
   bool EndRead() override { return true; }
 
   void ConsumeFence(std::unique_ptr<clay::FenceSync> fence_sync) override {
@@ -60,6 +62,7 @@ class MockSkiaImageRepresentation final : public clay::SkiaImageRepresentation {
   }
 
   std::unique_ptr<clay::FenceSync> ProduceFence() override {
+    ++static_cast<MockSharedImageBacking*>(GetBacking())->produced_fence_count_;
     return std::make_unique<MockFenceSync>();
   }
 

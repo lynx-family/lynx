@@ -29,6 +29,10 @@ class SharedImageSinkAccessor {
   ~SharedImageSinkAccessor();
 
   fml::RefPtr<SharedImageRepresentation> UpdateFront();
+  fml::RefPtr<SharedImageRepresentation> UpdateFront(
+      bool& retry_pending,
+      const std::function<bool(SharedImageRepresentation*)>& prepare_image =
+          {});
 
   fml::RefPtr<SharedImageRepresentation> UpdateFrontSequence();
 
@@ -46,6 +50,12 @@ class SharedImageSinkAccessor {
   std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t>
   AcquireBackForced(const skity::Vec2& size,
                     SharedImageSink::AcquireBackStatus* status = nullptr);
+
+  // Called with the producer GL context current. An unsignaled dependency
+  // that cannot be enqueued stays on the back slot for a later frame.
+  std::tuple<fml::RefPtr<SharedImageRepresentation>, uint32_t>
+  AcquireBackForcedForGL(const skity::Vec2& size,
+                         SharedImageSink::AcquireBackStatus& status);
 
   // Returns true only when both EndWrite and the sink swap succeed.
   // A rejected swap retains the back representation for retry.

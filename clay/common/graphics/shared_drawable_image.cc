@@ -5,6 +5,7 @@
 #include "clay/common/graphics/shared_drawable_image.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "clay/gfx/shared_image/shared_image_backing.h"
 #include "clay/gfx/shared_image/shared_image_sink_accessor.h"
@@ -79,13 +80,28 @@ bool SharedDrawableImage::EnsureAttached() {
 }
 
 // Called from raster thread.
-void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
+void SharedDrawableImage::AdvanceFrameConsumption(
+    bool freeze, const fml::closure& request_new_frame) {
+  bool retry_pending = false;
+  if (image_sink_->update_front_mode() ==
+      SharedImageSink::UpdateFrontMode::kLatestReady) {
+    if (freeze || frame_consume_cnt_ == frame_produce_cnt_) return;
+    // One selection covers all coalesced publications. A pending last frame
+    // still needs another paint even if the producer never submits again.
+    [[maybe_unused]] bool updated = Update(retry_pending);
+    if (retry_pending) {
+      if (request_new_frame) request_new_frame();
+    } else {
+      frame_consume_cnt_ = frame_produce_cnt_;
+    }
+    return;
+  }
   if (image_sink_->Capacity() == 1) {
-    [[maybe_unused]] bool update_success = Update();
+    [[maybe_unused]] bool update_success = Update(retry_pending);
   } else if (!freeze) {
     // TODO(youfeng) request a raster frame instead drain all images
     while (frame_consume_cnt_ < frame_produce_cnt_) {
-      if (!Update()) {
+      if (!Update(retry_pending)) {
         break;
       }
       frame_consume_cnt_++;
@@ -94,26 +110,27 @@ void SharedDrawableImage::AdvanceFrameConsumption(bool freeze) {
 }
 
 // Called from raster thread.
-bool SharedDrawableImage::Update() {
-  fml::RefPtr<SharedImageRepresentation> repr = accessor_->UpdateFront();
-  if (!repr) {
-    return false;
-  }
-
+bool SharedDrawableImage::Update(bool& retry_pending) {
+  const bool keep_previous = image_sink_->IsManaged() &&
+                             image_sink_->update_front_mode() ==
+                                 SharedImageSink::UpdateFrontMode::kLatestReady;
+  auto repr = accessor_->UpdateFront(
+      retry_pending, [this, keep_previous](SharedImageRepresentation* next) {
 #ifndef ENABLE_SKITY
-  FML_DCHECK(repr->GetType() == ImageRepresentationType::kSkia);
-  sk_image_ = static_cast<SkiaImageRepresentation*>(repr.get())->GetSkImage();
-  if (!sk_image_) {
-    return false;
-  }
+        FML_DCHECK(next->GetType() == ImageRepresentationType::kSkia);
+        auto image = static_cast<SkiaImageRepresentation*>(next)->GetSkImage();
+        if (keep_previous && !image) return false;
+        sk_image_ = std::move(image);
+        return sk_image_ != nullptr;
 #else
-  FML_DCHECK(repr->GetType() == ImageRepresentationType::kSkity);
-  skity_image_ =
-      static_cast<SkityImageRepresentation*>(repr.get())->GetSkityImage();
-  if (!skity_image_) {
-    return false;
-  }
-#endif  // ENABLE_SKITY
+    FML_DCHECK(next->GetType() == ImageRepresentationType::kSkity);
+    auto image = static_cast<SkityImageRepresentation*>(next)->GetSkityImage();
+    if (keep_previous && (!image || !image->gr_image())) return false;
+    skity_image_ = std::move(image);
+    return skity_image_ != nullptr;
+#endif
+      });
+  if (!repr) return false;
   transform_ = repr->GetBacking()->GetTransformation();
 
   return true;
