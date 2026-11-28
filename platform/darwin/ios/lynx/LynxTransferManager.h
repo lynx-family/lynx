@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxTransferredView.h>
 #import <UIKit/UIKit.h>
 
 @protocol LynxTransferListener;
@@ -10,6 +11,11 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxTransferManager : NSObject
+
+- (LynxTransferredView*)loadTransfer:(NSString*)componentName
+                        initialProps:(NSDictionary*)props
+                              client:(nullable id<LynxTransferClient>)client
+                            dispatch:(void (^)(NSString*, NSDictionary*))dispatch;
 
 - (void)registerTransferListener:(id<LynxTransferListener>)listener;
 - (void)unregisterTransferListener:(id<LynxTransferListener>)listener;

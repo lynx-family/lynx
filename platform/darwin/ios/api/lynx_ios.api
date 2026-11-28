@@ -3928,6 +3928,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public NSMutableDictionary<NSString*, id>* LynxTemplateRender::lepusModulesClasses lepusModulesClasses;
   public id<LynxResourceFetcher> LynxTemplateRender::resourceFetcher resourceFetcher;
   public id<LynxLogicExecutor> LynxTemplateRender::logicExecutor logicExecutor;
+  public BOOL LynxTemplateRender()::transferReady transferReady;
   public LynxLogContext* LynxTemplateRender()::logContext logContext;
   public nullable id< LynxEventTarget > LynxTemplateRender::hitTestInEventHandler:withEvent:(CGPoint point,[withEvent] UIEvent *_Nonnull event);
   public void LynxTemplateRender::willMoveToWindow:(nonnull UIWindow *newWindow);
@@ -3968,6 +3969,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender::processLayoutWithTemplateBundle:withURL:initData:(nonnull LynxTemplateBundle *bundle,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxTemplateRender::processLayoutWithSSRData:withURL:initData:(nonnull NSData *tem,[withURL] nonnull NSString *url,[initData] nullable LynxTemplateData *data);
   public void LynxTemplateRender::setTemplateRenderDelegate:(LynxTemplateRenderDelegateExternal *_Nonnull delegate);
+  public void LynxTemplateRender()::dispatchTransferEvent:data:(NSString *type, [data] NSDictionary *data);
   public instancetype LynxTemplateRender()::initWithBuilderBlock:containerView:(void(^_Nullable block)(NS_NOESCAPE LynxViewBuilder *_Nonnull), [containerView] UIView< LUIBodyView > *_Nullable containerView);
   public NSInteger LynxTemplateRender()::logBoxImageSizeWarningThreshold();
   public void LynxTemplateRender()::didMoveToWindow:(BOOL windowIsNil);
@@ -4411,6 +4413,13 @@ public class LynxTouchHandler : UIGestureRecognizer {
 public class LynxTouchHandlerUnitTest : XCTestCase {
 }
 
+public protocol LynxTransferClient-p : <NSObject> {
+  public void LynxTransferClient-p::onLoadStart:(LynxTransferredView *view);
+  public void LynxTransferClient-p::onLoadSuccess:(LynxTransferredView *view);
+  public void LynxTransferClient-p::onFirstScreen:(LynxTransferredView *view);
+  public void LynxTransferClient-p::onReleased:reason:(LynxTransferredView *view,[reason] LynxTransferReleaseReason reason);
+}
+
 public class LynxTransferHostView : UIView {
 }
 
@@ -4422,6 +4431,7 @@ public protocol LynxTransferListener-p : <NSObject> {
 }
 
 public class LynxTransferManager : NSObject {
+  public LynxTransferredView * LynxTransferManager::loadTransfer:initialProps:client:dispatch:(NSString *componentName,[initialProps] NSDictionary *props,[client] nullable id< LynxTransferClient > client,[dispatch] void(^ dispatch)(NSString *, NSDictionary *));
   public void LynxTransferManager::registerTransferListener:(id< LynxTransferListener > listener);
   public void LynxTransferManager::unregisterTransferListener:(id< LynxTransferListener > listener);
   public void LynxTransferManager::dispatchTransferCreate:view:dataset:(NSString *transferId,[view] UIView *view,[dataset] NSDictionary *dataset);
@@ -4429,6 +4439,25 @@ public class LynxTransferManager : NSObject {
   public void LynxTransferManager::dispatchTransferIntrinsicContentSizeChange:(LynxTransferWrapperView *view);
   public void LynxTransferManager::dispatchTransferRemove:view:(NSString *transferId,[view] UIView *view);
   public void LynxTransferManager::clearTransfers();
+}
+
+public class LynxTransferredView : UIView {
+  public void LynxTransferredView::updateProps:(NSDictionary *props);
+  public void LynxTransferredView::reload:(NSDictionary *props);
+  public void LynxTransferredView::clearForDestroy();
+  public instancetype LynxTransferredView(Internal)::initWithId:client:dispatch:unregister:(NSString *transferId, [client] id< LynxTransferClient > client, [dispatch] void(^ dispatch)(NSString *, NSDictionary *), [unregister] dispatch_block_t unregisterCard);
+  public void LynxTransferredView(Internal)::startComponent:initialProps:(NSString *componentName, [initialProps] NSDictionary *props);
+  public void LynxTransferredView(Internal)::bindContent:(UIView *content);
+  public void LynxTransferredView(Internal)::detachContent:(UIView *content);
+  public void LynxTransferredView(Internal)::dispose:(LynxTransferReleaseReason reason);
+}
+
+public interface LynxTransferredView(Internal) {
+  public instancetype LynxTransferredView(Internal)::initWithId:client:dispatch:unregister:(NSString *transferId,[client] id< LynxTransferClient > client,[dispatch] void(^ dispatch)(NSString *, NSDictionary *),[unregister] dispatch_block_t unregisterCard);
+  public void LynxTransferredView(Internal)::startComponent:initialProps:(NSString *componentName,[initialProps] NSDictionary *props);
+  public void LynxTransferredView(Internal)::bindContent:(UIView *content);
+  public void LynxTransferredView(Internal)::detachContent:(UIView *content);
+  public void LynxTransferredView(Internal)::dispose:(LynxTransferReleaseReason reason);
 }
 
 public class LynxTransferShadowNode : LynxCustomMeasureShadowNode {
@@ -5607,6 +5636,8 @@ public class LynxView : UIView, <LUIBodyView>, <LynxSecurityTarget>, <LynxRender
   public void LynxView::resumeRootLayoutAnimation();
   public void LynxView::resetAnimation();
   public void LynxView::restartAnimation();
+  public nonnull LynxTransferredView * LynxView::loadTransfer:initialProps:(nonnull NSString *componentName,[initialProps] nonnull NSDictionary *initialProps);
+  public nonnull LynxTransferredView * LynxView::loadTransfer:initialProps:client:(nonnull NSString *componentName,[initialProps] nonnull NSDictionary *initialProps,[client] nullable id< LynxTransferClient > client);
   public void LynxView::registerTransferListener:(nonnull id< LynxTransferListener > listener);
   public void LynxView::unregisterTransferListener:(nonnull id< LynxTransferListener > listener);
   public void LynxView::setTheme:(nonnull LynxTheme *theme);
@@ -7429,6 +7460,13 @@ public enum LynxGestureState {
   public FOUNDATION_EXPORT NSString* const LynxEventStickyStart LynxEventStickyStart;
   public FOUNDATION_EXPORT NSString* const LynxEventStickyEnd LynxEventStickyEnd;
   public FOUNDATION_EXPORT NSString* const LynxEventSnap LynxEventSnap;
+
+public enum LynxTransferReleaseReason {
+  LynxTransferReleaseReasonExplicitRelease
+  LynxTransferReleaseReasonOwnerDestroy
+  LynxTransferReleaseReasonLoadFailed
+}
+
 
   typedef void(^ lynx_async_operation_completion_block_t) (id _Nullable value, BOOL canceled)
   typedef BOOL(^ lynx_iscancelled_block_t) (void)

@@ -26,6 +26,7 @@
 #import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxTemplateData+Converter.h>
 #import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
@@ -421,6 +422,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Clean & Reuse
 
 - (void)reset {
+  _transferReady = NO;
   if (_delegate) {
     __weak LynxTemplateRender* weakSelf = self;
     [LynxTemplateRender runOnMainThread:^() {
@@ -1390,6 +1392,19 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 }
 
+- (void)dispatchTransferEvent:(NSString*)type data:(NSDictionary*)data {
+  if (!self.transferReady || !shell_) return;
+  NSDictionary* event = @{
+    @"type" : type,
+    @"origin" : @"Native",
+    @"target" : @"CoreContext",
+    @"timestamp" : @((int64_t)(CACurrentMediaTime() * 1000)),
+    @"data" : data
+  };
+  shell_->DispatchMessageEvent(
+      lynx::tasm::darwin::EventConverterDarwin::ConvertNSDictionaryToMessageEvent(event));
+}
+
 - (void)sendGlobalEvent:(nonnull NSString*)name withParams:(nullable NSArray*)params {
   // Keep the direct MTS route exclusive with the legacy event bus in LynxView.
   if (![self shouldSendEventToMainThread]) {
@@ -1555,6 +1570,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Life Cycle
 
 - (void)dispatchViewDidStartLoading {
+  _transferReady = NO;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_DID_START_LOADING);
   if (_delegate) {
     [_delegate templateRenderOnTemplateStartLoading:self];
@@ -2582,6 +2598,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)onTemplateLoaded:(NSString*)url {
+  _transferReady = YES;
   [_delegate templateRender:self onTemplateLoaded:url];
   [_devTool onLoadFinished];
   LynxFSPTracer* fspTracer = [self performanceController].fspTracer;
