@@ -38,6 +38,7 @@ enum class DisplayListOpType : int32_t {
   kBackgroundImage = 14,
   kRadialGradient = 15,
   kClipPath = 17,
+  kConicGradient = 18,
 };
 
 enum class DisplayListSubtreePropertyOpType : int32_t {
@@ -232,9 +233,12 @@ typedef struct DisplayListItem {
       int32_t repeat_y;
       float center_x;
       float center_y;
-      float radius_x;
+      union {
+        float radius_x;
+        float angle;  // Conic: clockwise CSS degrees, zero at the top.
+      };
       float radius_y;
-    } radial_gradient;
+    } radial_gradient, conic_gradient;
     struct {
       int32_t shadow_box_index;
       int32_t clip_box_index;
@@ -249,6 +253,7 @@ typedef struct DisplayListItem {
 // ABI in sync with every platform reader.
 static_assert(sizeof(DisplayListItem) == 56,
               "DisplayListItem size must be 56 bytes");
+static_assert(offsetof(DisplayListItem, payload.conic_gradient.angle) == 44);
 static_assert(alignof(DisplayListItem) == alignof(int32_t),
               "DisplayListItem alignment must match its 32-bit fields");
 static_assert(offsetof(DisplayListItem, type) == 0,
@@ -438,6 +443,11 @@ class DisplayList {
                          int32_t clip_index, int32_t repeat_x,
                          int32_t repeat_y);
 
+  void AddConicGradient(float center_x, float center_y, float angle,
+                        const base::Vector<uint32_t>& colors,
+                        const base::Vector<float>& stops, int32_t tiling_index,
+                        int32_t clip_index, int32_t repeat_x, int32_t repeat_y);
+
   // Store an owning image reference, moving it when the caller transfers it.
   void AddBackgroundImage(
       fml::RefPtr<PaintImage> image, int32_t tiling_index, int32_t clip_index,
@@ -469,6 +479,11 @@ class DisplayList {
   base::InlineVector<fml::RefPtr<PaintImage>, 16>& Images() { return images_; }
 
  private:
+  void AppendCenteredGradient(DisplayListItem& item,
+                              const base::Vector<uint32_t>& colors,
+                              const base::Vector<float>& stops,
+                              int32_t tiling_index, int32_t clip_index,
+                              int32_t repeat_x, int32_t repeat_y);
   base::auto_create_optional<base::InlineVector<fml::RefPtr<gfx::Path>, 1>>
       paths_;
   // Content operations (stable during animations) - lazy allocated

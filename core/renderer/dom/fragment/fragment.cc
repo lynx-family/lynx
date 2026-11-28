@@ -758,10 +758,9 @@ float ResolveRadialGradientPosition(int32_t type, float value, float size) {
   }
 }
 
-bool ResolveRadialGradientLength(const lepus::Value& pattern,
-                                 const lepus::Value& value, float size,
-                                 starlight::ComputedCSSStyle* style,
-                                 float& result) {
+bool ResolveGradientLength(const lepus::Value& pattern,
+                           const lepus::Value& value, float size,
+                           starlight::ComputedCSSStyle* style, float& result) {
   if (!pattern.IsNumber() || style == nullptr) {
     return false;
   }
@@ -778,6 +777,40 @@ bool ResolveRadialGradientLength(const lepus::Value& pattern,
   }
   result = length.ToFloat();
   return true;
+}
+
+// BackgroundOrMaskImageToLepus converts CSS center lengths into platform
+// lengths when exporting native properties. Resolve either representation
+// against the authored tile, not the element's border box.
+bool ResolveConicCenter(const lepus::Value& value, const lepus::Value& unit,
+                        bool converted, float extent,
+                        starlight::ComputedCSSStyle* style, float& result) {
+  if (!converted) {
+    return ResolveGradientLength(unit, value, extent, style, result);
+  }
+  if (!unit.IsNumber()) return false;
+  switch (static_cast<starlight::PlatformLengthUnit>(unit.Number())) {
+    case starlight::PlatformLengthUnit::NUMBER:
+    case starlight::PlatformLengthUnit::PERCENTAGE:
+      if (!value.IsNumber()) return false;
+      result = value.Number();
+      if (unit.Number() ==
+          static_cast<int>(starlight::PlatformLengthUnit::PERCENTAGE))
+        result *= extent;
+      return true;
+    case starlight::PlatformLengthUnit::CALC: {
+      if (!value.IsArray()) return false;
+      const auto terms = value.Array();
+      // AddLengthToArray emits [fraction, PERCENTAGE, fixed, NUMBER].
+      if (terms->size() != 4 || !terms->get(0).IsNumber() ||
+          !terms->get(2).IsNumber())
+        return false;
+      result = terms->get(0).Number() * extent + terms->get(2).Number();
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 }  // namespace
@@ -1027,6 +1060,42 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
                                             static_cast<int32_t>(repeat_y));
         break;
       }
+      case starlight::BackgroundImageType::kConicGradient: {
+        ClearBackgroundImage(i_image);
+        if (!array->get(i + 1).IsArray()) break;
+        const auto gradient = array->get(i + 1).Array();
+        if (gradient->size() != 4 || !gradient->get(0).IsNumber() ||
+            !gradient->get(1).IsArray() || !gradient->get(2).IsArray() ||
+            !gradient->get(3).IsArray())
+          break;
+        const auto center = gradient->get(1).Array();
+        float x, y;
+        if (center->size() != 4 ||
+            !ResolveConicCenter(center->get(0), center->get(1),
+                                image_data->clone_image, tiling_width,
+                                element()->computed_css_style(), x) ||
+            !ResolveConicCenter(center->get(2), center->get(3),
+                                image_data->clone_image, tiling_height,
+                                element()->computed_css_style(), y))
+          break;
+        const auto color_array = gradient->get(2).Array();
+        const auto stop_array = gradient->get(3).Array();
+        if (color_array->size() < 2 ||
+            (stop_array->size() != 0 &&
+             stop_array->size() != color_array->size()))
+          break;
+        base::Vector<uint32_t> colors;
+        base::Vector<float> stops;
+        for (size_t j = 0; j < color_array->size(); ++j)
+          colors.push_back(color_array->get(j).UInt32());
+        for (size_t j = 0; j < stop_array->size(); ++j)
+          stops.push_back(stop_array->get(j).Number() / 100.f);
+        display_list_builder.ConicGradient(
+            x, y, gradient->get(0).Number(), colors, stops, tiling_index,
+            define_image_clip_index(i_image), static_cast<int32_t>(repeat_x),
+            static_cast<int32_t>(repeat_y));
+        break;
+      }
       case starlight::BackgroundImageType::kRadialGradient: {
         ClearBackgroundImage(i_image);
         if (!array->get(i + 1).IsArray()) {
@@ -1060,11 +1129,10 @@ void Fragment::DrawBackground(DisplayListBuilder& display_list_builder) {
             break;
           }
           auto* style = element()->computed_css_style();
-          if (!ResolveRadialGradientLength(shape_arr->get(6), shape_arr->get(7),
-                                           tiling_width, style, radius.first) ||
-              !ResolveRadialGradientLength(shape_arr->get(8), shape_arr->get(9),
-                                           tiling_height, style,
-                                           radius.second)) {
+          if (!ResolveGradientLength(shape_arr->get(6), shape_arr->get(7),
+                                     tiling_width, style, radius.first) ||
+              !ResolveGradientLength(shape_arr->get(8), shape_arr->get(9),
+                                     tiling_height, style, radius.second)) {
             break;
           }
         } else {

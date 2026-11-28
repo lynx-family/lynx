@@ -178,7 +178,36 @@ void DisplayList::AddRadialGradient(float center_x, float center_y,
                                     int32_t repeat_x, int32_t repeat_y) {
   DisplayListItem item{};
   item.type = DisplayListOpType::kRadialGradient;
+  auto& gradient = item.payload.radial_gradient;
+  gradient.center_x = center_x;
+  gradient.center_y = center_y;
+  gradient.radius_x = radius_x;
+  gradient.radius_y = radius_y;
+  AppendCenteredGradient(item, colors, stops, tiling_index, clip_index,
+                         repeat_x, repeat_y);
+}
 
+void DisplayList::AddConicGradient(float center_x, float center_y, float angle,
+                                   const base::Vector<uint32_t>& colors,
+                                   const base::Vector<float>& stops,
+                                   int32_t tiling_index, int32_t clip_index,
+                                   int32_t repeat_x, int32_t repeat_y) {
+  DisplayListItem item{};
+  item.type = DisplayListOpType::kConicGradient;
+  auto& gradient = item.payload.conic_gradient;
+  gradient.center_x = center_x;
+  gradient.center_y = center_y;
+  gradient.angle = angle;
+  AppendCenteredGradient(item, colors, stops, tiling_index, clip_index,
+                         repeat_x, repeat_y);
+}
+
+void DisplayList::AppendCenteredGradient(DisplayListItem& item,
+                                         const base::Vector<uint32_t>& colors,
+                                         const base::Vector<float>& stops,
+                                         int32_t tiling_index,
+                                         int32_t clip_index, int32_t repeat_x,
+                                         int32_t repeat_y) {
   const uint32_t color_count = static_cast<uint32_t>(colors.size());
   const uint32_t stop_count = static_cast<uint32_t>(stops.size());
   uint32_t color_offset = 0;
@@ -194,7 +223,9 @@ void DisplayList::AddRadialGradient(float center_x, float center_y,
                           stops.size() * sizeof(float));
   }
 
-  auto& payload = item.payload.radial_gradient;
+  auto& payload = item.type == DisplayListOpType::kConicGradient
+                      ? item.payload.conic_gradient
+                      : item.payload.radial_gradient;
   payload.color_count_offset = color_offset;
   payload.color_count = color_count;
   payload.stop_count_offset = stop_offset;
@@ -203,10 +234,6 @@ void DisplayList::AddRadialGradient(float center_x, float center_y,
   payload.clip_index = clip_index;
   payload.repeat_x = repeat_x;
   payload.repeat_y = repeat_y;
-  payload.center_x = center_x;
-  payload.center_y = center_y;
-  payload.radius_x = radius_x;
-  payload.radius_y = radius_y;
   AppendItem(item);
 }
 

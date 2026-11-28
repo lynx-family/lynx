@@ -328,11 +328,12 @@ void DrawTiled(OH_Drawing_Canvas* canvas, const RoundedRectangle& tiling_box,
 void DrawGradient(OH_Drawing_Canvas* canvas, OH_Drawing_ShaderEffect* shader,
                   const RoundedRectangle& tiling_box,
                   const RoundedRectangle& clip_box, int32_t repeat_x,
-                  int32_t repeat_y, float density) {
+                  int32_t repeat_y, float density, float rotation = 0.f,
+                  float pivot_x = 0.f, float pivot_y = 0.f) {
   if (shader == nullptr) {
     return;
   }
-  // Both gradient entry points validate geometry before creating the shader.
+  // Gradient entry points validate geometry before creating the shader.
   const float width = tiling_box.GetWidth() * density;
   const float height = tiling_box.GetHeight() * density;
   auto* brush = OH_Drawing_BrushCreate();
@@ -352,7 +353,15 @@ void DrawGradient(OH_Drawing_Canvas* canvas, OH_Drawing_ShaderEffect* shader,
               // tile.
               OH_Drawing_CanvasScale(canvas, tile_width / width,
                                      tile_height / height);
-              OH_Drawing_CanvasDrawRect(canvas, tile_rect);
+              if (rotation != 0.f) {
+                // Older sweep shaders cannot rotate their local matrix. Fix
+                // the tile clip before rotating the coordinate system.
+                OH_Drawing_CanvasClipRect(canvas, tile_rect, INTERSECT, false);
+                OH_Drawing_CanvasRotate(canvas, rotation, pivot_x, pivot_y);
+                OH_Drawing_CanvasDrawBackground(canvas, brush);
+              } else {
+                OH_Drawing_CanvasDrawRect(canvas, tile_rect);
+              }
             });
   OH_Drawing_CanvasDetachBrush(canvas);
   OH_Drawing_RectDestroy(tile_rect);
@@ -410,11 +419,14 @@ void DrawLinearGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
   }
 }
 
-void DrawRadialGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
-                        const DisplayListReader& reader,
-                        const std::vector<RoundedRectangle>& boxes,
-                        float density) {
-  const auto& gradient = item.payload.radial_gradient;
+void DrawCenteredGradient(OH_Drawing_Canvas* canvas,
+                          const DisplayListItem& item,
+                          const DisplayListReader& reader,
+                          const std::vector<RoundedRectangle>& boxes,
+                          float density) {
+  const bool conic = item.type == DisplayListOpType::kConicGradient;
+  const auto& gradient =
+      conic ? item.payload.conic_gradient : item.payload.radial_gradient;
   if (gradient.tiling_index < 0 || gradient.clip_index < 0 ||
       static_cast<size_t>(gradient.tiling_index) >= boxes.size() ||
       static_cast<size_t>(gradient.clip_index) >= boxes.size()) {
@@ -434,6 +446,24 @@ void DrawRadialGradient(OH_Drawing_Canvas* canvas, const DisplayListItem& item,
 
   const float center_x = gradient.center_x * density;
   const float center_y = gradient.center_y * density;
+  if (conic) {
+    float rotation = gradient.angle - 90.f;
+    OH_Drawing_Matrix* matrix = nullptr;
+    if (rotation != 0.f && ShaderEffect::SweepGradientWithLocalMatrixHandle()) {
+      matrix = OH_Drawing_MatrixCreate();
+      if (matrix) {
+        OH_Drawing_MatrixPreRotate(matrix, rotation, center_x, center_y);
+        rotation = 0.f;
+      }
+    }
+    auto shader = ShaderEffect::CreateConicGradientEffect(
+        center_x, center_y, colors, stops, gradient.color_count, CLAMP, matrix);
+    DrawGradient(canvas, shader->HarmonyShaderEffect(),
+                 boxes[gradient.tiling_index], boxes[gradient.clip_index],
+                 gradient.repeat_x, gradient.repeat_y, density, rotation,
+                 center_x, center_y);
+    return;
+  }
   const float radius_x = gradient.radius_x * density;
   const float radius_y = gradient.radius_y * density;
   if (radius_x < 0.f || radius_y < 0.f) {
@@ -679,8 +709,9 @@ void LynxDisplayListApplier::ProcessContentOperations(
       case DisplayListOpType::kLinearGradient:
         DrawLinearGradient(canvas, item, reader, boxes_, density);
         break;
+      case DisplayListOpType::kConicGradient:
       case DisplayListOpType::kRadialGradient:
-        DrawRadialGradient(canvas, item, reader, boxes_, density);
+        DrawCenteredGradient(canvas, item, reader, boxes_, density);
         break;
       case DisplayListOpType::kBackgroundImage: {
         const auto& background = item.payload.background_image;

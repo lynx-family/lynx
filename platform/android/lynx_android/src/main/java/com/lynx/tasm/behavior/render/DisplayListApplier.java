@@ -15,6 +15,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.graphics.Shader;
+import android.graphics.SweepGradient;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.Layout;
@@ -56,6 +57,7 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int OP_BOX_SHADOW = 13;
   static final int OP_BACKGROUND_IMAGE = 14;
   static final int OP_RADIAL_GRADIENT = 15;
+  static final int OP_CONIC_GRADIENT = 18;
   static final int SUBTREE_OP_TRANSFORM = 0;
   static final int SUBTREE_OP_OPACITY = 1;
   static final int SUBTREE_OP_FILTER = 2;
@@ -122,6 +124,7 @@ public class DisplayListApplier implements Drawable.Callback {
   static final int RADIAL_GRADIENT_CENTER_X_OFFSET = 36;
   static final int RADIAL_GRADIENT_CENTER_Y_OFFSET = 40;
   static final int RADIAL_GRADIENT_RADIUS_X_OFFSET = 44;
+  static final int CONIC_GRADIENT_ANGLE_OFFSET = 44;
   static final int RADIAL_GRADIENT_RADIUS_Y_OFFSET = 48;
   static final int BOX_SHADOW_SHADOW_BOX_INDEX_OFFSET = 4;
   static final int BOX_SHADOW_CLIP_BOX_INDEX_OFFSET = 8;
@@ -805,6 +808,7 @@ public class DisplayListApplier implements Drawable.Callback {
           break;
         }
 
+        case OP_CONIC_GRADIENT:
         case OP_RADIAL_GRADIENT: {
           int colorCount = getIntAt(itemByteOffset + GRADIENT_COLOR_COUNT_OFFSET);
           int stopCount = getIntAt(itemByteOffset + GRADIENT_STOP_COUNT_OFFSET);
@@ -814,8 +818,6 @@ public class DisplayListApplier implements Drawable.Callback {
           int repeatY = getIntAt(itemByteOffset + GRADIENT_REPEAT_Y_OFFSET);
           float centerX = getFloatAt(itemByteOffset + RADIAL_GRADIENT_CENTER_X_OFFSET);
           float centerY = getFloatAt(itemByteOffset + RADIAL_GRADIENT_CENTER_Y_OFFSET);
-          float radiusX = getFloatAt(itemByteOffset + RADIAL_GRADIENT_RADIUS_X_OFFSET);
-          float radiusY = getFloatAt(itemByteOffset + RADIAL_GRADIENT_RADIUS_Y_OFFSET);
 
           int[] colors = null;
           if (colorCount > 0) {
@@ -841,8 +843,28 @@ public class DisplayListApplier implements Drawable.Callback {
             }
           }
 
-          drawRadialGradient(canvas, centerX, centerY, radiusX, radiusY, colors, stops, tilingIndex,
-              clipIndex, repeatX, repeatY);
+          if (op == OP_CONIC_GRADIENT) {
+            // Limit the visible clip to the host, but preserve the authored
+            // tile's center and repeat period when it extends past the host.
+            RoundedRectangle tile = shouldIncludeScrollOffsetForHostBounds()
+                ? getNormalizedRoundedRectangle(tilingIndex)
+                : getRoundedRectangle(tilingIndex);
+            RoundedRectangle clip = getNormalizedRoundedRectangle(clipIndex);
+            if (tile != null && clip != null && colors != null && colors.length >= 2
+                && (stops == null || stops.length == colors.length)) {
+              SweepGradient gradient = new SweepGradient(centerX, centerY, colors, stops);
+              Matrix rotation = new Matrix();
+              rotation.setRotate(getFloatAt(itemByteOffset + CONIC_GRADIENT_ANGLE_OFFSET) - 90.f,
+                  centerX, centerY);
+              gradient.setLocalMatrix(rotation);
+              drawGradient(canvas, gradient, tile, clip, repeatX, repeatY);
+            }
+          } else {
+            float radiusX = getFloatAt(itemByteOffset + RADIAL_GRADIENT_RADIUS_X_OFFSET);
+            float radiusY = getFloatAt(itemByteOffset + RADIAL_GRADIENT_RADIUS_Y_OFFSET);
+            drawRadialGradient(canvas, centerX, centerY, radiusX, radiusY, colors, stops,
+                tilingIndex, clipIndex, repeatX, repeatY);
+          }
           break;
         }
 
@@ -964,6 +986,13 @@ public class DisplayListApplier implements Drawable.Callback {
     drawGradient(canvas, gradient, tilingBox, clipBox, repeatX, repeatY);
   }
 
+  private static double firstVisibleTileStart(float origin, float clipStart, float tileSize) {
+    // Align to the same pixel grid as the repeated tile, skipping offscreen copies.
+    double alignedOrigin = Math.floor((double) origin + 0.5);
+    double phase = (clipStart - alignedOrigin % tileSize) % tileSize;
+    return clipStart - (phase < 0 ? phase + tileSize : phase);
+  }
+
   private void drawGradient(Canvas canvas, Shader shader, RoundedRectangle tilingBox,
       RoundedRectangle clipBox, int repeatX, int repeatY) {
     final RectF tilingRect = tilingBox.getRectF();
@@ -1008,44 +1037,25 @@ public class DisplayListApplier implements Drawable.Callback {
       canvas.drawRect(0, 0, width, height, mPaint);
       canvas.restore();
     } else {
-      final float endTileX = clipRight;
-      final float endTileY = clipBottom;
-
-      float tileStartX = left;
-      float tileStartY = top;
-
-      if (repeatHorizontally) {
-        if (tileStartX > clipLeft) {
-          tileStartX = tileStartX - ((int) Math.ceil((tileStartX - clipLeft) / width)) * width;
-        }
-      }
-
-      if (repeatVertically) {
-        if (tileStartY > clipTop) {
-          tileStartY = tileStartY - ((int) Math.ceil((tileStartY - clipTop) / height)) * height;
-        }
-      }
+      final double startX =
+          repeatHorizontally ? firstVisibleTileStart(left, clipLeft, tileWidth) : Math.round(left);
+      final double startY =
+          repeatVertically ? firstVisibleTileStart(top, clipTop, tileHeight) : Math.round(top);
+      final int columns = repeatHorizontally ? (int) Math.ceil((clipRight - startX) / tileWidth)
+                                             : (startX < clipRight ? 1 : 0);
+      final int rows = repeatVertically ? (int) Math.ceil((clipBottom - startY) / tileHeight)
+                                        : (startY < clipBottom ? 1 : 0);
 
       final int saveCount = canvas.save();
-      final float pixelAlignedStartX = Math.round(tileStartX);
-      final float pixelAlignedStartY = Math.round(tileStartY);
-      canvas.translate(pixelAlignedStartX, pixelAlignedStartY);
-      for (float x = pixelAlignedStartX; x < endTileX; x += tileWidth) {
+      canvas.translate((float) startX, (float) startY);
+      for (int column = 0; column < columns; column++) {
         final int rowSaveCount = canvas.save();
-        for (float y = pixelAlignedStartY; y < endTileY; y += tileHeight) {
+        for (int row = 0; row < rows; row++) {
           canvas.drawRect(0, 0, tileWidth, tileHeight, mPaint);
           canvas.translate(0, tileHeight);
-
-          if (!repeatVertically) {
-            break;
-          }
         }
         canvas.restoreToCount(rowSaveCount);
         canvas.translate(tileWidth, 0);
-
-        if (!repeatHorizontally) {
-          break;
-        }
       }
       canvas.restoreToCount(saveCount);
     }

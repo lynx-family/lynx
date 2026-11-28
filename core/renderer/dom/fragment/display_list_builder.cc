@@ -236,6 +236,16 @@ DisplayListBuilder& DisplayListBuilder::RadialGradient(
   return *this;
 }
 
+DisplayListBuilder& DisplayListBuilder::ConicGradient(
+    float center_x, float center_y, float angle,
+    const base::Vector<uint32_t>& colors, const base::Vector<float>& stops,
+    int32_t tiling_index, int32_t clip_index, int32_t repeat_x,
+    int32_t repeat_y) {
+  display_list_.AddConicGradient(center_x, center_y, angle, colors, stops,
+                                 tiling_index, clip_index, repeat_x, repeat_y);
+  return *this;
+}
+
 DisplayListBuilder& DisplayListBuilder::BackgroundImage(
     fml::RefPtr<PaintImage> image, int32_t tiling_index, int32_t clip_index,
     int32_t repeat_x, int32_t repeat_y, BackgroundSizeMode size_mode,

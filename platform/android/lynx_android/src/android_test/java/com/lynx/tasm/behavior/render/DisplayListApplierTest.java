@@ -5,6 +5,7 @@ package com.lynx.tasm.behavior.render;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,12 +39,15 @@ import com.lynx.tasm.behavior.shadow.text.TextMeasurer;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
+import com.lynx.tasm.behavior.ui.list.container.ListContainerView;
+import com.lynx.tasm.behavior.ui.scroll.AndroidScrollView;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.PixelUtils;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
@@ -658,6 +662,38 @@ public class DisplayListApplierTest {
   }
 
   @Test
+  public void testRootConicGradientScrollsTileWithClip() {
+    testDisplayList.begin(0, VIEW_TYPE, 0, 0, 100, 100)
+        .recordBox(-10, 4, 60, 120)
+        .recordBox(0, 0, 100, 100)
+        .radialGradient(new int[] {0xFFFF0000, 0xFF0000FF}, null, 0, 1, 0, 1, 30, 60, 90, 0)
+        .end();
+    // The centered gradients share a payload; conic uses the radius-X slot for its angle.
+    ByteBuffer source = testDisplayList.toItemsBuffer();
+    ByteBuffer items = ByteBuffer.allocateDirect(source.remaining()).order(ByteOrder.nativeOrder());
+    items.put(source);
+    items.putInt(
+        3 * DisplayListApplier.DISPLAY_LIST_ITEM_SIZE, DisplayListApplier.OP_CONIC_GRADIENT);
+    items.rewind();
+
+    View scrolled = new View(InstrumentationRegistry.getInstrumentation().getTargetContext());
+    scrolled.layout(0, 0, 100, 100);
+    scrolled.scrollTo(0, 40);
+    for (IRendererHost host :
+        new IRendererHost[] {mock(AndroidScrollView.class), mock(ListContainerView.class)}) {
+      when(host.getView()).thenReturn(scrolled);
+      Canvas canvas = mock(Canvas.class);
+      DisplayListApplier applier = new DisplayListApplier(
+          items, testDisplayList.toDataBuffer(), mockPlatformRendererContext, host);
+      applier.drawTillNextView(canvas);
+
+      verify(canvas).clipRect(new RectF(0, 40, 100, 140));
+      verify(canvas).translate(-10f, 44f);
+      verify(canvas, times(2)).drawRect(eq(0f), eq(0f), eq(60f), eq(120f), any(Paint.class));
+    }
+  }
+
+  @Test
   public void testOpRadialGradient() {
     testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 100f, 100f)
         .recordBox(0f, 0f, 100f, 100f)
@@ -727,6 +763,29 @@ public class DisplayListApplierTest {
     displayListApplier.drawTillNextView(mockCanvas);
 
     verify(mockCanvas).drawRect(eq(0.f), eq(0.f), eq(1.f), eq(1.f), any(Paint.class));
+  }
+
+  @Test
+  public void testRepeatedGradientSkipsOffscreenTilesAndPreservesPhase() {
+    testDisplayList.begin(0, VIEW_TYPE, 0f, 0f, 5f, 3f)
+        .recordBox(-10001f, -10001f, 3f, 2f)
+        .recordBox(0f, 0f, 5f, 3f)
+        .radialGradient(
+            new int[] {0xFFFF0000, 0xFF0000FF}, new float[] {0f, 1f}, 0, 1, 0, 0, 1f, 1f, 1f, 1f)
+        .end();
+    doAnswer(invocation -> {
+      assertTrue((float) invocation.getArgument(0) >= -3f);
+      assertTrue((float) invocation.getArgument(1) >= -2f);
+      return null;
+    })
+        .when(mockCanvas)
+        .translate(anyFloat(), anyFloat());
+
+    setDisplayList(testDisplayList);
+    displayListApplier.drawTillNextView(mockCanvas);
+
+    verify(mockCanvas).translate(-2f, -1f);
+    verify(mockCanvas, times(6)).drawRect(eq(0f), eq(0f), eq(3f), eq(2f), any(Paint.class));
   }
 
   @Test

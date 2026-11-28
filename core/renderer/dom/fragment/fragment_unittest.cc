@@ -7814,6 +7814,62 @@ TEST_F(FragmentTest, LinearGradientCornerDirectionUsesTilingBoxSize) {
   }
 }
 
+TEST_F(FragmentTest, ConicGradientPreservesGeometryBeforeAndAfterNativeExport) {
+  auto element = manager->CreateFiberView();
+  auto* style = element->computed_css_style();
+  auto& border = style->GetLayoutComputedStyle()->surround_data_.border_data_;
+  border = starlight::BordersData();
+  border->radius_x_top_left = border->radius_y_top_left =
+      starlight::NLength::MakeUnitNLength(8.f);
+  starlight::LayoutResultForRendering layout;
+  layout.size_ = FloatSize(200.f, 80.f);
+
+  constexpr char css[] =
+      "conic-gradient(from 35deg at 25% 75%, red 0%, blue 90%)";
+  CSSParserConfigs configs;
+  CSSStringParser parser(css, sizeof(css) - 1, configs);
+  ASSERT_TRUE(style->SetValue(CSSPropertyID::kPropertyIDBackgroundImage,
+                              parser.ParseBackgroundImage()));
+  auto& background = style->GetBackgroundData();
+  background->image_data->size.push_back(
+      starlight::NLength::MakeUnitNLength(120.f));
+  background->image_data->size.push_back(
+      starlight::NLength::MakeUnitNLength(60.f));
+  for (bool export_to_native : {false, true}) {
+    SCOPED_TRACE(export_to_native);
+    if (export_to_native) {
+      starlight::ComputedCSSStyleUtilsMethod::BackgroundOrMaskImageToLepus(
+          background, style->GetMeasureContext(), configs);
+    }
+    Fragment fragment(element.get());
+    fragment.UpdateLayout(layout);
+    DisplayListBuilder builder;
+    fragment.DrawBackground(builder);
+    auto list = builder.Build();
+    DisplayListReader reader(list);
+    std::vector<DisplayListItem> boxes;
+    bool found = false;
+    while (reader.HasNext()) {
+      const auto& item = reader.Next();
+      if (item.type == DisplayListOpType::kRecordBox) boxes.push_back(item);
+      if (item.type != DisplayListOpType::kConicGradient) continue;
+      found = true;
+      const auto& g = item.payload.conic_gradient;
+      EXPECT_FLOAT_EQ(g.angle, 35.f);
+      EXPECT_FLOAT_EQ(g.center_x, 30.f);
+      EXPECT_FLOAT_EQ(g.center_y, 45.f);
+      ASSERT_LT(static_cast<size_t>(g.clip_index), boxes.size());
+      EXPECT_FLOAT_EQ(boxes[g.clip_index].payload.record_box.radii[0], 8.f);
+      ASSERT_EQ(g.color_count, 2u);
+      EXPECT_EQ(reader.Colors(item)[0], 0xffff0000u);
+      EXPECT_EQ(reader.Colors(item)[1], 0xff0000ffu);
+      ASSERT_EQ(g.stop_count, 2u);
+      EXPECT_FLOAT_EQ(reader.Stops(item)[1], 0.9f);
+    }
+    EXPECT_TRUE(found);
+  }
+}
+
 TEST_F(FragmentTest, RadialGradientResolvesRawExplicitRadius) {
   auto element = manager->CreateFiberView();
   Fragment fragment(element.get());
