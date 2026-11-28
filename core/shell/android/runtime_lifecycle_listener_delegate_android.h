@@ -19,7 +19,8 @@ namespace shell {
 class RuntimeLifecycleListenerDelegateAndroid
     : public runtime::RuntimeLifecycleListenerDelegate {
  public:
-  RuntimeLifecycleListenerDelegateAndroid(JNIEnv* env, jobject delegate);
+  RuntimeLifecycleListenerDelegateAndroid(
+      JNIEnv* env, jobject delegate, DelegateType type = DelegateType::PART);
   ~RuntimeLifecycleListenerDelegateAndroid() override = default;
 
   void OnRuntimeAttach(void* current_napi_env,

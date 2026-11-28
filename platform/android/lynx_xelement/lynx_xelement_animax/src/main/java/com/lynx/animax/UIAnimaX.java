@@ -118,6 +118,9 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
 
   // Cross-flush flags.
   private boolean mHasReportMotionEvent = false;
+  private boolean mCompositionMode = false;
+  private boolean mHasCompositionMode = false;
+  private boolean mInitialPropsCommitted = false;
 
   public UIAnimaX(LynxContext context) {
     this(context, null);
@@ -189,6 +192,20 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     }
     mAnimaXView = null;
     mAnimaXPlayer = null;
+  }
+
+  @Override
+  public void onNodeRemoved() {
+    super.onNodeRemoved();
+    // Removal can precede destruction, and the node may be inserted again. As
+    // on iOS, cancel only an unfinished composition binding.
+    if (mCompositionMode && mAnimaXPlayer != null) {
+      com.lynx.jsbridge.LynxExtensionModule module =
+          mContext.getExtensionModuleByKey(CompositionHost.KEY);
+      if (module instanceof CompositionHost) {
+        ((CompositionHost) module).cancelPendingCompositionBinding(mAnimaXPlayer);
+      }
+    }
   }
 
   @Override
@@ -416,6 +433,9 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "json")
   public void setJson(String json) {
     mPropsSetter.enqueueTask(player -> {
+      if (rejectSourceProperty("json", json)) {
+        return;
+      }
       player.setJson(json);
       setViewTag("json");
       reportMotionEvent("json");
@@ -430,6 +450,9 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src")
   public void setSrc(String src) {
     mPropsSetter.enqueueTask(player -> {
+      if (rejectSourceProperty("src", src)) {
+        return;
+      }
       player.setSrc(src);
       setViewTag(src);
       reportMotionEvent(src);
@@ -479,6 +502,9 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src-format")
   public void setSrcFormat(String srcFormat) {
     mPropsSetter.enqueueTask(player -> {
+      if (rejectSourceProperty("src-format", srcFormat)) {
+        return;
+      }
       player.setSrc(srcFormat);
       setViewTag(srcFormat);
       reportMotionEvent(srcFormat);
@@ -492,8 +518,11 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   @LynxProp(name = "src-polyfill")
   public void setSrcPolyfill(ReadableMap polyfillMap) {
     if (polyfillMap instanceof JavaOnlyMap) {
-      mPropsSetter.enqueueTask(
-          player -> player.setSrcPolyfill(adaptMap((JavaOnlyMap) polyfillMap)), RESOURCE_SETUP);
+      mPropsSetter.enqueueTask(player -> {
+        if (!rejectSourceProperty("src-polyfill", polyfillMap)) {
+          player.setSrcPolyfill(adaptMap((JavaOnlyMap) polyfillMap));
+        }
+      }, RESOURCE_SETUP);
     } else {
       AnimaXLog.e(TAG, "setSrcPolyfill fail");
     }
@@ -574,7 +603,11 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
    */
   @LynxProp(name = "dynamic-resource")
   public void setDynamicResource(boolean dynamic) {
-    mPropsSetter.enqueueTask(player -> player.setDynamicResource(dynamic), RESOURCE_SETUP);
+    mPropsSetter.enqueueTask(player -> {
+      if (!dynamic || !rejectSourceProperty("dynamic-resource", dynamic)) {
+        player.setDynamicResource(dynamic);
+      }
+    }, RESOURCE_SETUP);
   }
 
   /**
@@ -626,6 +659,63 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
   }
   // AnimaX only LynxProp END
 
+  // Implemented by the page preload module, which is built only with a matching
+  // AnimaX. Composition player APIs are reached only through it, so builds
+  // without the module retain the existing UI path.
+  interface CompositionHost {
+    // Extension module key of the page preload module.
+    String KEY = "LynxAnimaXPreloadModule";
+
+    void setCompositionMode(AnimaXPlayer player, boolean enabled);
+
+    boolean attachPlayer(AnimaXPlayer player);
+
+    // The playercreated event detail, or null when the player has no receiver.
+    Map<String, Object> getCompositionReceiverInfo(AnimaXPlayer player);
+
+    void cancelPendingCompositionBinding(AnimaXPlayer player);
+  }
+
+  @LynxProp(name = "composition-mode")
+  public void setCompositionMode(boolean enabled) {
+    if (mInitialPropsCommitted && (!mHasCompositionMode || mCompositionMode != enabled)) {
+      reportSourceConflict("composition-mode is fixed by the initial properties");
+      return;
+    }
+    // Source work is queued; record mode synchronously before any queued work runs.
+    mHasCompositionMode = true;
+    mCompositionMode = enabled;
+  }
+
+  private boolean rejectSourceProperty(String name, Object value) {
+    if (!mCompositionMode) {
+      return false;
+    }
+    // Null only clears a source that was never set, for example a static JSX
+    // attribute left undefined in composition mode. It is not a conflict.
+    if (value != null) {
+      reportSourceConflict(name + " is unavailable in composition mode");
+    }
+    return true;
+  }
+
+  private void reportSourceConflict(String message) {
+    Map<String, Object> detail = new HashMap<>();
+    detail.put("code", 14);
+    detail.put("errorCode", "SourceConflict");
+    detail.put("message", message);
+    sendComponentEvent("error", detail);
+  }
+
+  private void sendComponentEvent(String name, Map<String, Object> detail) {
+    mContext.getEventEmitter().sendCustomEvent(new LynxCustomEvent(getSign(), name, detail) {
+      @Override
+      public String paramsName() {
+        return "detail";
+      }
+    });
+  }
+
   @Override
   public void updatePropertiesInterval(StylesDiffMap map) {
     super.updatePropertiesInterval(map);
@@ -635,7 +725,38 @@ public class UIAnimaX extends LynxUI<View> implements ForegroundListener {
     if (mAnimaXView == null) {
       createAnimaXView();
     }
+    boolean initialCommit = !mInitialPropsCommitted && mAnimaXPlayer != null;
+    boolean compositionCommit = initialCommit && mCompositionMode;
+    boolean hostAttached = false;
+    CompositionHost host = null;
+    if (initialCommit) {
+      com.lynx.jsbridge.LynxExtensionModule module =
+          mContext.getExtensionModuleByKey(CompositionHost.KEY);
+      if (module instanceof CompositionHost) {
+        host = (CompositionHost) module;
+        host.setCompositionMode(mAnimaXPlayer, mCompositionMode);
+        hostAttached = compositionCommit && host.attachPlayer(mAnimaXPlayer);
+      }
+      mInitialPropsCommitted = true;
+    }
     mPropsSetter.flush();
+    if (compositionCommit) {
+      if (!hostAttached) {
+        Map<String, Object> detail = new HashMap<>();
+        detail.put("code", -1);
+        detail.put("errorCode", "UnsupportedCapability");
+        detail.put("message", "AnimaX preload host is unavailable");
+        sendComponentEvent("error", detail);
+      }
+      // The checked receiver still requires the page's preload host; this event
+      // does not create one.
+      Map<String, Object> receiver =
+          host == null ? null : host.getCompositionReceiverInfo(mAnimaXPlayer);
+      if (receiver != null) {
+        // cspell:ignore playercreated
+        sendComponentEvent("playercreated", receiver);
+      }
+    }
   }
 
   // LynxUIMethod START

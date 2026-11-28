@@ -27,6 +27,14 @@ android {
     }
 
     sourceSets {
+        main {
+            java {
+                // The preload module needs AnimaX APIs newer than the published
+                // artifacts below. Builds that compile AnimaX from source include
+                // it; UIAnimaX reaches it only through UIAnimaX.CompositionHost.
+                exclude 'com/lynx/animax/LynxAnimaXPreloadModule.java'
+            }
+        }
         androidTest {
             assets.srcDirs = ['src/android_test/assets']
             java.srcDirs += ['src/android_test/java/']
