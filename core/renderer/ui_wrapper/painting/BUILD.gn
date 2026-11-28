@@ -56,6 +56,7 @@ if (!enable_unittests) {
   } else if (is_harmony) {
     ui_wrapper_painting_shared_sources += [
       "harmony/drawing_error_scope.h",
+      "harmony/drawing_round_rect.h",
       "harmony/native_painting_context_harmony.cc",
       "harmony/native_painting_context_harmony.h",
       "harmony/native_painting_context_platform_harmony_ref.cc",

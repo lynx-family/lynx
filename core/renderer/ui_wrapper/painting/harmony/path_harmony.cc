@@ -7,13 +7,13 @@
 #include <native_drawing/drawing_error_code.h>
 #include <native_drawing/drawing_matrix.h>
 #include <native_drawing/drawing_rect.h>
-#include <native_drawing/drawing_round_rect.h>
 
 #include <cmath>
 #include <memory>
 #include <utility>
 
 #include "core/renderer/ui_wrapper/painting/harmony/drawing_error_scope.h"
+#include "core/renderer/ui_wrapper/painting/harmony/drawing_round_rect.h"
 #include "gfx/public/path.h"
 
 namespace lynx::tasm {
@@ -41,22 +41,8 @@ bool BuildGeometry(OH_Drawing_Path* path, const gfx::PathView& view,
     NativeOwner<OH_Drawing_Rect, OH_Drawing_RectDestroy> rect(
         OH_Drawing_RectCreate(left, top, right, bottom),
         OH_Drawing_RectDestroy);
-    if (!rect) return false;
-    NativeOwner<OH_Drawing_RoundRect, OH_Drawing_RoundRectDestroy> round_rect(
-        OH_Drawing_RoundRectCreate(rect.get(), 0, 0),
-        OH_Drawing_RoundRectDestroy);
+    auto round_rect = CreateDrawingRoundRect(rect.get(), h.radii, density);
     if (!round_rect) return false;
-    for (int i = 0; i < 4; ++i) {
-      const float x = h.radii[2 * i] * density;
-      const float y = h.radii[2 * i + 1] * density;
-      if (!std::isfinite(x) || !std::isfinite(y)) return false;
-      // A corner with either zero axis is square. SetCorner requires both
-      // radii to be positive; the zero-radius initial rectangle covers it.
-      if (x > 0 && y > 0) {
-        OH_Drawing_RoundRectSetCorner(
-            round_rect.get(), static_cast<OH_Drawing_CornerPos>(i), {x, y});
-      }
-    }
     OH_Drawing_PathAddRoundRect(path, round_rect.get(), PATH_DIRECTION_CW);
     return true;
   }
