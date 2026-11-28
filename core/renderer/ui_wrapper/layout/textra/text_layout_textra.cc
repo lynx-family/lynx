@@ -244,8 +244,10 @@ class TextraParagraphListener : public text::ParagraphListener {
 
 }  // namespace
 
-TextLayoutTextra::TextLayoutTextra(intptr_t api)
-    : api_(reinterpret_cast<text::TextLayoutAPI*>(api)) {}
+TextLayoutTextra::TextLayoutTextra(intptr_t api,
+                                   text::TextLayoutRangeRects range_rects)
+    : api_(reinterpret_cast<text::TextLayoutAPI*>(api)),
+      range_rects_(range_rects) {}
 
 TextLayoutTextra::~TextLayoutTextra() {
   if (!api_) {
@@ -736,10 +738,7 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
                                                  bool& has_inline_view) {
   auto* child = element;
   if (!building_inline_truncation_ && IsInlineTruncationElement(child)) {
-    // TODO: Implement separate truncation indexing and hit testing later.
-    const int32_t start = text_position_;
     BuildInlineTruncation(child, has_inline_view);
-    RecordTextEventTargetRange(child, start, text_position_);
     return;
   }
 
@@ -806,7 +805,9 @@ void TextLayoutTextra::ProcessChildStyleAndProps(Element* element,
 
 void TextLayoutTextra::RecordTextEventTargetRange(Element* element,
                                                   int32_t start, int32_t end) {
-  if (!element->EnableFragmentLayerRender() || start >= end ||
+  // The truncation token has a separate paragraph and character space.
+  if (building_inline_truncation_ || start >= end ||
+      !element->EnableLayoutInElementMode() ||
       !element->HasEventListener("tap")) {
     return;
   }
@@ -823,6 +824,7 @@ void TextLayoutTextra::BuildInlineTruncation(Element* element,
   building_inline_truncation_ = true;
   auto* previous_truncation = truncation_;
   truncation_ = element;
+  const auto body_position = text_position_;
   paragraph_builder_->StartInlineTruncation();
 
   paragraph_builder_->PushTextStyle();
@@ -849,6 +851,7 @@ void TextLayoutTextra::BuildInlineTruncation(Element* element,
   }
   paragraph_builder_->PopTextStyle();
   paragraph_builder_->EndInlineTruncation();
+  text_position_ = body_position;
   building_inline_truncation_ = previous_building_inline_truncation;
   truncation_ = previous_truncation;
 }
@@ -856,9 +859,14 @@ void TextLayoutTextra::BuildInlineTruncation(Element* element,
 LayoutResult TextLayoutTextra::Measure(Element* element, float width,
                                        int width_mode, float height,
                                        int height_mode) {
-  return MeasureInternal(element, width, width_mode, height, height_mode,
-                         /*publish_text_bundle=*/true)
-      .value_or(LayoutResult{});
+  PlatformTextEventTargetRegions inline_regions;
+  auto result = MeasureInternal(element, width, width_mode, height, height_mode,
+                                &inline_regions);
+  if (element && element->is_text()) {
+    static_cast<TextElement*>(element)->UpdateInlineTextGeometry(
+        inline_regions);
+  }
+  return result.value_or(LayoutResult{});
 }
 
 std::optional<LayoutResult> TextLayoutTextra::MeasureDetached(Element* element,
@@ -871,12 +879,12 @@ std::optional<LayoutResult> TextLayoutTextra::MeasureDetached(Element* element,
   // a Page. DestroyDetached() releases only the Paragraph and listener without
   // touching the platform's published drawing resources.
   return MeasureInternal(element, width, width_mode, height, height_mode,
-                         /*publish_text_bundle=*/false);
+                         /*mounted_regions=*/nullptr);
 }
 
 std::optional<LayoutResult> TextLayoutTextra::MeasureInternal(
     Element* element, float width, int width_mode, float height,
-    int height_mode, bool publish_text_bundle) {
+    int height_mode, PlatformTextEventTargetRegions* mounted_regions) {
   if (!api_ || !element || !element->is_text()) {
     return std::nullopt;
   }
@@ -891,9 +899,18 @@ std::optional<LayoutResult> TextLayoutTextra::MeasureInternal(
   text::MeasureResult result =
       api_->MeasureParagraph(paragraph, std::move(measure_param));
 
-  if (publish_text_bundle) {
-    // update text bundle
+  if (mounted_regions) {
     auto* text_element = static_cast<TextElement*>(element);
+    if (range_rects_) {
+      for (const auto& range : text_element->GetInlineTextRanges()) {
+        for (const auto& rect :
+             range_rects_(paragraph, range.start, range.end)) {
+          mounted_regions->push_back(PlatformTextEventTargetRegion{
+              range.sign, rect.X(), rect.Y(), rect.Width(), rect.Height()});
+        }
+      }
+    }
+
     text::Page* page = api_->GetPage(paragraph);
     intptr_t bundle = reinterpret_cast<intptr_t>(page);
     if (element->EnableFragmentLayerRender()) {
@@ -989,6 +1006,7 @@ void TextLayoutTextra::DispatchLayoutBefore(Element* element) {
     paragraphs_.emplace(element->impl_id(), paragraph);
   }
 
+  text_element->SetInlineTextRanges(building_event_target_ranges_);
   const int32_t id = element->impl_id();
   auto reported = std::find(reported_event_target_range_ids_.begin(),
                             reported_event_target_range_ids_.end(), id);
@@ -1043,6 +1061,7 @@ void TextLayoutTextra::DestroyDetached(Element* element) {
 }
 
 void TextLayoutTextra::ClearTextEventTargetRanges(Element* element) {
+  static_cast<TextElement*>(element)->SetInlineTextRanges({});
   const int32_t id = element->impl_id();
   auto reported = std::find(reported_event_target_range_ids_.begin(),
                             reported_event_target_range_ids_.end(), id);

@@ -53,6 +53,7 @@ public class TextRenderer {
   private static final BoringLayout.Metrics UNKNOWN_BORING = new BoringLayout.Metrics();
 
   private Layout mTextLayout;
+  private int mSourceTextEnd;
   final TextRendererKey mKey;
   boolean mHasEllipsis;
   // for bindlayout
@@ -87,6 +88,10 @@ public class TextRenderer {
     return mTextLayout;
   }
 
+  int getSourceTextEnd() {
+    return mSourceTextEnd;
+  }
+
   public int getEllipsisCount() {
     return mEllipsisCount;
   }
@@ -105,6 +110,9 @@ public class TextRenderer {
 
   static class TextContextDescriptor {
     private CharSequence mSpan;
+    // The rendered span keeps this prefix of the original text. Direction
+    // marks and explicit ellipses can follow it after truncation.
+    private int mSourceTextEnd;
     private boolean mShouldBeSingleLine;
     private float mDesiredWidth;
     private int mEllipsizedMode;
@@ -117,21 +125,21 @@ public class TextRenderer {
     result.mTextPaint = newTextPaint(context);
     result.mShouldBeSingleLine = shouldBeSingleLine();
     result.mEllipsizedMode = getEllipsizedMode();
-    result.mSpan = getUsedSpanClippedWithMaxLength();
+    result.mSpan = mKey.getSpan();
+    result.mSourceTextEnd = result.mSpan.length();
+    int maxTextLength = mKey.getAttributes().mMaxTextLength;
+    if (maxTextLength != NOT_SET && maxTextLength < result.mSourceTextEnd) {
+      // Ellipsis will be appended disregarding the overflowing mode.
+      ellipsizeSpan(result, Math.max(0, maxTextLength));
+    }
     result.mDesiredWidth = getDesiredWidth();
     result.mEllipsizedLines = result.mShouldBeSingleLine ? 1 : mKey.getAttributes().mMaxLineCount;
     return result;
   }
 
-  private CharSequence getUsedSpanClippedWithMaxLength() {
-    CharSequence span = mKey.getSpan();
-    int maxTextLength = mKey.getAttributes().mMaxTextLength;
-    int spanLength = span.length();
-    if (maxTextLength != NOT_SET && maxTextLength < spanLength) {
-      // Ellipsis will be appended disregarding the overflowing mode.
-      span = getEllipsizedSpan((SpannableStringBuilder) span, maxTextLength);
-    }
-    return span;
+  private void ellipsizeSpan(TextContextDescriptor textContext, int keepLength) {
+    textContext.mSpan = getEllipsizedSpan((SpannableStringBuilder) textContext.mSpan, keepLength);
+    textContext.mSourceTextEnd = Math.min(textContext.mSourceTextEnd, keepLength);
   }
 
   private void insertDirectionMark(SpannableStringBuilder text, int index) {
@@ -266,8 +274,7 @@ public class TextRenderer {
             int lastCharIndex =
                 mTextLayout.getLineStart(lastLine) + mTextLayout.getEllipsisStart(lastLine) - 1;
             if (isInlineElementAtChar(lastCharIndex, (SpannableStringBuilder) textContext.mSpan)) {
-              textContext.mSpan =
-                  getEllipsizedSpan((SpannableStringBuilder) textContext.mSpan, lastCharIndex + 1);
+              ellipsizeSpan(textContext, lastCharIndex + 1);
               builder = generateLayoutBuilder(
                   textContext.mSpan, alignment, textContext.mTextPaint, textContext.mDesiredWidth);
               mTextLayout = builder.build();
@@ -349,6 +356,7 @@ public class TextRenderer {
 
       if (isNeedRelayout) {
         textContext.mSpan = newSpan;
+        textContext.mSourceTextEnd = Math.min(textContext.mSourceTextEnd, ellipsisIndex);
         textContext.mEllipsizedMode = MODE_NONE;
         int originLineCount = mTextLayout.getLineCount();
         buildTextLayout(textContext, context);
@@ -368,9 +376,10 @@ public class TextRenderer {
               && textContext.mSpan.length() > 2
           ? 2
           : 1;
-      textContext.mSpan = ((SpannableStringBuilder) textContext.mSpan)
-                              .delete(textContext.mSpan.length() - 1 - removeCharCount,
-                                  textContext.mSpan.length() - 1);
+      int deleteEnd = textContext.mSpan.length() - 1;
+      int deleteStart = deleteEnd - removeCharCount;
+      ((SpannableStringBuilder) textContext.mSpan).delete(deleteStart, deleteEnd);
+      textContext.mSourceTextEnd = Math.min(textContext.mSourceTextEnd, deleteStart);
       buildTextLayout(textContext, context);
     }
   }
@@ -418,6 +427,7 @@ public class TextRenderer {
     handleAutoSize(textContext, context);
     handleHeightOverflowByLineCount(textContext, context);
     handleEllipsisBidiAndColorConvert(textContext, context);
+    mSourceTextEnd = textContext.mSourceTextEnd;
     handleMaxWidthMode();
     calcTextTranslateTopOffset();
   }
@@ -858,6 +868,7 @@ public class TextRenderer {
     int lineBreak = rawString.indexOf('\n');
     if (lineBreak > 0) {
       dupSpan.delete(lineBreak, dupSpan.length());
+      textContext.mSourceTextEnd = Math.min(textContext.mSourceTextEnd, lineBreak);
     }
 
     textContext.mSpan = dupSpan;

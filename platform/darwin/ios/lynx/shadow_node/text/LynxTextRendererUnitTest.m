@@ -175,6 +175,83 @@
   XCTAssertNil([textRender inlineTextEventTargetAtPoint:CGPointMake(-100, -100)]);
 }
 
+- (void)testVisibleSourceRangeSurvivesEllipsis {
+  UIFont *font = [UIFont systemFontOfSize:20];
+  NSAttributedString *text =
+      [[NSAttributedString alloc] initWithString:@"start and many words that cannot fit in one line"
+                                      attributes:@{NSFontAttributeName : font}];
+  LynxTextStyle *style = [LynxTextStyle new];
+  style.fontSize = 20;
+  for (NSNumber *usesToken in @[ @NO, @YES ]) {
+    style.truncationAttributedStr =
+        usesToken.boolValue
+            ? [[NSAttributedString alloc] initWithString:@" more"
+                                              attributes:@{NSFontAttributeName : font}]
+            : nil;
+    // LynxTextRenderer inherits the paragraph style for a custom token.
+    NSMutableAttributedString *source = [text mutableCopy];
+    [source addAttribute:NSParagraphStyleAttributeName
+                   value:[NSParagraphStyle defaultParagraphStyle]
+                   range:NSMakeRange(0, source.length)];
+    LynxLayoutSpec *spec = [[LynxLayoutSpec alloc] initWithWidth:120
+                                                          height:100
+                                                       widthMode:LynxMeasureModeDefinite
+                                                      heightMode:LynxMeasureModeIndefinite
+                                                    textOverflow:LynxTextOverflowEllipsis
+                                                        overflow:LynxNoOverflow
+                                                      whiteSpace:LynxWhiteSpaceNormal
+                                                      maxLineNum:1
+                                                   maxTextLength:-1
+                                                       textStyle:style
+                                          enableTailColorConvert:NO];
+    LynxTextRenderer *renderer = [[LynxTextRenderer alloc] initWithAttributedString:source
+                                                                         layoutSpec:spec];
+    [renderer ensureTextRenderLayout];
+    __block CGRect first = CGRectNull;
+    [renderer enumerateVisibleRectsForSourceRange:NSMakeRange(0, 1)
+                                inTruncationToken:NO
+                                       usingBlock:^(CGRect rect) {
+                                         first = rect;
+                                       }];
+    __block CGRect all = CGRectNull;
+    [renderer enumerateVisibleRectsForSourceRange:NSMakeRange(0, text.length)
+                                inTruncationToken:NO
+                                       usingBlock:^(CGRect rect) {
+                                         all = CGRectUnion(all, rect);
+                                       }];
+    XCTAssertFalse(CGRectIsNull(first));
+    XCTAssertGreaterThan(CGRectGetWidth(all), CGRectGetWidth(first));
+    XCTAssertEqualWithAccuracy(CGRectGetMinX(all), CGRectGetMinX(first), 0.01);
+    [renderer enumerateVisibleRectsForSourceRange:NSMakeRange(text.length - 4, 4)
+                                inTruncationToken:NO
+                                       usingBlock:^(CGRect rect) {
+                                         XCTFail(@"Fully truncated source produced a rectangle");
+                                       }];
+    if (renderer.ellipsisCount > 0) {
+      __block CGRect prefix = CGRectNull;
+      NSRange prefixRange = NSMakeRange(0, text.length - renderer.ellipsisCount);
+      [renderer enumerateVisibleRectsForSourceRange:prefixRange
+                                  inTruncationToken:NO
+                                         usingBlock:^(CGRect rect) {
+                                           prefix = CGRectUnion(prefix, rect);
+                                         }];
+      XCTAssertTrue(CGRectEqualToRect(all, prefix));
+    }
+    __block CGRect tokenRect = CGRectNull;
+    [renderer enumerateVisibleRectsForSourceRange:NSMakeRange(0, 4)
+                                inTruncationToken:YES
+                                       usingBlock:^(CGRect rect) {
+                                         tokenRect = CGRectUnion(tokenRect, rect);
+                                       }];
+    if (usesToken.boolValue) {
+      XCTAssertFalse(CGRectIsNull(tokenRect));
+      XCTAssertGreaterThanOrEqual(CGRectGetMinX(tokenRect), CGRectGetMaxX(all) - 0.01);
+    } else {
+      XCTAssertTrue(CGRectIsNull(tokenRect));
+    }
+  }
+}
+
 - (void)testInlineAttachmentDoesNotHitInheritedTextTarget {
   NSTextAttachment *attachment = [NSTextAttachment new];
   attachment.bounds = CGRectMake(0, 0, 24, 24);

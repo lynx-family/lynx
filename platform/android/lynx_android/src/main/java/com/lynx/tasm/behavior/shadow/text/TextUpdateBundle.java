@@ -19,6 +19,8 @@ public class TextUpdateBundle {
 
   private boolean mNeedDrawStroke;
   private CharSequence mOriginText;
+  private int mSourceTextEnd = Integer.MAX_VALUE;
+  private int mInlineTruncationStart = -1;
 
   // Layout event related fields for new text pipeline
   private int mLayoutEventLineCount;
@@ -39,6 +41,22 @@ public class TextUpdateBundle {
 
   public Layout getTextLayout() {
     return mTextLayout;
+  }
+
+  void setSourceTextEnd(int end) {
+    mSourceTextEnd = end;
+  }
+
+  int getSourceTextEnd() {
+    return mSourceTextEnd;
+  }
+
+  void setInlineTruncationStart(int start) {
+    mInlineTruncationStart = start;
+  }
+
+  int getInlineTruncationStart() {
+    return mInlineTruncationStart;
   }
 
   public boolean hasImages() {

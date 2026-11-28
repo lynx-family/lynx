@@ -13,6 +13,7 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/public/layout_node_value.h"
+#include "core/renderer/dom/fragment/event/platform_text_event_target.h"
 
 namespace lynx {
 namespace tasm {
@@ -42,9 +43,9 @@ class TextMeasurerHarmony final {
   fml::RefPtr<harmony::ParagraphHarmony> GetParagraph(int32_t id) const;
 
  private:
-  std::optional<LayoutResult> MeasureInternal(Element* element, float width,
-                                              int width_mode, float height,
-                                              int height_mode);
+  std::optional<LayoutResult> MeasureInternal(
+      Element* element, float width, int width_mode, float height,
+      int height_mode, PlatformTextEventTargetRegions* inline_regions);
 
   struct InlinePlaceholderInfo {
     int32_t sign;

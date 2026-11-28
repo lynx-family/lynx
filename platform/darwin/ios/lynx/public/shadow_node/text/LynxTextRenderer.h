@@ -53,6 +53,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setOverflowOffset:(CGPoint)offset;
 
 /// ensure LayoutManager layout text
+// Enumerates visible rectangles in paragraph content coordinates for an original text range.
+- (void)enumerateVisibleRectsForSourceRange:(NSRange)sourceRange
+                          inTruncationToken:(BOOL)token
+                                 usingBlock:(void (^)(CGRect rect))block;
 - (void)ensureTextRenderLayout;
 
 @end

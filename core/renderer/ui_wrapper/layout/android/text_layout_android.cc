@@ -5,6 +5,7 @@
 #include "core/renderer/ui_wrapper/layout/android/text_layout_android.h"
 
 #include <algorithm>
+#include <cstring>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -12,6 +13,7 @@
 
 #include "base/include/string/unicode_decode_utils.h"
 #include "core/base/android/android_jni.h"
+#include "core/base/android/jni_helper.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -129,8 +131,16 @@ void TextLayoutAndroid::Destroy(Element* element) {
 LayoutResult TextLayoutAndroid::Measure(Element* element, float width,
                                         int width_mode, float height,
                                         int height_mode) {
-  return MeasureInternal(element, width, width_mode, height, height_mode)
-      .value_or(LayoutResult{0.f, 0.f, 0.f});
+  auto result =
+      MeasureInternal(element, width, width_mode, height, height_mode);
+  if (element && element->is_text()) {
+    // Publish geometry only for normal layout, not detached measurement probes.
+    auto* text_element = static_cast<TextElement*>(element);
+    text_element->UpdateInlineTextGeometry(
+        result ? GetInlineTextRegions(text_element)
+               : PlatformTextEventTargetRegions{});
+  }
+  return result.value_or(LayoutResult{});
 }
 
 std::optional<LayoutResult> TextLayoutAndroid::MeasureDetached(
@@ -266,6 +276,40 @@ std::optional<LayoutResult> TextLayoutAndroid::MeasureInternal(
   return LayoutResult{measured_width, measured_height, base_line};
 }
 
+PlatformTextEventTargetRegions TextLayoutAndroid::GetInlineTextRegions(
+    TextElement* paragraph) {
+  PlatformTextEventTargetRegions regions;
+  const auto& ranges = paragraph->GetInlineTextRanges();
+  if (ranges.empty()) {
+    return regions;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jobject> local_ref(text_layout_);
+  if (local_ref.IsNull()) {
+    return regions;
+  }
+  std::vector<int32_t> range_data;
+  for (const auto& range : ranges) {
+    range_data.insert(range_data.end(), {range.sign, range.start, range.end});
+  }
+  auto input = base::android::JNIHelper::ConvertToJNIIntArray(env, range_data);
+  auto result = Java_TextLayout_getInlineTextRegions(
+      env, local_ref.Get(), paragraph->impl_id(), input.Get());
+  if (result.IsNull()) {
+    return regions;
+  }
+  const jsize size = env->GetArrayLength(result.Get());
+  std::vector<float> data(size);
+  env->GetFloatArrayRegion(result.Get(), 0, size, data.data());
+  for (jsize i = 0; i + 4 < size; i += 5) {
+    int32_t sign;
+    std::memcpy(&sign, &data[i], sizeof(sign));
+    regions.push_back(PlatformTextEventTargetRegion{
+        sign, data[i + 1], data[i + 2], data[i + 3], data[i + 4]});
+  }
+  return regions;
+}
+
 void TextLayoutAndroid::MeasureInlineViewRecursively(
     Element* element, const starlight::Constraints& constraints,
     std::vector<float>& layout_result) {
@@ -387,6 +431,7 @@ void TextLayoutAndroid::DispatchLayoutBefore(Element* element) {
     AppendTextProps(element, 0, buffer.length, &buffer.props);
   text_element->set_need_layout_children(buffer.has_inline_view);
 
+  text_element->SetInlineTextRanges(building_event_target_ranges_);
   truncation_event_ranges_.erase(element->impl_id());
   if (element->EnableFragmentLayerRender() && !is_detached_root) {
     if (buffer.length > body_length && !building_event_target_ranges_.empty()) {
@@ -496,7 +541,9 @@ void TextLayoutAndroid::AppendTextProps(Element* element, size_t pos_start,
     if (has_tap_event) {
       props->AddProp(kPropInlineEventTarget);
       props->AddProp(element->impl_id());
-      if (element->EnableFragmentLayerRender()) {
+      // LayoutInElement uses these ranges for geometry queries, including when
+      // fragment rendering is disabled.
+      if (element->EnableLayoutInElementMode()) {
         building_event_target_ranges_.push_back(
             {element->impl_id(), static_cast<int32_t>(pos_start),
              static_cast<int32_t>(pos_end)});
